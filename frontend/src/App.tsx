@@ -81,7 +81,7 @@ export function App() {
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
         <div style={{ textAlign: 'center' }}>
           <div style={{ width: '40px', height: '40px', border: '3px solid #e2e8f0', borderTopColor: '#1d72fe', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <p style={{ color: '#64748b', fontSize: '14px', fontWeight: 500 }}>Connecting to Wetala MLM Portal...</p>
+          <p style={{ color: '#64748b', fontSize: '14px', fontWeight: 500 }}>Connecting to Panchwati Wellness...</p>
         </div>
       </div>
     );

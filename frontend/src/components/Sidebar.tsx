@@ -62,10 +62,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       {/* Brand Logo */}
       <div className="sidebar-logo">
         <div className="logo-brand-wrap">
-          <div className="logo-emblem">W</div>
+          <div className="logo-emblem" style={{ background: 'linear-gradient(135deg, #10b981 0%, #0284c7 100%)' }}>PW</div>
           <div className="logo-text-group">
-            <span className="logo-text">Wetala</span>
-            <span className="logo-badge">Enterprise MLM</span>
+            <span className="logo-text" style={{ fontSize: '15px' }}>Panchwati Wellness</span>
+            <span className="logo-badge">Direct Selling</span>
           </div>
         </div>
       </div>

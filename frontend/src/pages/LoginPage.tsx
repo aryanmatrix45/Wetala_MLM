@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, User, Phone, CheckCircle2, Users } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, User, Phone, CheckCircle2 } from 'lucide-react';
 import { api } from '../services/api';
 
 interface LoginPageProps {
@@ -20,7 +20,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
-  const [regSponsorId, setRegSponsorId] = useState('MEM0001');
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
@@ -101,7 +100,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         phone: regPhone.trim(),
         password: regPassword,
         confirmPassword: regConfirmPassword,
-        sponsorId: regSponsorId.trim() || 'MEM0001',
+        sponsorId: 'MEM0001',
       });
 
       if (res.status) {
@@ -147,20 +146,21 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             width: '54px',
             height: '54px',
             borderRadius: '16px',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #10b981 100%)',
+            background: 'linear-gradient(135deg, #10b981 0%, #0284c7 100%)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
             color: 'white',
             fontWeight: 900,
-            fontSize: '24px',
+            fontSize: '20px',
+            letterSpacing: '0.5px',
             fontFamily: 'var(--font-display)',
-            boxShadow: '0 8px 24px rgba(59, 130, 246, 0.4)',
+            boxShadow: '0 8px 24px rgba(16, 185, 129, 0.35)',
             marginBottom: '12px'
           }}>
-            W
+            PW
           </div>
-          <h1 className="login-title">Wetala MLM Portal</h1>
+          <h1 className="login-title">Panchwati Wellness</h1>
           <p className="login-subtitle">
             {authMode === 'login' 
               ? 'Access your distributor dashboard & compensation ledger' 
@@ -168,57 +168,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           </p>
         </div>
 
-        {/* Tab Switcher: Sign In vs Sign Up */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '6px',
-          background: 'rgba(30, 41, 59, 0.65)',
-          padding: '4px',
-          borderRadius: '14px',
-          border: '1px solid rgba(255, 255, 255, 0.08)',
-          marginBottom: '22px'
-        }}>
-          <button
-            type="button"
-            onClick={() => {
-              setAuthMode('login');
-              setError(null);
-            }}
-            style={{
-              padding: '10px 14px',
-              borderRadius: '10px',
-              fontSize: '13px',
-              fontWeight: 700,
-              background: authMode === 'login' ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : 'transparent',
-              color: authMode === 'login' ? '#ffffff' : '#94a3b8',
-              boxShadow: authMode === 'login' ? '0 4px 12px rgba(37, 99, 235, 0.35)' : 'none',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setAuthMode('register');
-              setError(null);
-              setSuccessMsg(null);
-            }}
-            style={{
-              padding: '10px 14px',
-              borderRadius: '10px',
-              fontSize: '13px',
-              fontWeight: 700,
-              background: authMode === 'register' ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : 'transparent',
-              color: authMode === 'register' ? '#ffffff' : '#94a3b8',
-              boxShadow: authMode === 'register' ? '0 4px 12px rgba(16, 185, 129, 0.35)' : 'none',
-              transition: 'all 0.2s ease'
-            }}
-          >
-            Create Account
-          </button>
-        </div>
+
 
         {/* Success Alert */}
         {successMsg && (
@@ -482,23 +432,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                       {showRegConfirmPassword ? <EyeOff size={16} color="#94a3b8" /> : <Eye size={16} color="#94a3b8" />}
                     </button>
                   </div>
-                </div>
-              </div>
-
-              {/* Sponsor ID */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <label className="login-label">
-                  Sponsor ID <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: 400 }}>(Optional - defaults to Company Root)</span>
-                </label>
-                <div className="input-with-icon">
-                  <Users size={18} className="input-icon" color="#94a3b8" />
-                  <input
-                    type="text"
-                    value={regSponsorId}
-                    onChange={(e) => setRegSponsorId(e.target.value.toUpperCase())}
-                    placeholder="MEM0001"
-                    className="login-input"
-                  />
                 </div>
               </div>
 
