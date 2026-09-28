@@ -10,6 +10,9 @@ router.post('/setup-superadmin', AuthController.setupSuperAdmin);
 // SuperAdmin / Admin login
 router.post('/login', AuthController.login);
 
+// Public Member Registration / Signup
+router.post('/register', AuthController.register);
+
 // Check if SuperAdmin exists in database
 router.get('/superadmin-status', AuthController.getSuperAdminStatus);
 

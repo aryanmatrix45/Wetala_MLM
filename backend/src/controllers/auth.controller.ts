@@ -1,8 +1,12 @@
 import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { Admin } from '../models/Admin.model';
-import { HTTP_STATUS, ROLES } from '../config/constants';
+import { Member } from '../models/Member.model';
+import { HTTP_STATUS, ROLES, BINARY_POSITION, BinaryPosition } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
+import { BinaryTreeService } from '../services/tree/BinaryTreeService';
+import { WalletService } from '../services/WalletService';
+import { BinaryVolume } from '../models/BinaryVolume.model';
 
 const generateToken = (payload: { id: string; email: string; role: string }): string => {
   const secret = process.env.JWT_SECRET || 'wetala_default_jwt_secret';
@@ -10,6 +14,232 @@ const generateToken = (payload: { id: string; email: string; role: string }): st
 };
 
 export const AuthController = {
+  /**
+   * Public Member Registration / Signup
+   * Route: POST /api/auth/register
+   * Body: { name, email, phone / mobile, password, confirmPassword, sponsorId }
+   */
+  async register(req: Request, res: Response): Promise<void> {
+    try {
+      const {
+        name,
+        fullName,
+        email,
+        phone,
+        mobile,
+        password,
+        confirmPassword,
+        sponsorId,
+        placementId,
+        position,
+      } = req.body;
+
+      const memberName = (name || fullName || '').trim();
+      const memberPhone = (phone || mobile || '').trim();
+      const memberEmail = (email || '').toLowerCase().trim();
+
+      // 1. Validation checks
+      if (!memberName) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Full Name is required',
+        });
+        return;
+      }
+
+      if (!memberEmail) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Email address is required',
+        });
+        return;
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(memberEmail)) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Please provide a valid email address',
+        });
+        return;
+      }
+
+      if (!memberPhone) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Phone number is required',
+        });
+        return;
+      }
+
+      const cleanPhone = memberPhone.replace(/[^0-9]/g, '');
+      if (cleanPhone.length < 10) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Please provide a valid phone number with at least 10 digits',
+        });
+        return;
+      }
+
+      if (!password) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Password is required',
+        });
+        return;
+      }
+
+      if (password.length < 6) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Password must be at least 6 characters long',
+        });
+        return;
+      }
+
+      if (confirmPassword && password !== confirmPassword) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Password and Confirm Password do not match',
+        });
+        return;
+      }
+
+      // 2. Uniqueness checks across Member and Admin
+      const existingEmailMember = await Member.findOne({ email: memberEmail });
+      const existingEmailAdmin = await Admin.findOne({ email: memberEmail });
+      if (existingEmailMember || existingEmailAdmin) {
+        res.status(HTTP_STATUS.CONFLICT).json({
+          status: false,
+          message: `Email "${memberEmail}" is already registered. Please log in instead.`,
+        });
+        return;
+      }
+
+      const existingPhoneMember = await Member.findOne({
+        $or: [{ mobile: memberPhone }, { mobile: cleanPhone }, { phone: memberPhone }, { phone: cleanPhone }],
+      });
+      const existingPhoneAdmin = await Admin.findOne({
+        $or: [{ phone: memberPhone }, { phone: cleanPhone }],
+      });
+      if (existingPhoneMember || existingPhoneAdmin) {
+        res.status(HTTP_STATUS.CONFLICT).json({
+          status: false,
+          message: `Phone number "${memberPhone}" is already registered. Phone must be unique.`,
+        });
+        return;
+      }
+
+      // 3. Resolve Sponsor ID
+      let resolvedSponsorId = sponsorId && sponsorId.trim() ? sponsorId.trim().toUpperCase() : 'MEM0001';
+      const sponsorExists = await Member.findOne({ memberId: resolvedSponsorId });
+      if (!sponsorExists) {
+        const root = await Member.findOne().sort({ createdAt: 1 });
+        resolvedSponsorId = root ? root.memberId : 'MEM0001';
+      }
+
+      // 4. Resolve Binary Placement (Automatic spillover if not specified or already occupied)
+      let finalParentId = placementId && placementId.trim() ? placementId.trim().toUpperCase() : '';
+      let finalPosition: BinaryPosition =
+        position?.toLowerCase() === 'right' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
+
+      if (finalParentId) {
+        const placementCheck = await BinaryTreeService.validatePlacement(finalParentId, finalPosition);
+        if (!placementCheck.isValid) {
+          const spillover = await BinaryTreeService.findAvailablePlacement(resolvedSponsorId, finalPosition);
+          finalParentId = spillover.parentId;
+          finalPosition = spillover.position;
+        }
+      } else {
+        const spillover = await BinaryTreeService.findAvailablePlacement(resolvedSponsorId, finalPosition);
+        finalParentId = spillover.parentId;
+        finalPosition = spillover.position;
+      }
+
+      // 5. Generate Next Sequential Member ID
+      const newMemberId = await Member.generateNextMemberId();
+
+      // 6. Create Member record (Password hashed automatically by Member schema pre-save hook)
+      const newMember = await Member.create({
+        memberId: newMemberId,
+        name: memberName,
+        email: memberEmail,
+        mobile: memberPhone,
+        phone: memberPhone,
+        password,
+        role: ROLES.MEMBER,
+        sponsorId: resolvedSponsorId,
+        binaryParentId: finalParentId,
+        placementId: finalParentId,
+        binaryPosition: finalPosition,
+        position: finalPosition === BINARY_POSITION.RIGHT ? 'right' : 'left',
+        packageName: 'Starter',
+        status: 'active',
+        isActive: true,
+        leftBv: 0,
+        rightBv: 0,
+        matchedPairs: 0,
+        totalIncome: 0,
+        walletBalance: 0,
+        joinedAt: new Date(),
+        joinDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      });
+
+      // 7. Initialize Wallet
+      await WalletService.getOrCreateWallet(newMember.memberId, newMember._id.toString()).catch(() => null);
+
+      // 8. Initialize Binary Volume Record
+      await BinaryVolume.create({
+        memberId: newMember.memberId,
+        userId: newMember._id.toString(),
+        leftAvailableBV: 0,
+        rightAvailableBV: 0,
+        leftTotalBV: 0,
+        rightTotalBV: 0,
+        matchedTotalBV: 0,
+        leftCarryForwardBV: 0,
+        rightCarryForwardBV: 0,
+      }).catch(() => null);
+
+      // 9. Generate JWT Token
+      const token = generateToken({
+        id: newMember._id.toString(),
+        email: newMember.email,
+        role: newMember.role,
+      });
+
+      const nameParts = newMember.name.trim().split(' ');
+      res.status(HTTP_STATUS.CREATED).json({
+        status: true,
+        message: `Account created successfully! Welcome to Wetala, ${newMember.name}.`,
+        memberId: newMember.memberId,
+        data: {
+          id: newMember._id,
+          memberId: newMember.memberId,
+          firstName: nameParts[0] || newMember.name,
+          lastName: nameParts.slice(1).join(' ') || '',
+          name: newMember.name,
+          email: newMember.email,
+          phone: newMember.mobile,
+          mobile: newMember.mobile,
+          role: newMember.role,
+          sponsorId: newMember.sponsorId,
+          binaryParentId: newMember.binaryParentId,
+          binaryPosition: newMember.binaryPosition,
+          packageName: newMember.packageName,
+          status: newMember.status,
+          walletBalance: 0,
+        },
+        token,
+      });
+    } catch (error: any) {
+      console.error('[AuthController.register] Error:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        status: false,
+        message: error.message || 'Internal server error during registration',
+      });
+    }
+  },
   /**
    * One-time SuperAdmin Initialization
    * Route: POST /api/auth/setup-superadmin
@@ -112,54 +342,111 @@ export const AuthController = {
         return;
       }
 
-      // Find user and explicitly select password field
+      // 1. Try finding Admin first
       const admin = await Admin.findOne({ email: email.toLowerCase().trim() }).select('+password');
 
-      if (!admin) {
-        res.status(HTTP_STATUS.UNAUTHORIZED).json({
-          status: false,
-          message: 'Invalid email or password',
-        });
-        return;
-      }
+      if (admin) {
+        if (!admin.isActive) {
+          res.status(HTTP_STATUS.FORBIDDEN).json({
+            status: false,
+            message: 'This account has been deactivated. Please contact support.',
+          });
+          return;
+        }
 
-      if (!admin.isActive) {
-        res.status(HTTP_STATUS.FORBIDDEN).json({
-          status: false,
-          message: 'This account has been deactivated. Please contact support.',
-        });
-        return;
-      }
+        const isMatch = await admin.comparePassword(password);
+        if (!isMatch) {
+          res.status(HTTP_STATUS.UNAUTHORIZED).json({
+            status: false,
+            message: 'Invalid email or password',
+          });
+          return;
+        }
 
-      // Compare password
-      const isMatch = await admin.comparePassword(password);
-      if (!isMatch) {
-        res.status(HTTP_STATUS.UNAUTHORIZED).json({
-          status: false,
-          message: 'Invalid email or password',
-        });
-        return;
-      }
-
-      // Generate JWT Token
-      const token = generateToken({
-        id: admin._id.toString(),
-        email: admin.email,
-        role: admin.role,
-      });
-
-      res.status(HTTP_STATUS.OK).json({
-        status: true,
-        message: 'Login successful',
-        data: {
-          id: admin._id,
-          firstName: admin.firstName,
-          lastName: admin.lastName,
+        const token = generateToken({
+          id: admin._id.toString(),
           email: admin.email,
-          phone: admin.phone,
           role: admin.role,
-        },
-        token,
+        });
+
+        res.status(HTTP_STATUS.OK).json({
+          status: true,
+          message: 'Login successful',
+          data: {
+            id: admin._id,
+            firstName: admin.firstName,
+            lastName: admin.lastName,
+            email: admin.email,
+            phone: admin.phone,
+            role: admin.role,
+          },
+          token,
+        });
+        return;
+      }
+
+      // 2. If not admin, check Member collection by email, memberId, or mobile
+      const member = await Member.findOne({
+        $or: [
+          { email: email.toLowerCase().trim() },
+          { memberId: email.toUpperCase().trim() },
+          { mobile: email.trim() },
+        ],
+      }).select('+password');
+
+      if (member) {
+        if (member.status === 'blocked') {
+          res.status(HTTP_STATUS.FORBIDDEN).json({
+            status: false,
+            message: 'This account has been blocked. Please contact support.',
+          });
+          return;
+        }
+
+        const isMemberMatch = await member.comparePassword(password);
+        if (!isMemberMatch) {
+          res.status(HTTP_STATUS.UNAUTHORIZED).json({
+            status: false,
+            message: 'Invalid email or password',
+          });
+          return;
+        }
+
+        const token = generateToken({
+          id: member._id.toString(),
+          email: member.email,
+          role: ROLES.MEMBER,
+        });
+
+        const nameParts = member.name.trim().split(' ');
+        res.status(HTTP_STATUS.OK).json({
+          status: true,
+          message: 'Login successful',
+          data: {
+            id: member._id,
+            memberId: member.memberId,
+            firstName: nameParts[0] || member.name,
+            lastName: nameParts.slice(1).join(' ') || '',
+            name: member.name,
+            email: member.email,
+            mobile: member.mobile,
+            phone: member.mobile,
+            role: ROLES.MEMBER,
+            status: member.status,
+            packageName: member.packageName,
+            sponsorId: member.sponsorId,
+            placementId: member.placementId,
+            walletBalance: member.walletBalance,
+          },
+          token,
+        });
+        return;
+      }
+
+      // Neither found
+      res.status(HTTP_STATUS.UNAUTHORIZED).json({
+        status: false,
+        message: 'Invalid email or password',
       });
     } catch (error: any) {
       console.error('[AuthController.login] Error:', error);
@@ -200,6 +487,42 @@ export const AuthController = {
         res.status(HTTP_STATUS.UNAUTHORIZED).json({
           status: false,
           message: 'Unauthorized',
+        });
+        return;
+      }
+
+      if (req.user.role === ROLES.MEMBER) {
+        const member = await Member.findById(req.user.id);
+        if (!member) {
+          res.status(HTTP_STATUS.NOT_FOUND).json({
+            status: false,
+            message: 'Member not found',
+          });
+          return;
+        }
+
+        const nameParts = member.name.trim().split(' ');
+        res.status(HTTP_STATUS.OK).json({
+          status: true,
+          data: {
+            id: member._id,
+            memberId: member.memberId,
+            firstName: nameParts[0] || member.name,
+            lastName: nameParts.slice(1).join(' ') || '',
+            name: member.name,
+            email: member.email,
+            phone: member.mobile,
+            mobile: member.mobile,
+            role: ROLES.MEMBER,
+            status: member.status,
+            packageName: member.packageName,
+            sponsorId: member.sponsorId,
+            placementId: member.placementId,
+            walletBalance: member.walletBalance,
+            leftBv: member.leftBv,
+            rightBv: member.rightBv,
+            createdAt: member.createdAt,
+          },
         });
         return;
       }

@@ -67,8 +67,13 @@ export function App() {
     setUser(null);
   };
 
-  const handleAddMember = (memberData: any) => {
-    alert(`Success! Registered ${memberData.name} on ${memberData.package} package under sponsor ${memberData.sponsorId} (${memberData.position} leg).`);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  const handleAddMember = async (memberData: any) => {
+    const res = await api.addMember(memberData);
+    alert(res.message || `Member ${res.member?.name || memberData.name} registered successfully! Member ID: ${res.member?.memberId}`);
+    setIsAddMemberOpen(false);
+    setRefreshKey((prev) => prev + 1);
   };
 
   if (loading) {
@@ -94,18 +99,19 @@ export function App() {
 
       {/* Main Content Area */}
       <div className="main-wrapper">
-        <TopNavbar user={user} onLogout={handleLogout} />
+        <TopNavbar user={user} onLogout={handleLogout} onNavigate={(tab) => setActiveTab(tab)} />
 
         {/* Tab Routing */}
         {activeTab === 'dashboard' && (
           <DashboardPage
+            key={refreshKey}
             onNavigate={(tab) => setActiveTab(tab)}
             onOpenAddMember={() => setIsAddMemberOpen(true)}
           />
         )}
 
         {activeTab === 'members' && (
-          <MembersPage onOpenAddMember={() => setIsAddMemberOpen(true)} />
+          <MembersPage key={refreshKey} onOpenAddMember={() => setIsAddMemberOpen(true)} />
         )}
 
         {activeTab === 'genealogy' && <GenealogyPage />}

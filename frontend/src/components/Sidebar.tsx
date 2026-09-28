@@ -11,81 +11,113 @@ import {
   Trophy, 
   Wallet, 
   BarChart3, 
-  FileText, 
   Settings, 
-  LogOut,
-  Sprout
+  LogOut
 } from 'lucide-react';
 
 interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
+  onLogout?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab }) => {
-  const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: Home },
-    { id: 'members', label: 'Members', icon: Users },
-    { id: 'genealogy', label: 'Genealogy Tree', icon: GitFork },
-    { id: 'packages', label: 'Package Management', icon: Package },
-    { id: 'income-settings', label: 'Income Settings', icon: IndianRupee },
-    { id: 'pairing-binary', label: 'Pairing & Binary', icon: GitMerge },
-    { id: 'team-bonus', label: 'Team Bonus', icon: Users2 },
-    { id: 'direct-royalty', label: 'Direct / Royalty', icon: Sparkles },
-    { id: 'rank-rewards', label: 'Rank & Rewards', icon: Trophy },
-    { id: 'wallet-payouts', label: 'Wallet & Payouts', icon: Wallet },
-    { id: 'reports', label: 'Reports', icon: BarChart3 },
-    { id: 'cms-content', label: 'CMS / Content', icon: FileText },
-    { id: 'settings', label: 'Settings', icon: Settings },
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) => {
+  const sections = [
+    {
+      title: 'Overview',
+      items: [
+        { id: 'dashboard', label: 'Dashboard', icon: Home }
+      ]
+    },
+    {
+      title: 'Network & Genealogy',
+      items: [
+        { id: 'members', label: 'Members Directory', icon: Users, badge: '1,256' },
+        { id: 'genealogy', label: 'Binary & Sponsor Tree', icon: GitFork, badge: 'Live' }
+      ]
+    },
+    {
+      title: 'Finance & Compensation',
+      items: [
+        { id: 'income-settings', label: 'Income & Simulator', icon: IndianRupee, badge: 'Engine' },
+        { id: 'pairing-binary', label: 'Pairing & Binary Rules', icon: GitMerge },
+        { id: 'team-bonus', label: 'Team Bonus Slabs', icon: Users2 },
+        { id: 'direct-royalty', label: 'Royalty & Consultancy', icon: Sparkles },
+        { id: 'rank-rewards', label: 'Lifetime Rewards', icon: Trophy },
+        { id: 'wallet-payouts', label: 'Wallet & Payouts', icon: Wallet, badge: '3' }
+      ]
+    },
+    {
+      title: 'Platform Administration',
+      items: [
+        { id: 'packages', label: 'Joining Packages', icon: Package },
+        { id: 'reports', label: 'Financial Reports', icon: BarChart3 },
+        { id: 'settings', label: 'System Settings', icon: Settings }
+      ]
+    }
   ];
 
   return (
     <aside className="sidebar">
       {/* Brand Logo */}
       <div className="sidebar-logo">
-        <div className="logo-bubbles">
-          <div className="bubble" style={{ background: '#f59e0b' }}></div>
-          <div className="bubble" style={{ background: '#ef4444' }}></div>
-          <div className="bubble" style={{ background: '#10b981' }}></div>
-          <div className="bubble" style={{ background: '#0284c7' }}></div>
+        <div className="logo-brand-wrap">
+          <div className="logo-emblem">W</div>
+          <div className="logo-text-group">
+            <span className="logo-text">Wetala</span>
+            <span className="logo-badge">Enterprise MLM</span>
+          </div>
         </div>
-        <span className="logo-text">Wetala</span>
       </div>
 
       {/* Navigation Menu */}
       <nav className="sidebar-menu">
-        {menuItems.map((item) => {
-          const Icon = item.icon;
-          const isActive = activeTab === item.id;
-          return (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`menu-item ${isActive ? 'active' : ''}`}
-            >
-              <Icon size={18} />
-              <span>{item.label}</span>
-            </button>
-          );
-        })}
+        {sections.map((section, sIdx) => (
+          <div key={sIdx} style={{ display: 'flex', flexDirection: 'column' }}>
+            <div className="sidebar-section-label">{section.title}</div>
+            {section.items.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`menu-item ${isActive ? 'active' : ''}`}
+                >
+                  <Icon size={18} style={{ color: isActive ? '#ffffff' : '#94a3b8' }} />
+                  <span>{item.label}</span>
+                  {item.badge && (
+                    <span className="menu-item-badge">
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        ))}
 
-        <button 
-          onClick={() => alert('Logout clicked')} 
-          className="menu-item" 
-          style={{ marginTop: 'auto', color: '#94a3b8' }}
-        >
-          <LogOut size={18} />
-          <span>Logout</span>
-        </button>
+        <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
+          <button 
+            onClick={() => onLogout ? onLogout() : alert('Logging out...')} 
+            className="menu-item" 
+            style={{ color: '#f87171' }}
+          >
+            <LogOut size={18} />
+            <span>Sign Out</span>
+          </button>
+        </div>
       </nav>
 
-      {/* Bottom Slogan Card */}
+      {/* Bottom Live System Indicator */}
       <div className="sidebar-footer-card">
-        <div className="sprout-icon-box">
-          <Sprout size={20} />
+        <div className="system-status-indicator">
+          <div className="pulse-dot"></div>
+          <span>Binary Engine Active</span>
         </div>
-        <div className="footer-slogan">
-          People Grow<br />Better Together
+        <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
+          <span>Daily Cap: ₹4,000</span>
+          <span>v2.4.0</span>
         </div>
       </div>
     </aside>

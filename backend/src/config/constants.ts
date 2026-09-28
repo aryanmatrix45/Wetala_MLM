@@ -14,3 +14,91 @@ export const ROLES = {
   ADMIN: 'admin',
   MEMBER: 'member',
 } as const;
+
+export const BINARY_POSITION = {
+  LEFT: 'LEFT',
+  RIGHT: 'RIGHT',
+} as const;
+
+export type BinaryPosition = typeof BINARY_POSITION[keyof typeof BINARY_POSITION];
+
+export const PURCHASE_TYPE = {
+  JOINING: 'JOINING',
+  REPURCHASE: 'REPURCHASE',
+  RETAIL: 'RETAIL',
+  OTHER: 'OTHER',
+} as const;
+
+export type PurchaseType = typeof PURCHASE_TYPE[keyof typeof PURCHASE_TYPE];
+
+export const PURCHASE_STATUS = {
+  PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  REFUNDED: 'REFUNDED',
+} as const;
+
+export type PurchaseStatus = typeof PURCHASE_STATUS[keyof typeof PURCHASE_STATUS];
+
+export const COMMISSION_TYPE = {
+  WELCOME_BONUS: 'WELCOME_BONUS',
+  BINARY_BONUS: 'BINARY_BONUS',
+  SPONSOR_BINARY_BONUS: 'SPONSOR_BINARY_BONUS',
+  SELF_PURCHASE_BONUS: 'SELF_PURCHASE_BONUS',
+  TEAM_BONUS: 'TEAM_BONUS',
+  TEAM_PERFORMANCE_BONUS: 'TEAM_PERFORMANCE_BONUS',
+  UPLINE_BONUS: 'UPLINE_BONUS',
+  FRANCHISE_BONUS: 'FRANCHISE_BONUS',
+  ROYALTY: 'ROYALTY',
+  REWARD: 'REWARD',
+  ADJUSTMENT: 'ADJUSTMENT',
+  REVERSAL: 'REVERSAL',
+} as const;
+
+export type CommissionType = typeof COMMISSION_TYPE[keyof typeof COMMISSION_TYPE];
+
+export const BV_SOURCE_TYPE = {
+  JOINING_PACKAGE: 'JOINING_PACKAGE',
+  REPURCHASE: 'REPURCHASE',
+  RETAIL: 'RETAIL',
+  ADJUSTMENT: 'ADJUSTMENT',
+  MATCHED: 'MATCHED',
+  FLUSHED: 'FLUSHED',
+  REVERSAL: 'REVERSAL',
+} as const;
+
+export type BVSourceType = typeof BV_SOURCE_TYPE[keyof typeof BV_SOURCE_TYPE];
+
+export const EXCESS_CAP_POLICY = {
+  FLUSH: 'FLUSH',
+  HOLD: 'HOLD',
+  CARRY_FORWARD: 'CARRY_FORWARD',
+} as const;
+
+export type ExcessCapPolicy = typeof EXCESS_CAP_POLICY[keyof typeof EXCESS_CAP_POLICY];
+
+export const VOLUME_CARRY_FORWARD_MODE = {
+  CARRY_FORWARD: 'CARRY_FORWARD',
+  FLUSH: 'FLUSH',
+} as const;
+
+export type VolumeCarryForwardMode = typeof VOLUME_CARRY_FORWARD_MODE[keyof typeof VOLUME_CARRY_FORWARD_MODE];
+
+export const COMPENSATION_EVENT_TYPE = {
+  PURCHASE_COMPLETED: 'PURCHASE_COMPLETED',
+  REPURCHASE_COMPLETED: 'REPURCHASE_COMPLETED',
+  COMMISSION_REVERSED: 'COMMISSION_REVERSED',
+  MANUAL_ADJUSTMENT: 'MANUAL_ADJUSTMENT',
+} as const;
+
+export type CompensationEventType = typeof COMPENSATION_EVENT_TYPE[keyof typeof COMPENSATION_EVENT_TYPE];
+
+export const COMPENSATION_EVENT_STATUS = {
+  PENDING: 'PENDING',
+  PROCESSED: 'PROCESSED',
+  FAILED: 'FAILED',
+  REVERSED: 'REVERSED',
+} as const;
+
+export type CompensationEventStatus = typeof COMPENSATION_EVENT_STATUS[keyof typeof COMPENSATION_EVENT_STATUS];

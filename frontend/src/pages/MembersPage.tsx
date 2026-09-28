@@ -224,51 +224,88 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
               </tr>
             </thead>
             <tbody>
-              {filteredMembers.map((m, idx) => (
-                <tr key={m.id}>
-                  <td>{idx + 1}</td>
-                  <td style={{ fontWeight: 600, color: '#1d72fe' }}>{m.memberId}</td>
-                  <td style={{ fontWeight: 600 }}>{m.name}</td>
-                  <td style={{ color: '#64748b' }}>{m.sponsorId}</td>
-                  <td>
-                    <span style={{ 
-                      padding: '3px 8px', 
-                      borderRadius: '6px', 
-                      fontSize: '12px', 
-                      fontWeight: 600,
-                      background: m.package === 'Premium' ? '#f5f3ff' : '#eff6ff',
-                      color: m.package === 'Premium' ? '#7c3aed' : '#2563eb'
-                    }}>
-                      {m.package}
-                    </span>
-                  </td>
-                  <td>{m.joinDate}</td>
-                  <td>
-                    <span 
-                      onClick={() => handleToggleStatus(m.id)}
-                      className={`status-pill ${m.status === 'Active' ? 'status-active' : 'status-inactive'}`}
-                      style={{ cursor: 'pointer' }}
-                      title="Click to toggle status"
-                    >
-                      {m.status}
-                    </span>
-                  </td>
-                  <td>{m.mobile}</td>
-                  <td style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                      <button className="action-view-btn" onClick={() => alert(`Viewing details for ${m.name} (${m.memberId})`)}>
-                        View
-                      </button>
-                      <button className="action-edit-btn" onClick={() => alert(`Editing ${m.name}`)}>
-                        Edit
-                      </button>
-                      <button style={{ color: '#94a3b8', padding: '4px' }}>
-                        <MoreVertical size={16} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredMembers.map((m, idx) => {
+                const initials = m.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+                return (
+                  <tr key={m.id}>
+                    <td>{idx + 1}</td>
+                    <td>
+                      <span style={{ fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '3px 8px', borderRadius: '6px', fontSize: '12px' }}>
+                        {m.memberId}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{
+                          width: '32px',
+                          height: '32px',
+                          borderRadius: '50%',
+                          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                          color: 'white',
+                          fontWeight: 700,
+                          fontSize: '11.5px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          {initials}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 700, color: '#0f172a' }}>{m.name}</div>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>{m.mobile}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>{m.sponsorId}</span>
+                    </td>
+                    <td>
+                      <span style={{ 
+                        padding: '3px 10px', 
+                        borderRadius: '6px', 
+                        fontSize: '11.5px', 
+                        fontWeight: 700,
+                        background: m.package === 'Premium' ? '#f5f3ff' : '#eff6ff',
+                        color: m.package === 'Premium' ? '#7c3aed' : '#2563eb'
+                      }}>
+                        {m.package}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: '12.5px', color: '#64748b' }}>{m.joinDate}</td>
+                    <td>
+                      <span 
+                        onClick={() => handleToggleStatus(m.id)}
+                        className={`status-pill ${m.status === 'Active' ? 'status-active' : 'status-inactive'}`}
+                        style={{ cursor: 'pointer' }}
+                        title="Click to toggle status"
+                      >
+                        <span style={{
+                          width: '6px',
+                          height: '6px',
+                          borderRadius: '50%',
+                          background: m.status === 'Active' ? '#10b981' : '#ef4444'
+                        }} />
+                        {m.status}
+                      </span>
+                    </td>
+                    <td style={{ fontSize: '12.5px', color: '#64748b' }}>{m.mobile}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                        <button className="action-view-btn" onClick={() => alert(`Viewing details for ${m.name} (${m.memberId})`)}>
+                          View
+                        </button>
+                        <button className="action-edit-btn" onClick={() => alert(`Editing ${m.name}`)}>
+                          Edit
+                        </button>
+                        <button style={{ color: '#94a3b8', padding: '4px' }}>
+                          <MoreVertical size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>

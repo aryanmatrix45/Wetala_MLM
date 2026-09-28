@@ -12,10 +12,10 @@ const startServer = async () => {
     await connectDB();
 
     // Start Express listener
-    app.listen(PORT, () => {
-      console.log(`[WetalaMLM] Server running on http://localhost:${PORT}`);
-      console.log(`[WetalaMLM] Health endpoint: http://localhost:${PORT}/api/health`);
-      console.log(`[WetalaMLM] Auth endpoints: http://localhost:${PORT}/api/auth`);
+    app.listen(Number(PORT), '0.0.0.0', () => {
+      console.log(`[WetalaMLM] Server running on http://127.0.0.1:${PORT}`);
+      console.log(`[WetalaMLM] Health endpoint: http://127.0.0.1:${PORT}/api/health`);
+      console.log(`[WetalaMLM] Auth endpoints: http://127.0.0.1:${PORT}/api/auth`);
     });
   } catch (error) {
     console.error('[WetalaMLM] Failed to start server:', error);
