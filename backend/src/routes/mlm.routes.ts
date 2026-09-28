@@ -65,20 +65,20 @@ router.get('/dashboard/stats', async (_req, res) => {
     const activePercent = totalMembers > 0 ? Math.round((activeMembers / totalMembers) * 100) : 0;
 
     res.json({
-      totalMembers: totalMembers || 1256,
-      newRegistrations: 84,
-      registrationsToday: 12,
-      totalIncomeMonth: 186350,
-      totalPayoutMonth: 173900,
+      totalMembers: totalMembers,
+      newRegistrations: totalMembers,
+      registrationsToday: 0,
+      totalIncomeMonth: 0,
+      totalPayoutMonth: 0,
       quickStats: {
-        activeMembers: activeMembers || 892,
-        activePercent: activePercent || 71,
-        inactiveMembers: inactiveMembers || 364,
-        repurchaseBv: 450000,
-        repurchasePercent: 62,
-        activeFranchises: 48,
-        franchisePercent: 88,
-        pendingPayouts: 3
+        activeMembers: activeMembers,
+        activePercent: activePercent,
+        inactiveMembers: inactiveMembers,
+        repurchaseBv: 0,
+        repurchasePercent: 0,
+        activeFranchises: 0,
+        franchisePercent: 0,
+        pendingPayouts: 0
       }
     });
   } catch (error: any) {
@@ -213,13 +213,60 @@ router.post('/members', async (req, res) => {
       return;
     }
 
-    // 3. Binary Placement validation
-    const finalParentId = placementId && placementId.trim() ? placementId.trim().toUpperCase() : 'MEM0001';
-    const finalPos = position === 'right' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
-    const placementCheck = await BinaryTreeService.validatePlacement(finalParentId, finalPos);
-    if (!placementCheck.isValid) {
-      res.status(HTTP_STATUS.CONFLICT).json({ status: false, message: placementCheck.error });
+    // 3. Sponsor ID validation
+    if (!sponsorId || !sponsorId.trim()) {
+      res.status(HTTP_STATUS.BAD_REQUEST).json({
+        status: false,
+        message: 'Sponsor ID is required. Please provide ADMIN or an existing Member ID.'
+      });
       return;
+    }
+
+    const totalCount = await Member.countDocuments();
+    let finalParentId = '';
+    let finalPos = position === 'right' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
+    let finalSponsorId = sponsorId.trim().toUpperCase();
+
+    if (totalCount === 0) {
+      // First member in system: root node
+      if (finalSponsorId !== 'ADMIN') {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'The initial member must have sponsor ID "ADMIN".'
+        });
+        return;
+      }
+      finalParentId = '';
+    } else {
+      // Validate sponsor ID: can be 'ADMIN' or an existing member
+      if (finalSponsorId !== 'ADMIN') {
+        const sponsorExists = await Member.findOne({ memberId: finalSponsorId });
+        if (!sponsorExists) {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({
+            status: false,
+            message: `Sponsor ID "${finalSponsorId}" does not exist. Please enter a valid Member ID or ADMIN.`
+          });
+          return;
+        }
+      }
+
+      // Resolve placement: if ADMIN, ROOT, or empty, auto-place under root member spillover
+      const rawPlacement = placementId && placementId.trim() ? placementId.trim().toUpperCase() : '';
+      if (!rawPlacement || rawPlacement === 'ADMIN' || rawPlacement === 'ROOT') {
+        const root = await Member.findOne().sort({ createdAt: 1 });
+        if (root) {
+          const spillover = await BinaryTreeService.findAvailablePlacement(root.memberId, finalPos);
+          finalParentId = spillover.parentId;
+          finalPos = spillover.position;
+        }
+      } else {
+        finalParentId = rawPlacement;
+        const placementCheck = await BinaryTreeService.validatePlacement(finalParentId, finalPos);
+        if (!placementCheck.isValid) {
+          res.status(HTTP_STATUS.CONFLICT).json({ status: false, message: placementCheck.error });
+          return;
+        }
+      }
     }
 
     // 4. Generate Sequential Unique Member ID
@@ -233,7 +280,7 @@ router.post('/members', async (req, res) => {
       mobile: mobile.trim(),
       dob: dob ? dob.trim() : '',
       password,
-      sponsorId: sponsorId && sponsorId.trim() ? sponsorId.trim().toUpperCase() : 'MEM0001',
+      sponsorId: finalSponsorId,
       binaryParentId: finalParentId,
       placementId: finalParentId,
       binaryPosition: finalPos,

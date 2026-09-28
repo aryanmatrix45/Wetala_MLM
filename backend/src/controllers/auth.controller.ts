@@ -130,30 +130,43 @@ export const AuthController = {
         return;
       }
 
-      // 3. Resolve Sponsor ID
-      let resolvedSponsorId = sponsorId && sponsorId.trim() ? sponsorId.trim().toUpperCase() : 'MEM0001';
-      const sponsorExists = await Member.findOne({ memberId: resolvedSponsorId });
-      if (!sponsorExists) {
-        const root = await Member.findOne().sort({ createdAt: 1 });
-        resolvedSponsorId = root ? root.memberId : 'MEM0001';
-      }
-
-      // 4. Resolve Binary Placement (Automatic spillover if not specified or already occupied)
-      let finalParentId = placementId && placementId.trim() ? placementId.trim().toUpperCase() : '';
+      // 3. Resolve Sponsor ID and Binary Placement
+      const totalMemberCount = await Member.countDocuments();
+      let resolvedSponsorId = sponsorId && sponsorId.trim() ? sponsorId.trim().toUpperCase() : 'ADMIN';
+      let finalParentId = '';
       let finalPosition: BinaryPosition =
         position?.toLowerCase() === 'right' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
 
-      if (finalParentId) {
-        const placementCheck = await BinaryTreeService.validatePlacement(finalParentId, finalPosition);
-        if (!placementCheck.isValid) {
-          const spillover = await BinaryTreeService.findAvailablePlacement(resolvedSponsorId, finalPosition);
+      if (totalMemberCount === 0) {
+        resolvedSponsorId = 'ADMIN';
+        finalParentId = '';
+      } else {
+        if (resolvedSponsorId !== 'ADMIN') {
+          const sponsorExists = await Member.findOne({ memberId: resolvedSponsorId });
+          if (!sponsorExists) {
+            resolvedSponsorId = 'ADMIN';
+          }
+        }
+
+        const rawPlacement = placementId && placementId.trim() ? placementId.trim().toUpperCase() : '';
+        if (rawPlacement && rawPlacement !== 'ADMIN' && rawPlacement !== 'ROOT') {
+          const placementCheck = await BinaryTreeService.validatePlacement(rawPlacement, finalPosition);
+          if (placementCheck.isValid) {
+            finalParentId = rawPlacement;
+          } else {
+            const root = await Member.findOne().sort({ createdAt: 1 });
+            const spilloverRoot = root ? root.memberId : '';
+            const spillover = await BinaryTreeService.findAvailablePlacement(spilloverRoot, finalPosition);
+            finalParentId = spillover.parentId;
+            finalPosition = spillover.position;
+          }
+        } else {
+          const root = await Member.findOne().sort({ createdAt: 1 });
+          const spilloverRoot = root ? root.memberId : '';
+          const spillover = await BinaryTreeService.findAvailablePlacement(spilloverRoot, finalPosition);
           finalParentId = spillover.parentId;
           finalPosition = spillover.position;
         }
-      } else {
-        const spillover = await BinaryTreeService.findAvailablePlacement(resolvedSponsorId, finalPosition);
-        finalParentId = spillover.parentId;
-        finalPosition = spillover.position;
       }
 
       // 5. Generate Next Sequential Member ID

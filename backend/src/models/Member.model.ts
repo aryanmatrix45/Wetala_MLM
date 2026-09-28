@@ -102,21 +102,20 @@ const memberSchema = new Schema<IMember, IMemberModel>(
       default: ROLES.MEMBER,
     },
     
-    // Distinct Sponsor Relationship
+    // Distinct Sponsor Relationship (Allows 'ADMIN' or any valid Member ID)
     sponsorId: {
       type: String,
-      required: [true, 'Sponsor ID is required'],
       trim: true,
+      uppercase: true,
       index: true,
-      default: 'MEM0001',
     },
     
-    // Distinct Binary Placement Relationship
+    // Distinct Binary Placement Relationship (Empty string for root member)
     binaryParentId: {
       type: String,
       trim: true,
       index: true,
-      default: 'MEM0001',
+      default: '',
     },
     binaryPosition: {
       type: String,
@@ -243,11 +242,11 @@ memberSchema.statics.generateNextMemberId = async function (): Promise<string> {
     .exec();
 
   if (!lastMember || !lastMember.memberId) {
-    return 'MEM0101';
+    return 'MEM0001';
   }
 
   const numericPart = parseInt(lastMember.memberId.replace(/\D/g, ''), 10);
-  const nextNumber = isNaN(numericPart) ? 101 : numericPart + 1;
+  const nextNumber = isNaN(numericPart) ? 1 : numericPart + 1;
   return `MEM${String(nextNumber).padStart(4, '0')}`;
 };
 

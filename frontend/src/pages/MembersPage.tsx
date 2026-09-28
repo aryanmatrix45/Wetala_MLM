@@ -27,20 +27,7 @@ interface MembersPageProps {
 }
 
 export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => {
-  const initialMembers: MemberItem[] = [
-    { id: '1', memberId: 'MEM0126', name: 'Amit Kumar', sponsorId: 'MEM0005', package: 'Premium', joinDate: '12 Sep 2025', status: 'Active', mobile: '98765 43210' },
-    { id: '2', memberId: 'MEM0125', name: 'Priya Singh', sponsorId: 'MEM0003', package: 'Basic', joinDate: '12 Sep 2025', status: 'Active', mobile: '87654 32109' },
-    { id: '3', memberId: 'MEM0124', name: 'Neha Verma', sponsorId: 'MEM0005', package: 'Premium', joinDate: '11 Sep 2025', status: 'Active', mobile: '96543 21098' },
-    { id: '4', memberId: 'MEM0123', name: 'Suresh Yadav', sponsorId: 'MEM0001', package: 'Basic', joinDate: '11 Sep 2025', status: 'Inactive', mobile: '91234 56789' },
-    { id: '5', memberId: 'MEM0122', name: 'Manish Jain', sponsorId: 'MEM0008', package: 'Premium', joinDate: '10 Sep 2025', status: 'Active', mobile: '99887 76655' },
-    { id: '6', memberId: 'MEM0121', name: 'Pooja Sharma', sponsorId: 'MEM0003', package: 'Basic', joinDate: '10 Sep 2025', status: 'Active', mobile: '88776 65544' },
-    { id: '7', memberId: 'MEM0120', name: 'Ramesh Kumar', sponsorId: 'MEM0005', package: 'Premium', joinDate: '09 Sep 2025', status: 'Active', mobile: '77665 44332' },
-    { id: '8', memberId: 'MEM0119', name: 'Sunita Devi', sponsorId: 'MEM0008', package: 'Basic', joinDate: '09 Sep 2025', status: 'Inactive', mobile: '99876 55443' },
-    { id: '9', memberId: 'MEM0118', name: 'Amit Sharma', sponsorId: 'MEM0001', package: 'Premium', joinDate: '08 Sep 2025', status: 'Active', mobile: '88765 43221' },
-    { id: '10', memberId: 'MEM0117', name: 'Rajesh Meena', sponsorId: 'MEM0003', package: 'Basic', joinDate: '08 Sep 2025', status: 'Active', mobile: '77654 32110' },
-  ];
-
-  const [members, setMembers] = useState<MemberItem[]>(initialMembers);
+  const [members, setMembers] = useState<MemberItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPackage, setSelectedPackage] = useState('All Packages');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
@@ -51,22 +38,22 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
     import('../services/api').then(({ api }) => {
       api.getMembers()
         .then((data) => {
-          if (Array.isArray(data) && data.length > 0) {
+          if (Array.isArray(data)) {
             setMembers(
               data.map((m: any) => ({
                 id: m.id || m._id,
                 memberId: m.memberId,
                 name: m.name,
                 sponsorId: m.sponsorId,
-                package: m.packageName || m.package || 'Basic',
-                joinDate: m.joinDate,
-                status: m.status === 'active' ? 'Active' : 'Inactive',
-                mobile: m.mobile,
+                package: m.packageName || m.package || 'Starter',
+                joinDate: m.joinDate || 'Recent',
+                status: (m.status || '').toLowerCase() === 'active' ? 'Active' : 'Inactive',
+                mobile: m.mobile || m.phone || '-',
               }))
             );
           }
         })
-        .catch((err) => console.log('Using initial fallback members:', err));
+        .catch((err) => console.log('Error fetching members:', err));
     });
   }, []);
 
@@ -96,6 +83,11 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
     setSelectedStatus('All Status');
   };
 
+  const totalCount = members.length;
+  const activeCount = members.filter((m) => m.status === 'Active').length;
+  const inactiveCount = totalCount - activeCount;
+  const activePercent = totalCount > 0 ? Math.round((activeCount / totalCount) * 100) : 0;
+
   return (
     <div className="page-body">
       {/* Top Title & Add Member CTA */}
@@ -110,7 +102,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
         </button>
       </div>
 
-      {/* 4 Summary Cards (Image 5 Top) */}
+      {/* 4 Summary Cards */}
       <div className="kpi-grid">
         <div className="kpi-card">
           <div className="kpi-icon-box kpi-icon-blue">
@@ -118,7 +110,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
           </div>
           <div className="kpi-content">
             <div className="kpi-label">Total Members</div>
-            <div className="kpi-value">1,256</div>
+            <div className="kpi-value">{totalCount}</div>
           </div>
         </div>
 
@@ -129,7 +121,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
           <div className="kpi-content">
             <div className="kpi-label">Active Members</div>
             <div className="kpi-value">
-              892 <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 600 }}>↑ 71%</span>
+              {activeCount} {totalCount > 0 && <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 600 }}>↑ {activePercent}%</span>}
             </div>
           </div>
         </div>
@@ -141,7 +133,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
           <div className="kpi-content">
             <div className="kpi-label">Inactive Members</div>
             <div className="kpi-value">
-              364 <span style={{ fontSize: '13px', color: '#ef4444', fontWeight: 600 }}>29%</span>
+              {inactiveCount} {totalCount > 0 && <span style={{ fontSize: '13px', color: '#ef4444', fontWeight: 600 }}>{100 - activePercent}%</span>}
             </div>
           </div>
         </div>
@@ -152,7 +144,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
           </div>
           <div className="kpi-content">
             <div className="kpi-label">New This Month</div>
-            <div className="kpi-value">84</div>
+            <div className="kpi-value">{totalCount}</div>
           </div>
         </div>
       </div>
@@ -319,7 +311,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
           borderTop: '1px solid #f1f5f9' 
         }}>
           <div style={{ fontSize: '13px', color: '#64748b' }}>
-            Showing 1 to {filteredMembers.length} of 1,256 members
+            Showing {filteredMembers.length > 0 ? 1 : 0} to {filteredMembers.length} of {totalCount} members
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>

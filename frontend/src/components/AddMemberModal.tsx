@@ -15,8 +15,8 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
     dob: '',
     password: '',
     confirmPassword: '',
-    sponsorId: 'MEM0001',
-    placementId: 'MEM0001',
+    sponsorId: '',
+    placementId: '',
     position: 'left',
     package: 'Starter'
   });
@@ -45,6 +45,11 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
 
     if (!formData.email.trim()) {
       setError('Please provide email address.');
+      return;
+    }
+
+    if (!formData.sponsorId.trim()) {
+      setError('Please enter Sponsor ID (e.g. ADMIN or an existing Member ID).');
       return;
     }
 
@@ -270,13 +275,14 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                Sponsor Member ID *
+                Sponsor ID * <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>(e.g. ADMIN or Member ID)</span>
               </label>
               <input
                 type="text"
                 required
+                placeholder="Enter Sponsor ID (ADMIN or MEM0001)"
                 value={formData.sponsorId}
-                onChange={(e) => setFormData({ ...formData, sponsorId: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, sponsorId: e.target.value.toUpperCase() })}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
               />
             </div>

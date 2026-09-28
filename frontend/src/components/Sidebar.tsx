@@ -32,7 +32,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     {
       title: 'Network & Genealogy',
       items: [
-        { id: 'members', label: 'Members Directory', icon: Users, badge: '1,256' },
+        { id: 'members', label: 'Members Directory', icon: Users },
         { id: 'genealogy', label: 'Binary & Sponsor Tree', icon: GitFork, badge: 'Live' }
       ]
     },
