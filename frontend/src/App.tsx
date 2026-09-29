@@ -95,7 +95,7 @@ export function App() {
   return (
     <div className="app-container">
       {/* Left Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
+      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} onLogout={handleLogout} />
 
       {/* Main Content Area */}
       <div className="main-wrapper">
@@ -116,7 +116,13 @@ export function App() {
 
         {activeTab === 'genealogy' && <GenealogyPage />}
 
-        {activeTab === 'packages' && <PackagesPage />}
+        {activeTab === 'packages' && (
+          <PackagesPage
+            user={user}
+            token={token}
+            onUserUpdate={(updated) => setUser(updated)}
+          />
+        )}
 
         {activeTab === 'income-settings' && <IncomeSettingsPage />}
 

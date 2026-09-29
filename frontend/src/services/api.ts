@@ -53,6 +53,23 @@ export interface ApiPayout {
   status: 'pending' | 'paid' | 'rejected';
 }
 
+export interface PackageItem {
+  _id?: string;
+  packageId: string;
+  packageNumber: number;
+  name: string;
+  badge?: string;
+  price: number;
+  priceInPaise?: number;
+  bv: number;
+  rp: number;
+  dailyCapping: number;
+  description?: string;
+  features?: string[];
+  isPopular?: boolean;
+  isActive: boolean;
+}
+
 export const api = {
   // Authentication & SuperAdmin Setup
   async getSuperAdminStatus(): Promise<{ status: boolean; isInitialized: boolean }> {
@@ -170,10 +187,64 @@ export const api = {
   },
 
   // Packages
-  async getPackages() {
+  async getPackages(): Promise<{ status: boolean; data: PackageItem[] }> {
     const res = await fetch(`${API_BASE_URL}/packages`);
     if (!res.ok) throw new Error(`Failed to fetch packages: ${res.statusText}`);
     return res.json();
+  },
+
+  async createPackage(data: Partial<PackageItem>, token: string) {
+    const res = await fetch(`${API_BASE_URL}/packages`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || 'Failed to create package');
+    return result;
+  },
+
+  async updatePackage(packageId: string, data: Partial<PackageItem>, token: string) {
+    const res = await fetch(`${API_BASE_URL}/packages/${packageId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || 'Failed to update package');
+    return result;
+  },
+
+  async deletePackage(packageId: string, token: string, hard: boolean = false) {
+    const res = await fetch(`${API_BASE_URL}/packages/${packageId}?hard=${hard}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || 'Failed to delete package');
+    return result;
+  },
+
+  async buyPackage(packageId: string, token: string) {
+    const res = await fetch(`${API_BASE_URL}/packages/buy`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ packageId }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || 'Failed to buy package');
+    return result;
   },
 
   // Payouts

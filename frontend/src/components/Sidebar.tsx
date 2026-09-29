@@ -19,9 +19,12 @@ interface SidebarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   onLogout?: () => void;
+  user?: any;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, user }) => {
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+
   const sections = [
     {
       title: 'Overview',
@@ -48,11 +51,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       ]
     },
     {
-      title: 'Platform Administration',
+      title: isAdmin ? 'Platform Administration' : 'Member Services',
       items: [
-        { id: 'packages', label: 'Joining Packages', icon: Package },
-        { id: 'reports', label: 'Financial Reports', icon: BarChart3 },
-        { id: 'settings', label: 'System Settings', icon: Settings }
+        { 
+          id: 'packages', 
+          label: isAdmin ? 'Package Management' : 'Buy Joining Package', 
+          icon: Package, 
+          badge: isAdmin ? undefined : 'Buy' 
+        },
+        ...(isAdmin ? [
+          { id: 'reports', label: 'Financial Reports', icon: BarChart3 },
+          { id: 'settings', label: 'System Settings', icon: Settings }
+        ] : [])
       ]
     }
   ];

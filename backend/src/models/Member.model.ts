@@ -30,6 +30,9 @@ export interface IMember extends Document {
   isActive: boolean;
   joiningPackageId?: string;
   packageName?: string;
+  packageBv?: number;
+  packageRp?: number;
+  dailyCapping?: number;
   
   joinedAt: Date;
   joinDate: string;
@@ -157,6 +160,18 @@ const memberSchema = new Schema<IMember, IMemberModel>(
     packageName: {
       type: String,
       default: 'Package 1',
+    },
+    packageBv: {
+      type: Number,
+      default: 1250,
+    },
+    packageRp: {
+      type: Number,
+      default: 1,
+    },
+    dailyCapping: {
+      type: Number,
+      default: 4000,
     },
     joinedAt: {
       type: Date,

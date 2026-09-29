@@ -7,6 +7,7 @@ import {
   PayoutRequest
 } from '../mockData';
 import { Member } from '../models/Member.model';
+import { Package } from '../models/Package.model';
 import { HTTP_STATUS, BINARY_POSITION } from '../config/constants';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 
@@ -137,7 +138,9 @@ router.post('/members', async (req, res) => {
       sponsorId,
       placementId,
       position,
-      packageName
+      packageName,
+      packageId,
+      package: pkgInput
     } = req.body;
 
     // 1. Mandatory field checks
@@ -269,10 +272,34 @@ router.post('/members', async (req, res) => {
       }
     }
 
-    // 4. Generate Sequential Unique Member ID
+    // 4. Resolve Dynamic Package from MongoDB
+    const targetPkgIdentifier = packageId || packageName || pkgInput;
+    let selectedPackage = null;
+    if (targetPkgIdentifier) {
+      selectedPackage = await Package.findOne({
+        $or: [
+          { packageId: targetPkgIdentifier },
+          { name: targetPkgIdentifier },
+          { name: new RegExp(`^${targetPkgIdentifier}$`, 'i') },
+        ],
+        isActive: true,
+      });
+    }
+
+    if (!selectedPackage) {
+      selectedPackage = await Package.findOne({ isActive: true }).sort({ packageNumber: 1, price: 1 });
+    }
+
+    const finalPackageName = selectedPackage ? selectedPackage.name : (packageName || 'Package 1');
+    const finalPackageId = selectedPackage ? selectedPackage.packageId : 'PKG-1';
+    const finalPackageBv = selectedPackage ? selectedPackage.bv : 1250;
+    const finalPackageRp = selectedPackage ? selectedPackage.rp : 1;
+    const finalDailyCapping = selectedPackage ? selectedPackage.dailyCapping : 4000;
+
+    // 5. Generate Sequential Unique Member ID
     const newMemberId = await Member.generateNextMemberId();
 
-    // 5. Create and Save Member in MongoDB (password automatically hashed by pre-save hook)
+    // 6. Create and Save Member in MongoDB (password automatically hashed by pre-save hook)
     const newMember = await Member.create({
       memberId: newMemberId,
       name: name.trim(),
@@ -285,7 +312,11 @@ router.post('/members', async (req, res) => {
       placementId: finalParentId,
       binaryPosition: finalPos,
       position: position === 'right' ? 'right' : 'left',
-      packageName: packageName || 'Starter',
+      joiningPackageId: finalPackageId,
+      packageName: finalPackageName,
+      packageBv: finalPackageBv,
+      packageRp: finalPackageRp,
+      dailyCapping: finalDailyCapping,
       status: 'active',
       leftBv: 0,
       rightBv: 0,
@@ -402,13 +433,36 @@ router.get('/genealogy/tree', async (_req, res) => {
 });
 
 // Packages & Slabs
-router.get('/packages', (_req, res) => {
-  res.json({
-    joiningPackages: JOINING_PACKAGES,
-    repurchaseSlabs: REPURCHASE_SLABS,
-    franchiseSlabs: FRANCHISE_SLABS,
-    rewardMilestones: REWARD_MILESTONES
-  });
+router.get('/packages', async (_req, res) => {
+  try {
+    const dbPackages = await Package.find({ isActive: true }).sort({ packageNumber: 1, price: 1 });
+    const formattedJoining = dbPackages.length > 0 ? dbPackages.map(p => ({
+      id: p.packageId,
+      packageId: p.packageId,
+      packageNumber: p.packageNumber,
+      name: p.name,
+      price: p.price,
+      bv: p.bv,
+      rp: p.rp,
+      dailyCapping: p.dailyCapping,
+      description: p.description,
+      isActive: p.isActive,
+    })) : JOINING_PACKAGES;
+
+    res.json({
+      joiningPackages: formattedJoining,
+      repurchaseSlabs: REPURCHASE_SLABS,
+      franchiseSlabs: FRANCHISE_SLABS,
+      rewardMilestones: REWARD_MILESTONES
+    });
+  } catch (err: any) {
+    res.json({
+      joiningPackages: JOINING_PACKAGES,
+      repurchaseSlabs: REPURCHASE_SLABS,
+      franchiseSlabs: FRANCHISE_SLABS,
+      rewardMilestones: REWARD_MILESTONES
+    });
+  }
 });
 
 // Payouts List

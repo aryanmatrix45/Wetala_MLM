@@ -3,13 +3,18 @@ import { PURCHASE_TYPE, PurchaseType } from '../config/constants';
 
 export interface IPackage extends Document {
   packageId: string;
+  packageNumber?: number;
   name: string;
+  badge?: string; // e.g. 'STARTER', 'EXECUTIVE', 'PROFESSIONAL', 'ELITE VIP'
   price: number; // in Rupees
   priceInPaise: number; // in Paise for decimal safety
   bv: number; // Business Volume
+  rp: number; // Reward Points (from Image 2)
   type: PurchaseType;
   dailyCapping: number; // in Rupees
   description?: string;
+  features?: string[]; // Bullet-point perks/features list
+  isPopular?: boolean; // Highlight as most popular
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -23,10 +28,19 @@ const packageSchema = new Schema<IPackage>(
       unique: true,
       trim: true,
     },
+    packageNumber: {
+      type: Number,
+      default: 1,
+    },
     name: {
       type: String,
       required: true,
       trim: true,
+    },
+    badge: {
+      type: String,
+      trim: true,
+      default: 'STARTER',
     },
     price: {
       type: Number,
@@ -43,6 +57,12 @@ const packageSchema = new Schema<IPackage>(
       required: true,
       min: 0,
     },
+    rp: {
+      type: Number,
+      required: true,
+      default: 1,
+      min: 0,
+    },
     type: {
       type: String,
       enum: [PURCHASE_TYPE.JOINING, PURCHASE_TYPE.REPURCHASE],
@@ -55,6 +75,14 @@ const packageSchema = new Schema<IPackage>(
     description: {
       type: String,
       trim: true,
+    },
+    features: {
+      type: [String],
+      default: [],
+    },
+    isPopular: {
+      type: Boolean,
+      default: false,
     },
     isActive: {
       type: Boolean,

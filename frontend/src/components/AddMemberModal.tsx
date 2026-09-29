@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, UserPlus, CheckCircle2, Lock, Eye, EyeOff, Mail, Phone, Calendar, User, AlertCircle } from 'lucide-react';
+import { api, type PackageItem } from '../services/api';
 
 interface AddMemberModalProps {
   isOpen: boolean;
@@ -8,6 +9,7 @@ interface AddMemberModalProps {
 }
 
 export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onAddMember }) => {
+  const [packages, setPackages] = useState<PackageItem[]>([]);
   const [formData, setFormData] = useState({
     name: '',
     mobile: '',
@@ -18,8 +20,29 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
     sponsorId: '',
     placementId: '',
     position: 'left',
-    package: 'Starter'
+    package: 'Package 1',
+    packageId: 'PKG-1',
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      api.getPackages()
+        .then((res) => {
+          if (res.status && Array.isArray(res.data) && res.data.length > 0) {
+            const activePkgs = res.data.filter((p) => p.isActive);
+            setPackages(activePkgs);
+            if (activePkgs.length > 0) {
+              setFormData((prev) => ({
+                ...prev,
+                package: activePkgs[0].name,
+                packageId: activePkgs[0].packageId,
+              }));
+            }
+          }
+        })
+        .catch((err) => console.error('Failed to load packages in AddMemberModal:', err));
+    }
+  }, [isOpen]);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -70,7 +93,11 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
 
     try {
       setLoading(true);
-      await onAddMember(formData);
+      await onAddMember({
+        ...formData,
+        packageName: formData.package,
+        packageId: formData.packageId,
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to register member.');
     } finally {
@@ -308,14 +335,31 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
               Joining Package *
             </label>
             <select
-              value={formData.package}
-              onChange={(e) => setFormData({ ...formData, package: e.target.value })}
+              value={formData.packageId || formData.package}
+              onChange={(e) => {
+                const sel = packages.find((p) => p.packageId === e.target.value || p.name === e.target.value);
+                setFormData({
+                  ...formData,
+                  packageId: sel ? sel.packageId : e.target.value,
+                  package: sel ? sel.name : e.target.value,
+                });
+              }}
               style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
             >
-              <option value="Starter">Starter (₹ 3,000 — 1,250 BV)</option>
-              <option value="Executive">Executive (₹ 6,500 — 2,500 BV)</option>
-              <option value="Premium">Premium (₹ 15,000 — 5,000 BV)</option>
-              <option value="Elite">Elite (₹ 35,000 — 12,500 BV)</option>
+              {packages.length > 0 ? (
+                packages.map((pkg) => (
+                  <option key={pkg.packageId} value={pkg.packageId}>
+                    {pkg.name} (₹ {pkg.price.toLocaleString()} — {pkg.bv.toLocaleString()} BV | {pkg.rp || 1} RP | Cap: ₹{(pkg.dailyCapping || 4000).toLocaleString()})
+                  </option>
+                ))
+              ) : (
+                <>
+                  <option value="PKG-1">Package 1 (₹ 3,000 — 1,250 BV | 1 RP)</option>
+                  <option value="PKG-2">Package 2 (₹ 6,500 — 2,500 BV | 2 RP)</option>
+                  <option value="PKG-3">Package 3 (₹ 15,000 — 5,000 BV | 4 RP)</option>
+                  <option value="PKG-4">Package 4 (₹ 35,000 — 10,000 BV | 8 RP)</option>
+                </>
+              )}
             </select>
           </div>
 

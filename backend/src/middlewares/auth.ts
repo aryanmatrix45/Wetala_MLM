@@ -42,6 +42,21 @@ export const authenticate = (
   }
 };
 
+export const requireAdmin = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  if (!req.user || (req.user.role !== ROLES.ADMIN && req.user.role !== ROLES.SUPERADMIN)) {
+    res.status(HTTP_STATUS.FORBIDDEN).json({
+      status: false,
+      message: 'Forbidden: Admin privilege required',
+    });
+    return;
+  }
+  next();
+};
+
 export const requireSuperAdmin = (
   req: AuthenticatedRequest,
   res: Response,

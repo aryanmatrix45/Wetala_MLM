@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import jwt from 'jsonwebtoken';
 import { Admin } from '../models/Admin.model';
 import { Member } from '../models/Member.model';
+import { Package } from '../models/Package.model';
 import { HTTP_STATUS, ROLES, BINARY_POSITION, BinaryPosition } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
@@ -32,6 +33,9 @@ export const AuthController = {
         sponsorId,
         placementId,
         position,
+        packageId,
+        packageName,
+        package: pkgInput,
       } = req.body;
 
       const memberName = (name || fullName || '').trim();
@@ -172,6 +176,30 @@ export const AuthController = {
       // 5. Generate Next Sequential Member ID
       const newMemberId = await Member.generateNextMemberId();
 
+      // 5. Resolve Dynamic Package from MongoDB
+      const targetPkgIdentifier = packageId || packageName || pkgInput;
+      let selectedPackage = null;
+      if (targetPkgIdentifier) {
+        selectedPackage = await Package.findOne({
+          $or: [
+            { packageId: targetPkgIdentifier },
+            { name: targetPkgIdentifier },
+            { name: new RegExp(`^${targetPkgIdentifier}$`, 'i') },
+          ],
+          isActive: true,
+        });
+      }
+
+      if (!selectedPackage) {
+        selectedPackage = await Package.findOne({ isActive: true }).sort({ packageNumber: 1, price: 1 });
+      }
+
+      const finalPackageName = selectedPackage ? selectedPackage.name : (packageName || 'Package 1');
+      const finalPackageId = selectedPackage ? selectedPackage.packageId : 'PKG-1';
+      const finalPackageBv = selectedPackage ? selectedPackage.bv : 1250;
+      const finalPackageRp = selectedPackage ? selectedPackage.rp : 1;
+      const finalDailyCapping = selectedPackage ? selectedPackage.dailyCapping : 4000;
+
       // 6. Create Member record (Password hashed automatically by Member schema pre-save hook)
       const newMember = await Member.create({
         memberId: newMemberId,
@@ -186,7 +214,11 @@ export const AuthController = {
         placementId: finalParentId,
         binaryPosition: finalPosition,
         position: finalPosition === BINARY_POSITION.RIGHT ? 'right' : 'left',
-        packageName: 'Starter',
+        joiningPackageId: finalPackageId,
+        packageName: finalPackageName,
+        packageBv: finalPackageBv,
+        packageRp: finalPackageRp,
+        dailyCapping: finalDailyCapping,
         status: 'active',
         isActive: true,
         leftBv: 0,
