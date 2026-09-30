@@ -265,20 +265,28 @@ export const api = {
   },
 
   // Binary Tree
-  async getBinaryTree(root?: string, depth?: number) {
+  async getBinaryTree(root?: string, depth?: number, token?: string) {
     const params = new URLSearchParams();
     if (root) params.append('root', root);
     if (depth) params.append('depth', String(depth));
-    const res = await fetch(`${API_BASE_URL}/binary/tree?${params.toString()}`);
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/binary/tree?${params.toString()}`, { headers });
     return res.json();
   },
 
   // Sponsor Tree
-  async getSponsorTree(root?: string, depth?: number) {
+  async getSponsorTree(root?: string, depth?: number, token?: string) {
     const params = new URLSearchParams();
     if (root) params.append('root', root);
     if (depth) params.append('depth', String(depth));
-    const res = await fetch(`${API_BASE_URL}/sponsor/tree?${params.toString()}`);
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/sponsor/tree?${params.toString()}`, { headers });
     return res.json();
   },
 

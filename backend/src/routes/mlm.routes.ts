@@ -253,23 +253,11 @@ router.post('/members', async (req, res) => {
         }
       }
 
-      // Resolve placement: if ADMIN, ROOT, or empty, auto-place under root member spillover
-      const rawPlacement = placementId && placementId.trim() ? placementId.trim().toUpperCase() : '';
-      if (!rawPlacement || rawPlacement === 'ADMIN' || rawPlacement === 'ROOT') {
-        const root = await Member.findOne().sort({ createdAt: 1 });
-        if (root) {
-          const spillover = await BinaryTreeService.findAvailablePlacement(root.memberId, finalPos);
-          finalParentId = spillover.parentId;
-          finalPos = spillover.position;
-        }
-      } else {
-        finalParentId = rawPlacement;
-        const placementCheck = await BinaryTreeService.validatePlacement(finalParentId, finalPos);
-        if (!placementCheck.isValid) {
-          res.status(HTTP_STATUS.CONFLICT).json({ status: false, message: placementCheck.error });
-          return;
-        }
-      }
+      // Auto-placement: Calculate balanced level-order binary placement under the sponsor
+      const placementRoot = (finalSponsorId && finalSponsorId !== 'ADMIN') ? finalSponsorId : '';
+      const autoPlacement = await BinaryTreeService.findNextAutoPlacement(placementRoot);
+      finalParentId = autoPlacement.parentId;
+      finalPos = autoPlacement.position;
     }
 
     // 4. Resolve Dynamic Package from MongoDB

@@ -9,7 +9,7 @@ import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 import { WalletService } from '../services/WalletService';
 import { BinaryVolume } from '../models/BinaryVolume.model';
 
-const generateToken = (payload: { id: string; email: string; role: string }): string => {
+const generateToken = (payload: { id: string; email: string; role: string; memberId?: string }): string => {
   const secret = process.env.JWT_SECRET || 'wetala_default_jwt_secret';
   return jwt.sign(payload, secret, { expiresIn: '7d' });
 };
@@ -152,25 +152,11 @@ export const AuthController = {
           }
         }
 
-        const rawPlacement = placementId && placementId.trim() ? placementId.trim().toUpperCase() : '';
-        if (rawPlacement && rawPlacement !== 'ADMIN' && rawPlacement !== 'ROOT') {
-          const placementCheck = await BinaryTreeService.validatePlacement(rawPlacement, finalPosition);
-          if (placementCheck.isValid) {
-            finalParentId = rawPlacement;
-          } else {
-            const root = await Member.findOne().sort({ createdAt: 1 });
-            const spilloverRoot = root ? root.memberId : '';
-            const spillover = await BinaryTreeService.findAvailablePlacement(spilloverRoot, finalPosition);
-            finalParentId = spillover.parentId;
-            finalPosition = spillover.position;
-          }
-        } else {
-          const root = await Member.findOne().sort({ createdAt: 1 });
-          const spilloverRoot = root ? root.memberId : '';
-          const spillover = await BinaryTreeService.findAvailablePlacement(spilloverRoot, finalPosition);
-          finalParentId = spillover.parentId;
-          finalPosition = spillover.position;
-        }
+        // Auto-placement: Calculate balanced level-order binary placement under the sponsor
+        const placementRoot = (resolvedSponsorId && resolvedSponsorId !== 'ADMIN') ? resolvedSponsorId : '';
+        const autoPlacement = await BinaryTreeService.findNextAutoPlacement(placementRoot);
+        finalParentId = autoPlacement.parentId;
+        finalPosition = autoPlacement.position;
       }
 
       // 5. Generate Next Sequential Member ID
@@ -251,6 +237,7 @@ export const AuthController = {
         id: newMember._id.toString(),
         email: newMember.email,
         role: newMember.role,
+        memberId: newMember.memberId,
       });
 
       const nameParts = newMember.name.trim().split(' ');
@@ -461,6 +448,7 @@ export const AuthController = {
           id: member._id.toString(),
           email: member.email,
           role: ROLES.MEMBER,
+          memberId: member.memberId,
         });
 
         const nameParts = member.name.trim().split(' ');

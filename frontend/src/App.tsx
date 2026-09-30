@@ -114,7 +114,7 @@ export function App() {
           <MembersPage key={refreshKey} onOpenAddMember={() => setIsAddMemberOpen(true)} />
         )}
 
-        {activeTab === 'genealogy' && <GenealogyPage />}
+        {activeTab === 'genealogy' && <GenealogyPage user={user} token={token} />}
 
         {activeTab === 'packages' && (
           <PackagesPage

@@ -316,16 +316,24 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
 
             <div>
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                Binary Placement Leg *
+                Binary Placement
               </label>
-              <select
-                value={formData.position}
-                onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
-              >
-                <option value="left">Left Leg</option>
-                <option value="right">Right Leg</option>
-              </select>
+              <div style={{
+                padding: '9px 12px',
+                borderRadius: '8px',
+                border: '1px solid #dbeafe',
+                background: '#eff6ff',
+                fontSize: '12.5px',
+                color: '#1d4ed8',
+                fontWeight: 600,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                height: '38px'
+              }}>
+                <span style={{ fontSize: '14px' }}>⚡</span>
+                <span>Auto (Balanced Level-Order)</span>
+              </div>
             </div>
           </div>
 

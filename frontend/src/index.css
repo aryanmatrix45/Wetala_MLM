@@ -1264,3 +1264,182 @@ input, select, textarea {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* ==========================================================================
+   Binary Tree Connected Genealogy Diagram Styles
+   ========================================================================== */
+.tree-node-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.tree-children-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  width: 100%;
+}
+
+.tree-parent-stem {
+  width: 2px;
+  height: 24px;
+  background: #94a3b8;
+  position: relative;
+  margin: 0 auto;
+}
+
+.tree-junction-point {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #2563eb;
+  border: 2px solid #ffffff;
+  box-shadow: 0 0 0 1.5px #3b82f6, 0 2px 4px rgba(37, 99, 235, 0.4);
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.tree-dual-branches {
+  display: flex;
+  justify-content: center;
+  position: relative;
+  width: 100%;
+}
+
+.tree-branch-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  padding: 0 24px;
+}
+
+/* Horizontal line across left and right branch */
+.tree-branch-column.left::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  right: 0;
+  height: 2px;
+  background: #94a3b8;
+  z-index: 1;
+}
+
+.tree-branch-column.right::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 50%;
+  height: 2px;
+  background: #94a3b8;
+  z-index: 1;
+}
+
+.tree-branch-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  height: 52px;
+  justify-content: center;
+  width: 100%;
+}
+
+.tree-branch-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
+  background: #94a3b8;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+.tree-single-branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.tree-single-connector {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  height: 52px;
+  justify-content: center;
+}
+
+.tree-single-connector::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
+  background: #94a3b8;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+.tree-wing-pill {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  background: #ffffff;
+}
+
+.tree-wing-pill.left-wing {
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+}
+
+.tree-wing-pill.right-wing {
+  color: #059669;
+  background: #ecfdf5;
+  border: 1.5px solid #a7f3d0;
+}
+
+.tree-arrow-indicator {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ffffff;
+  border-radius: 50%;
+  padding: 1px;
+}
+
+.tree-arrow-indicator.left-arrow {
+  color: #2563eb;
+}
+
+.tree-arrow-indicator.right-arrow {
+  color: #059669;
+}
+

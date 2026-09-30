@@ -83,7 +83,11 @@ export class BinaryTreeService {
    * Check if checkMemberId is a binary descendant of ancestorMemberId
    */
   static async isDescendantOf(checkMemberId: string, ancestorMemberId: string): Promise<boolean> {
-    let currentId = checkMemberId;
+    const targetAncestor = (ancestorMemberId || '').toUpperCase().trim();
+    let currentId = (checkMemberId || '').toUpperCase().trim();
+    if (!currentId || !targetAncestor) return false;
+    if (currentId === targetAncestor) return true;
+
     const visited = new Set<string>();
 
     while (currentId) {
@@ -93,12 +97,12 @@ export class BinaryTreeService {
       visited.add(currentId);
 
       const member = await Member.findOne({ memberId: currentId }).select('binaryParentId placementId');
-      const parentId = member?.binaryParentId || member?.placementId;
+      const parentId = (member?.binaryParentId || member?.placementId || '').toUpperCase().trim();
       if (!parentId || parentId === currentId) {
         return false;
       }
 
-      if (parentId === ancestorMemberId) {
+      if (parentId === targetAncestor) {
         return true;
       }
 
@@ -202,30 +206,144 @@ export class BinaryTreeService {
   }
 
   /**
-   * Find next available spillover placement under a given node for extreme LEFT or extreme RIGHT
+   * Balanced Level-Order (Breadth-First Search - BFS) Binary Auto-Placement:
+   * Systematically fills each level from Left to Right:
+   * 1. 1st member under Sponsor -> Sponsor's LEFT
+   * 2. 2nd member under Sponsor -> Sponsor's RIGHT
+   * 3. 3rd member under Left child -> Left child's LEFT
+   * 4. 4th member under Left child -> Left child's RIGHT
+   * 5. 5th member under Right child -> Right child's LEFT
+   * 6. 6th member under Right child -> Right child's RIGHT
+   * ...and continues down level by level, left-to-right.
+   */
+  static async findNextAutoPlacement(
+    startMemberId: string
+  ): Promise<{ parentId: string; position: BinaryPosition }> {
+    let cleanStartId = (startMemberId || '').toUpperCase().trim();
+
+    // If start node is missing or ADMIN or ROOT, locate root company member
+    if (!cleanStartId || cleanStartId === 'ADMIN' || cleanStartId === 'ROOT') {
+      const root = await Member.findOne().sort({ createdAt: 1 }).select('memberId');
+      if (root) {
+        cleanStartId = root.memberId;
+      } else {
+        return { parentId: '', position: BINARY_POSITION.LEFT };
+      }
+    } else {
+      const memberExists = await Member.findOne({ memberId: cleanStartId }).select('memberId');
+      if (!memberExists) {
+        const root = await Member.findOne().sort({ createdAt: 1 }).select('memberId');
+        cleanStartId = root ? root.memberId : cleanStartId;
+      }
+    }
+
+    const queue: string[] = [cleanStartId];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+      const currentParentId = queue.shift()!;
+      if (visited.has(currentParentId)) continue;
+      visited.add(currentParentId);
+
+      // Check left and right child of currentParentId
+      const [leftChild, rightChild] = await Promise.all([
+        Member.findOne({
+          binaryParentId: currentParentId,
+          $or: [{ binaryPosition: BINARY_POSITION.LEFT }, { position: 'left' }],
+        }).select('memberId'),
+        Member.findOne({
+          binaryParentId: currentParentId,
+          $or: [{ binaryPosition: BINARY_POSITION.RIGHT }, { position: 'right' }],
+        }).select('memberId'),
+      ]);
+
+      // If Left wing is vacant, place here first
+      if (!leftChild) {
+        return { parentId: currentParentId, position: BINARY_POSITION.LEFT };
+      }
+
+      // If Right wing is vacant, place here next
+      if (!rightChild) {
+        return { parentId: currentParentId, position: BINARY_POSITION.RIGHT };
+      }
+
+      // Both filled: enqueue left child, then right child (level-order BFS)
+      if (leftChild.memberId && !visited.has(leftChild.memberId)) {
+        queue.push(leftChild.memberId);
+      }
+      if (rightChild.memberId && !visited.has(rightChild.memberId)) {
+        queue.push(rightChild.memberId);
+      }
+    }
+
+    return { parentId: cleanStartId, position: BINARY_POSITION.LEFT };
+  }
+
+  /**
+   * Find available placement slot under given member (defaults to balanced auto-placement)
    */
   static async findAvailablePlacement(
     startMemberId: string,
-    preferredLeg: BinaryPosition = BINARY_POSITION.LEFT
+    preferredLeg?: BinaryPosition
   ): Promise<{ parentId: string; position: BinaryPosition }> {
-    let currentId = startMemberId;
-    const visited = new Set<string>();
+    return this.findNextAutoPlacement(startMemberId);
+  }
 
-    while (currentId && !visited.has(currentId)) {
-      visited.add(currentId);
+  /**
+   * Reorganize all existing members in database into balanced level-order binary tree
+   */
+  static async rebalanceEntireTree(): Promise<{ count: number; tree: any }> {
+    const members = await Member.find().sort({ createdAt: 1 });
+    if (members.length === 0) return { count: 0, tree: null };
 
-      const child = await Member.findOne({
-        binaryParentId: currentId,
-        binaryPosition: preferredLeg,
-      });
+    const rootMember = members[0];
+    rootMember.binaryParentId = '';
+    rootMember.placementId = '';
+    rootMember.binaryPosition = undefined as any;
+    rootMember.position = undefined as any;
+    await rootMember.save();
 
-      if (!child || child.memberId === currentId) {
-        return { parentId: currentId, position: preferredLeg };
+    const treeSlots = new Map<string, { left?: string; right?: string }>();
+    treeSlots.set(rootMember.memberId, {});
+
+    const queue: string[] = [rootMember.memberId];
+
+    for (let i = 1; i < members.length; i++) {
+      const currentMember = members[i];
+      let placed = false;
+
+      while (queue.length > 0 && !placed) {
+        const parentId = queue[0];
+        const slot = treeSlots.get(parentId)!;
+
+        if (!slot.left) {
+          slot.left = currentMember.memberId;
+          treeSlots.set(currentMember.memberId, {});
+          queue.push(currentMember.memberId);
+
+          currentMember.binaryParentId = parentId;
+          currentMember.placementId = parentId;
+          currentMember.binaryPosition = BINARY_POSITION.LEFT;
+          currentMember.position = 'left';
+          await currentMember.save();
+          placed = true;
+        } else if (!slot.right) {
+          slot.right = currentMember.memberId;
+          treeSlots.set(currentMember.memberId, {});
+          queue.push(currentMember.memberId);
+          queue.shift(); // Parent has both children
+
+          currentMember.binaryParentId = parentId;
+          currentMember.placementId = parentId;
+          currentMember.binaryPosition = BINARY_POSITION.RIGHT;
+          currentMember.position = 'right';
+          await currentMember.save();
+          placed = true;
+        }
       }
-
-      currentId = child.memberId;
     }
 
-    return { parentId: startMemberId, position: preferredLeg };
+    const updatedTree = await this.getBinaryTree(rootMember.memberId, 4);
+    return { count: members.length, tree: updatedTree };
   }
 }

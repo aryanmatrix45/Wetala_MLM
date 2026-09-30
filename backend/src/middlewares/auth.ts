@@ -6,6 +6,7 @@ export interface AuthUserPayload {
   id: string;
   email: string;
   role: string;
+  memberId?: string;
 }
 
 export interface AuthenticatedRequest extends Request {
@@ -40,6 +41,28 @@ export const authenticate = (
       message: 'Invalid or expired token',
     });
   }
+};
+
+export const optionalAuthenticate = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return next();
+  }
+
+  const token = authHeader.split(' ')[1];
+  const secret = process.env.JWT_SECRET || 'wetala_default_jwt_secret';
+
+  try {
+    const decoded = jwt.verify(token, secret) as AuthUserPayload;
+    req.user = decoded;
+  } catch (error: any) {
+    // Silently continue without authenticated user
+  }
+  next();
 };
 
 export const requireAdmin = (
