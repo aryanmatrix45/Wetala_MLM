@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Menu, Bell, ChevronDown, LogOut, Zap, Search, ShieldCheck } from 'lucide-react';
 
 interface TopNavbarProps {
@@ -18,6 +18,24 @@ interface TopNavbarProps {
 export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onLogout, onNavigate }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const profileDropdownRef = useRef<HTMLDivElement>(null);
+  const notifDropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setIsDropdownOpen(false);
+      }
+      if (notifDropdownRef.current && !notifDropdownRef.current.contains(event.target as Node)) {
+        setIsNotifOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const displayName = user?.name
     ? user.name
@@ -98,11 +116,14 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
         </div>
 
         {/* Notification Bell */}
-        <div style={{ position: 'relative' }}>
+        <div style={{ position: 'relative' }} ref={notifDropdownRef}>
           <button 
             className="notification-badge-btn" 
             aria-label="Notifications"
-            onClick={() => setIsNotifOpen(!isNotifOpen)}
+            onClick={() => {
+              setIsNotifOpen((prev) => !prev);
+              setIsDropdownOpen(false);
+            }}
           >
             <Bell size={19} />
             <span className="notif-count">3</span>
@@ -144,31 +165,57 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
           )}
         </div>
 
-        {/* Profile Pill */}
-        <div
-          className="profile-pill"
-          onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-        >
-          <div className="avatar-circle">{initials}</div>
-          <div className="profile-info">
-            <span className="profile-name">{displayName}</span>
-            <span className="profile-role">{subLabel}</span>
+        {/* Profile Dropdown Container */}
+        <div className="profile-dropdown-container" ref={profileDropdownRef}>
+          <div
+            className={`profile-pill ${isDropdownOpen ? 'active' : ''}`}
+            onClick={() => {
+              setIsDropdownOpen((prev) => !prev);
+              setIsNotifOpen(false);
+            }}
+            role="button"
+            tabIndex={0}
+            aria-expanded={isDropdownOpen}
+            aria-label="User profile menu"
+          >
+            <div className="avatar-circle">{initials}</div>
+            <div className="profile-info">
+              <span className="profile-name">{displayName}</span>
+              <span className="profile-role">{subLabel}</span>
+            </div>
+            <ChevronDown
+              size={14}
+              color="#64748b"
+              style={{
+                transition: 'transform 0.2s ease',
+                transform: isDropdownOpen ? 'rotate(180deg)' : 'none'
+              }}
+            />
           </div>
-          <ChevronDown size={14} color="#64748b" />
 
-          {/* Dropdown Menu */}
+          {/* Floating Dropdown Menu (Positioned Below) */}
           {isDropdownOpen && (
-            <div className="profile-dropdown-menu" style={{ width: '220px' }}>
-              <div style={{ padding: '10px 14px', borderBottom: '1px solid #f1f5f9', marginBottom: '6px' }}>
-                <div style={{ fontSize: '13.5px', fontWeight: 700, color: '#0f172a' }}>{displayName}</div>
-                <div style={{ fontSize: '11px', color: '#64748b', wordBreak: 'break-all', marginTop: '2px' }}>{user?.email || 'superadmin@wetala.com'}</div>
+            <div className="profile-dropdown-menu">
+              <div className="profile-dropdown-header">
+                <div className="profile-dropdown-user-row">
+                  <div className="avatar-circle-sm">{initials}</div>
+                  <div className="profile-dropdown-user-text">
+                    <div className="profile-dropdown-name">{displayName}</div>
+                    <div className="profile-dropdown-email">{user?.email || 'superadmin@wetala.com'}</div>
+                  </div>
+                </div>
                 {user?.memberId && (
-                  <div style={{ fontSize: '11.5px', color: '#2563eb', fontWeight: 700, marginTop: '4px' }}>
-                    Member ID: {user.memberId}
+                  <div className="profile-dropdown-badge">
+                    <span className="badge-label">Member ID:</span>
+                    <span className="badge-value">{user.memberId}</span>
                   </div>
                 )}
               </div>
+
+              <div className="profile-dropdown-divider" />
+
               <button
+                type="button"
                 className="profile-dropdown-item danger"
                 onClick={(e) => {
                   e.stopPropagation();
