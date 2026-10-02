@@ -5,7 +5,6 @@ import {
   GitFork, 
   Package, 
   IndianRupee, 
-  GitMerge, 
   Users2, 
   Sparkles, 
   Trophy, 
@@ -43,7 +42,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       title: 'Finance & Compensation',
       items: [
         { id: 'income-settings', label: 'Income & Simulator', icon: IndianRupee, badge: 'Engine' },
-        { id: 'pairing-binary', label: 'Pairing & Binary Rules', icon: GitMerge },
         { id: 'team-bonus', label: 'Team Bonus Slabs', icon: Users2 },
         { id: 'direct-royalty', label: 'Royalty & Consultancy', icon: Sparkles },
         { id: 'rank-rewards', label: 'Lifetime Rewards', icon: Trophy },

@@ -52,10 +52,10 @@ export class TeamPerformanceService {
       return null;
     }
 
-    let rawBonus = qualifiedTier.bonusAmount || 0;
-    if (rawBonus <= 0 && config.bonusRatePercent > 0) {
-      const base = DecimalUtil.min(left, right);
-      rawBonus = DecimalUtil.multiplyPercent(base, config.bonusRatePercent);
+    let rawBonus = 0;
+    if (qualifiedTier.royaltyBonusPercent > 0) {
+      // In company pool calculation, qualifies for royaltyBonusPercent of CTO, up to limitAmount
+      rawBonus = qualifiedTier.limitAmount || 10000;
     }
 
     if (rawBonus <= 0) {

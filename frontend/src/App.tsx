@@ -124,15 +124,13 @@ export function App() {
           />
         )}
 
-        {activeTab === 'income-settings' && <IncomeSettingsPage />}
+        {activeTab === 'income-settings' && <IncomeSettingsPage user={user} token={token} defaultSection="simulator" />}
 
-        {activeTab === 'pairing-binary' && <IncomeSettingsPage />}
+        {activeTab === 'team-bonus' && <IncomeSettingsPage user={user} token={token} defaultSection="teamBonus" />}
 
-        {activeTab === 'team-bonus' && <IncomeSettingsPage />}
+        {activeTab === 'direct-royalty' && <IncomeSettingsPage user={user} token={token} defaultSection="royalty" />}
 
-        {activeTab === 'direct-royalty' && <IncomeSettingsPage />}
-
-        {activeTab === 'rank-rewards' && <IncomeSettingsPage />}
+        {activeTab === 'rank-rewards' && <IncomeSettingsPage user={user} token={token} defaultSection="rewards" />}
 
         {activeTab === 'wallet-payouts' && <PayoutsPage />}
 

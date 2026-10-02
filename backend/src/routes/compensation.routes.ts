@@ -1,15 +1,15 @@
 import { Router } from 'express';
 import { CompensationController } from '../controllers/compensation.controller';
-import { authenticate } from '../middlewares/auth';
+import { authenticate, requireAdmin } from '../middlewares/auth';
 
 const router = Router();
 
-// Compensation Rules
+// Compensation Rules (Public/Member Read-Only, Admin CRUD)
 router.get('/rules', CompensationController.getRules);
-router.put('/rules', authenticate, CompensationController.updateRules);
+router.put('/rules', authenticate, requireAdmin, CompensationController.updateRules);
 
 // Compensation Simulator (Admin Only)
-router.post('/simulate', CompensationController.simulateCompensation);
+router.post('/simulate', authenticate, requireAdmin, CompensationController.simulateCompensation);
 
 // Commission Explanation API
 router.get('/commission/:commissionId', CompensationController.getCommissionExplanation);

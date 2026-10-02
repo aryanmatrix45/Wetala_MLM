@@ -3,7 +3,7 @@ import { CommissionLedger, ICommissionLedger } from '../../models/CommissionLedg
 import { ICompensationRule } from '../../models/CompensationRule.model';
 import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
-import { COMMISSION_TYPE, PURCHASE_TYPE, PurchaseType } from '../../config/constants';
+import { COMMISSION_TYPE, PURCHASE_TYPE, PurchaseType, BINARY_POSITION } from '../../config/constants';
 
 export class WelcomeBonusService {
   /**
@@ -33,28 +33,29 @@ export class WelcomeBonusService {
       return null;
     }
 
-    // Must match applicable package if specified
-    if (config.applicablePackageIds && config.applicablePackageIds.length > 0) {
-      if (!config.applicablePackageIds.includes(packageId)) {
-        return null;
-      }
-    }
-
     const member = await Member.findOne({ memberId });
     if (!member || !member.isActive) {
       return null;
     }
 
-    // Calculate raw bonus based on percentage or fixed amount
-    let rawAmount = 0;
-    if (config.fixedAmount > 0) {
-      rawAmount = config.fixedAmount;
-    } else if (config.ratePercent > 0) {
-      rawAmount = DecimalUtil.multiplyPercent(purchaseAmount, config.ratePercent);
+    // Check Left & Right completion requirement if enabled
+    if (config.requiresLeftAndRight) {
+      const directRecruits = await Member.find({ sponsorId: memberId, isActive: true });
+      const hasLeft = directRecruits.some(r => r.binaryPosition === BINARY_POSITION.LEFT || (r.position as string) === 'left' || (r.position as string) === 'LEFT');
+      const hasRight = directRecruits.some(r => r.binaryPosition === BINARY_POSITION.RIGHT || (r.position as string) === 'right' || (r.position as string) === 'RIGHT');
+      if (!hasLeft || !hasRight) {
+        return null; // Left & Right not yet complete
+      }
     }
 
-    if (config.maxPayout > 0 && rawAmount > config.maxPayout) {
-      rawAmount = config.maxPayout;
+    // 4% on every new package
+    const rate = config.ratePercent > 0 ? config.ratePercent : 4;
+    let rawAmount = DecimalUtil.multiplyPercent(purchaseAmount, rate);
+
+    // Limit: Active package limit
+    const activePackageLimit = member.packageBv ? (member.dailyCapping || member.packageBv) : 4000;
+    if (config.limitMode === 'ACTIVE_PACKAGE' && rawAmount > activePackageLimit) {
+      rawAmount = activePackageLimit;
     }
 
     if (rawAmount <= 0) {
@@ -89,8 +90,8 @@ export class WelcomeBonusService {
         calculationBase: 'JOINING_PURCHASE',
         baseAmount: purchaseAmount,
         baseBV: purchaseBV,
-        percentageApplied: config.ratePercent,
-        notes: `Welcome Bonus: Ratio ${config.companyRatio}, Rate ${config.ratePercent}%. (TODO: Confirm exact 4:1 formula with company)`,
+        percentageApplied: rate,
+        notes: `Welcome Bonus (4% on new package, Left & Right completed). Limit: Active Package (₹${activePackageLimit}).`,
       },
       isReversed: false,
     });
@@ -99,7 +100,7 @@ export class WelcomeBonusService {
       memberId,
       netPayable,
       ledgerId,
-      `Welcome Bonus (${config.companyRatio})`
+      `Welcome Bonus (4% on Package)`
     );
 
     return commission;

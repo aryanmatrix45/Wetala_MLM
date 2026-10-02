@@ -16,6 +16,13 @@ export const CompensationController = {
     try {
       let rules: any = await CompensationRule.findOne({ isActive: true }).sort({ version: -1 });
       if (!rules) {
+        rules = await CompensationRule.findOne().sort({ version: -1 });
+        if (rules) {
+          rules.isActive = true;
+          await rules.save();
+        }
+      }
+      if (!rules) {
         // Return default initialized rules
         const { CompensationEngine } = await import('../services/compensation/CompensationEngine');
         rules = await CompensationEngine.getActiveRules();

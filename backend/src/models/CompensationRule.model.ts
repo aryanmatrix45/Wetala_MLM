@@ -7,32 +7,31 @@ export interface ICompensationRule extends Document {
   effectiveFrom: Date;
   effectiveTo?: Date;
   
-  // 1. Welcome Bonus (Notes: "Company turns 4:1", "Limited only package")
+  // 1. Welcome Bonus (4% on every new package, requires 1 Left & 1 Right complete, capped at active package)
   welcomeBonus: {
     isEnabled: boolean;
-    companyRatio: string; // e.g. "4:1"
-    applicablePackageIds: string[];
-    ratePercent: number;
-    fixedAmount: number;
-    maxPayout: number;
-    notes: string;
+    requiresLeftAndRight: boolean;
+    ratePercent: number; // 4%
+    limitMode: 'ACTIVE_PACKAGE' | 'FIXED';
+    fixedAmount?: number;
+    notes?: string;
   };
   
-  // 2. Binary Bonus (Notes: 20% standard, 25% special, ₹4000 daily cap)
+  // 2. Binary Bonus (20% standard, first pair 1:2 or 2:1, subsequent 1:1, daily cap ₹4,000 to ₹16,000 by package)
   binaryBonus: {
     isEnabled: boolean;
     standardBinaryRate: number; // 20% = 0.20
-    specialBinaryRate: number;   // 25% = 0.25 (disabled by default)
+    specialBinaryRate: number;   // 25% = 0.25 (optional override)
     isSpecialRateEnabled: boolean;
     calculationBase: 'BV' | 'PURCHASE_VALUE';
     volumeCarryForwardMode: 'CARRY_FORWARD' | 'FLUSH';
-    dailyBinaryPayoutCap: number; // ₹4,000
+    dailyBinaryPayoutCap: number; // ₹4,000 base
     excessCapPolicy: 'FLUSH' | 'HOLD' | 'CARRY_FORWARD';
     firstPairRatio: '1:1' | '1:2_or_2:1';
     subsequentPairRatio: '1:1';
   };
   
-  // 3. Team Bonus Tiers (Notes: 1000:1000=15%, 2500:2500=10%, etc.)
+  // 3. Team Bonus Tiers (Repurchase CTO Volume: 1k=15%, 2.5k=10%, 7.5k=7%, 20k=6%, 35k=5%, 70k=4%, 150k=3%, 300k=2%)
   teamBonus: {
     isEnabled: boolean;
     calculationBase: 'MATCHED_BV' | 'LEFT_BV' | 'RIGHT_BV' | 'TOTAL_TEAM_BV' | 'PURCHASE_VALUE';
@@ -44,14 +43,14 @@ export interface ICompensationRule extends Document {
     }>;
   };
   
-  // 4. Self Purchase Bonus (Notes: 8%)
+  // 4. Self Purchase Bonus (8% on self purchase)
   selfPurchaseBonus: {
     isEnabled: boolean;
     ratePercent: number; // 8% = 0.08
     calculationBase: 'PURCHASE_VALUE' | 'BV' | 'QUALIFYING_VALUE';
   };
   
-  // 5. Sponsor Binary Income (Notes: 20%)
+  // 5. Sponsor Binary Income (20% on all earnings of direct team, uncapped)
   sponsorBinaryBonus: {
     isEnabled: boolean;
     sponsorBinaryRate: number; // 20% = 0.20
@@ -60,31 +59,36 @@ export interface ICompensationRule extends Document {
     maxPayout?: number;
   };
   
-  // 6. Team Performance Bonus (Notes: 10:10, 100:100, 1000:1000, 10000:10000)
+  // 6. Team Performance Bonus (6 Slabs: 10:10 @ 3% max 10k, up to 25,000:25,000 @ 1% max 15L)
   teamPerformanceBonus: {
     isEnabled: boolean;
-    bonusRatePercent: number; // configurable, payout rate unclear in handwritten notes
+    calculationBase: 'CTO_POOL' | 'DIRECT';
     tiers: Array<{
+      tierId: string;
+      pairCount: number;
       leftThreshold: number;
       rightThreshold: number;
-      bonusAmount?: number;
+      royaltyBonusPercent: number; // e.g. 3 for 3%
+      limitAmount: number; // e.g. 10000, 30000, 100000, 300000, 500000, 1500000
     }>;
-    notes: string;
+    notes?: string;
   };
   
-  // 7. Lifetime Rewards (Notes: 5:5=₹1000, 10:10=₹2000, subsequent tiers unclear)
+  // 7. Rank and Reward (15 Ranks: Fresher ₹1k up to Triple Kohinoor ₹2 Crore)
   rewards: {
     isEnabled: boolean;
     tiers: Array<{
       tierId: string;
+      rankName: string;
+      teamTarget: number;
       leftRequirement: number;
       rightRequirement: number;
-      rewardAmount: number | null; // null if unconfirmed
+      rewardAmount: number;
       rewardTitle: string;
     }>;
   };
   
-  // 8. Franchise / Stock Policy (Notes: 50k=5%, 100k=8%, 500k=10%, 1M=12%, upline=2%)
+  // 8. Franchise / Stock Point (50k=5%, 100k=8%, 500k=10%, 1M=12%, upline=2%)
   franchisePolicy: {
     isEnabled: boolean;
     incentiveType: 'MARGIN' | 'DISCOUNT' | 'COMMISSION' | 'STOCK_INCENTIVE';
@@ -92,10 +96,10 @@ export interface ICompensationRule extends Document {
       threshold: number;
       rate: number; // e.g. 0.05
     }>;
-    uplineBonusRate: number; // 0.02
+    uplineBonusRate: number; // 0.02 (2%)
   };
   
-  // 9. Upline Bonus (Notes: 2%)
+  // 9. Upline Bonus (2% flat)
   uplineBonus: {
     isEnabled: boolean;
     uplineBonusRate: number; // 2% = 0.02
@@ -103,7 +107,7 @@ export interface ICompensationRule extends Document {
     calculationBase: 'PURCHASE_VALUE' | 'BV';
   };
   
-  // 10. Royalty (Formula not specified in notes)
+  // 10. Royalty
   royalty: {
     isEnabled: boolean;
     poolPercent: number;
@@ -112,17 +116,17 @@ export interface ICompensationRule extends Document {
     notes: string;
   };
   
-  // 11. Consultancy Bonus (Notes: ₹2500 per product, 3 mo, 4th mo free)
+  // 11. Consultancy Bonus (2,500 DP Product for 3 months -> 4th month free product)
   consultancyBonus: {
     isEnabled: boolean;
-    qualifyingAmount: number;
+    qualifyingAmount: number; // 2500 DP
     productQuantity: number;
-    qualifyingMonths: number;
-    freeProductMonth: number;
+    qualifyingMonths: number; // 3
+    freeProductMonth: number; // 4
     notes: string;
   };
   
-  // 12. Retail Profit (Notes: up to 50%)
+  // 12. Retail Profit (Up to 50%)
   retailProfit: {
     isEnabled: boolean;
     maxPercentage: number; // 50%
@@ -138,7 +142,7 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
     ruleSetId: {
       type: String,
       required: true,
-      unique: true,
+      index: true,
       default: 'DEFAULT_RULES',
     },
     version: {
@@ -159,24 +163,23 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       type: Date,
     },
     welcomeBonus: {
-      isEnabled: { type: Boolean, default: false },
-      companyRatio: { type: String, default: '4:1' },
-      applicablePackageIds: { type: [String], default: [] },
-      ratePercent: { type: Number, default: 4 },
+      isEnabled: { type: Boolean, default: true },
+      requiresLeftAndRight: { type: Boolean, default: true },
+      ratePercent: { type: Number, default: 4 }, // 4%
+      limitMode: { type: String, default: 'ACTIVE_PACKAGE' },
       fixedAmount: { type: Number, default: 0 },
-      maxPayout: { type: Number, default: 0 },
-      notes: { type: String, default: 'TODO: Confirm exact Welcome Bonus 4:1 rule with business owner.' },
+      notes: { type: String, default: '4% on every new package. Requires 1 Left + 1 Right complete. Capped at active package.' },
     },
     binaryBonus: {
       isEnabled: { type: Boolean, default: true },
       standardBinaryRate: { type: Number, default: 0.20 }, // 20%
-      specialBinaryRate: { type: Number, default: 0.25 },   // 25% (unclear condition in notes)
+      specialBinaryRate: { type: Number, default: 0.25 },   // 25% (optional override)
       isSpecialRateEnabled: { type: Boolean, default: false },
       calculationBase: { type: String, default: 'BV' },
       volumeCarryForwardMode: { type: String, default: 'CARRY_FORWARD' },
       dailyBinaryPayoutCap: { type: Number, default: 4000 },
       excessCapPolicy: { type: String, default: 'FLUSH' },
-      firstPairRatio: { type: String, default: '1:1' },
+      firstPairRatio: { type: String, default: '1:2_or_2:1' },
       subsequentPairRatio: { type: String, default: '1:1' },
     },
     teamBonus: {
@@ -204,25 +207,30 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       maxPayout: Number,
     },
     teamPerformanceBonus: {
-      isEnabled: { type: Boolean, default: false },
-      bonusRatePercent: { type: Number, default: 0 },
+      isEnabled: { type: Boolean, default: true },
+      calculationBase: { type: String, default: 'CTO_POOL' },
       tiers: [
         {
+          tierId: String,
+          pairCount: Number,
           leftThreshold: Number,
           rightThreshold: Number,
-          bonusAmount: Number,
+          royaltyBonusPercent: Number,
+          limitAmount: Number,
         },
       ],
-      notes: { type: String, default: 'TODO: Confirm Team Performance Bonus payout formula with business owner.' },
+      notes: { type: String, default: 'Equally distributed CTO pool bonus across qualifiers based on Left:Right balanced pair slabs.' },
     },
     rewards: {
       isEnabled: { type: Boolean, default: true },
       tiers: [
         {
           tierId: String,
+          rankName: String,
+          teamTarget: Number,
           leftRequirement: Number,
           rightRequirement: Number,
-          rewardAmount: { type: Number, default: null },
+          rewardAmount: Number,
           rewardTitle: String,
         },
       ],

@@ -291,27 +291,38 @@ export const api = {
   },
 
   // Compensation Rules & Simulator
-  async getCompensationRules() {
-    const res = await fetch(`${API_BASE_URL}/compensation/rules`);
+  async getCompensationRules(token?: string) {
+    const headers: Record<string, string> = {};
+    const savedToken = token || localStorage.getItem('wetala_token');
+    if (savedToken) {
+      headers['Authorization'] = `Bearer ${savedToken}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/compensation/rules`, { headers });
     return res.json();
   },
 
-  async updateCompensationRules(rules: any, token: string) {
+  async updateCompensationRules(rules: any, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token');
     const res = await fetch(`${API_BASE_URL}/compensation/rules`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${savedToken}`,
       },
       body: JSON.stringify(rules),
     });
     return res.json();
   },
 
-  async simulateCompensation(data: any) {
+  async simulateCompensation(data: any, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const savedToken = token || localStorage.getItem('wetala_token');
+    if (savedToken) {
+      headers['Authorization'] = `Bearer ${savedToken}`;
+    }
     const res = await fetch(`${API_BASE_URL}/compensation/simulate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(data),
     });
     return res.json();
