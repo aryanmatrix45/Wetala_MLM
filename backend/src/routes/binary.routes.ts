@@ -5,6 +5,7 @@ import { optionalAuthenticate } from '../middlewares/auth';
 const router = Router();
 
 router.get('/tree', optionalAuthenticate, BinaryController.getTree);
+router.get('/extremes', optionalAuthenticate, BinaryController.getExtremes);
 router.post('/validate-placement', BinaryController.validatePlacement);
 router.get('/volume/:memberId', BinaryController.getVolume);
 router.get('/available-placement/:memberId', BinaryController.findAvailablePlacement);

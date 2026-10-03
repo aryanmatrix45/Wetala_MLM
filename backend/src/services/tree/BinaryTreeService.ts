@@ -167,17 +167,44 @@ export class BinaryTreeService {
   }
 
   /**
+  /**
    * Build binary tree hierarchy up to a specified depth for visual rendering.
    * Tree visualization uses parentId + position, NOT sponsorId.
    */
-  static async getBinaryTree(rootMemberId: string, maxDepth: number = 4): Promise<BinaryNodeDTO | null> {
+  static async getBinaryTree(rootMemberId: string, maxDepth: number = 10): Promise<BinaryNodeDTO | null> {
     const root = await Member.findOne({ memberId: rootMemberId.toUpperCase().trim() });
     if (!root) return null;
 
-    return this.buildTreeNode(root, 1, maxDepth);
+    const visited = new Set<string>();
+    return this.buildTreeNode(root, 1, maxDepth, visited);
   }
 
-  private static async buildTreeNode(member: IMember, currentDepth: number, maxDepth: number): Promise<BinaryNodeDTO> {
+  private static async buildTreeNode(
+    member: IMember,
+    currentDepth: number,
+    maxDepth: number,
+    visited: Set<string> = new Set<string>()
+  ): Promise<BinaryNodeDTO> {
+    if (visited.has(member.memberId)) {
+      return {
+        memberId: member.memberId,
+        name: member.name,
+        email: member.email,
+        mobile: member.mobile,
+        rank: member.rank || 'Distributor',
+        packageName: member.packageName || 'Basic',
+        isActive: member.isActive,
+        status: member.status,
+        joinedAt: member.joinedAt || member.createdAt,
+        leftBv: 0,
+        rightBv: 0,
+        matchedPairs: 0,
+        leftNode: null,
+        rightNode: null,
+      };
+    }
+    visited.add(member.memberId);
+
     // Fetch live binary volumes
     const vol = await BinaryVolume.findOne({ memberId: member.memberId });
 
@@ -205,10 +232,6 @@ export class BinaryTreeService {
       rightNode: null,
     };
 
-    if (currentDepth >= maxDepth) {
-      return node;
-    }
-
     // Query LEFT and RIGHT children based on binary parentId + position (NOT sponsorId)
     const [leftChild, rightChild] = await Promise.all([
       Member.findOne({
@@ -229,14 +252,87 @@ export class BinaryTreeService {
       }),
     ]);
 
+    if (currentDepth >= maxDepth) {
+      if (leftChild || rightChild) {
+        (node as any).hasMoreDownline = true;
+      }
+      return node;
+    }
+
     if (leftChild) {
-      node.leftNode = await this.buildTreeNode(leftChild as IMember, currentDepth + 1, maxDepth);
+      node.leftNode = await this.buildTreeNode(leftChild as IMember, currentDepth + 1, maxDepth, visited);
     }
     if (rightChild) {
-      node.rightNode = await this.buildTreeNode(rightChild as IMember, currentDepth + 1, maxDepth);
+      node.rightNode = await this.buildTreeNode(rightChild as IMember, currentDepth + 1, maxDepth, visited);
     }
 
     return node;
+  }
+
+  /**
+   * Find extreme nodes (Bottom Left, Bottom Right) starting from a root member
+   */
+  static async getTreeExtremes(rootMemberId: string): Promise<{
+    rootMemberId: string;
+    bottomLeft: { memberId: string; name: string; depth: number } | null;
+    bottomRight: { memberId: string; name: string; depth: number } | null;
+  }> {
+    const root = await Member.findOne({ memberId: rootMemberId.toUpperCase().trim() });
+    if (!root) {
+      return { rootMemberId, bottomLeft: null, bottomRight: null };
+    }
+
+    // 1. Traverse extreme Left leg
+    let currentLeft: IMember | null = root;
+    let leftDepth = 1;
+    const visitedLeft = new Set<string>([root.memberId]);
+
+    while (currentLeft) {
+      const nextLeft: IMember | null = await Member.findOne({
+        $or: [
+          { parentId: currentLeft.memberId, position: BINARY_POSITION.LEFT },
+          { parentId: currentLeft.memberId, binaryPosition: BINARY_POSITION.LEFT },
+          { binaryParentId: currentLeft.memberId, position: BINARY_POSITION.LEFT },
+          { binaryParentId: currentLeft.memberId, binaryPosition: BINARY_POSITION.LEFT },
+        ],
+      });
+      if (nextLeft && !visitedLeft.has(nextLeft.memberId)) {
+        visitedLeft.add(nextLeft.memberId);
+        currentLeft = nextLeft;
+        leftDepth++;
+      } else {
+        break;
+      }
+    }
+
+    // 2. Traverse extreme Right leg
+    let currentRight: IMember | null = root;
+    let rightDepth = 1;
+    const visitedRight = new Set<string>([root.memberId]);
+
+    while (currentRight) {
+      const nextRight: IMember | null = await Member.findOne({
+        $or: [
+          { parentId: currentRight.memberId, position: BINARY_POSITION.RIGHT },
+          { parentId: currentRight.memberId, binaryPosition: BINARY_POSITION.RIGHT },
+          { binaryParentId: currentRight.memberId, position: BINARY_POSITION.RIGHT },
+          { binaryParentId: currentRight.memberId, binaryPosition: BINARY_POSITION.RIGHT },
+        ],
+      });
+      if (nextRight && !visitedRight.has(nextRight.memberId)) {
+        visitedRight.add(nextRight.memberId);
+        currentRight = nextRight;
+        rightDepth++;
+      } else {
+        break;
+      }
+    }
+
+    return {
+      rootMemberId: root.memberId,
+      bottomLeft: currentLeft ? { memberId: currentLeft.memberId, name: currentLeft.name, depth: leftDepth } : null,
+      bottomRight: currentRight ? { memberId: currentRight.memberId, name: currentRight.name, depth: rightDepth } : null,
+    };
   }
 
   /**

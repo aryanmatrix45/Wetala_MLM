@@ -8,13 +8,24 @@ import { AuthenticatedRequest } from '../middlewares/auth';
 export const BinaryController = {
   /**
    * Get visual binary tree hierarchy
-   * GET /api/binary/tree?root=MEM0001&depth=4
+   * GET /api/binary/tree?root=MEM0001&depth=6
    */
   async getTree(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const user = req.user;
       let requestedRoot = (req.query.root as string)?.trim().toUpperCase();
-      const depth = parseInt((req.query.depth as string) || '4', 10);
+      const rawDepth = req.query.depth as string;
+      let depth = 10;
+      if (rawDepth) {
+        if (rawDepth === 'all' || rawDepth === 'full') {
+          depth = 25;
+        } else {
+          const parsed = parseInt(rawDepth, 10);
+          if (!isNaN(parsed) && parsed > 0) {
+            depth = Math.min(parsed, 25);
+          }
+        }
+      }
 
       // If user is a Regular Member (RM), enforce downline-only visibility (cannot view upline/ancestors)
       if (user && user.role === ROLES.MEMBER && user.memberId) {
@@ -53,6 +64,43 @@ export const BinaryController = {
       }
 
       res.status(HTTP_STATUS.OK).json({ status: true, data: tree });
+    } catch (error: any) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
+    }
+  },
+
+  /**
+   * Get extreme bottom-left and bottom-right nodes from root
+   * GET /api/binary/extremes?root=MEM0001
+   */
+  async getExtremes(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const user = req.user;
+      let requestedRoot = (req.query.root as string)?.trim().toUpperCase();
+
+      if (user && user.role === ROLES.MEMBER && user.memberId) {
+        const userMemberId = user.memberId.toUpperCase().trim();
+        if (!requestedRoot) {
+          requestedRoot = userMemberId;
+        } else if (requestedRoot !== userMemberId) {
+          const isDownline = await BinaryTreeService.isDescendantOf(requestedRoot, userMemberId);
+          if (!isDownline) {
+            res.status(HTTP_STATUS.FORBIDDEN).json({
+              status: false,
+              message: 'Access restricted: You can only view your own downline.',
+            });
+            return;
+          }
+        }
+      }
+
+      if (!requestedRoot) {
+        const firstMember = await Member.findOne().sort({ createdAt: 1 });
+        requestedRoot = firstMember ? firstMember.memberId : 'MEM0001';
+      }
+
+      const extremes = await BinaryTreeService.getTreeExtremes(requestedRoot);
+      res.status(HTTP_STATUS.OK).json({ status: true, data: extremes });
     } catch (error: any) {
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
     }

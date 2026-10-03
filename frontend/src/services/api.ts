@@ -265,15 +265,26 @@ export const api = {
   },
 
   // Binary Tree
-  async getBinaryTree(root?: string, depth?: number, token?: string) {
+  async getBinaryTree(root?: string, depth?: number | string, token?: string) {
     const params = new URLSearchParams();
     if (root) params.append('root', root);
-    if (depth) params.append('depth', String(depth));
+    if (depth !== undefined && depth !== null) params.append('depth', String(depth));
     const headers: Record<string, string> = {};
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
     const res = await fetch(`${API_BASE_URL}/binary/tree?${params.toString()}`, { headers });
+    return res.json();
+  },
+
+  async getBinaryExtremes(root?: string, token?: string) {
+    const params = new URLSearchParams();
+    if (root) params.append('root', root);
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/binary/extremes?${params.toString()}`, { headers });
     return res.json();
   },
 
