@@ -10,6 +10,7 @@ interface AddMemberModalProps {
 
 export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onAddMember }) => {
   const [packages, setPackages] = useState<PackageItem[]>([]);
+  const [placementMode, setPlacementMode] = useState<'auto' | 'manual'>('auto');
   const [formData, setFormData] = useState({
     name: '',
     mobile: '',
@@ -18,8 +19,9 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
     password: '',
     confirmPassword: '',
     sponsorId: '',
+    parentId: '',
     placementId: '',
-    position: 'left',
+    position: 'LEFT',
     package: 'Package 1',
     packageId: 'PKG-1',
   });
@@ -76,6 +78,13 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
       return;
     }
 
+    if (placementMode === 'manual') {
+      if (!formData.parentId.trim()) {
+        setError('Please specify Binary Parent ID for manual placement.');
+        return;
+      }
+    }
+
     if (!formData.password) {
       setError('Please set a password.');
       return;
@@ -93,11 +102,33 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
 
     try {
       setLoading(true);
-      await onAddMember({
+
+      const payload: any = {
         ...formData,
         packageName: formData.package,
         packageId: formData.packageId,
-      });
+        sponsorId: formData.sponsorId.trim().toUpperCase(),
+      };
+
+      if (placementMode === 'manual') {
+        const cleanParent = formData.parentId.trim().toUpperCase();
+        const pos = formData.position.toUpperCase();
+        // Client-side quick check
+        const valRes = await api.validatePlacement(cleanParent, pos);
+        if (!valRes.status) {
+          setError(valRes.message || `Position ${pos} under ${cleanParent} is not available.`);
+          setLoading(false);
+          return;
+        }
+        payload.parentId = cleanParent;
+        payload.placementId = cleanParent;
+        payload.position = pos;
+      } else {
+        delete payload.parentId;
+        delete payload.placementId;
+      }
+
+      await onAddMember(payload);
     } catch (err: any) {
       setError(err.message || 'Failed to register member.');
     } finally {
@@ -318,24 +349,85 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                 Binary Placement
               </label>
-              <div style={{
-                padding: '9px 12px',
-                borderRadius: '8px',
-                border: '1px solid #dbeafe',
-                background: '#eff6ff',
-                fontSize: '12.5px',
-                color: '#1d4ed8',
-                fontWeight: 600,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                height: '38px'
-              }}>
-                <span style={{ fontSize: '14px' }}>⚡</span>
-                <span>Auto (Balanced Level-Order)</span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  type="button"
+                  onClick={() => setPlacementMode('auto')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: placementMode === 'auto' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    background: placementMode === 'auto' ? '#eff6ff' : '#f8fafc',
+                    color: placementMode === 'auto' ? '#1d4ed8' : '#64748b',
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ⚡ Auto (BFS)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlacementMode('manual')}
+                  style={{
+                    flex: 1,
+                    padding: '8px 10px',
+                    borderRadius: '8px',
+                    border: placementMode === 'manual' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    background: placementMode === 'manual' ? '#eff6ff' : '#f8fafc',
+                    color: placementMode === 'manual' ? '#1d4ed8' : '#64748b',
+                    fontWeight: 600,
+                    fontSize: '12px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  🎯 Manual
+                </button>
               </div>
             </div>
           </div>
+
+          {/* Manual Placement Details: Distinct Binary Tree Placement */}
+          {placementMode === 'manual' && (
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: '1.2fr 1fr',
+              gap: '12px',
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              padding: '12px',
+              borderRadius: '8px'
+            }}>
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                  Binary Parent ID * <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>(Under whom placed)</span>
+                </label>
+                <input
+                  type="text"
+                  required={placementMode === 'manual'}
+                  placeholder="e.g. MEM0006"
+                  value={formData.parentId}
+                  onChange={(e) => setFormData({ ...formData, parentId: e.target.value.toUpperCase() })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}
+                />
+              </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                  Position *
+                </label>
+                <select
+                  value={formData.position}
+                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
+                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}
+                >
+                  <option value="LEFT">LEFT Leg</option>
+                  <option value="RIGHT">RIGHT Leg</option>
+                </select>
+              </div>
+            </div>
+          )}
 
           {/* Package Selection */}
           <div>

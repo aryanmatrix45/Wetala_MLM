@@ -12,6 +12,8 @@ export interface BinaryNodeDTO {
   isActive: boolean;
   status: string;
   joinedAt: Date;
+  parentId?: string;
+  position?: BinaryPosition;
   binaryPosition?: BinaryPosition;
   leftBv: number;
   rightBv: number;
@@ -25,53 +27,64 @@ export class BinaryTreeService {
    * Validate that a proposed binary placement is valid and does not violate any tree constraints:
    * 1. Parent exists
    * 2. Position is valid (LEFT or RIGHT)
-   * 3. Position is not already occupied
+   * 3. Position is not already occupied (Never allow two LEFT or two RIGHT children under the same parent)
    * 4. Candidate is not own parent
    * 5. No circular relationship (parent is not a descendant of candidate)
    */
   static async validatePlacement(
     parentMemberId: string,
-    position: BinaryPosition,
+    position: BinaryPosition | string,
     candidateMemberId?: string
   ): Promise<{ isValid: boolean; error?: string; parent?: IMember }> {
+    const cleanParentId = (parentMemberId || '').toUpperCase().trim();
+    if (!cleanParentId) {
+      return { isValid: false, error: 'Parent member ID is required for binary placement.' };
+    }
+
     // 1. Verify parent exists
-    const parent = await Member.findOne({ memberId: parentMemberId.toUpperCase().trim() });
+    const parent = await Member.findOne({ memberId: cleanParentId });
     if (!parent) {
-      return { isValid: false, error: `Parent member ${parentMemberId} does not exist.` };
+      return { isValid: false, error: `Parent member ${cleanParentId} does not exist.` };
     }
 
     // 2. Validate position enum
-    if (position !== BINARY_POSITION.LEFT && position !== BINARY_POSITION.RIGHT) {
+    const rawPos = (position || '').toUpperCase().trim();
+    if (rawPos !== BINARY_POSITION.LEFT && rawPos !== BINARY_POSITION.RIGHT) {
       return { isValid: false, error: 'Binary position must be either LEFT or RIGHT.' };
     }
+    const normalizedPos: BinaryPosition = rawPos === BINARY_POSITION.RIGHT ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
 
     // 3. Candidate cannot be own parent
-    if (candidateMemberId && candidateMemberId.toUpperCase().trim() === parentMemberId.toUpperCase().trim()) {
+    if (candidateMemberId && candidateMemberId.toUpperCase().trim() === cleanParentId) {
       return { isValid: false, error: 'A member cannot be their own binary parent.' };
     }
 
-    // 4. Check if position is already occupied
+    // 4. Check if position is already occupied under this parent
     const existingChild = await Member.findOne({
-      binaryParentId: parent.memberId,
-      binaryPosition: position,
+      $or: [
+        { parentId: parent.memberId, position: normalizedPos },
+        { parentId: parent.memberId, binaryPosition: normalizedPos },
+        { binaryParentId: parent.memberId, position: normalizedPos },
+        { binaryParentId: parent.memberId, binaryPosition: normalizedPos },
+      ],
     });
 
     if (existingChild) {
       if (!candidateMemberId || existingChild.memberId !== candidateMemberId.toUpperCase().trim()) {
         return {
           isValid: false,
-          error: `Position ${position} under ${parentMemberId} is already occupied by ${existingChild.name} (${existingChild.memberId}).`,
+          error: `Position ${normalizedPos} under parent ${cleanParentId} is already occupied by ${existingChild.name} (${existingChild.memberId}).`,
         };
       }
     }
 
     // 5. Prevent circular relationship
     if (candidateMemberId) {
-      const isDescendant = await this.isDescendantOf(parentMemberId, candidateMemberId);
+      const isDescendant = await this.isDescendantOf(cleanParentId, candidateMemberId);
       if (isDescendant) {
         return {
           isValid: false,
-          error: `Circular relationship detected: ${parentMemberId} is already downline of ${candidateMemberId}.`,
+          error: `Circular relationship detected: ${cleanParentId} is already downline of ${candidateMemberId}.`,
         };
       }
     }
@@ -96,8 +109,8 @@ export class BinaryTreeService {
       }
       visited.add(currentId);
 
-      const member = await Member.findOne({ memberId: currentId }).select('binaryParentId placementId');
-      const parentId = (member?.binaryParentId || member?.placementId || '').toUpperCase().trim();
+      const member = await Member.findOne({ memberId: currentId }).select('parentId binaryParentId placementId');
+      const parentId = (member?.parentId || member?.binaryParentId || member?.placementId || '').toUpperCase().trim();
       if (!parentId || parentId === currentId) {
         return false;
       }
@@ -113,18 +126,21 @@ export class BinaryTreeService {
   }
 
   /**
-   * Find binary ancestors walking up the tree from a starting member.
+   * Find binary ancestors walking up the binary tree from a starting member.
+   * Traverses actual binary parentId / binaryParentId (NOT sponsorId).
    * Returns list of { ancestorMemberId, legOfOrigin ('LEFT' | 'RIGHT') }
    * This is used to pass new volume up the correct legs to all ancestors.
    */
   static async getBinaryAncestors(startMemberId: string): Promise<Array<{ memberId: string; leg: BinaryPosition }>> {
     const ancestors: Array<{ memberId: string; leg: BinaryPosition }> = [];
-    let currentMember = await Member.findOne({ memberId: startMemberId }).select('binaryParentId binaryPosition placementId position memberId');
+    let currentMember = await Member.findOne({ memberId: startMemberId }).select(
+      'parentId position binaryParentId binaryPosition placementId memberId'
+    );
 
     const visited = new Set<string>();
 
     while (currentMember) {
-      const parentId = currentMember.binaryParentId || currentMember.placementId;
+      const parentId = (currentMember.parentId || currentMember.binaryParentId || currentMember.placementId || '').toUpperCase().trim();
       if (!parentId || parentId === currentMember.memberId) {
         break;
       }
@@ -134,14 +150,17 @@ export class BinaryTreeService {
       }
       visited.add(currentMember.memberId);
 
-      const leg = currentMember.binaryPosition || (currentMember.position?.toUpperCase() === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT);
+      const rawLeg = (currentMember.position || currentMember.binaryPosition || '').toUpperCase();
+      const leg: BinaryPosition = rawLeg === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
 
       ancestors.push({
         memberId: parentId,
         leg,
       });
 
-      currentMember = await Member.findOne({ memberId: parentId }).select('binaryParentId binaryPosition placementId position memberId');
+      currentMember = await Member.findOne({ memberId: parentId }).select(
+        'parentId position binaryParentId binaryPosition placementId memberId'
+      );
     }
 
     return ancestors;
@@ -149,9 +168,10 @@ export class BinaryTreeService {
 
   /**
    * Build binary tree hierarchy up to a specified depth for visual rendering.
+   * Tree visualization uses parentId + position, NOT sponsorId.
    */
   static async getBinaryTree(rootMemberId: string, maxDepth: number = 4): Promise<BinaryNodeDTO | null> {
-    const root = await Member.findOne({ memberId: rootMemberId });
+    const root = await Member.findOne({ memberId: rootMemberId.toUpperCase().trim() });
     if (!root) return null;
 
     return this.buildTreeNode(root, 1, maxDepth);
@@ -160,6 +180,10 @@ export class BinaryTreeService {
   private static async buildTreeNode(member: IMember, currentDepth: number, maxDepth: number): Promise<BinaryNodeDTO> {
     // Fetch live binary volumes
     const vol = await BinaryVolume.findOne({ memberId: member.memberId });
+
+    const rawPos = (member.position || member.binaryPosition || '').toUpperCase();
+    const resolvedPos: BinaryPosition | undefined =
+      rawPos === 'RIGHT' ? BINARY_POSITION.RIGHT : rawPos === 'LEFT' ? BINARY_POSITION.LEFT : undefined;
 
     const node: BinaryNodeDTO = {
       memberId: member.memberId,
@@ -171,7 +195,9 @@ export class BinaryTreeService {
       isActive: member.isActive,
       status: member.status,
       joinedAt: member.joinedAt || member.createdAt,
-      binaryPosition: member.binaryPosition,
+      parentId: member.parentId || member.binaryParentId || undefined,
+      position: resolvedPos,
+      binaryPosition: resolvedPos,
       leftBv: vol ? vol.leftTotalBV : member.leftBv || 0,
       rightBv: vol ? vol.rightTotalBV : member.rightBv || 0,
       matchedPairs: member.matchedPairs || 0,
@@ -183,23 +209,31 @@ export class BinaryTreeService {
       return node;
     }
 
-    // Query LEFT and RIGHT children
+    // Query LEFT and RIGHT children based on binary parentId + position (NOT sponsorId)
     const [leftChild, rightChild] = await Promise.all([
       Member.findOne({
-        binaryParentId: member.memberId,
-        $or: [{ binaryPosition: BINARY_POSITION.LEFT }, { position: 'left' }],
+        $or: [
+          { parentId: member.memberId, position: BINARY_POSITION.LEFT },
+          { parentId: member.memberId, binaryPosition: BINARY_POSITION.LEFT },
+          { binaryParentId: member.memberId, position: BINARY_POSITION.LEFT },
+          { binaryParentId: member.memberId, binaryPosition: BINARY_POSITION.LEFT },
+        ],
       }),
       Member.findOne({
-        binaryParentId: member.memberId,
-        $or: [{ binaryPosition: BINARY_POSITION.RIGHT }, { position: 'right' }],
+        $or: [
+          { parentId: member.memberId, position: BINARY_POSITION.RIGHT },
+          { parentId: member.memberId, binaryPosition: BINARY_POSITION.RIGHT },
+          { binaryParentId: member.memberId, position: BINARY_POSITION.RIGHT },
+          { binaryParentId: member.memberId, binaryPosition: BINARY_POSITION.RIGHT },
+        ],
       }),
     ]);
 
     if (leftChild) {
-      node.leftNode = await this.buildTreeNode(leftChild, currentDepth + 1, maxDepth);
+      node.leftNode = await this.buildTreeNode(leftChild as IMember, currentDepth + 1, maxDepth);
     }
     if (rightChild) {
-      node.rightNode = await this.buildTreeNode(rightChild, currentDepth + 1, maxDepth);
+      node.rightNode = await this.buildTreeNode(rightChild as IMember, currentDepth + 1, maxDepth);
     }
 
     return node;
@@ -208,13 +242,16 @@ export class BinaryTreeService {
   /**
    * Balanced Level-Order (Breadth-First Search - BFS) Binary Auto-Placement:
    * Systematically fills each level from Left to Right:
-   * 1. 1st member under Sponsor -> Sponsor's LEFT
-   * 2. 2nd member under Sponsor -> Sponsor's RIGHT
+   * 1. 1st member under root -> root's LEFT
+   * 2. 2nd member under root -> root's RIGHT
    * 3. 3rd member under Left child -> Left child's LEFT
    * 4. 4th member under Left child -> Left child's RIGHT
    * 5. 5th member under Right child -> Right child's LEFT
    * 6. 6th member under Right child -> Right child's RIGHT
    * ...and continues down level by level, left-to-right.
+   * Determines:
+   * - parentId
+   * - position (LEFT / RIGHT)
    */
   static async findNextAutoPlacement(
     startMemberId: string
@@ -225,7 +262,7 @@ export class BinaryTreeService {
     if (!cleanStartId || cleanStartId === 'ADMIN' || cleanStartId === 'ROOT') {
       const root = await Member.findOne().sort({ createdAt: 1 }).select('memberId');
       if (root) {
-        cleanStartId = root.memberId;
+        cleanStartId = (root as IMember).memberId;
       } else {
         return { parentId: '', position: BINARY_POSITION.LEFT };
       }
@@ -233,7 +270,7 @@ export class BinaryTreeService {
       const memberExists = await Member.findOne({ memberId: cleanStartId }).select('memberId');
       if (!memberExists) {
         const root = await Member.findOne().sort({ createdAt: 1 }).select('memberId');
-        cleanStartId = root ? root.memberId : cleanStartId;
+        cleanStartId = root ? (root as IMember).memberId : cleanStartId;
       }
     }
 
@@ -245,34 +282,43 @@ export class BinaryTreeService {
       if (visited.has(currentParentId)) continue;
       visited.add(currentParentId);
 
-      // Check left and right child of currentParentId
+      // Check left and right child of currentParentId using binary parentId and position
       const [leftChild, rightChild] = await Promise.all([
         Member.findOne({
-          binaryParentId: currentParentId,
-          $or: [{ binaryPosition: BINARY_POSITION.LEFT }, { position: 'left' }],
+          $or: [
+            { parentId: currentParentId, position: BINARY_POSITION.LEFT },
+            { parentId: currentParentId, binaryPosition: BINARY_POSITION.LEFT },
+            { binaryParentId: currentParentId, binaryPosition: BINARY_POSITION.LEFT },
+          ],
         }).select('memberId'),
         Member.findOne({
-          binaryParentId: currentParentId,
-          $or: [{ binaryPosition: BINARY_POSITION.RIGHT }, { position: 'right' }],
+          $or: [
+            { parentId: currentParentId, position: BINARY_POSITION.RIGHT },
+            { parentId: currentParentId, binaryPosition: BINARY_POSITION.RIGHT },
+            { binaryParentId: currentParentId, binaryPosition: BINARY_POSITION.RIGHT },
+          ],
         }).select('memberId'),
       ]);
 
-      // If Left wing is vacant, place here first
-      if (!leftChild) {
+      const leftMember = leftChild as IMember | null;
+      const rightMember = rightChild as IMember | null;
+
+      // If Left slot is vacant, place here first
+      if (!leftMember) {
         return { parentId: currentParentId, position: BINARY_POSITION.LEFT };
       }
 
-      // If Right wing is vacant, place here next
-      if (!rightChild) {
+      // If Right slot is vacant, place here next
+      if (!rightMember) {
         return { parentId: currentParentId, position: BINARY_POSITION.RIGHT };
       }
 
       // Both filled: enqueue left child, then right child (level-order BFS)
-      if (leftChild.memberId && !visited.has(leftChild.memberId)) {
-        queue.push(leftChild.memberId);
+      if (leftMember.memberId && !visited.has(leftMember.memberId)) {
+        queue.push(leftMember.memberId);
       }
-      if (rightChild.memberId && !visited.has(rightChild.memberId)) {
-        queue.push(rightChild.memberId);
+      if (rightMember.memberId && !visited.has(rightMember.memberId)) {
+        queue.push(rightMember.memberId);
       }
     }
 
@@ -297,10 +343,11 @@ export class BinaryTreeService {
     if (members.length === 0) return { count: 0, tree: null };
 
     const rootMember = members[0];
+    rootMember.parentId = '';
     rootMember.binaryParentId = '';
     rootMember.placementId = '';
-    rootMember.binaryPosition = undefined as any;
     rootMember.position = undefined as any;
+    rootMember.binaryPosition = undefined as any;
     await rootMember.save();
 
     const treeSlots = new Map<string, { left?: string; right?: string }>();
@@ -321,10 +368,11 @@ export class BinaryTreeService {
           treeSlots.set(currentMember.memberId, {});
           queue.push(currentMember.memberId);
 
+          currentMember.parentId = parentId;
           currentMember.binaryParentId = parentId;
           currentMember.placementId = parentId;
+          currentMember.position = BINARY_POSITION.LEFT;
           currentMember.binaryPosition = BINARY_POSITION.LEFT;
-          currentMember.position = 'left';
           await currentMember.save();
           placed = true;
         } else if (!slot.right) {
@@ -333,10 +381,11 @@ export class BinaryTreeService {
           queue.push(currentMember.memberId);
           queue.shift(); // Parent has both children
 
+          currentMember.parentId = parentId;
           currentMember.binaryParentId = parentId;
           currentMember.placementId = parentId;
+          currentMember.position = BINARY_POSITION.RIGHT;
           currentMember.binaryPosition = BINARY_POSITION.RIGHT;
-          currentMember.position = 'right';
           await currentMember.save();
           placed = true;
         }

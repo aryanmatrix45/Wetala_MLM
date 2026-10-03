@@ -31,6 +31,7 @@ export const AuthController = {
         password,
         confirmPassword,
         sponsorId,
+        parentId,
         placementId,
         position,
         packageId,
@@ -134,32 +135,61 @@ export const AuthController = {
         return;
       }
 
-      // 3. Resolve Sponsor ID and Binary Placement
+      // 3. Resolve Sponsor ID and Binary Tree Placement (Distinct relationships)
       const totalMemberCount = await Member.countDocuments();
       let resolvedSponsorId = sponsorId && sponsorId.trim() ? sponsorId.trim().toUpperCase() : 'ADMIN';
       let finalParentId = '';
-      let finalPosition: BinaryPosition =
-        position?.toLowerCase() === 'right' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
+      let finalPosition: BinaryPosition = BINARY_POSITION.LEFT;
+
+      const requestedParentId = (parentId || placementId || '').trim().toUpperCase();
+      const rawPosition = (position || '').trim().toUpperCase();
+      const isManualPlacement = Boolean(
+        requestedParentId && (rawPosition === 'LEFT' || rawPosition === 'RIGHT')
+      );
 
       if (totalMemberCount === 0) {
         resolvedSponsorId = 'ADMIN';
         finalParentId = '';
+        finalPosition = BINARY_POSITION.LEFT;
       } else {
+        // Validate sponsor existence
         if (resolvedSponsorId !== 'ADMIN') {
           const sponsorExists = await Member.findOne({ memberId: resolvedSponsorId });
           if (!sponsorExists) {
-            resolvedSponsorId = 'ADMIN';
+            res.status(HTTP_STATUS.BAD_REQUEST).json({
+              status: false,
+              message: `Sponsor ID "${resolvedSponsorId}" does not exist. Please enter a valid Member ID or ADMIN.`,
+            });
+            return;
           }
         }
 
-        // Auto-placement: Calculate balanced level-order binary placement under the sponsor
-        const placementRoot = (resolvedSponsorId && resolvedSponsorId !== 'ADMIN') ? resolvedSponsorId : '';
-        const autoPlacement = await BinaryTreeService.findNextAutoPlacement(placementRoot);
-        finalParentId = autoPlacement.parentId;
-        finalPosition = autoPlacement.position;
+        if (isManualPlacement) {
+          // Manual Placement: Explicit sponsorId, parentId, and position
+          const targetPos: BinaryPosition =
+            rawPosition === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
+
+          const validation = await BinaryTreeService.validatePlacement(requestedParentId, targetPos);
+          if (!validation.isValid) {
+            res.status(HTTP_STATUS.BAD_REQUEST).json({
+              status: false,
+              message: validation.error || `Position ${targetPos} under parent ${requestedParentId} is not available.`,
+            });
+            return;
+          }
+
+          finalParentId = requestedParentId;
+          finalPosition = targetPos;
+        } else {
+          // Automatic Placement: Use BFS to find the first available slot
+          const placementRoot = (resolvedSponsorId && resolvedSponsorId !== 'ADMIN') ? resolvedSponsorId : '';
+          const autoPlacement = await BinaryTreeService.findNextAutoPlacement(placementRoot);
+          finalParentId = autoPlacement.parentId;
+          finalPosition = autoPlacement.position;
+        }
       }
 
-      // 5. Generate Next Sequential Member ID
+      // 4. Generate Next Sequential Member ID
       const newMemberId = await Member.generateNextMemberId();
 
       // 5. Resolve Dynamic Package from MongoDB
@@ -196,10 +226,11 @@ export const AuthController = {
         password,
         role: ROLES.MEMBER,
         sponsorId: resolvedSponsorId,
+        parentId: finalParentId,
+        position: finalPosition,
         binaryParentId: finalParentId,
         placementId: finalParentId,
         binaryPosition: finalPosition,
-        position: finalPosition === BINARY_POSITION.RIGHT ? 'right' : 'left',
         joiningPackageId: finalPackageId,
         packageName: finalPackageName,
         packageBv: finalPackageBv,
@@ -256,6 +287,8 @@ export const AuthController = {
           mobile: newMember.mobile,
           role: newMember.role,
           sponsorId: newMember.sponsorId,
+          parentId: newMember.parentId,
+          position: newMember.position,
           binaryParentId: newMember.binaryParentId,
           binaryPosition: newMember.binaryPosition,
           packageName: newMember.packageName,

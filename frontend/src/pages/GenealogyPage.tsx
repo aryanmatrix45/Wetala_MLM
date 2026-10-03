@@ -262,10 +262,10 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
           }}
           title="Click to view referrals"
         >
-          <div style={{ 
-            fontSize: '11px', 
-            fontWeight: 800, 
-            color: '#059669', 
+          <div style={{
+            fontSize: '11px',
+            fontWeight: 800,
+            color: '#059669',
             background: '#ecfdf5',
             padding: '2px 8px',
             borderRadius: '9999px',
@@ -276,10 +276,10 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
           </div>
           <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>{node.name}</div>
           <div style={{ fontSize: '11px', color: '#64748b' }}>{node.memberId}</div>
-          <div style={{ 
-            fontSize: '11.5px', 
-            color: '#10b981', 
-            fontWeight: 700, 
+          <div style={{
+            fontSize: '11.5px',
+            color: '#10b981',
+            fontWeight: 700,
             marginTop: '8px',
             paddingTop: '6px',
             borderTop: '1px solid #f1f5f9'
@@ -436,14 +436,14 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
       <div className="tree-canvas-container">
         {loading ? (
           <div style={{ textAlign: 'center', padding: '100px' }}>
-            <div style={{ 
-              width: '40px', 
-              height: '40px', 
-              border: '3px solid #e2e8f0', 
-              borderTopColor: '#2563eb', 
-              borderRadius: '50%', 
-              animation: 'spin 0.8s linear infinite', 
-              margin: '0 auto 16px' 
+            <div style={{
+              width: '40px',
+              height: '40px',
+              border: '3px solid #e2e8f0',
+              borderTopColor: '#2563eb',
+              borderRadius: '50%',
+              animation: 'spin 0.8s linear infinite',
+              margin: '0 auto 16px'
             }} />
             <p style={{ color: '#64748b', fontWeight: 600 }}>Calculating live {treeType} hierarchy...</p>
           </div>
@@ -470,11 +470,11 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
             </div>
           </div>
         ) : treeData ? (
-          <div style={{ 
-            transform: `scale(${zoom})`, 
-            transformOrigin: 'top center', 
-            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)', 
-            display: 'flex', 
+          <div style={{
+            transform: `scale(${zoom})`,
+            transformOrigin: 'top center',
+            transition: 'transform 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+            display: 'flex',
             justifyContent: 'center',
             paddingBottom: '40px'
           }}>

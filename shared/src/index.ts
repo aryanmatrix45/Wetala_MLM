@@ -15,7 +15,7 @@ export const JOINING_PACKAGES: JoiningPackage[] = [
   { id: 'pkg-4', name: 'Elite', price: 35000, bv: 12500, dailyCapping: 15000, description: 'Master Networker Package' },
 ];
 
-export type BinaryPosition = 'left' | 'right';
+export type BinaryPosition = 'LEFT' | 'RIGHT' | 'left' | 'right';
 export type MemberStatus = 'active' | 'inactive' | 'blocked';
 export type PayoutStatus = 'pending' | 'approved' | 'paid' | 'rejected';
 
@@ -26,9 +26,10 @@ export interface Member {
   name: string;
   email: string;
   mobile: string;
-  sponsorId: string; // Direct Referrer
-  placementId?: string; // Binary Parent
-  position?: BinaryPosition;
+  sponsorId: string; // Direct Referrer / Sponsor
+  parentId?: string; // Binary Parent
+  placementId?: string; // Binary Parent (legacy alias)
+  position?: BinaryPosition; // 'LEFT' | 'RIGHT'
   packageId?: string;
   packageName?: string;
   joinDate: string;

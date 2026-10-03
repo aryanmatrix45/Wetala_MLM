@@ -8,7 +8,7 @@ import {
 } from '../mockData';
 import { Member } from '../models/Member.model';
 import { Package } from '../models/Package.model';
-import { HTTP_STATUS, BINARY_POSITION } from '../config/constants';
+import { HTTP_STATUS, BINARY_POSITION, BinaryPosition } from '../config/constants';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 
 const router = Router();
@@ -35,8 +35,10 @@ const seedMembersIfEmpty = async () => {
       for (const item of initialSeedMembers) {
         await Member.create({
           ...item,
+          parentId: item.placementId,
+          position: item.position === 'right' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT,
           binaryParentId: item.placementId,
-          binaryPosition: item.position === 'right' ? 'RIGHT' : 'LEFT',
+          binaryPosition: item.position === 'right' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT,
         });
       }
       console.log(`[WetalaMLM] Successfully seeded ${initialSeedMembers.length} initial members with passwords.`);
@@ -104,6 +106,7 @@ router.get('/members', async (_req, res) => {
       mobile: m.mobile,
       dob: m.dob || '',
       sponsorId: m.sponsorId,
+      parentId: m.parentId || m.binaryParentId || m.placementId || '',
       placementId: m.placementId,
       position: m.position,
       packageName: m.packageName,
@@ -136,6 +139,7 @@ router.post('/members', async (req, res) => {
       password,
       confirmPassword,
       sponsorId,
+      parentId,
       placementId,
       position,
       packageName,
@@ -216,7 +220,7 @@ router.post('/members', async (req, res) => {
       return;
     }
 
-    // 3. Sponsor ID validation
+    // 3. Sponsor ID and Binary Placement (Distinct relationships)
     if (!sponsorId || !sponsorId.trim()) {
       res.status(HTTP_STATUS.BAD_REQUEST).json({
         status: false,
@@ -227,8 +231,14 @@ router.post('/members', async (req, res) => {
 
     const totalCount = await Member.countDocuments();
     let finalParentId = '';
-    let finalPos = position === 'right' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
+    let finalPos: BinaryPosition = BINARY_POSITION.LEFT;
     let finalSponsorId = sponsorId.trim().toUpperCase();
+
+    const requestedParentId = (parentId || placementId || '').trim().toUpperCase();
+    const rawPosition = (position || '').trim().toUpperCase();
+    const isManualPlacement = Boolean(
+      requestedParentId && (rawPosition === 'LEFT' || rawPosition === 'RIGHT')
+    );
 
     if (totalCount === 0) {
       // First member in system: root node
@@ -240,6 +250,7 @@ router.post('/members', async (req, res) => {
         return;
       }
       finalParentId = '';
+      finalPos = BINARY_POSITION.LEFT;
     } else {
       // Validate sponsor ID: can be 'ADMIN' or an existing member
       if (finalSponsorId !== 'ADMIN') {
@@ -253,11 +264,26 @@ router.post('/members', async (req, res) => {
         }
       }
 
-      // Auto-placement: Calculate balanced level-order binary placement under the sponsor
-      const placementRoot = (finalSponsorId && finalSponsorId !== 'ADMIN') ? finalSponsorId : '';
-      const autoPlacement = await BinaryTreeService.findNextAutoPlacement(placementRoot);
-      finalParentId = autoPlacement.parentId;
-      finalPos = autoPlacement.position;
+      if (isManualPlacement) {
+        // Manual placement: explicitly provided parentId and position
+        const targetPos: BinaryPosition = rawPosition === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
+        const validation = await BinaryTreeService.validatePlacement(requestedParentId, targetPos);
+        if (!validation.isValid) {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({
+            status: false,
+            message: validation.error || `Position ${targetPos} under parent ${requestedParentId} is not available.`
+          });
+          return;
+        }
+        finalParentId = requestedParentId;
+        finalPos = targetPos;
+      } else {
+        // Auto-placement: Calculate balanced level-order binary placement under the sponsor
+        const placementRoot = (finalSponsorId && finalSponsorId !== 'ADMIN') ? finalSponsorId : '';
+        const autoPlacement = await BinaryTreeService.findNextAutoPlacement(placementRoot);
+        finalParentId = autoPlacement.parentId;
+        finalPos = autoPlacement.position;
+      }
     }
 
     // 4. Resolve Dynamic Package from MongoDB
@@ -296,10 +322,11 @@ router.post('/members', async (req, res) => {
       dob: dob ? dob.trim() : '',
       password,
       sponsorId: finalSponsorId,
+      parentId: finalParentId,
+      position: finalPos,
       binaryParentId: finalParentId,
       placementId: finalParentId,
       binaryPosition: finalPos,
-      position: position === 'right' ? 'right' : 'left',
       joiningPackageId: finalPackageId,
       packageName: finalPackageName,
       packageBv: finalPackageBv,
@@ -324,8 +351,11 @@ router.post('/members', async (req, res) => {
         mobile: newMember.mobile,
         dob: newMember.dob,
         sponsorId: newMember.sponsorId,
+        parentId: newMember.parentId,
         placementId: newMember.placementId,
         position: newMember.position,
+        binaryParentId: newMember.binaryParentId,
+        binaryPosition: newMember.binaryPosition,
         packageName: newMember.packageName,
         joinDate: newMember.joinDate,
         status: newMember.status,

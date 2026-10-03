@@ -64,17 +64,18 @@ export const BinaryController = {
    */
   async validatePlacement(req: Request, res: Response): Promise<void> {
     try {
-      const { parentMemberId, position, candidateMemberId } = req.body;
-      if (!parentMemberId || !position) {
+      const { parentId, parentMemberId, position, candidateMemberId } = req.body;
+      const targetParent = (parentId || parentMemberId || '').trim();
+      if (!targetParent || !position) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
           status: false,
-          message: 'Both parentMemberId and position (LEFT or RIGHT) are required.',
+          message: 'Both parentId and position (LEFT or RIGHT) are required.',
         });
         return;
       }
 
       const result = await BinaryTreeService.validatePlacement(
-        parentMemberId,
+        targetParent,
         position.toUpperCase() as BinaryPosition,
         candidateMemberId
       );
@@ -86,7 +87,7 @@ export const BinaryController = {
 
       res.status(HTTP_STATUS.OK).json({
         status: true,
-        message: `Placement on ${position.toUpperCase()} under ${parentMemberId} is valid.`,
+        message: `Placement on ${position.toUpperCase()} under ${targetParent} is valid.`,
         parent: {
           memberId: result.parent?.memberId,
           name: result.parent?.name,

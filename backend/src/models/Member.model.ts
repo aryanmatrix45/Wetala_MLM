@@ -17,13 +17,14 @@ export interface IMember extends Document {
   // Sponsor Relationship (Unilevel / Referral Tree)
   sponsorId: string;
   
-  // Binary Placement Relationship (Binary Tree - NOT the same as sponsor)
-  binaryParentId: string;
-  binaryPosition: BinaryPosition;
+  // Binary Tree Placement Relationship (Distinct from Sponsor)
+  parentId: string;
+  position: BinaryPosition;
   
   // Aliases for legacy compatibility
+  binaryParentId: string;
+  binaryPosition: BinaryPosition;
   placementId?: string;
-  position?: 'left' | 'right';
   
   rank: string;
   status: MemberStatus;
@@ -114,27 +115,38 @@ const memberSchema = new Schema<IMember, IMemberModel>(
     },
     
     // Distinct Binary Placement Relationship (Empty string for root member)
+    parentId: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      index: true,
+      default: '',
+    },
+    position: {
+      type: String,
+      enum: [BINARY_POSITION.LEFT, BINARY_POSITION.RIGHT, 'left', 'right'],
+      default: BINARY_POSITION.LEFT,
+      index: true,
+    },
+    
+    // Legacy support aliases
     binaryParentId: {
       type: String,
       trim: true,
+      uppercase: true,
       index: true,
       default: '',
     },
     binaryPosition: {
       type: String,
-      enum: [BINARY_POSITION.LEFT, BINARY_POSITION.RIGHT],
+      enum: [BINARY_POSITION.LEFT, BINARY_POSITION.RIGHT, 'left', 'right'],
       default: BINARY_POSITION.LEFT,
       index: true,
     },
-    
-    // Legacy support
     placementId: {
       type: String,
       trim: true,
-    },
-    position: {
-      type: String,
-      enum: ['left', 'right'],
+      uppercase: true,
     },
     
     rank: {
@@ -207,7 +219,19 @@ const memberSchema = new Schema<IMember, IMemberModel>(
   }
 );
 
-// Compound index to guarantee uniqueness of binary leg under a parent
+// Compound index to guarantee uniqueness of binary leg under a parent:
+// Never allow two LEFT children or two RIGHT children under the same parent
+memberSchema.index(
+  { parentId: 1, position: 1 },
+  {
+    unique: true,
+    partialFilterExpression: {
+      parentId: { $type: 'string', $gt: '' },
+      position: { $in: [BINARY_POSITION.LEFT, BINARY_POSITION.RIGHT] },
+    },
+  }
+);
+
 memberSchema.index(
   { binaryParentId: 1, binaryPosition: 1 },
   {
@@ -219,23 +243,23 @@ memberSchema.index(
   }
 );
 
-// Synchronize legacy fields with binaryParentId and binaryPosition
+// Synchronize parentId, binaryParentId, placementId and position, binaryPosition
 memberSchema.pre('save', async function () {
   if (this.mobile && !this.phone) {
     this.phone = this.mobile;
   }
-  if (this.placementId && !this.binaryParentId) {
-    this.binaryParentId = this.placementId;
-  }
-  if (!this.placementId && this.binaryParentId) {
-    this.placementId = this.binaryParentId;
-  }
-  if (this.position && !this.binaryPosition) {
-    this.binaryPosition = this.position.toUpperCase() === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
-  }
-  if (this.binaryPosition && !this.position) {
-    this.position = this.binaryPosition.toLowerCase() as 'left' | 'right';
-  }
+
+  // Resolve parentId across all parent fields
+  const resolvedParent = (this.parentId || this.binaryParentId || this.placementId || '').trim().toUpperCase();
+  this.parentId = resolvedParent;
+  this.binaryParentId = resolvedParent;
+  this.placementId = resolvedParent;
+
+  // Resolve binary position ('LEFT' | 'RIGHT')
+  const rawPos = String(this.position || this.binaryPosition || BINARY_POSITION.LEFT).toUpperCase();
+  const normalizedPos = rawPos === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
+  this.position = normalizedPos;
+  this.binaryPosition = normalizedPos;
 
   // Hash password if modified
   if (this.isModified('password') && this.password) {

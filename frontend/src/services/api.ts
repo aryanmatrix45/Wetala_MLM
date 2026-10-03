@@ -277,6 +277,15 @@ export const api = {
     return res.json();
   },
 
+  async validatePlacement(parentId: string, position: string, candidateMemberId?: string) {
+    const res = await fetch(`${API_BASE_URL}/binary/validate-placement`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ parentId, position, candidateMemberId }),
+    });
+    return res.json();
+  },
+
   // Sponsor Tree
   async getSponsorTree(root?: string, depth?: number, token?: string) {
     const params = new URLSearchParams();
