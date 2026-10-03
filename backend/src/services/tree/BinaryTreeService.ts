@@ -167,7 +167,6 @@ export class BinaryTreeService {
   }
 
   /**
-  /**
    * Build binary tree hierarchy up to a specified depth for visual rendering.
    * Tree visualization uses parentId + position, NOT sponsorId.
    */

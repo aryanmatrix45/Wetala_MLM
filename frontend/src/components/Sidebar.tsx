@@ -22,7 +22,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, user }) => {
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
 
   const sections = [
     {
@@ -121,11 +121,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       <div className="sidebar-footer-card">
         <div className="system-status-indicator">
           <div className="pulse-dot"></div>
-          <span>Binary Engine Active</span>
+          <span>{isAdmin ? 'System Engine Active' : 'Binary Engine Active'}</span>
         </div>
-        <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', justifyContent: 'space-between' }}>
-          <span>Daily Cap: ₹4,000</span>
-          <span>v2.4.0</span>
+        <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          {isAdmin ? (
+            <>
+              <span style={{ color: '#10b981', fontWeight: 700 }}>Uncapped Policy</span>
+              <span>v2.4.0</span>
+            </>
+          ) : (
+            <>
+              <span>Daily Cap: ₹{user?.dailyCapping ? user.dailyCapping.toLocaleString() : '4,000'}</span>
+              <span>v2.4.0</span>
+            </>
+          )}
         </div>
       </div>
     </aside>

@@ -105,6 +105,7 @@ export function App() {
         {activeTab === 'dashboard' && (
           <DashboardPage
             key={refreshKey}
+            user={user}
             onNavigate={(tab) => setActiveTab(tab)}
             onOpenAddMember={() => setIsAddMemberOpen(true)}
           />

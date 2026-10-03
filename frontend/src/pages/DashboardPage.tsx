@@ -16,12 +16,14 @@ import {
 } from 'lucide-react';
 
 interface DashboardPageProps {
+  user?: any;
   onNavigate: (tab: string) => void;
   onOpenAddMember: () => void;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onOpenAddMember }) => {
+export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, onOpenAddMember }) => {
   const [trendRange, setTrendRange] = useState('30');
+  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
 
   // Live registrations data
   const recentRegistrations = [
@@ -153,7 +155,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onOpen
               <GitMerge size={20} />
             </div>
             <div>
-              <h2 className="card-title">Live Binary Volume Matching & Daily Cap</h2>
+              <h2 className="card-title">{isAdmin ? 'Live Binary Volume Matching & Engine' : 'Live Binary Volume Matching & Daily Cap'}</h2>
               <p style={{ fontSize: '12px', color: '#64748b' }}>Root Distributor Node: <strong>MEM0001 (Rohit Sharma)</strong></p>
             </div>
           </div>
@@ -199,19 +201,36 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ onNavigate, onOpen
             </div>
           </div>
 
-          {/* Daily Cap Progress */}
+          {/* Daily Cap / Payout Policy Progress */}
           <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
-              <span>Daily Cap Utilization</span>
-              <span style={{ color: '#d97706', fontWeight: 700 }}>60%</span>
-            </div>
-            <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden', margin: '8px 0' }}>
-              <div style={{ width: '60%', height: '100%', background: 'linear-gradient(90deg, #f59e0b, #d97706)', borderRadius: '9999px' }} />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
-              <span>Earned Today: <strong>₹ 2,400</strong></span>
-              <span>Cap: <strong>₹ 4,000</strong></span>
-            </div>
+            {isAdmin ? (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+                  <span>Payout Limit Policy</span>
+                  <span style={{ color: '#059669', fontWeight: 700, background: '#ecfdf5', padding: '2px 8px', borderRadius: '9999px', fontSize: '11px' }}>Uncapped</span>
+                </div>
+                <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-display)', margin: '8px 0 4px' }}>
+                  Super Admin Account
+                </div>
+                <div style={{ fontSize: '11px', color: '#64748b' }}>
+                  Binary capping is disabled for Admin roles.
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+                  <span>Daily Cap Utilization</span>
+                  <span style={{ color: '#d97706', fontWeight: 700 }}>60%</span>
+                </div>
+                <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden', margin: '8px 0' }}>
+                  <div style={{ width: '60%', height: '100%', background: 'linear-gradient(90deg, #f59e0b, #d97706)', borderRadius: '9999px' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
+                  <span>Earned Today: <strong>₹ 2,400</strong></span>
+                  <span>Cap: <strong>₹ {user?.dailyCapping ? user.dailyCapping.toLocaleString() : '4,000'}</strong></span>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
