@@ -11,7 +11,8 @@ import {
   Wallet, 
   BarChart3, 
   Settings, 
-  LogOut
+  LogOut,
+  Gift
 } from 'lucide-react';
 
 interface SidebarProps {
@@ -41,6 +42,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     {
       title: 'Finance & Compensation',
       items: [
+        { id: 'welcome-bonus', label: 'Welcome Bonus', icon: Gift, badge: isAdmin ? '4% Pool' : 'BV' },
         { id: 'income-settings', label: 'Income & Simulator', icon: IndianRupee, badge: 'Engine' },
         { id: 'team-bonus', label: 'Team Bonus Slabs', icon: Users2 },
         { id: 'direct-royalty', label: 'Royalty & Consultancy', icon: Sparkles },

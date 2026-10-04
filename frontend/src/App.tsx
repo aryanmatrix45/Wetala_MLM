@@ -102,12 +102,13 @@ export function App() {
         <TopNavbar user={user} onLogout={handleLogout} onNavigate={(tab) => setActiveTab(tab)} />
 
         {/* Tab Routing */}
-        {activeTab === 'dashboard' && (
+        {(activeTab === 'dashboard' || activeTab === 'welcome-bonus') && (
           <DashboardPage
             key={refreshKey}
             user={user}
             onNavigate={(tab) => setActiveTab(tab)}
             onOpenAddMember={() => setIsAddMemberOpen(true)}
+            initialSection={activeTab === 'welcome-bonus' ? 'welcome-bonus' : undefined}
           />
         )}
 

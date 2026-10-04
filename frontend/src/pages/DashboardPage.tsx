@@ -27,9 +27,10 @@ interface DashboardPageProps {
   user?: any;
   onNavigate: (tab: string) => void;
   onOpenAddMember: () => void;
+  initialSection?: string;
 }
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, onOpenAddMember }) => {
+export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, onOpenAddMember, initialSection }) => {
   const [trendRange, setTrendRange] = useState('30');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [welcomeBonus, setWelcomeBonus] = useState<any>(null);
@@ -40,6 +41,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
   const [payoutSearch, setPayoutSearch] = useState('');
   const [payoutFilterSettlement, setPayoutFilterSettlement] = useState('ALL');
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const currentMemberId = user?.memberId || 'MEM0001';
+  const effectivePayouts: any[] = isAdmin 
+    ? (welcomeBonus?.history || [])
+    : (welcomeBonus?.history || []).filter((r: any) => r.memberId === currentMemberId);
+
+  useEffect(() => {
+    if (initialSection === 'welcome-bonus') {
+      const el = document.getElementById('welcome-bonus-section');
+      if (el) {
+        setTimeout(() => {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+  }, [initialSection]);
 
   const loadWelcomeBonus = () => {
     const memberIdToFetch = user?.memberId || 'MEM0001';
@@ -126,8 +142,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               COMPENSATION PORTAL ACTIVE
             </span>
           </div>
-          <h1 className="page-title">Executive Dashboard</h1>
-          <p className="page-subtitle">Real-time performance analytics, binary volumes, and automated payout ledger.</p>
+          <h1 className="page-title">{isAdmin ? 'Executive Dashboard' : 'Distributor Dashboard'}</h1>
+          <p className="page-subtitle">
+            {isAdmin 
+              ? 'Real-time company performance analytics, binary volumes, and automated payout ledger.' 
+              : `Welcome back, ${user?.name || 'Distributor'}! Track your personal volume, binary matching, and welcome bonus.`}
+          </p>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -145,108 +165,170 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
 
       {/* Top KPI Metrics */}
       <div className={`kpi-grid ${isAdmin ? 'kpi-grid-6' : ''}`}>
-        {/* Total Members */}
-        <div className="kpi-card kpi-card-blue">
-          <div className="kpi-icon-box kpi-icon-blue">
-            <Users size={26} />
-          </div>
-          <div className="kpi-content">
-            <div className="kpi-label">Total Distributors</div>
-            <div className="kpi-value">{stats ? stats.totalMembers.toLocaleString() : '13'}</div>
-            <div className="kpi-trend-pill kpi-trend-up">
-              <ArrowUpRight size={13} />
-              <span>{stats?.quickStats?.activePercent ?? 100}% Active Network</span>
-            </div>
-          </div>
-        </div>
-
-        {/* New Registrations */}
-        <div className="kpi-card kpi-card-green">
-          <div className="kpi-icon-box kpi-icon-green">
-            <UserPlus size={26} />
-          </div>
-          <div className="kpi-content">
-            <div className="kpi-label">New Registrations</div>
-            <div className="kpi-value">{stats ? stats.newRegistrations.toLocaleString() : '13'}</div>
-            <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
-              {stats?.registrationsToday ? `Today: +${stats.registrationsToday} joined` : 'Verified & Active'}
-            </div>
-          </div>
-        </div>
-
-        {/* Total Gross Value */}
-        <div className="kpi-card kpi-card-gold">
-          <div className="kpi-icon-box kpi-icon-gold">
-            <IndianRupee size={26} />
-          </div>
-          <div className="kpi-content">
-            <div className="kpi-label">Total Gross Value</div>
-            <div className="kpi-value">
-              ₹ {stats ? (stats.totalGrossValue || stats.totalJoiningRevenue || stats.totalPackagePrice || 73500).toLocaleString() : '73,500'}
-            </div>
-            <div className="kpi-trend-pill kpi-trend-up">
-              <ArrowUpRight size={13} />
-              <span>All-Time Turnover</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Weekly Gross Value (Admin Dedicated Card) */}
-        {isAdmin && (
-          <div className="kpi-card" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', border: '1px solid #a7f3d0' }}>
-            <div className="kpi-icon-box" style={{ background: '#d1fae5', color: '#059669' }}>
-              <Gift size={26} />
-            </div>
-            <div className="kpi-content">
-              <div className="kpi-label" style={{ color: '#065f46', fontWeight: 700 }}>Weekly Gross Volume</div>
-              <div className="kpi-value" style={{ color: '#047857' }}>
-                {(stats?.weeklyGrossBusinessVolume || stats?.weeklyGrossValue || welcomeBonus?.currentWeeklyCompanyGBV || 7200).toLocaleString()} <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+        {isAdmin ? (
+          <>
+            {/* Total Distributors (Admin) */}
+            <div className="kpi-card kpi-card-blue">
+              <div className="kpi-icon-box kpi-icon-blue">
+                <Users size={26} />
               </div>
-              <div style={{ fontSize: '11px', color: '#059669', fontWeight: 700, marginTop: '3px' }}>
-                4% Pool: {Math.round(((stats?.weeklyGrossBusinessVolume || stats?.weeklyGrossValue || welcomeBonus?.currentWeeklyCompanyGBV || 7200) * 0.04)).toLocaleString()} BV / week
+              <div className="kpi-content">
+                <div className="kpi-label">Total Distributors</div>
+                <div className="kpi-value">{stats ? stats.totalMembers.toLocaleString() : '13'}</div>
+                <div className="kpi-trend-pill kpi-trend-up">
+                  <ArrowUpRight size={13} />
+                  <span>{stats?.quickStats?.activePercent ?? 100}% Active Network</span>
+                </div>
               </div>
             </div>
-          </div>
+
+            {/* New Registrations (Admin) */}
+            <div className="kpi-card kpi-card-green">
+              <div className="kpi-icon-box kpi-icon-green">
+                <UserPlus size={26} />
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-label">New Registrations</div>
+                <div className="kpi-value">{stats ? stats.newRegistrations.toLocaleString() : '13'}</div>
+                <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
+                  {stats?.registrationsToday ? `Today: +${stats.registrationsToday} joined` : 'Verified & Active'}
+                </div>
+              </div>
+            </div>
+
+            {/* Total Gross Value (Admin) */}
+            <div className="kpi-card kpi-card-gold">
+              <div className="kpi-icon-box kpi-icon-gold">
+                <IndianRupee size={26} />
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-label">Total Gross Value</div>
+                <div className="kpi-value">
+                  ₹ {stats ? (stats.totalGrossValue || stats.totalJoiningRevenue || stats.totalPackagePrice || 73500).toLocaleString() : '73,500'}
+                </div>
+                <div className="kpi-trend-pill kpi-trend-up">
+                  <ArrowUpRight size={13} />
+                  <span>All-Time Turnover</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Weekly Gross Volume (Admin) */}
+            <div className="kpi-card" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', border: '1px solid #a7f3d0' }}>
+              <div className="kpi-icon-box" style={{ background: '#d1fae5', color: '#059669' }}>
+                <Gift size={26} />
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-label" style={{ color: '#065f46', fontWeight: 700 }}>Weekly Gross Volume</div>
+                <div className="kpi-value" style={{ color: '#047857' }}>
+                  {(stats?.weeklyGrossBusinessVolume || stats?.weeklyGrossValue || welcomeBonus?.currentWeeklyCompanyGBV || 7200).toLocaleString()} <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                </div>
+                <div style={{ fontSize: '11px', color: '#059669', fontWeight: 700, marginTop: '3px' }}>
+                  4% Pool: {Math.round(((stats?.weeklyGrossBusinessVolume || stats?.weeklyGrossValue || welcomeBonus?.currentWeeklyCompanyGBV || 7200) * 0.04)).toLocaleString()} BV / week
+                </div>
+              </div>
+            </div>
+
+            {/* Total Business Volume Generated (Admin) */}
+            <div className="kpi-card kpi-card-purple">
+              <div className="kpi-icon-box kpi-icon-purple">
+                <Zap size={26} />
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-label">Total Business Volume</div>
+                <div className="kpi-value" style={{ color: '#7c3aed' }}>
+                  {(stats?.totalBusinessVolume || stats?.totalBV || 27500).toLocaleString()} <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                </div>
+                <div className="kpi-trend-pill" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
+                  <ArrowUpRight size={13} />
+                  <span>Generated BV</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Total Joining Package Value (Admin) */}
+            <div className="kpi-card kpi-card-coral">
+              <div className="kpi-icon-box kpi-icon-coral">
+                <Wallet size={26} />
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-label">Total Joining Price</div>
+                <div className="kpi-value">
+                  ₹ {stats ? (stats.totalPackagePrice || stats.totalJoiningRevenue || 73500).toLocaleString() : '73,500'}
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  Price Total of <strong style={{ color: '#059669' }}>{stats ? stats.totalMembers : '13'} Joined Members</strong>
+                </div>
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            {/* Member Card 1: Membership Status */}
+            <div className="kpi-card kpi-card-blue">
+              <div className="kpi-icon-box kpi-icon-blue">
+                <Award size={26} />
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-label">Distributor Status</div>
+                <div className="kpi-value" style={{ fontSize: '20px', color: '#1d4ed8' }}>
+                  Active Node
+                </div>
+                <div style={{ fontSize: '12px', color: '#059669', fontWeight: 700, marginTop: '4px' }}>
+                  {user?.packageName || 'Package 1'} ({welcomeBonus?.qualifyingBusinessVolume || 1250} BV)
+                </div>
+              </div>
+            </div>
+
+            {/* Member Card 2: Welcome Bonus Earned (Business Volume) */}
+            <div className="kpi-card kpi-card-green" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', border: '1px solid #a7f3d0' }}>
+              <div className="kpi-icon-box kpi-icon-green" style={{ background: '#d1fae5', color: '#059669' }}>
+                <Gift size={26} />
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-label" style={{ color: '#065f46', fontWeight: 700 }}>Welcome Bonus Earned</div>
+                <div className="kpi-value" style={{ color: '#047857' }}>
+                  {(welcomeBonus?.totalWelcomeBonusEarned || 0).toLocaleString()} <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                </div>
+                <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
+                  Remaining Cap: {(welcomeBonus?.remainingBonus || 0).toLocaleString()} BV
+                </div>
+              </div>
+            </div>
+
+            {/* Member Card 3: Matched Binary Volume */}
+            <div className="kpi-card kpi-card-purple">
+              <div className="kpi-icon-box kpi-icon-purple">
+                <Zap size={26} />
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-label">Matched Binary Volume</div>
+                <div className="kpi-value" style={{ color: '#7c3aed' }}>
+                  12,000 <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  Left: <strong style={{ color: '#2563eb' }}>15,000 BV</strong> • Right: <strong style={{ color: '#059669' }}>12,000 BV</strong>
+                </div>
+              </div>
+            </div>
+
+            {/* Member Card 4: Total Payouts (0 for regular members) */}
+            <div className="kpi-card kpi-card-coral">
+              <div className="kpi-icon-box kpi-icon-coral">
+                <Wallet size={26} />
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-label">Total Payouts</div>
+                <div className="kpi-value" style={{ color: '#0f172a' }}>
+                  ₹ 0
+                </div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                  Pending: <strong style={{ color: '#d97706' }}>₹ 0</strong> • Processed: <strong style={{ color: '#059669' }}>₹ 0</strong>
+                </div>
+              </div>
+            </div>
+          </>
         )}
-
-        {/* Total Business Volume Generated (Admin) */}
-        {isAdmin && (
-          <div className="kpi-card kpi-card-purple">
-            <div className="kpi-icon-box kpi-icon-purple">
-              <Zap size={26} />
-            </div>
-            <div className="kpi-content">
-              <div className="kpi-label">Total Business Volume</div>
-              <div className="kpi-value" style={{ color: '#7c3aed' }}>
-                {(stats?.totalBusinessVolume || stats?.totalBV || 27500).toLocaleString()} <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
-              </div>
-              <div className="kpi-trend-pill" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
-                <ArrowUpRight size={13} />
-                <span>Generated BV</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Total Joining Package Value (Top Right Card) */}
-        <div className="kpi-card kpi-card-coral">
-          <div className="kpi-icon-box kpi-icon-coral">
-            <Wallet size={26} />
-          </div>
-          <div className="kpi-content">
-            <div className="kpi-label">{isAdmin ? 'Total Joining Price' : 'Total Payouts'}</div>
-            <div className="kpi-value">
-              ₹ {stats ? (stats.totalPackagePrice || stats.totalJoiningRevenue || 73500).toLocaleString() : '73,500'}
-            </div>
-            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-              {isAdmin ? (
-                <>Price Total of <strong style={{ color: '#059669' }}>{stats ? stats.totalMembers : '13'} Joined Members</strong></>
-              ) : (
-                <>Pending: <strong style={{ color: '#d97706' }}>₹ {stats?.pendingPayouts ? stats.pendingPayouts.toLocaleString() : '0'}</strong></>
-              )}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* NEW: Binary Volume Live Matching & Capping Strip */}
@@ -267,7 +349,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             </div>
             <div>
               <h2 className="card-title">{isAdmin ? 'Live Binary Volume Matching & Engine' : 'Live Binary Volume Matching & Daily Cap'}</h2>
-              <p style={{ fontSize: '12px', color: '#64748b' }}>Root Distributor Node: <strong>MEM0001 (Rohit Sharma)</strong></p>
+              <p style={{ fontSize: '12px', color: '#64748b' }}>
+                {isAdmin ? 'Root Distributor Node: ' : 'Distributor Node: '}
+                <strong>{user?.memberId || 'MEM0001'} ({user?.name || 'Distributor'})</strong>
+              </p>
             </div>
           </div>
 
@@ -347,7 +432,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       </div>
 
       {/* Standalone Welcome Bonus Dashboard Section */}
-      <div className="dashboard-card" style={{ marginBottom: '30px', background: 'linear-gradient(135deg, #ffffff 0%, #fdfefe 100%)', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+      <div id="welcome-bonus-section" className="dashboard-card" style={{ marginBottom: '30px', background: 'linear-gradient(135deg, #ffffff 0%, #fdfefe 100%)', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
         <div className="card-header-row" style={{ marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div className="card-title-group">
             <div style={{ 
@@ -364,7 +449,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h2 className="card-title" style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Welcome Bonus</h2>
+                <h2 className="card-title" style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                  {isAdmin ? 'Welcome Bonus Pool & Engine' : 'My Welcome Bonus'}
+                </h2>
                 <span style={{ 
                   padding: '3px 10px', 
                   borderRadius: '9999px', 
@@ -380,30 +467,48 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 </span>
               </div>
               <p style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                Weekly 4% Company GBV Pool equally divided among members with active Left & Right wings (2× Lifetime Cap)
+                {isAdmin
+                  ? 'Weekly 4% Company GBV Pool equally divided among members with active Left & Right wings (2× Lifetime Cap)'
+                  : 'Track your weekly 4% pool earnings in Business Volume, lifetime 2× cap, and wing eligibility'}
               </p>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {isAdmin && (
-              <button
-                onClick={handleRunSettlement}
-                disabled={settling}
-                className="primary-btn"
-                style={{ fontSize: '12px', padding: '7px 16px', background: '#059669', borderColor: '#059669' }}
-              >
-                <Sparkles size={14} />
-                {settling ? 'Settling...' : 'Run Weekly Settlement'}
-              </button>
+            {isAdmin ? (
+              <>
+                <button
+                  onClick={handleRunSettlement}
+                  disabled={settling}
+                  className="primary-btn"
+                  style={{ fontSize: '12px', padding: '7px 16px', background: '#059669', borderColor: '#059669' }}
+                >
+                  <Sparkles size={14} />
+                  {settling ? 'Settling...' : 'Run Weekly Settlement'}
+                </button>
+                <button 
+                  onClick={() => onNavigate('income-settings')} 
+                  className="secondary-btn" 
+                  style={{ fontSize: '12px', padding: '6px 14px' }}
+                >
+                  Configure Rules
+                </button>
+              </>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ 
+                  background: '#ecfdf5', 
+                  border: '1px solid #a7f3d0', 
+                  padding: '6px 14px', 
+                  borderRadius: '10px', 
+                  fontSize: '12px', 
+                  color: '#065f46', 
+                  fontWeight: 700 
+                }}>
+                  Earned Till Now: {(welcomeBonus?.totalWelcomeBonusEarned || 0).toLocaleString()} BV
+                </div>
+              </div>
             )}
-            <button 
-              onClick={() => onNavigate('income-settings')} 
-              className="secondary-btn" 
-              style={{ fontSize: '12px', padding: '6px 14px' }}
-            >
-              Configure Rules
-            </button>
           </div>
         </div>
 
@@ -563,20 +668,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
             <div>
               <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>
-                Welcome Bonus Payout History
+                {isAdmin ? 'Welcome Bonus Payout History' : 'My Welcome Bonus Payout History'}
               </h3>
               <span style={{ fontSize: '12px', color: '#64748b' }}>
-                Distributors paid weekly 4% pool business volume
+                {isAdmin 
+                  ? 'Distributors paid weekly 4% pool business volume' 
+                  : 'Weekly settlement bonuses credited to your business volume'}
               </span>
             </div>
-            {welcomeBonus?.history && welcomeBonus.history.length > 0 && (
+            {effectivePayouts && effectivePayouts.length > 0 && (
               <button
                 onClick={() => setIsFullPayoutModalOpen(true)}
                 className="secondary-btn"
                 style={{ fontSize: '12px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
               >
                 <ExternalLink size={13} />
-                Show More ({welcomeBonus.history.length})
+                Show More ({effectivePayouts.length})
               </button>
             )}
           </div>
@@ -595,8 +702,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 </tr>
               </thead>
               <tbody>
-                {welcomeBonus?.history && welcomeBonus.history.length > 0 ? (
-                  (showAllInline ? welcomeBonus.history : welcomeBonus.history.slice(0, 3)).map((row: any, idx: number) => (
+                {effectivePayouts && effectivePayouts.length > 0 ? (
+                  (showAllInline ? effectivePayouts : effectivePayouts.slice(0, 3)).map((row: any, idx: number) => (
                     <tr key={row.transactionId || idx}>
                       <td style={{ fontSize: '12px', padding: '10px 14px' }}>
                         <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.memberName || row.memberId}</div>
@@ -619,7 +726,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 ) : (
                   <tr>
                     <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontSize: '13px' }}>
-                      No settlement transactions recorded yet. Click "Run Weekly Settlement" to process this week's pool.
+                      {isAdmin 
+                        ? 'No settlement transactions recorded yet. Click "Run Weekly Settlement" to process this week\'s pool.'
+                        : 'No settlement bonuses credited to your account yet. Complete 1 Left and 1 Right active wing to qualify.'}
                     </td>
                   </tr>
                 )}
@@ -628,7 +737,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           </div>
 
           {/* Footer Bar with "Show More" Button */}
-          {welcomeBonus?.history && welcomeBonus.history.length > 3 && (
+          {effectivePayouts && effectivePayouts.length > 3 && (
             <div style={{ 
               display: 'flex', 
               alignItems: 'center', 
@@ -643,7 +752,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               gap: '10px'
             }}>
               <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
-                Showing <strong>{showAllInline ? welcomeBonus.history.length : Math.min(3, welcomeBonus.history.length)}</strong> of <strong>{welcomeBonus.history.length}</strong> paid members
+                Showing <strong>{showAllInline ? effectivePayouts.length : Math.min(3, effectivePayouts.length)}</strong> of <strong>{effectivePayouts.length}</strong> paid members
               </span>
 
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -652,7 +761,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                   className="secondary-btn"
                   style={{ fontSize: '12px', padding: '5px 12px' }}
                 >
-                  {showAllInline ? 'Show Less' : `Show More (${welcomeBonus.history.length - 3} more)`}
+                  {showAllInline ? 'Show Less' : `Show More (${effectivePayouts.length - 3} more)`}
                 </button>
                 <button
                   onClick={() => setIsFullPayoutModalOpen(true)}
@@ -1017,7 +1126,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                      Welcome Bonus Payout History — Whole Page View
+                      {isAdmin ? 'Welcome Bonus Payout History — Whole Page View' : 'My Welcome Bonus Payout History — Whole Page View'}
                     </h2>
                     <span style={{ 
                       padding: '2px 8px', 
@@ -1027,11 +1136,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                       fontSize: '11px', 
                       fontWeight: 700 
                     }}>
-                      {(welcomeBonus?.history || []).length} Total Payouts
+                      {effectivePayouts.length} {isAdmin ? 'Total Payouts' : 'Settlements Credited'}
                     </span>
                   </div>
                   <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
-                    Complete audit of every distributor who received the weekly 4% pool Business Volume
+                    {isAdmin 
+                      ? 'Complete audit of every distributor who received the weekly 4% pool Business Volume' 
+                      : 'Complete audit of all weekly 4% pool Business Volume bonuses credited to your account'}
                   </p>
                 </div>
               </div>
@@ -1067,27 +1178,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               borderBottom: '1px solid #e2e8f0' 
             }}>
               <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>TOTAL DISTRIBUTED BV</span>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>
+                  {isAdmin ? 'TOTAL DISTRIBUTED BV' : 'MY TOTAL EARNED BV'}
+                </span>
                 <span style={{ fontSize: '18px', fontWeight: 800, color: '#059669' }}>
-                  {(welcomeBonus?.history || []).reduce((sum: number, r: any) => sum + (Number(r.actualPayout) || 0), 0).toLocaleString()} BV
+                  {effectivePayouts.reduce((sum: number, r: any) => sum + (Number(r.actualPayout) || 0), 0).toLocaleString()} BV
                 </span>
               </div>
               <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>PAID DISTRIBUTORS</span>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>
+                  {isAdmin ? 'PAID DISTRIBUTORS' : 'MY SETTLEMENTS'}
+                </span>
                 <span style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
-                  {(welcomeBonus?.history || []).length} members
+                  {effectivePayouts.length} {isAdmin ? 'members' : 'credited'}
                 </span>
               </div>
               <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>CURRENT WEEK POOL</span>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>
+                  {isAdmin ? 'CURRENT WEEK POOL' : 'LIFETIME CAP LIMIT'}
+                </span>
                 <span style={{ fontSize: '18px', fontWeight: 800, color: '#2563eb' }}>
-                  {(welcomeBonus?.welcomeBonusPool || 0).toLocaleString()} BV
+                  {isAdmin 
+                    ? `${(welcomeBonus?.welcomeBonusPool || 0).toLocaleString()} BV` 
+                    : `${(welcomeBonus?.maxLifetimeCap || (welcomeBonus?.qualifyingBusinessVolume ? welcomeBonus.qualifyingBusinessVolume * 2 : 2500)).toLocaleString()} BV`}
                 </span>
               </div>
               <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>LATEST SETTLEMENT</span>
                 <span style={{ fontSize: '16px', fontWeight: 800, color: '#7c3aed' }}>
-                  {(welcomeBonus?.history || [])[0]?.settlementId || 'SETTLE-2026-W40'}
+                  {effectivePayouts[0]?.settlementId || 'SETTLE-2026-W40'}
                 </span>
               </div>
             </div>
@@ -1133,7 +1252,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                   }}
                 >
                   <option value="ALL">All Settlements</option>
-                  {Array.from(new Set((welcomeBonus?.history || []).map((r: any) => r.settlementId).filter(Boolean))).map((sId: any) => (
+                  {Array.from(new Set(effectivePayouts.map((r: any) => r.settlementId).filter(Boolean))).map((sId: any) => (
                     <option key={sId} value={sId}>{sId}</option>
                   ))}
                 </select>
@@ -1155,7 +1274,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                   </tr>
                 </thead>
                 <tbody>
-                  {(welcomeBonus?.history || [])
+                  {effectivePayouts
                     .filter((row: any) => {
                       const q = payoutSearch.toLowerCase().trim();
                       const matchesSearch = !q ||
@@ -1185,6 +1304,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                         </td>
                       </tr>
                     ))}
+                  {effectivePayouts.length === 0 && (
+                    <tr>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b', fontSize: '13px' }}>
+                        {isAdmin 
+                          ? 'No settlement transactions recorded yet. Click "Run Weekly Settlement" to process this week\'s pool.'
+                          : 'No settlement bonuses credited to your account yet.'}
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
@@ -1199,7 +1327,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               justifyContent: 'space-between'
             }}>
               <span style={{ fontSize: '12px', color: '#64748b' }}>
-                Total Paid Members: <strong>{(welcomeBonus?.history || []).length}</strong>
+                {isAdmin 
+                  ? <>Total Paid Members: <strong>{effectivePayouts.length}</strong></>
+                  : <>My Total Settlements: <strong>{effectivePayouts.length}</strong> (Credited)</>}
               </span>
               <button
                 onClick={() => setIsFullPayoutModalOpen(false)}
