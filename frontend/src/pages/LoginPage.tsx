@@ -127,8 +127,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       setIdentifier('superadmin@wetala.com');
       setPassword('admin123');
     } else {
-      setIdentifier('rohit@wetala.com');
-      setPassword('Password@123');
+      setIdentifier('aryan@wetala.com');
+      setPassword('Admin@123');
     }
     setError(null);
   };

@@ -75,6 +75,43 @@ export interface ApiPayout {
   status: 'pending' | 'paid' | 'rejected';
 }
 
+export interface WithdrawalRequestItem {
+  _id: string;
+  requestId: string;
+  memberId: string;
+  memberName?: string;
+  requestedAmount: number;
+  approvedAmount?: number;
+  paidAmount?: number;
+  status: 'PENDING' | 'APPROVED' | 'PAID' | 'REJECTED';
+  note?: string;
+  adminNote?: string;
+  paymentReference?: string;
+  requestedAt: string;
+  approvedAt?: string;
+  paidAt?: string;
+  rejectedAt?: string;
+  processedBy?: string;
+  statusHistory?: Array<{
+    status: string;
+    changedAt: string;
+    changedBy: string;
+    note?: string;
+  }>;
+}
+
+export interface WithdrawalSummary {
+  availablePayout: number;
+  totalPayout: number;
+  totalWithdrawn: number;
+  totalPending: number;
+  requestsCount: number;
+  pendingCount: number;
+  approvedCount: number;
+  paidCount: number;
+  rejectedCount: number;
+}
+
 export interface PackageItem {
   _id?: string;
   packageId: string;
@@ -453,9 +490,114 @@ export const api = {
     return res.json();
   },
 
-  async getWelcomeBonusHistory(memberId?: string) {
+  // Withdrawal Request System
+  async submitWithdrawalRequest(data: { amount: number; note?: string; memberId?: string }, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/withdrawals/request`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async getMyWithdrawals(token?: string, memberId?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const query = memberId ? `?memberId=${memberId}` : '';
+    const res = await fetch(`${API_BASE_URL}/withdrawals/my-requests${query}`, {
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    return res.json();
+  },
+
+  async getWithdrawalBalanceSummary(memberId?: string, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
     const path = memberId ? `/${memberId}` : '';
-    const res = await fetch(`${API_BASE_URL}/welcome-bonus/history${path}`);
+    const res = await fetch(`${API_BASE_URL}/withdrawals/balance-summary${path}`, {
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    return res.json();
+  },
+
+  async getAllWithdrawalsAdmin(params?: { status?: string; search?: string; page?: number; limit?: number }, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const searchParams = new URLSearchParams();
+    if (params?.status) searchParams.set('status', params.status);
+    if (params?.search) searchParams.set('search', params.search);
+    if (params?.page) searchParams.set('page', String(params.page));
+    if (params?.limit) searchParams.set('limit', String(params.limit));
+
+    const res = await fetch(`${API_BASE_URL}/withdrawals/admin/all?${searchParams.toString()}`, {
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    return res.json();
+  },
+
+  async approveWithdrawal(id: string, data?: { approvedAmount?: number; adminNote?: string }, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/withdrawals/admin/${id}/approve`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data || {}),
+    });
+    return res.json();
+  },
+
+  async rejectWithdrawal(id: string, data: { adminNote: string }, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/withdrawals/admin/${id}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async markWithdrawalAsPaid(id: string, data: { paidAmount?: number; paymentReference: string; adminNote?: string }, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/withdrawals/admin/${id}/pay`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async getAdminNotifications(token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/withdrawals/notifications/admin`, {
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    return res.json();
+  },
+
+  async getMemberNotifications(memberId?: string, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const path = memberId ? `/${memberId}` : '';
+    const res = await fetch(`${API_BASE_URL}/withdrawals/notifications/member${path}`, {
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    return res.json();
+  },
+
+  async markNotificationRead(id: string, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/withdrawals/notifications/${id}/read`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
     return res.json();
   },
 };

@@ -124,6 +124,9 @@ export class WalletService {
       const withdrawnInPaise = (wallet.withdrawnAmountInPaise || DecimalUtil.toPaise(wallet.withdrawnAmount)) + amountInPaise;
       wallet.withdrawnAmountInPaise = withdrawnInPaise;
       wallet.withdrawnAmount = DecimalUtil.fromPaise(withdrawnInPaise);
+      const totalPaidInPaise = (wallet.totalPaidInPaise || DecimalUtil.toPaise(wallet.totalPaid)) + amountInPaise;
+      wallet.totalPaidInPaise = totalPaidInPaise;
+      wallet.totalPaid = DecimalUtil.fromPaise(totalPaidInPaise);
     }
 
     await wallet.save();
@@ -146,8 +149,11 @@ export class WalletService {
       description,
     });
 
-    member.walletBalance = wallet.availableBalance;
-    await member.save();
+    // Safely update member balance without triggering full model revalidation
+    await Member.updateOne(
+      { memberId },
+      { $set: { walletBalance: wallet.availableBalance } }
+    );
 
     return wallet;
   }

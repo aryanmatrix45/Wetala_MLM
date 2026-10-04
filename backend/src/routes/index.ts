@@ -10,6 +10,7 @@ import productRoutes from './product.routes';
 import walletRoutes from './wallet.routes';
 import reportRoutes from './report.routes';
 import welcomeBonusRoutes from './welcomeBonus.routes';
+import withdrawalRoutes from './withdrawal.routes';
 
 const router = Router();
 
@@ -39,6 +40,9 @@ router.use('/products', productRoutes);
 
 // Wallets & Transactions
 router.use('/wallet', walletRoutes);
+
+// Member & Admin Withdrawal Requests & Notifications
+router.use('/withdrawals', withdrawalRoutes);
 
 // Reports, Analytics & Audits
 router.use('/reports', reportRoutes);

@@ -20,8 +20,16 @@ import {
   Sparkles,
   ExternalLink,
   Search,
-  X
+  X,
+  AlertCircle,
+  PlusCircle,
+  CreditCard,
+  Check,
+  ArrowDownRight
 } from 'lucide-react';
+import { WithdrawModal } from '../components/WithdrawModal';
+import { AdminWithdrawalActionModal, type AdminActionType } from '../components/AdminWithdrawalActionModal';
+import { type WithdrawalRequestItem } from '../services/api';
 
 interface DashboardPageProps {
   user?: any;
@@ -45,6 +53,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
   const effectivePayouts: any[] = isAdmin 
     ? (welcomeBonus?.history || [])
     : (welcomeBonus?.history || []).filter((r: any) => r.memberId === currentMemberId);
+
+  // Withdrawal Request System State
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false);
+  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [adminModalAction, setAdminModalAction] = useState<AdminActionType>('APPROVE');
+  const [selectedWithdrawalRequest, setSelectedWithdrawalRequest] = useState<WithdrawalRequestItem | null>(null);
+  const [memberWithdrawalSummary, setMemberWithdrawalSummary] = useState<any>(null);
+  const [dashboardWithdrawalRequests, setDashboardWithdrawalRequests] = useState<WithdrawalRequestItem[]>([]);
+  const [dashboardWithdrawalKpis, setDashboardWithdrawalKpis] = useState<any>(null);
+  const [withdrawalLoading, setWithdrawalLoading] = useState(false);
 
   useEffect(() => {
     if (initialSection === 'welcome-bonus') {
@@ -70,6 +88,38 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       });
   };
 
+  const loadWithdrawalData = () => {
+    setWithdrawalLoading(true);
+    if (isAdmin) {
+      api.getAllWithdrawalsAdmin()
+        .then((res: any) => {
+          if (res?.status && res?.data) {
+            setDashboardWithdrawalRequests(res.data);
+            if (res.kpis) setDashboardWithdrawalKpis(res.kpis);
+          }
+        })
+        .catch((err) => console.error('Failed to load admin withdrawals on dashboard:', err))
+        .finally(() => setWithdrawalLoading(false));
+    } else {
+      Promise.all([
+        api.getMyWithdrawals(undefined, currentMemberId),
+        api.getWithdrawalBalanceSummary(currentMemberId)
+      ])
+        .then(([myReqs, balSum]: any) => {
+          if (myReqs?.status && myReqs?.data) {
+            setDashboardWithdrawalRequests(myReqs.data);
+          }
+          if (balSum?.status && balSum?.data) {
+            setMemberWithdrawalSummary(balSum.data);
+          } else if (myReqs?.summary) {
+            setMemberWithdrawalSummary(myReqs.summary);
+          }
+        })
+        .catch((err) => console.error('Failed to load member withdrawals on dashboard:', err))
+        .finally(() => setWithdrawalLoading(false));
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
     api.getDashboardStats()
@@ -82,8 +132,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
         console.error('Failed to load dashboard stats:', err);
       });
     loadWelcomeBonus();
+    loadWithdrawalData();
     return () => { isMounted = false; };
-  }, [user?.memberId]);
+  }, [user?.memberId, isAdmin]);
 
   const handleRunSettlement = async () => {
     setSettling(true);
@@ -116,13 +167,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
     ? stats.recentMembers
     : fallbackRegistrations;
 
-  const recentPayouts = [
-    { member: 'Ramesh Kumar', id: 'MEM0120', amount: '₹ 12,500', net: '₹ 11,250', date: '12 Sep 2025', status: 'Paid' },
-    { member: 'Sunita Devi', id: 'MEM0119', amount: '₹ 8,000', net: '₹ 7,200', date: '11 Sep 2025', status: 'Paid' },
-    { member: 'Amit Sharma', id: 'MEM0118', amount: '₹ 6,400', net: '₹ 5,760', date: '10 Sep 2025', status: 'Pending' },
-    { member: 'Pooja Singh', id: 'MEM0121', amount: '₹ 5,200', net: '₹ 4,680', date: '10 Sep 2025', status: 'Paid' },
-    { member: 'Rajesh Meena', id: 'MEM0117', amount: '₹ 4,800', net: '₹ 4,320', date: '09 Sep 2025', status: 'Paid' }
-  ];
+
 
   return (
     <div className="page-body">
@@ -155,6 +200,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             <Calendar size={15} color="#64748b" />
             <span>Today, 12 Sep 2025</span>
           </div>
+
+          {!isAdmin && (
+            <button
+              onClick={() => setIsWithdrawModalOpen(true)}
+              className="primary-btn"
+              style={{
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)',
+              }}
+            >
+              <ArrowDownRight size={16} />
+              <span>Withdraw Payout</span>
+            </button>
+          )}
 
           <button onClick={onOpenAddMember} className="primary-btn">
             <UserPlus size={16} />
@@ -312,19 +371,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
             </div>
 
-            {/* Member Card 4: Total Payouts (0 for regular members) */}
-            <div className="kpi-card kpi-card-coral">
+            {/* Member Card 4: Total Payout / Available Payout Balance */}
+            <div className="kpi-card kpi-card-coral" style={{ position: 'relative', overflow: 'hidden' }}>
               <div className="kpi-icon-box kpi-icon-coral">
                 <Wallet size={26} />
               </div>
               <div className="kpi-content">
-                <div className="kpi-label">Total Payouts</div>
-                <div className="kpi-value" style={{ color: '#0f172a' }}>
-                  ₹ 0
+                <div className="kpi-label">Available Payout Balance</div>
+                <div className="kpi-value" style={{ color: '#1d4ed8' }}>
+                  ₹ {(memberWithdrawalSummary?.availablePayout ?? user?.walletBalance ?? 0).toLocaleString()}
                 </div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                  Pending: <strong style={{ color: '#d97706' }}>₹ 0</strong> • Processed: <strong style={{ color: '#059669' }}>₹ 0</strong>
+                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
+                  Total Payout: <strong style={{ color: '#0f172a' }}>₹ {(memberWithdrawalSummary?.totalPayout ?? user?.totalIncome ?? 0).toLocaleString()}</strong>
+                  {(memberWithdrawalSummary?.pendingAmount > 0 || (memberWithdrawalSummary?.totalPending > 0)) && (
+                    <span style={{ color: '#d97706', display: 'block', fontWeight: 600, fontSize: '11px', marginTop: '1px' }}>
+                      Pending: ₹ {(memberWithdrawalSummary?.pendingAmount || memberWithdrawalSummary?.totalPending || 0).toLocaleString()}
+                    </span>
+                  )}
                 </div>
+                <button
+                  onClick={() => setIsWithdrawModalOpen(true)}
+                  className="primary-btn"
+                  style={{
+                    marginTop: '8px',
+                    fontSize: '11.5px',
+                    padding: '5px 12px',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    width: '100%',
+                    justifyContent: 'center',
+                    boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)',
+                  }}
+                >
+                  <ArrowDownRight size={13} />
+                  <span>Withdraw Funds</span>
+                </button>
               </div>
             </div>
           </>
@@ -997,44 +1077,280 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           </div>
         </div>
 
-        {/* Recent Payouts Table */}
+        {/* Live Withdrawal Requests & Action Hub */}
         <div className="dashboard-card" style={{ padding: '24px 0 0' }}>
           <div className="card-header-row" style={{ padding: '0 24px 16px' }}>
-            <h2 className="card-title">Recent Payout Transactions</h2>
-            <button onClick={() => onNavigate('wallet-payouts')} className="primary-btn" style={{ fontSize: '11px', padding: '6px 12px' }}>
-              View All
-            </button>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <h2 className="card-title">{isAdmin ? 'Withdrawal Requests & Actions' : 'My Withdrawal Requests'}</h2>
+                {isAdmin && dashboardWithdrawalKpis?.pendingCount > 0 && (
+                  <span style={{ fontSize: '11px', fontWeight: 800, background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '9999px' }}>
+                    {dashboardWithdrawalKpis.pendingCount} Pending
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: '11.5px', color: '#64748b', margin: '2px 0 0' }}>
+                {isAdmin 
+                  ? 'Real-time member withdrawal requests awaiting review & disbursement.' 
+                  : 'Track your requested payout disbursements and clearance status.'}
+              </p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {!isAdmin && (
+                <button
+                  onClick={() => setIsWithdrawModalOpen(true)}
+                  className="primary-btn"
+                  style={{
+                    fontSize: '11px',
+                    padding: '5px 12px',
+                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  }}
+                >
+                  <PlusCircle size={13} />
+                  <span>Withdraw</span>
+                </button>
+              )}
+              <button
+                onClick={() => onNavigate('wallet-payouts')}
+                className="primary-btn"
+                style={{ fontSize: '11px', padding: '5px 12px' }}
+              >
+                View All
+              </button>
+            </div>
           </div>
 
           <div className="table-responsive">
             <table className="data-table">
               <thead>
                 <tr>
-                  <th>Member</th>
-                  <th>Net Payout</th>
+                  <th>Req ID</th>
+                  <th>{isAdmin ? 'Member' : 'Requested'}</th>
+                  <th>{isAdmin ? 'Requested' : 'Paid / Ref'}</th>
                   <th>Date</th>
                   <th>Status</th>
+                  <th style={{ textAlign: 'center' }}>Action</th>
                 </tr>
               </thead>
               <tbody>
-                {recentPayouts.map((row, idx) => (
-                  <tr key={idx}>
-                    <td>
-                      <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.member}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>{row.id}</div>
-                    </td>
-                    <td>
-                      <div style={{ fontWeight: 800, color: '#0f172a' }}>{row.net}</div>
-                      <div style={{ fontSize: '10px', color: '#64748b' }}>Gross: {row.amount}</div>
-                    </td>
-                    <td style={{ fontSize: '12px', color: '#64748b' }}>{row.date}</td>
-                    <td>
-                      <span className={`status-pill ${row.status === 'Paid' ? 'status-paid' : 'status-pending'}`}>
-                        {row.status}
-                      </span>
+                {withdrawalLoading ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
+                      <div className="spin" style={{ width: '20px', height: '20px', border: '2px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%', margin: '0 auto 8px' }} />
+                      Loading withdrawal requests...
                     </td>
                   </tr>
-                ))}
+                ) : dashboardWithdrawalRequests.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px 20px', color: '#64748b' }}>
+                      <AlertCircle size={22} color="#94a3b8" style={{ margin: '0 auto 6px', display: 'block' }} />
+                      {isAdmin 
+                        ? 'No withdrawal requests recorded yet.' 
+                        : 'No withdrawal requests submitted yet. Use the "Withdraw" button to request payout.'}
+                    </td>
+                  </tr>
+                ) : (
+                  dashboardWithdrawalRequests.slice(0, 5).map((row) => (
+                    <tr key={row._id || row.requestId}>
+                      {/* Req ID */}
+                      <td>
+                        <span style={{ fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '2px 7px', borderRadius: '6px', fontSize: '11px' }}>
+                          {row.requestId}
+                        </span>
+                      </td>
+
+                      {/* Col 2 */}
+                      <td>
+                        {isAdmin ? (
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '12.5px' }}>{row.memberName || row.memberId}</div>
+                            <div style={{ fontSize: '10.5px', color: '#64748b' }}>{row.memberId}</div>
+                          </div>
+                        ) : (
+                          <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '13px' }}>
+                            ₹ {row.requestedAmount.toLocaleString()}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Col 3 */}
+                      <td>
+                        {isAdmin ? (
+                          <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '13px' }}>
+                            ₹ {row.requestedAmount.toLocaleString()}
+                          </span>
+                        ) : (
+                          <div>
+                            {row.status === 'PAID' ? (
+                              <>
+                                <span style={{ fontWeight: 800, color: '#059669', fontSize: '13px' }}>
+                                  ₹ {(row.paidAmount || row.requestedAmount).toLocaleString()}
+                                </span>
+                                {row.paymentReference && (
+                                  <div style={{ fontSize: '10px', color: '#64748b' }}>
+                                    Ref: {row.paymentReference}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <span style={{ color: '#94a3b8' }}>—</span>
+                            )}
+                          </div>
+                        )}
+                      </td>
+
+                      {/* Date */}
+                      <td style={{ fontSize: '11.5px', color: '#64748b' }}>
+                        {row.requestedAt ? new Date(row.requestedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'Recent'}
+                      </td>
+
+                      {/* Status */}
+                      <td>
+                        <span
+                          className={`status-pill ${
+                            row.status === 'PAID'
+                              ? 'status-paid'
+                              : row.status === 'APPROVED'
+                              ? 'status-approved'
+                              : row.status === 'REJECTED'
+                              ? 'status-rejected'
+                              : 'status-pending'
+                          }`}
+                          style={{
+                            padding: '3px 8px',
+                            borderRadius: '9999px',
+                            fontSize: '10.5px',
+                            fontWeight: 700,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            background:
+                              row.status === 'PAID'
+                                ? '#ecfdf5'
+                                : row.status === 'APPROVED'
+                                ? '#eff6ff'
+                                : row.status === 'REJECTED'
+                                ? '#fef2f2'
+                                : '#fffbeb',
+                            color:
+                              row.status === 'PAID'
+                                ? '#059669'
+                                : row.status === 'APPROVED'
+                                ? '#2563eb'
+                                : row.status === 'REJECTED'
+                                ? '#dc2626'
+                                : '#d97706',
+                          }}
+                        >
+                          {row.status}
+                        </span>
+                      </td>
+
+                      {/* Action */}
+                      <td style={{ textAlign: 'center' }}>
+                        {isAdmin ? (
+                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                            {row.status === 'PENDING' && (
+                              <>
+                                <button
+                                  onClick={() => {
+                                    setSelectedWithdrawalRequest(row);
+                                    setAdminModalAction('APPROVE');
+                                    setIsAdminModalOpen(true);
+                                  }}
+                                  className="primary-btn"
+                                  style={{ fontSize: '10.5px', padding: '4px 8px', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
+                                  title="Approve"
+                                >
+                                  <Check size={12} /> Approve
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setSelectedWithdrawalRequest(row);
+                                    setAdminModalAction('REJECT');
+                                    setIsAdminModalOpen(true);
+                                  }}
+                                  style={{
+                                    fontSize: '10.5px',
+                                    padding: '4px 6px',
+                                    background: '#fef2f2',
+                                    color: '#dc2626',
+                                    border: '1px solid #fecaca',
+                                    borderRadius: '6px',
+                                    cursor: 'pointer',
+                                  }}
+                                  title="Reject"
+                                >
+                                  <XCircle size={12} />
+                                </button>
+                              </>
+                            )}
+
+                            {row.status === 'APPROVED' && (
+                              <button
+                                onClick={() => {
+                                  setSelectedWithdrawalRequest(row);
+                                  setAdminModalAction('PAY');
+                                  setIsAdminModalOpen(true);
+                                }}
+                                className="primary-btn"
+                                style={{
+                                  fontSize: '10.5px',
+                                  padding: '4px 10px',
+                                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                                }}
+                                title="Mark as Paid"
+                              >
+                                <CreditCard size={12} /> Pay
+                              </button>
+                            )}
+
+                            {(row.status === 'PAID' || row.status === 'REJECTED') && (
+                              <button
+                                onClick={() => {
+                                  setSelectedWithdrawalRequest(row);
+                                  setAdminModalAction('VIEW_DETAILS');
+                                  setIsAdminModalOpen(true);
+                                }}
+                                style={{
+                                  fontSize: '10.5px',
+                                  padding: '3px 8px',
+                                  background: '#f1f5f9',
+                                  color: '#475569',
+                                  border: '1px solid #cbd5e1',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                Details
+                              </button>
+                            )}
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => {
+                              setSelectedWithdrawalRequest(row);
+                              setAdminModalAction('VIEW_DETAILS');
+                              setIsAdminModalOpen(true);
+                            }}
+                            style={{
+                              fontSize: '10.5px',
+                              padding: '3px 8px',
+                              background: '#f1f5f9',
+                              color: '#475569',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Details
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -1342,6 +1658,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           </div>
         </div>
       )}
+
+      {/* Member Withdrawal Modal */}
+      <WithdrawModal
+        isOpen={isWithdrawModalOpen}
+        onClose={() => setIsWithdrawModalOpen(false)}
+        availablePayout={memberWithdrawalSummary?.availablePayout ?? user?.walletBalance ?? 0}
+        totalPayout={memberWithdrawalSummary?.totalPayout ?? user?.totalIncome ?? 0}
+        pendingAmount={memberWithdrawalSummary?.pendingAmount || memberWithdrawalSummary?.totalPending || 0}
+        effectiveAvailable={memberWithdrawalSummary?.effectiveAvailable}
+        user={user}
+        onSuccess={() => {
+          loadWithdrawalData();
+        }}
+      />
+
+      {/* Admin Action Modal */}
+      <AdminWithdrawalActionModal
+        isOpen={isAdminModalOpen}
+        onClose={() => setIsAdminModalOpen(false)}
+        request={selectedWithdrawalRequest}
+        actionType={adminModalAction}
+        onSuccess={() => {
+          loadWithdrawalData();
+        }}
+      />
     </div>
   );
 };

@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, Bell, ChevronDown, LogOut, Zap, Search, ShieldCheck } from 'lucide-react';
+import { api } from '../services/api';
 
 interface TopNavbarProps {
   user?: {
@@ -18,8 +19,40 @@ interface TopNavbarProps {
 export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onLogout, onNavigate }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
+  const [liveNotifs, setLiveNotifs] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
+
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+
+  const loadNotifications = () => {
+    if (isAdmin) {
+      api.getAdminNotifications()
+        .then((res: any) => {
+          if (res?.status && res?.data) {
+            setLiveNotifs(res.data.slice(0, 5));
+            setUnreadCount(res.unreadCount || 0);
+          }
+        })
+        .catch(() => {});
+    } else if (user?.memberId) {
+      api.getMemberNotifications(user.memberId)
+        .then((res: any) => {
+          if (res?.status && res?.data) {
+            setLiveNotifs(res.data.slice(0, 5));
+            setUnreadCount(res.unreadCount || 0);
+          }
+        })
+        .catch(() => {});
+    }
+  };
+
+  useEffect(() => {
+    loadNotifications();
+    const interval = setInterval(loadNotifications, 15000);
+    return () => clearInterval(interval);
+  }, [user?.memberId, user?.role]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -126,7 +159,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
             }}
           >
             <Bell size={19} />
-            <span className="notif-count">3</span>
+            {unreadCount > 0 && <span className="notif-count">{unreadCount}</span>}
           </button>
 
           {isNotifOpen && (
@@ -134,7 +167,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
               position: 'absolute',
               top: 'calc(100% + 12px)',
               right: '0',
-              width: '300px',
+              width: '320px',
               background: '#ffffff',
               borderRadius: '16px',
               boxShadow: '0 20px 35px -6px rgba(15, 23, 42, 0.15)',
@@ -144,22 +177,64 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
               animation: 'fadeIn 0.15s ease-out'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>Live System Alerts</span>
-                <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>3 New</span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
+                  {isAdmin ? 'Admin Alerts & Requests' : 'Account Notifications'}
+                </span>
+                <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>
+                  {unreadCount > 0 ? `${unreadCount} New` : 'Up to date'}
+                </span>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ padding: '8px', background: '#f8fafc', borderRadius: '8px', fontSize: '12px' }}>
-                  <div style={{ fontWeight: 700, color: '#0f172a' }}>Binary Volume Matched</div>
-                  <div style={{ color: '#64748b', fontSize: '11px' }}>1,250 BV matched on MEM0001 left leg.</div>
-                </div>
-                <div style={{ padding: '8px', background: '#f8fafc', borderRadius: '8px', fontSize: '12px' }}>
-                  <div style={{ fontWeight: 700, color: '#0f172a' }}>New Member Placed</div>
-                  <div style={{ color: '#64748b', fontSize: '11px' }}>Priya Singh joined under MEM0001 (Right).</div>
-                </div>
-                <div style={{ padding: '8px', background: '#f8fafc', borderRadius: '8px', fontSize: '12px' }}>
-                  <div style={{ fontWeight: 700, color: '#0f172a' }}>Daily Cap Reached</div>
-                  <div style={{ color: '#64748b', fontSize: '11px' }}>₹4,000 threshold reached for MEM0003.</div>
-                </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+                {liveNotifs.length > 0 ? (
+                  liveNotifs.map((n, i) => (
+                    <div 
+                      key={n._id || i} 
+                      onClick={() => {
+                        setIsNotifOpen(false);
+                        onNavigate?.('wallet-payouts');
+                      }}
+                      style={{ 
+                        padding: '10px', 
+                        background: n.isRead ? '#f8fafc' : '#eff6ff', 
+                        border: `1px solid ${n.isRead ? '#e2e8f0' : '#bfdbfe'}`,
+                        borderRadius: '8px', 
+                        fontSize: '12px',
+                        cursor: 'pointer' 
+                      }}
+                    >
+                      <div style={{ fontWeight: 700, color: '#0f172a', display: 'flex', justifyContent: 'space-between' }}>
+                        <span>{n.title}</span>
+                        {n.amount ? <span style={{ color: '#059669' }}>₹{n.amount.toLocaleString()}</span> : null}
+                      </div>
+                      <div style={{ color: '#475569', fontSize: '11px', marginTop: '2px' }}>{n.message}</div>
+                      <div style={{ color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>
+                        {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div style={{ textAlign: 'center', padding: '16px 0', color: '#94a3b8', fontSize: '12px' }}>
+                    No recent notifications
+                  </div>
+                )}
+              </div>
+              <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
+                <button
+                  onClick={() => {
+                    setIsNotifOpen(false);
+                    onNavigate?.('wallet-payouts');
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#2563eb',
+                    fontSize: '11.5px',
+                    fontWeight: 700,
+                    cursor: 'pointer'
+                  }}
+                >
+                  View All in Payout Center →
+                </button>
               </div>
             </div>
           )}

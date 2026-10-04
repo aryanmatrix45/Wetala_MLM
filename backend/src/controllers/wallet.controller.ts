@@ -56,37 +56,11 @@ export const WalletController = {
   },
 
   /**
-   * Request withdrawal from wallet
+   * Request withdrawal from wallet (forwards to WithdrawalController.submitRequest)
    * POST /api/wallet/withdraw
    */
   async requestWithdrawal(req: AuthenticatedRequest, res: Response): Promise<void> {
-    try {
-      const { memberId, amount, notes = 'Bank withdrawal' } = req.body;
-      if (!memberId || !amount || amount <= 0) {
-        res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: 'Valid memberId and withdrawal amount are required.' });
-        return;
-      }
-
-      const withdrawalId = `WTH-${Date.now().toString(36).toUpperCase()}`;
-      const wallet = await WalletService.debitWallet(
-        memberId.toUpperCase(),
-        amount,
-        'WITHDRAWAL',
-        withdrawalId,
-        notes
-      );
-
-      res.status(HTTP_STATUS.OK).json({
-        status: true,
-        message: `Withdrawal request for ₹${amount} processed successfully.`,
-        data: {
-          withdrawalId,
-          amount,
-          availableBalance: wallet.availableBalance,
-        },
-      });
-    } catch (error: any) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: error.message });
-    }
+    const { WithdrawalController } = await import('./withdrawal.controller');
+    return WithdrawalController.submitRequest(req, res);
   },
 };
