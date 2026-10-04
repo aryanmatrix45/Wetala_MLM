@@ -62,6 +62,12 @@ export class DecimalUtil {
     return Math.round((a / b) * 100) / 100;
   }
 
+  // Round to specified decimal places safely
+  static round(val: number, decimals: number = 2): number {
+    const factor = Math.pow(10, decimals);
+    return Math.round(val * factor) / factor;
+  }
+
   // Minimum of two numbers safely
   static min(a: number, b: number): number {
     return a <= b ? a : b;

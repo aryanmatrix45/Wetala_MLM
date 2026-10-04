@@ -7,12 +7,14 @@ export interface ICompensationRule extends Document {
   effectiveFrom: Date;
   effectiveTo?: Date;
   
-  // 1. Welcome Bonus (4% on every new package, requires 1 Left & 1 Right complete, capped at active package)
+  // 1. Welcome Bonus (4% company weekly GBV pool divided equally among eligible members with 2x max cap)
   welcomeBonus: {
     isEnabled: boolean;
     requiresLeftAndRight: boolean;
     ratePercent: number; // 4%
-    limitMode: 'ACTIVE_PACKAGE' | 'FIXED';
+    maxMultiplier: number; // 2x
+    settlementFrequency: 'WEEKLY' | 'DAILY' | 'MONTHLY';
+    limitMode?: 'ACTIVE_PACKAGE' | 'FIXED' | 'MULTIPLIER';
     fixedAmount?: number;
     notes?: string;
   };
@@ -166,9 +168,11 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       isEnabled: { type: Boolean, default: true },
       requiresLeftAndRight: { type: Boolean, default: true },
       ratePercent: { type: Number, default: 4 }, // 4%
-      limitMode: { type: String, default: 'ACTIVE_PACKAGE' },
+      maxMultiplier: { type: Number, default: 2 }, // 2x
+      settlementFrequency: { type: String, default: 'WEEKLY' },
+      limitMode: { type: String, default: 'MULTIPLIER' },
       fixedAmount: { type: Number, default: 0 },
-      notes: { type: String, default: '4% on every new package. Requires 1 Left + 1 Right complete. Capped at active package.' },
+      notes: { type: String, default: '4% on Company Weekly GBV pool divided equally among eligible members with Left + Right complete, capped at 2x qualifying BV.' },
     },
     binaryBonus: {
       isEnabled: { type: Boolean, default: true },

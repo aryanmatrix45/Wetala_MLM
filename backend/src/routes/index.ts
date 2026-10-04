@@ -9,6 +9,7 @@ import packageRoutes from './package.routes';
 import productRoutes from './product.routes';
 import walletRoutes from './wallet.routes';
 import reportRoutes from './report.routes';
+import welcomeBonusRoutes from './welcomeBonus.routes';
 
 const router = Router();
 
@@ -23,6 +24,9 @@ router.use('/sponsor', sponsorRoutes);
 
 // Compensation Rules, Simulator, Commissions, Explanation
 router.use('/compensation', compensationRoutes);
+
+// Standalone Welcome Bonus System
+router.use('/welcome-bonus', welcomeBonusRoutes);
 
 // Purchases, Joining, Repurchase & Reversals
 router.use('/purchases', purchaseRoutes);

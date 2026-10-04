@@ -79,10 +79,16 @@ export class WalletService {
       description,
     });
 
-    // Sync member summary balance
-    member.walletBalance = wallet.availableBalance;
-    member.totalIncome = wallet.totalEarned;
-    await member.save();
+    // Sync member summary balance safely without triggering full document re-validation
+    await Member.updateOne(
+      { memberId },
+      {
+        $set: {
+          walletBalance: wallet.availableBalance,
+          totalIncome: wallet.totalEarned,
+        },
+      }
+    );
 
     return wallet;
   }

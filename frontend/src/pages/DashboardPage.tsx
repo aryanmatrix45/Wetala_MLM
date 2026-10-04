@@ -13,7 +13,14 @@ import {
   Package,
   ArrowUpRight,
   GitMerge,
-  Zap
+  Zap,
+  Gift,
+  CheckCircle2,
+  XCircle,
+  Sparkles,
+  ExternalLink,
+  Search,
+  X
 } from 'lucide-react';
 
 interface DashboardPageProps {
@@ -25,7 +32,27 @@ interface DashboardPageProps {
 export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, onOpenAddMember }) => {
   const [trendRange, setTrendRange] = useState('30');
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [welcomeBonus, setWelcomeBonus] = useState<any>(null);
+  const [settling, setSettling] = useState(false);
+  const [settleMsg, setSettleMsg] = useState('');
+  const [isFullPayoutModalOpen, setIsFullPayoutModalOpen] = useState(false);
+  const [showAllInline, setShowAllInline] = useState(false);
+  const [payoutSearch, setPayoutSearch] = useState('');
+  const [payoutFilterSettlement, setPayoutFilterSettlement] = useState('ALL');
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+
+  const loadWelcomeBonus = () => {
+    const memberIdToFetch = user?.memberId || 'MEM0001';
+    api.getWelcomeBonusMemberStatus(memberIdToFetch)
+      .then((res: any) => {
+        if (res?.status && res?.data) {
+          setWelcomeBonus(res.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load Welcome Bonus status:', err);
+      });
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -38,8 +65,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       .catch((err) => {
         console.error('Failed to load dashboard stats:', err);
       });
+    loadWelcomeBonus();
     return () => { isMounted = false; };
-  }, []);
+  }, [user?.memberId]);
+
+  const handleRunSettlement = async () => {
+    setSettling(true);
+    setSettleMsg('');
+    try {
+      const res = await api.settleWelcomeBonus();
+      if (res?.status) {
+        setSettleMsg(`✓ ${res.message || 'Settlement completed'}`);
+        loadWelcomeBonus();
+      } else {
+        setSettleMsg(`⚠ ${res?.message || 'Settlement failed'}`);
+      }
+    } catch (err: any) {
+      setSettleMsg(`⚠ ${err.message || 'Settlement error'}`);
+    } finally {
+      setSettling(false);
+    }
+  };
 
   // Live registrations data
   const fallbackRegistrations = [
@@ -98,7 +144,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       </div>
 
       {/* Top KPI Metrics */}
-      <div className={`kpi-grid ${isAdmin ? 'kpi-grid-5' : ''}`}>
+      <div className={`kpi-grid ${isAdmin ? 'kpi-grid-6' : ''}`}>
         {/* Total Members */}
         <div className="kpi-card kpi-card-blue">
           <div className="kpi-icon-box kpi-icon-blue">
@@ -128,22 +174,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           </div>
         </div>
 
-        {/* Gross Revenue */}
+        {/* Total Gross Value */}
         <div className="kpi-card kpi-card-gold">
           <div className="kpi-icon-box kpi-icon-gold">
             <IndianRupee size={26} />
           </div>
           <div className="kpi-content">
-            <div className="kpi-label">Gross Revenue</div>
+            <div className="kpi-label">Total Gross Value</div>
             <div className="kpi-value">
-              ₹ {stats ? (stats.totalJoiningRevenue || stats.totalPackagePrice || 73500).toLocaleString() : '73,500'}
+              ₹ {stats ? (stats.totalGrossValue || stats.totalJoiningRevenue || stats.totalPackagePrice || 73500).toLocaleString() : '73,500'}
             </div>
             <div className="kpi-trend-pill kpi-trend-up">
               <ArrowUpRight size={13} />
-              <span>Package Inflow</span>
+              <span>All-Time Turnover</span>
             </div>
           </div>
         </div>
+
+        {/* Weekly Gross Value (Admin Dedicated Card) */}
+        {isAdmin && (
+          <div className="kpi-card" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', border: '1px solid #a7f3d0' }}>
+            <div className="kpi-icon-box" style={{ background: '#d1fae5', color: '#059669' }}>
+              <Gift size={26} />
+            </div>
+            <div className="kpi-content">
+              <div className="kpi-label" style={{ color: '#065f46', fontWeight: 700 }}>Weekly Gross Volume</div>
+              <div className="kpi-value" style={{ color: '#047857' }}>
+                {(stats?.weeklyGrossBusinessVolume || stats?.weeklyGrossValue || welcomeBonus?.currentWeeklyCompanyGBV || 7200).toLocaleString()} <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+              </div>
+              <div style={{ fontSize: '11px', color: '#059669', fontWeight: 700, marginTop: '3px' }}>
+                4% Pool: {Math.round(((stats?.weeklyGrossBusinessVolume || stats?.weeklyGrossValue || welcomeBonus?.currentWeeklyCompanyGBV || 7200) * 0.04)).toLocaleString()} BV / week
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Total Business Volume Generated (Admin) */}
         {isAdmin && (
@@ -279,6 +343,328 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* Standalone Welcome Bonus Dashboard Section */}
+      <div className="dashboard-card" style={{ marginBottom: '30px', background: 'linear-gradient(135deg, #ffffff 0%, #fdfefe 100%)', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
+        <div className="card-header-row" style={{ marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div className="card-title-group">
+            <div style={{ 
+              width: '38px', 
+              height: '38px', 
+              borderRadius: '10px', 
+              background: '#ecfdf5', 
+              color: '#059669', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center' 
+            }}>
+              <Gift size={22} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <h2 className="card-title" style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>Welcome Bonus</h2>
+                <span style={{ 
+                  padding: '3px 10px', 
+                  borderRadius: '9999px', 
+                  fontSize: '11px', 
+                  fontWeight: 700,
+                  background: (welcomeBonus?.status === 'Eligible' || (!welcomeBonus && true)) ? '#ecfdf5' : welcomeBonus?.status === 'Cap Reached' ? '#fef3c7' : '#fee2e2',
+                  color: (welcomeBonus?.status === 'Eligible' || (!welcomeBonus && true)) ? '#059669' : welcomeBonus?.status === 'Cap Reached' ? '#d97706' : '#dc2626',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
+                }}>
+                  {(welcomeBonus?.status === 'Eligible' || (!welcomeBonus && true)) ? '✓ Eligible' : welcomeBonus?.status === 'Cap Reached' ? '⚡ 2× Cap Reached' : '✗ Ineligible'}
+                </span>
+              </div>
+              <p style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
+                Weekly 4% Company GBV Pool equally divided among members with active Left & Right wings (2× Lifetime Cap)
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            {isAdmin && (
+              <button
+                onClick={handleRunSettlement}
+                disabled={settling}
+                className="primary-btn"
+                style={{ fontSize: '12px', padding: '7px 16px', background: '#059669', borderColor: '#059669' }}
+              >
+                <Sparkles size={14} />
+                {settling ? 'Settling...' : 'Run Weekly Settlement'}
+              </button>
+            )}
+            <button 
+              onClick={() => onNavigate('income-settings')} 
+              className="secondary-btn" 
+              style={{ fontSize: '12px', padding: '6px 14px' }}
+            >
+              Configure Rules
+            </button>
+          </div>
+        </div>
+
+        {settleMsg && (
+          <div style={{ 
+            padding: '10px 16px', 
+            borderRadius: '8px', 
+            fontSize: '13px', 
+            fontWeight: 600, 
+            marginBottom: '16px',
+            background: settleMsg.startsWith('✓') ? '#ecfdf5' : '#fef2f2',
+            color: settleMsg.startsWith('✓') ? '#059669' : '#dc2626',
+            border: `1px solid ${settleMsg.startsWith('✓') ? '#a7f3d0' : '#fecaca'}`
+          }}>
+            {settleMsg}
+          </div>
+        )}
+
+        {/* Member Cap & Weekly Pool 2-Column Overview */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+          
+          {/* Card 1: 2x Cap & Lifetime Earned */}
+          <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Lifetime 2× Capping
+              </span>
+              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>
+                Multiplier: 2×
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Qualifying Business Volume</span>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                  {welcomeBonus ? `${welcomeBonus.qualifyingBusinessVolume.toLocaleString()} BV` : '—'}
+                </span>
+              </div>
+              <div>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Maximum Welcome Bonus</span>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: '#059669' }}>
+                  {welcomeBonus ? `${welcomeBonus.maximumWelcomeBonus.toLocaleString()} BV` : '—'}
+                </span>
+              </div>
+            </div>
+
+            {/* Cap Progress Bar */}
+            <div style={{ marginBottom: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
+                <span style={{ color: '#64748b' }}>
+                  Total Welcome Bonus Earned: <strong style={{ color: '#0f172a' }}>{welcomeBonus ? `${(welcomeBonus.totalWelcomeBonusEarned || 0).toLocaleString()} BV` : '0 BV'}</strong>
+                </span>
+                <span style={{ color: '#059669', fontWeight: 700 }}>
+                  Remaining: {welcomeBonus ? `${(welcomeBonus.remainingBonus || 0).toLocaleString()} BV` : '—'}
+                </span>
+              </div>
+              <div style={{ height: '8px', width: '100%', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
+                <div 
+                  style={{ 
+                    height: '100%', 
+                    width: `${welcomeBonus && welcomeBonus.maximumWelcomeBonus ? Math.min(100, Math.round(((welcomeBonus.totalWelcomeBonusEarned || 0) / welcomeBonus.maximumWelcomeBonus) * 100)) : 0}%`, 
+                    background: 'linear-gradient(90deg, #10b981, #059669)', 
+                    borderRadius: '9999px' 
+                  }} 
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Card 2: Current Weekly Settlement Pool */}
+          <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Current Weekly Pool Metrics
+              </span>
+              <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 700, background: '#eff6ff', padding: '2px 8px', borderRadius: '9999px' }}>
+                Rate: 4% Pool
+              </span>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
+              <div>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Current Weekly Company GBV</span>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                  {welcomeBonus ? `${welcomeBonus.currentWeeklyCompanyGBV.toLocaleString()} BV` : '—'}
+                </span>
+              </div>
+              <div>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Welcome Bonus Pool (4%)</span>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: '#2563eb' }}>
+                  {welcomeBonus ? `${welcomeBonus.welcomeBonusPool.toLocaleString()} BV` : '—'}
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+              <div>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Eligible Members</span>
+                <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                  {welcomeBonus ? `${welcomeBonus.eligibleMembers} members` : '—'}
+                </span>
+              </div>
+              <div>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>This Week's Share</span>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: '#059669' }}>
+                  {welcomeBonus ? `${welcomeBonus.thisWeeksShare.toLocaleString()} BV` : '—'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Card 3: Wings Verification Status */}
+          <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+            <div>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '12px' }}>
+                Wing Eligibility Criteria
+              </span>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>Left Wing Active Member</span>
+                  {(welcomeBonus?.leftWing ?? true) ? (
+                    <span style={{ color: '#059669', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
+                      <CheckCircle2 size={16} /> ✓
+                    </span>
+                  ) : (
+                    <span style={{ color: '#dc2626', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
+                      <XCircle size={16} /> ✗
+                    </span>
+                  )}
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>Right Wing Active Member</span>
+                  {(welcomeBonus?.rightWing ?? true) ? (
+                    <span style={{ color: '#059669', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
+                      <CheckCircle2 size={16} /> ✓
+                    </span>
+                  ) : (
+                    <span style={{ color: '#dc2626', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
+                      <XCircle size={16} /> ✗
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '12px', fontSize: '11px', color: '#64748b' }}>
+              Condition: 1 Left + 1 Right complete & lifetime earnings below 2× cap.
+            </div>
+          </div>
+        </div>
+
+        {/* Welcome Bonus History Table */}
+        <div style={{ marginTop: '20px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+            <div>
+              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>
+                Welcome Bonus Payout History
+              </h3>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>
+                Distributors paid weekly 4% pool business volume
+              </span>
+            </div>
+            {welcomeBonus?.history && welcomeBonus.history.length > 0 && (
+              <button
+                onClick={() => setIsFullPayoutModalOpen(true)}
+                className="secondary-btn"
+                style={{ fontSize: '12px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
+              >
+                <ExternalLink size={13} />
+                Show More ({welcomeBonus.history.length})
+              </button>
+            )}
+          </div>
+
+          <div className="table-responsive" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+            <table className="data-table" style={{ margin: 0 }}>
+              <thead>
+                <tr style={{ background: '#f8fafc' }}>
+                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Member</th>
+                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Settlement ID</th>
+                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Date</th>
+                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Company GBV</th>
+                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Total Pool (4%)</th>
+                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Paid Business Volume</th>
+                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {welcomeBonus?.history && welcomeBonus.history.length > 0 ? (
+                  (showAllInline ? welcomeBonus.history : welcomeBonus.history.slice(0, 3)).map((row: any, idx: number) => (
+                    <tr key={row.transactionId || idx}>
+                      <td style={{ fontSize: '12px', padding: '10px 14px' }}>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.memberName || row.memberId}</div>
+                        <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>{row.memberId}</div>
+                      </td>
+                      <td style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>{row.settlementId}</td>
+                      <td style={{ fontSize: '12px', color: '#64748b' }}>{row.date || 'Recent'}</td>
+                      <td style={{ fontSize: '12px', color: '#0f172a' }}>{(row.companyGrossBusinessVolume || 0).toLocaleString()} BV</td>
+                      <td style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>{(row.totalBonusPool || 0).toLocaleString()} BV</td>
+                      <td style={{ fontSize: '13px', fontWeight: 800, color: '#059669' }}>
+                        +{(row.actualPayout || 0).toLocaleString()} BV
+                      </td>
+                      <td style={{ fontSize: '12px' }}>
+                        <span style={{ background: '#ecfdf5', color: '#059669', padding: '3px 9px', borderRadius: '9999px', fontSize: '11px', fontWeight: 700 }}>
+                          Credited ✓
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontSize: '13px' }}>
+                      No settlement transactions recorded yet. Click "Run Weekly Settlement" to process this week's pool.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Footer Bar with "Show More" Button */}
+          {welcomeBonus?.history && welcomeBonus.history.length > 3 && (
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              padding: '12px 16px', 
+              background: '#f8fafc', 
+              border: '1px solid #e2e8f0', 
+              borderTop: 'none', 
+              borderBottomLeftRadius: '10px', 
+              borderBottomRightRadius: '10px',
+              flexWrap: 'wrap',
+              gap: '10px'
+            }}>
+              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
+                Showing <strong>{showAllInline ? welcomeBonus.history.length : Math.min(3, welcomeBonus.history.length)}</strong> of <strong>{welcomeBonus.history.length}</strong> paid members
+              </span>
+
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setShowAllInline(!showAllInline)}
+                  className="secondary-btn"
+                  style={{ fontSize: '12px', padding: '5px 12px' }}
+                >
+                  {showAllInline ? 'Show Less' : `Show More (${welcomeBonus.history.length - 3} more)`}
+                </button>
+                <button
+                  onClick={() => setIsFullPayoutModalOpen(true)}
+                  className="primary-btn"
+                  style={{ fontSize: '12px', padding: '5px 14px', background: '#059669', borderColor: '#059669', display: 'flex', alignItems: 'center', gap: '5px' }}
+                >
+                  <ExternalLink size={12} />
+                  Open Whole Page
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -573,6 +959,259 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           <span>Process Payouts</span>
         </button>
       </div>
+
+      {/* FULL PAGE MODAL: Complete Welcome Bonus Payout Ledger */}
+      {isFullPayoutModalOpen && (
+        <div 
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 9999,
+            backgroundColor: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(5px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+          onClick={() => setIsFullPayoutModalOpen(false)}
+        >
+          <div 
+            style={{
+              background: '#ffffff',
+              borderRadius: '18px',
+              width: '100%',
+              maxWidth: '1100px',
+              maxHeight: '90vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid #e2e8f0',
+              overflow: 'hidden'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid #f1f5f9',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ 
+                  width: '42px', 
+                  height: '42px', 
+                  borderRadius: '12px', 
+                  background: '#ecfdf5', 
+                  color: '#059669', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center' 
+                }}>
+                  <Gift size={24} />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                      Welcome Bonus Payout History — Whole Page View
+                    </h2>
+                    <span style={{ 
+                      padding: '2px 8px', 
+                      borderRadius: '9999px', 
+                      background: '#eff6ff', 
+                      color: '#2563eb', 
+                      fontSize: '11px', 
+                      fontWeight: 700 
+                    }}>
+                      {(welcomeBonus?.history || []).length} Total Payouts
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
+                    Complete audit of every distributor who received the weekly 4% pool Business Volume
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsFullPayoutModalOpen(false)}
+                style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '10px',
+                  border: '1px solid #e2e8f0',
+                  background: '#ffffff',
+                  color: '#64748b',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+                title="Close"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal KPI Highlights */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+              gap: '12px', 
+              padding: '16px 24px', 
+              background: '#f8fafc', 
+              borderBottom: '1px solid #e2e8f0' 
+            }}>
+              <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>TOTAL DISTRIBUTED BV</span>
+                <span style={{ fontSize: '18px', fontWeight: 800, color: '#059669' }}>
+                  {(welcomeBonus?.history || []).reduce((sum: number, r: any) => sum + (Number(r.actualPayout) || 0), 0).toLocaleString()} BV
+                </span>
+              </div>
+              <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>PAID DISTRIBUTORS</span>
+                <span style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                  {(welcomeBonus?.history || []).length} members
+                </span>
+              </div>
+              <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>CURRENT WEEK POOL</span>
+                <span style={{ fontSize: '18px', fontWeight: 800, color: '#2563eb' }}>
+                  {(welcomeBonus?.welcomeBonusPool || 0).toLocaleString()} BV
+                </span>
+              </div>
+              <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>LATEST SETTLEMENT</span>
+                <span style={{ fontSize: '16px', fontWeight: 800, color: '#7c3aed' }}>
+                  {(welcomeBonus?.history || [])[0]?.settlementId || 'SETTLE-2026-W40'}
+                </span>
+              </div>
+            </div>
+
+            {/* Filter & Search Bar */}
+            <div style={{ 
+              padding: '14px 24px', 
+              borderBottom: '1px solid #f1f5f9', 
+              display: 'flex', 
+              gap: '12px', 
+              alignItems: 'center', 
+              justifyContent: 'space-between',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ position: 'relative', flex: '1', minWidth: '240px' }}>
+                <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  placeholder="Search by member name, ID or settlement..."
+                  value={payoutSearch}
+                  onChange={(e) => setPayoutSearch(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px 8px 34px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '13px'
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Settlement:</label>
+                <select
+                  value={payoutFilterSettlement}
+                  onChange={(e) => setPayoutFilterSettlement(e.target.value)}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '13px',
+                    background: '#ffffff'
+                  }}
+                >
+                  <option value="ALL">All Settlements</option>
+                  {Array.from(new Set((welcomeBonus?.history || []).map((r: any) => r.settlementId).filter(Boolean))).map((sId: any) => (
+                    <option key={sId} value={sId}>{sId}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Scrollable Table Area */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
+              <table className="data-table" style={{ margin: 0, width: '100%' }}>
+                <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 2 }}>
+                  <tr>
+                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Member</th>
+                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Settlement ID</th>
+                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Settlement Date</th>
+                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Company Weekly GBV</th>
+                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Total Bonus Pool</th>
+                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Paid Business Volume</th>
+                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(welcomeBonus?.history || [])
+                    .filter((row: any) => {
+                      const q = payoutSearch.toLowerCase().trim();
+                      const matchesSearch = !q ||
+                        (row.memberId && String(row.memberId).toLowerCase().includes(q)) ||
+                        (row.memberName && String(row.memberName).toLowerCase().includes(q)) ||
+                        (row.settlementId && String(row.settlementId).toLowerCase().includes(q));
+                      const matchesSettlement = payoutFilterSettlement === 'ALL' || row.settlementId === payoutFilterSettlement;
+                      return matchesSearch && matchesSettlement;
+                    })
+                    .map((row: any, idx: number) => (
+                      <tr key={row.transactionId || idx}>
+                        <td style={{ fontSize: '13px', padding: '12px 16px' }}>
+                          <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.memberName || row.memberId}</div>
+                          <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>{row.memberId}</div>
+                        </td>
+                        <td style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>{row.settlementId}</td>
+                        <td style={{ fontSize: '12px', color: '#64748b' }}>{row.date || 'Recent'}</td>
+                        <td style={{ fontSize: '13px', color: '#0f172a' }}>{(row.companyGrossBusinessVolume || 0).toLocaleString()} BV</td>
+                        <td style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{(row.totalBonusPool || 0).toLocaleString()} BV</td>
+                        <td style={{ fontSize: '14px', fontWeight: 800, color: '#059669' }}>
+                          +{(row.actualPayout || 0).toLocaleString()} BV
+                        </td>
+                        <td style={{ fontSize: '12px' }}>
+                          <span style={{ background: '#ecfdf5', color: '#059669', padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 700 }}>
+                            Credited ✓
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Modal Footer */}
+            <div style={{
+              padding: '14px 24px',
+              borderTop: '1px solid #f1f5f9',
+              background: '#f8fafc',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between'
+            }}>
+              <span style={{ fontSize: '12px', color: '#64748b' }}>
+                Total Paid Members: <strong>{(welcomeBonus?.history || []).length}</strong>
+              </span>
+              <button
+                onClick={() => setIsFullPayoutModalOpen(false)}
+                className="secondary-btn"
+                style={{ fontSize: '13px', padding: '6px 18px' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

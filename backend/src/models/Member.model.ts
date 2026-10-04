@@ -44,6 +44,11 @@ export interface IMember extends Document {
   matchedPairs: number;
   totalIncome: number;
   walletBalance: number;
+
+  // Welcome Bonus 2x Capping Tracking
+  qualifyingBv: number;
+  welcomeBonusCap: number;
+  welcomeBonusEarned: number;
   
   createdAt: Date;
   updatedAt: Date;
@@ -210,6 +215,18 @@ const memberSchema = new Schema<IMember, IMemberModel>(
       default: 0,
     },
     walletBalance: {
+      type: Number,
+      default: 0,
+    },
+    qualifyingBv: {
+      type: Number,
+      default: 1250,
+    },
+    welcomeBonusCap: {
+      type: Number,
+      default: 2500,
+    },
+    welcomeBonusEarned: {
       type: Number,
       default: 0,
     },

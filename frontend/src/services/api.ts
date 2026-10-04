@@ -14,8 +14,12 @@ export interface DashboardStats {
   totalPayoutMonth: number;
   totalPackagePrice: number;
   totalJoiningRevenue: number;
+  totalGrossValue?: number;
   totalBusinessVolume?: number;
   totalBV?: number;
+  weeklyGrossBusinessVolume?: number;
+  weeklyGrossRevenue?: number;
+  weeklyGrossValue?: number;
   pendingPayouts: number;
   recentMembers?: Array<{
     id: string;
@@ -422,16 +426,37 @@ export const api = {
     return res.json();
   },
 
-  // Reports & Overview
-  async getReportOverview() {
-    const res = await fetch(`${API_BASE_URL}/reports/overview`);
+  // Standalone Welcome Bonus System
+  async getWelcomeBonusPreview(overrideGBV?: number) {
+    const query = typeof overrideGBV === 'number' ? `?overrideGBV=${overrideGBV}` : '';
+    const res = await fetch(`${API_BASE_URL}/welcome-bonus/preview${query}`);
     return res.json();
   },
 
-  async getAuditLogs(token: string) {
-    const res = await fetch(`${API_BASE_URL}/reports/audit-logs`, {
-      headers: { Authorization: `Bearer ${token}` },
+  async settleWelcomeBonus(data?: { overrideGBV?: number; settlementId?: string }) {
+    const res = await fetch(`${API_BASE_URL}/welcome-bonus/settle`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data || {}),
     });
     return res.json();
   },
+
+  async getWelcomeBonusSettlements() {
+    const res = await fetch(`${API_BASE_URL}/welcome-bonus/settlements`);
+    return res.json();
+  },
+
+  async getWelcomeBonusMemberStatus(memberId?: string) {
+    const path = memberId ? `/${memberId}` : '';
+    const res = await fetch(`${API_BASE_URL}/welcome-bonus/member-status${path}`);
+    return res.json();
+  },
+
+  async getWelcomeBonusHistory(memberId?: string) {
+    const path = memberId ? `/${memberId}` : '';
+    const res = await fetch(`${API_BASE_URL}/welcome-bonus/history${path}`);
+    return res.json();
+  },
 };
+

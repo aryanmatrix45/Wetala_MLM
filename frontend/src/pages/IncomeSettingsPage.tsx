@@ -97,9 +97,10 @@ const FALLBACK_FULL_RULES = {
     isEnabled: true,
     requiresLeftAndRight: true,
     ratePercent: 4,
-    limitMode: 'ACTIVE_PACKAGE',
-    fixedAmount: 0,
-    notes: '4% on every new package. Requires Left & Right completed. Capped at active package limit.',
+    maxMultiplier: 2,
+    settlementFrequency: 'Weekly',
+    limitMode: 'MULTIPLIER',
+    notes: '4% Company Weekly GBV Pool divided equally among eligible members with Left + Right, capped at 2x qualifying BV.',
   },
   binaryBonus: {
     isEnabled: true,
@@ -1235,7 +1236,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                   </div>
                 </div>
 
-                {/* Card 2: Welcome Bonus & Sponsor Binary */}
+                {/* Card 2: Standalone Welcome Bonus */}
                 <div className="dashboard-card">
                   <div className="card-header-row">
                     <div className="card-title-group">
@@ -1243,17 +1244,18 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                         <Users size={18} />
                       </div>
                       <div>
-                        <h2 className="card-title">2. Welcome & Sponsor Binary</h2>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>4% Welcome Bonus • 20% Direct Sponsor Binary Match</span>
+                        <h2 className="card-title">2. Welcome Bonus</h2>
+                        <span style={{ fontSize: '12px', color: '#64748b' }}>4% Company Weekly GBV Pool • 2× Maximum Multiplier</span>
                       </div>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                      {/* Field 1: Welcome Bonus Rate (%) */}
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                          Welcome Income Rate (%)
+                          Welcome Bonus Rate (%)
                         </label>
                         {isAdmin ? (
                           <input
@@ -1264,14 +1266,84 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                           />
                         ) : (
                           <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                            {rules.welcomeBonus?.ratePercent || 4}% on every new package
+                            {rules.welcomeBonus?.ratePercent || 4}% of Company Weekly GBV
                           </div>
                         )}
                         <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
-                          Requires 1 Left + 1 Right complete
+                          Default: 4% applied to total Company Weekly GBV
                         </span>
                       </div>
 
+                      {/* Field 2: Maximum Welcome Bonus Multiplier */}
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                          Maximum Welcome Bonus Multiplier
+                        </label>
+                        {isAdmin ? (
+                          <input
+                            type="number"
+                            step="0.1"
+                            value={rules.welcomeBonus?.maxMultiplier ?? 2}
+                            onChange={(e) => setRules({ ...rules, welcomeBonus: { ...rules.welcomeBonus, maxMultiplier: parseFloat(e.target.value) || 0 } })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                          />
+                        ) : (
+                          <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                            {rules.welcomeBonus?.maxMultiplier || 2}× Qualifying Business Volume
+                          </div>
+                        )}
+                        <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
+                          Default: 2× lifetime cap (1,250 BV = 2,500 BV max)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                      {/* Field 3: Require Left & Right Member */}
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                          Require Left & Right Member
+                        </label>
+                        <div style={{ padding: '9px 12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#065f46', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>✓ Required (True)</span>
+                        </div>
+                        <span style={{ fontSize: '11px', color: '#059669', marginTop: '2px', display: 'block', fontWeight: 600 }}>
+                          Must have ≥1 valid Left wing & ≥1 valid Right wing member
+                        </span>
+                      </div>
+
+                      {/* Field 4: Settlement Frequency */}
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                          Settlement Frequency
+                        </label>
+                        <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                          Weekly
+                        </div>
+                        <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
+                          Calculated & distributed at every weekly settlement
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card 2B: Sponsor Binary & Retail Profit (Decoupled & Standalone) */}
+                <div className="dashboard-card">
+                  <div className="card-header-row">
+                    <div className="card-title-group">
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Users size={18} />
+                      </div>
+                      <div>
+                        <h2 className="card-title">Sponsor Binary & Retail Profit</h2>
+                        <span style={{ fontSize: '12px', color: '#64748b' }}>Direct sponsor binary match & retail profit margins</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                           Sponsor Binary Rate (0.20 = 20%)
@@ -1293,9 +1365,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                           No daily capping • Single-leg eligible
                         </span>
                       </div>
-                    </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                           Self Purchase Bonus (0.08 = 8%)
@@ -1314,7 +1384,9 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                           </div>
                         )}
                       </div>
+                    </div>
 
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                           Retail Profit Margin Max (%)

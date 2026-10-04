@@ -48,10 +48,12 @@ export class CompensationEngine {
         welcomeBonus: {
           isEnabled: true,
           requiresLeftAndRight: true,
-          ratePercent: 4, // 4% on every new package
-          limitMode: 'ACTIVE_PACKAGE',
+          ratePercent: 4, // 4% on Company Weekly GBV Pool
+          maxMultiplier: 2, // 2x max Welcome Bonus multiplier
+          settlementFrequency: 'WEEKLY',
+          limitMode: 'MULTIPLIER',
           fixedAmount: 0,
-          notes: '4% on every new package. Requires Left & Right completed. Capped at active package limit.',
+          notes: '4% on Company Weekly GBV pool divided equally among eligible members with Left + Right, capped at 2x qualifying BV.',
         },
         binaryBonus: {
           isEnabled: true,
@@ -242,20 +244,19 @@ export class CompensationEngine {
 
       // 5. Evaluate Individual Compensation Bonuses
 
-      // A. Welcome Bonus (Joining Package Only)
+      // A. Welcome Bonus Qualifying Volume & 2x Cap Update (Standalone Weekly Settlement System)
       if (purchase.type === PURCHASE_TYPE.JOINING) {
-        const packageId = purchase.items[0]?.itemId || '';
-        const welcomeComm = await WelcomeBonusService.processWelcomeBonus(
-          member.memberId,
-          packageId,
-          purchaseAmount,
-          bvAmount,
-          purchase.type,
-          rules,
-          eventId,
-          purchase.purchaseId
+        const mult = rules.welcomeBonus?.maxMultiplier || 2;
+        const qBv = bvAmount || member.packageBv || 1250;
+        await Member.updateOne(
+          { memberId: member.memberId },
+          {
+            $set: {
+              qualifyingBv: qBv,
+              welcomeBonusCap: qBv * mult,
+            },
+          }
         );
-        if (welcomeComm) commissionsGenerated.push(welcomeComm);
       }
 
       // B. Self Purchase Bonus (Repurchase Only - 8%)

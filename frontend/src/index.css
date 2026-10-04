@@ -678,45 +678,58 @@ input, select, textarea {
 }
 
 /* ==========================================================================
-   Stunning KPI Cards Grid
+   Stunning KPI Cards Grid (Fully Responsive: 6 -> 3 -> 2 -> 1 columns)
    ========================================================================== */
 .kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 18px;
   margin-bottom: 30px;
 }
 
-@media (min-width: 1200px) {
+/* 6 columns on ultra-wide screens (>= 1680px) */
+@media (min-width: 1680px) {
+  .kpi-grid-6 {
+    grid-template-columns: repeat(6, minmax(220px, 1fr));
+  }
   .kpi-grid-5 {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(5, minmax(220px, 1fr));
   }
 }
 
-@media (max-width: 1199px) and (min-width: 768px) {
-  .kpi-grid, .kpi-grid-5 {
-    grid-template-columns: repeat(3, 1fr);
+/* 3 columns on standard desktops & laptops (1100px - 1679px) */
+@media (min-width: 1100px) and (max-width: 1679px) {
+  .kpi-grid-6, .kpi-grid-5 {
+    grid-template-columns: repeat(3, minmax(240px, 1fr));
   }
 }
 
-@media (max-width: 767px) {
-  .kpi-grid, .kpi-grid-5 {
-    grid-template-columns: repeat(1, 1fr);
+/* 2 columns on tablets / smaller screens (640px - 1099px) */
+@media (min-width: 640px) and (max-width: 1099px) {
+  .kpi-grid-6, .kpi-grid-5, .kpi-grid {
+    grid-template-columns: repeat(2, minmax(220px, 1fr));
+  }
+}
+
+/* 1 column on mobile (< 640px) */
+@media (max-width: 639px) {
+  .kpi-grid-6, .kpi-grid-5, .kpi-grid {
+    grid-template-columns: 1fr;
   }
 }
 
 .kpi-card {
   background: var(--bg-card);
-  padding: 22px 24px;
+  padding: 18px 20px;
   border-radius: var(--radius-lg);
   border: 1px solid rgba(226, 232, 240, 0.85);
   display: flex;
   align-items: flex-start;
-  gap: 18px;
+  gap: 14px;
   box-shadow: var(--shadow-card);
   transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
-  overflow: hidden;
+  min-width: 0;
 }
 
 .kpi-card::before {
@@ -743,8 +756,8 @@ input, select, textarea {
 .kpi-card-coral:hover::before { background: var(--danger-gradient); }
 
 .kpi-icon-box {
-  width: 54px;
-  height: 54px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
@@ -765,24 +778,31 @@ input, select, textarea {
 
 .kpi-content {
   flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .kpi-label {
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12.5px;
+  font-weight: 700;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.3px;
+  line-height: 1.35;
+  white-space: normal;
+  word-break: normal;
 }
 
 .kpi-value {
   font-family: var(--font-display);
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 800;
   color: var(--text-main);
-  letter-spacing: -0.6px;
+  letter-spacing: -0.5px;
   line-height: 1.2;
   margin: 4px 0 2px;
+  white-space: nowrap;
 }
 
 .kpi-trend-pill {
