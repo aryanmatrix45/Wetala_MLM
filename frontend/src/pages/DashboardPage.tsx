@@ -97,8 +97,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
         </div>
       </div>
 
-      {/* Top 4 KPI Metrics */}
-      <div className="kpi-grid">
+      {/* Top KPI Metrics */}
+      <div className={`kpi-grid ${isAdmin ? 'kpi-grid-5' : ''}`}>
         {/* Total Members */}
         <div className="kpi-card kpi-card-blue">
           <div className="kpi-icon-box kpi-icon-blue">
@@ -106,7 +106,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           </div>
           <div className="kpi-content">
             <div className="kpi-label">Total Distributors</div>
-            <div className="kpi-value">{stats ? stats.totalMembers.toLocaleString() : '11'}</div>
+            <div className="kpi-value">{stats ? stats.totalMembers.toLocaleString() : '13'}</div>
             <div className="kpi-trend-pill kpi-trend-up">
               <ArrowUpRight size={13} />
               <span>{stats?.quickStats?.activePercent ?? 100}% Active Network</span>
@@ -121,7 +121,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           </div>
           <div className="kpi-content">
             <div className="kpi-label">New Registrations</div>
-            <div className="kpi-value">{stats ? stats.newRegistrations.toLocaleString() : '11'}</div>
+            <div className="kpi-value">{stats ? stats.newRegistrations.toLocaleString() : '13'}</div>
             <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
               {stats?.registrationsToday ? `Today: +${stats.registrationsToday} joined` : 'Verified & Active'}
             </div>
@@ -136,7 +136,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           <div className="kpi-content">
             <div className="kpi-label">Gross Revenue</div>
             <div className="kpi-value">
-              ₹ {stats ? (stats.totalJoiningRevenue || stats.totalPackagePrice || 55500).toLocaleString() : '55,500'}
+              ₹ {stats ? (stats.totalJoiningRevenue || stats.totalPackagePrice || 73500).toLocaleString() : '73,500'}
             </div>
             <div className="kpi-trend-pill kpi-trend-up">
               <ArrowUpRight size={13} />
@@ -144,6 +144,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             </div>
           </div>
         </div>
+
+        {/* Total Business Volume Generated (Admin) */}
+        {isAdmin && (
+          <div className="kpi-card kpi-card-purple">
+            <div className="kpi-icon-box kpi-icon-purple">
+              <Zap size={26} />
+            </div>
+            <div className="kpi-content">
+              <div className="kpi-label">Total Business Volume</div>
+              <div className="kpi-value" style={{ color: '#7c3aed' }}>
+                {(stats?.totalBusinessVolume || stats?.totalBV || 27500).toLocaleString()} <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+              </div>
+              <div className="kpi-trend-pill" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
+                <ArrowUpRight size={13} />
+                <span>Generated BV</span>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Total Joining Package Value (Top Right Card) */}
         <div className="kpi-card kpi-card-coral">
@@ -153,11 +172,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           <div className="kpi-content">
             <div className="kpi-label">{isAdmin ? 'Total Joining Price' : 'Total Payouts'}</div>
             <div className="kpi-value">
-              ₹ {stats ? (stats.totalPackagePrice || stats.totalJoiningRevenue || 55500).toLocaleString() : '55,500'}
+              ₹ {stats ? (stats.totalPackagePrice || stats.totalJoiningRevenue || 73500).toLocaleString() : '73,500'}
             </div>
             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
               {isAdmin ? (
-                <>Price Total of <strong style={{ color: '#059669' }}>{stats ? stats.totalMembers : '11'} Joined Members</strong></>
+                <>Price Total of <strong style={{ color: '#059669' }}>{stats ? stats.totalMembers : '13'} Joined Members</strong></>
               ) : (
                 <>Pending: <strong style={{ color: '#d97706' }}>₹ {stats?.pendingPayouts ? stats.pendingPayouts.toLocaleString() : '0'}</strong></>
               )}
@@ -381,7 +400,18 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Total Package Orders</span>
               </div>
               <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
-                {stats ? stats.totalMembers.toLocaleString() : '11'}
+                {stats ? stats.totalMembers.toLocaleString() : '13'}
+              </span>
+            </div>
+
+            {/* Total Business Volume Generated */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Zap size={18} color="#7c3aed" />
+                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Total Business Volume (BV)</span>
+              </div>
+              <span style={{ fontSize: '14px', fontWeight: 800, color: '#7c3aed' }}>
+                {(stats?.totalBusinessVolume || stats?.totalBV || 27500).toLocaleString()} BV
               </span>
             </div>
 

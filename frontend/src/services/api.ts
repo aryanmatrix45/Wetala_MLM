@@ -14,6 +14,8 @@ export interface DashboardStats {
   totalPayoutMonth: number;
   totalPackagePrice: number;
   totalJoiningRevenue: number;
+  totalBusinessVolume?: number;
+  totalBV?: number;
   pendingPayouts: number;
   recentMembers?: Array<{
     id: string;
@@ -29,6 +31,7 @@ export interface DashboardStats {
     activeMembers: number;
     activePercent: number;
     inactiveMembers: number;
+    totalBusinessVolume?: number;
     repurchaseBv: number;
     repurchasePercent: number;
     activeFranchises: number;
