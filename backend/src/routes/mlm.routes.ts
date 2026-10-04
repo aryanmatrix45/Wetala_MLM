@@ -8,6 +8,7 @@ import {
 } from '../mockData';
 import { Member } from '../models/Member.model';
 import { Package } from '../models/Package.model';
+import { CommissionLedger } from '../models/CommissionLedger.model';
 import { HTTP_STATUS, BINARY_POSITION, BinaryPosition } from '../config/constants';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 
@@ -62,27 +63,110 @@ let payouts: PayoutRequest[] = [
 // Dashboard Overview Metrics
 router.get('/dashboard/stats', async (_req, res) => {
   try {
-    const totalMembers = await Member.countDocuments();
-    const activeMembers = await Member.countDocuments({ status: 'active' });
-    const inactiveMembers = await Member.countDocuments({ status: 'inactive' });
+    const [members, packages, commissions] = await Promise.all([
+      Member.find().sort({ createdAt: -1 }),
+      Package.find(),
+      CommissionLedger.find(),
+    ]);
+
+    const totalMembers = members.length;
+    const activeMembers = members.filter(m => m.status === 'active' || m.isActive).length;
+    const inactiveMembers = totalMembers - activeMembers;
     const activePercent = totalMembers > 0 ? Math.round((activeMembers / totalMembers) * 100) : 0;
 
+    // Build package price lookup map
+    const pkgMap = new Map<string, number>();
+    packages.forEach(p => {
+      if (p.name) pkgMap.set(p.name.toLowerCase().trim(), p.price);
+      if (p.packageId) pkgMap.set(p.packageId.toLowerCase().trim(), p.price);
+      if (p.badge) pkgMap.set(p.badge.toLowerCase().trim(), p.price);
+    });
+
+    const defaultPrices: Record<string, number> = {
+      'package 1': 3000,
+      'starter': 3000,
+      'basic': 3000,
+      'package 2': 6500,
+      'executive': 6500,
+      'package 3': 15000,
+      'professional': 15000,
+      'premium': 15000,
+      'package 4': 35000,
+      'elite': 35000,
+      'elite vip': 35000,
+      'gold': 35000,
+    };
+
+    // Calculate total price of all joined members (Total Joining Revenue)
+    let totalPackagePrice = 0;
+    for (const m of members) {
+      const pkgKey = (m.packageName || m.joiningPackageId || '').toLowerCase().trim();
+      const price = pkgMap.get(pkgKey) || defaultPrices[pkgKey] || 3000;
+      totalPackagePrice += price;
+    }
+
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const registrationsToday = members.filter(m => {
+      const d = m.createdAt || m.joinedAt;
+      return d && new Date(d) >= todayStart;
+    }).length;
+
+    // Commissions / Payouts from ledger
+    const totalCommissionsPaid = commissions
+      .filter(c => c.status === 'PAID' || c.status === 'APPROVED')
+      .reduce((sum, c) => sum + (c.payableAmount || 0), 0);
+    const pendingCommissions = commissions
+      .filter(c => c.status === 'PENDING')
+      .reduce((sum, c) => sum + (c.payableAmount || 0), 0);
+
+    const paidPayoutsList = payouts
+      .filter(p => p.status === 'paid')
+      .reduce((sum, p) => sum + p.netPayable, 0);
+    const pendingPayoutsList = payouts
+      .filter(p => p.status === 'pending')
+      .reduce((sum, p) => sum + p.netPayable, 0);
+
+    const totalPayoutAmount = totalCommissionsPaid > 0 ? totalCommissionsPaid : paidPayoutsList;
+    const pendingPayoutAmount = pendingCommissions > 0 ? pendingCommissions : pendingPayoutsList;
+
+    // Formatted recent real members from MongoDB
+    const recentMembers = members.slice(0, 5).map(m => {
+      const pkgKey = (m.packageName || m.joiningPackageId || '').toLowerCase().trim();
+      const price = pkgMap.get(pkgKey) || defaultPrices[pkgKey] || 3000;
+      return {
+        id: m.memberId,
+        name: m.name,
+        package: m.packageName || 'Package 1',
+        packagePrice: price,
+        bv: `${(m.packageBv || (price === 3000 ? 1250 : price === 6500 ? 2500 : price === 15000 ? 5000 : 10000)).toLocaleString()} BV`,
+        date: m.joinDate || (m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent'),
+        status: m.status === 'active' || m.isActive ? 'Active' : 'Inactive',
+        leg: (m.position || m.binaryPosition || 'LEFT').toUpperCase(),
+      };
+    });
+
     res.json({
-      totalMembers: totalMembers,
+      status: true,
+      totalMembers,
       newRegistrations: totalMembers,
-      registrationsToday: 0,
-      totalIncomeMonth: 0,
-      totalPayoutMonth: 0,
+      registrationsToday,
+      totalIncomeMonth: totalPackagePrice,
+      totalPackagePrice,
+      totalJoiningRevenue: totalPackagePrice,
+      totalPayoutMonth: totalPayoutAmount,
+      pendingPayouts: pendingPayoutAmount,
+      recentMembers,
       quickStats: {
-        activeMembers: activeMembers,
-        activePercent: activePercent,
-        inactiveMembers: inactiveMembers,
+        activeMembers,
+        activePercent,
+        inactiveMembers,
         repurchaseBv: 0,
         repurchasePercent: 0,
         activeFranchises: 0,
         franchisePercent: 0,
-        pendingPayouts: 0
-      }
+        pendingPayouts: pendingPayoutAmount,
+      },
     });
   } catch (error: any) {
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({

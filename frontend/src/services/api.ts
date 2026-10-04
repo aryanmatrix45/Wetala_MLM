@@ -6,14 +6,29 @@
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 export interface DashboardStats {
+  status?: boolean;
   totalMembers: number;
   newRegistrations: number;
   registrationsToday: number;
   totalIncomeMonth: number;
   totalPayoutMonth: number;
+  totalPackagePrice: number;
+  totalJoiningRevenue: number;
+  pendingPayouts: number;
+  recentMembers?: Array<{
+    id: string;
+    name: string;
+    package: string;
+    packagePrice?: number;
+    bv: string;
+    date: string;
+    status: string;
+    leg: string;
+  }>;
   quickStats: {
     activeMembers: number;
     activePercent: number;
+    inactiveMembers: number;
     repurchaseBv: number;
     repurchasePercent: number;
     activeFranchises: number;

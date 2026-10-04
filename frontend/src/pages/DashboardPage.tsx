@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api, type DashboardStats } from '../services/api';
 import { 
   Users, 
   UserPlus, 
@@ -23,16 +24,35 @@ interface DashboardPageProps {
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, onOpenAddMember }) => {
   const [trendRange, setTrendRange] = useState('30');
+  const [stats, setStats] = useState<DashboardStats | null>(null);
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
 
+  useEffect(() => {
+    let isMounted = true;
+    api.getDashboardStats()
+      .then((data: any) => {
+        if (isMounted) {
+          setStats(data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load dashboard stats:', err);
+      });
+    return () => { isMounted = false; };
+  }, []);
+
   // Live registrations data
-  const recentRegistrations = [
+  const fallbackRegistrations = [
     { name: 'Amit Kumar', id: 'MEM0126', package: 'Premium', bv: '5,000 BV', date: '12 Sep 2025', status: 'Active', leg: 'LEFT' },
     { name: 'Priya Singh', id: 'MEM0125', package: 'Basic', bv: '1,250 BV', date: '12 Sep 2025', status: 'Active', leg: 'RIGHT' },
     { name: 'Neha Verma', id: 'MEM0124', package: 'Premium', bv: '5,000 BV', date: '11 Sep 2025', status: 'Active', leg: 'LEFT' },
     { name: 'Suresh Yadav', id: 'MEM0123', package: 'Basic', bv: '1,250 BV', date: '11 Sep 2025', status: 'Active', leg: 'RIGHT' },
     { name: 'Manish Jain', id: 'MEM0122', package: 'Elite', bv: '10,000 BV', date: '10 Sep 2025', status: 'Active', leg: 'LEFT' }
   ];
+
+  const recentRegistrations = stats?.recentMembers && stats.recentMembers.length > 0
+    ? stats.recentMembers
+    : fallbackRegistrations;
 
   const recentPayouts = [
     { member: 'Ramesh Kumar', id: 'MEM0120', amount: '₹ 12,500', net: '₹ 11,250', date: '12 Sep 2025', status: 'Paid' },
@@ -86,10 +106,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           </div>
           <div className="kpi-content">
             <div className="kpi-label">Total Distributors</div>
-            <div className="kpi-value">1,256</div>
+            <div className="kpi-value">{stats ? stats.totalMembers.toLocaleString() : '11'}</div>
             <div className="kpi-trend-pill kpi-trend-up">
               <ArrowUpRight size={13} />
-              <span>+14.8% this month</span>
+              <span>{stats?.quickStats?.activePercent ?? 100}% Active Network</span>
             </div>
           </div>
         </div>
@@ -101,38 +121,46 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           </div>
           <div className="kpi-content">
             <div className="kpi-label">New Registrations</div>
-            <div className="kpi-value">84</div>
+            <div className="kpi-value">{stats ? stats.newRegistrations.toLocaleString() : '11'}</div>
             <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
-              Today: +12 members joined
+              {stats?.registrationsToday ? `Today: +${stats.registrationsToday} joined` : 'Verified & Active'}
             </div>
           </div>
         </div>
 
-        {/* Total Income */}
+        {/* Gross Revenue */}
         <div className="kpi-card kpi-card-gold">
           <div className="kpi-icon-box kpi-icon-gold">
             <IndianRupee size={26} />
           </div>
           <div className="kpi-content">
             <div className="kpi-label">Gross Revenue</div>
-            <div className="kpi-value">₹ 1,86,350</div>
+            <div className="kpi-value">
+              ₹ {stats ? (stats.totalJoiningRevenue || stats.totalPackagePrice || 55500).toLocaleString() : '55,500'}
+            </div>
             <div className="kpi-trend-pill kpi-trend-up">
               <ArrowUpRight size={13} />
-              <span>+8.2% vs last cycle</span>
+              <span>Package Inflow</span>
             </div>
           </div>
         </div>
 
-        {/* Total Payout */}
+        {/* Total Joining Package Value (Top Right Card) */}
         <div className="kpi-card kpi-card-coral">
           <div className="kpi-icon-box kpi-icon-coral">
             <Wallet size={26} />
           </div>
           <div className="kpi-content">
-            <div className="kpi-label">Total Payouts</div>
-            <div className="kpi-value">₹ 1,73,900</div>
+            <div className="kpi-label">{isAdmin ? 'Total Joining Price' : 'Total Payouts'}</div>
+            <div className="kpi-value">
+              ₹ {stats ? (stats.totalPackagePrice || stats.totalJoiningRevenue || 55500).toLocaleString() : '55,500'}
+            </div>
             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-              Pending: <strong style={{ color: '#d97706' }}>₹ 11,200</strong>
+              {isAdmin ? (
+                <>Price Total of <strong style={{ color: '#059669' }}>{stats ? stats.totalMembers : '11'} Joined Members</strong></>
+              ) : (
+                <>Pending: <strong style={{ color: '#d97706' }}>₹ {stats?.pendingPayouts ? stats.pendingPayouts.toLocaleString() : '0'}</strong></>
+              )}
             </div>
           </div>
         </div>
@@ -324,10 +352,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
                 <span style={{ color: '#64748b', fontWeight: 600 }}>Active Distributors</span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>892 (71%)</span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                  {stats?.quickStats?.activeMembers ?? (stats ? stats.totalMembers : 11)} ({stats?.quickStats?.activePercent ?? 100}%)
+                </span>
               </div>
               <div style={{ height: '7px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                <div style={{ width: '71%', height: '100%', background: '#10b981', borderRadius: '9999px' }} />
+                <div style={{ width: `${stats?.quickStats?.activePercent ?? 100}%`, height: '100%', background: '#10b981', borderRadius: '9999px' }} />
               </div>
             </div>
 
@@ -335,10 +365,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
                 <span style={{ color: '#64748b', fontWeight: 600 }}>Inactive Distributors</span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>364 (29%)</span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                  {stats?.quickStats?.inactiveMembers ?? 0} ({100 - (stats?.quickStats?.activePercent ?? 100)}%)
+                </span>
               </div>
               <div style={{ height: '7px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                <div style={{ width: '29%', height: '100%', background: '#ef4444', borderRadius: '9999px' }} />
+                <div style={{ width: `${100 - (stats?.quickStats?.activePercent ?? 100)}%`, height: '100%', background: '#ef4444', borderRadius: '9999px' }} />
               </div>
             </div>
 
@@ -348,7 +380,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 <ShoppingBag size={18} color="#8b5cf6" />
                 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Total Package Orders</span>
               </div>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>1,024</span>
+              <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
+                {stats ? stats.totalMembers.toLocaleString() : '11'}
+              </span>
             </div>
 
             {/* Product Sales */}
