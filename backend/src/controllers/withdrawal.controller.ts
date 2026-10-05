@@ -1,4 +1,5 @@
 import { Response } from 'express';
+import mongoose from 'mongoose';
 import { WithdrawalRequest, IWithdrawalRequest } from '../models/WithdrawalRequest.model';
 import { AdminNotification } from '../models/AdminNotification.model';
 import { Wallet } from '../models/Wallet.model';
@@ -9,6 +10,18 @@ import { WalletService } from '../services/WalletService';
 import { DecimalUtil } from '../utils/decimal';
 import { HTTP_STATUS, ROLES } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
+
+const getWithdrawalQuery = (id: string) => {
+  return mongoose.Types.ObjectId.isValid(id)
+    ? { $or: [{ requestId: id }, { _id: id }] }
+    : { requestId: id };
+};
+
+const getNotificationQuery = (id: string) => {
+  return mongoose.Types.ObjectId.isValid(id)
+    ? { $or: [{ notificationId: id }, { _id: id }] }
+    : { notificationId: id };
+};
 
 export const WithdrawalController = {
   /**
@@ -291,9 +304,7 @@ export const WithdrawalController = {
       const { approvedAmount, adminNote } = req.body;
       const adminIdentifier = req.user?.email || req.user?.id || 'ADMIN';
 
-      const request = await WithdrawalRequest.findOne({
-        $or: [{ requestId: id }, { _id: id }]
-      });
+      const request = await WithdrawalRequest.findOne(getWithdrawalQuery(id));
 
       if (!request) {
         res.status(HTTP_STATUS.NOT_FOUND).json({ status: false, message: 'Withdrawal request not found' });
@@ -375,9 +386,7 @@ export const WithdrawalController = {
       const { adminNote } = req.body;
       const adminIdentifier = req.user?.email || req.user?.id || 'ADMIN';
 
-      const request = await WithdrawalRequest.findOne({
-        $or: [{ requestId: id }, { _id: id }]
-      });
+      const request = await WithdrawalRequest.findOne(getWithdrawalQuery(id));
 
       if (!request) {
         res.status(HTTP_STATUS.NOT_FOUND).json({ status: false, message: 'Withdrawal request not found' });
@@ -477,9 +486,7 @@ export const WithdrawalController = {
       }
 
       // Check request existence and verify current status is not PAID or REJECTED
-      const existingRequest = await WithdrawalRequest.findOne({
-        $or: [{ requestId: id }, { _id: id }]
-      });
+      const existingRequest = await WithdrawalRequest.findOne(getWithdrawalQuery(id));
 
       if (!existingRequest) {
         res.status(HTTP_STATUS.NOT_FOUND).json({ status: false, message: 'Withdrawal request not found.' });
@@ -736,7 +743,7 @@ export const WithdrawalController = {
     try {
       const { id } = req.params;
       await AdminNotification.findOneAndUpdate(
-        { $or: [{ notificationId: id }, { _id: id }] },
+        getNotificationQuery(id),
         { $set: { isRead: true } }
       );
       res.status(HTTP_STATUS.OK).json({ status: true, message: 'Marked as read' });

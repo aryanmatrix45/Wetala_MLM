@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import mongoose from 'mongoose';
 import { Member } from '../models/Member.model';
 import { Package } from '../models/Package.model';
 import { CommissionLedger } from '../models/CommissionLedger.model';
@@ -538,8 +539,12 @@ router.post('/payouts/:id/action', async (req, res) => {
     const { id } = req.params;
     const { action } = req.body; // 'pay' or 'reject'
     
+    const ledgerQuery = mongoose.Types.ObjectId.isValid(id)
+      ? { $or: [{ ledgerId: id }, { _id: id }] }
+      : { ledgerId: id };
+
     const updated = await CommissionLedger.findOneAndUpdate(
-      { $or: [{ ledgerId: id }, { _id: id }] },
+      ledgerQuery,
       { status: action === 'pay' ? 'PAID' : 'REJECTED' },
       { new: true }
     );
