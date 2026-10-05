@@ -191,7 +191,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
                       key={n._id || i} 
                       onClick={() => {
                         setIsNotifOpen(false);
-                        onNavigate?.('wallet-payouts');
+                        onNavigate?.('withdrawals');
                       }}
                       style={{ 
                         padding: '10px', 
@@ -222,7 +222,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
                 <button
                   onClick={() => {
                     setIsNotifOpen(false);
-                    onNavigate?.('wallet-payouts');
+                    onNavigate?.('withdrawals');
                   }}
                   style={{
                     background: 'none',

@@ -1112,7 +1112,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 </button>
               )}
               <button
-                onClick={() => onNavigate('wallet-payouts')}
+                onClick={() => onNavigate('withdrawals')}
                 className="primary-btn"
                 style={{ fontSize: '11px', padding: '5px 12px' }}
               >

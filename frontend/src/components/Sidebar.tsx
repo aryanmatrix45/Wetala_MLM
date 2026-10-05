@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Home, 
   Users, 
@@ -12,8 +12,10 @@ import {
   BarChart3, 
   Settings, 
   LogOut,
-  Gift
+  Gift,
+  ArrowDownToLine
 } from 'lucide-react';
+import { api } from '../services/api';
 
 interface SidebarProps {
   activeTab: string;
@@ -24,6 +26,29 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, user }) => {
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const [pendingWithdrawals, setPendingWithdrawals] = useState<number>(0);
+
+  useEffect(() => {
+    if (isAdmin) {
+      api.getAllWithdrawalsAdmin({ status: 'PENDING', limit: 1 })
+        .then((res: any) => {
+          if (res?.kpis?.pendingCount !== undefined) {
+            setPendingWithdrawals(res.kpis.pendingCount);
+          } else if (res?.total !== undefined) {
+            setPendingWithdrawals(res.total);
+          }
+        })
+        .catch(() => {});
+    } else if (user?.memberId) {
+      api.getMyWithdrawals(undefined, user.memberId)
+        .then((res: any) => {
+          if (res?.summary?.pendingCount !== undefined) {
+            setPendingWithdrawals(res.summary.pendingCount);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isAdmin, user?.memberId]);
 
   const sections = [
     {
@@ -43,11 +68,17 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       title: 'Finance & Compensation',
       items: [
         { id: 'welcome-bonus', label: 'Welcome Bonus', icon: Gift, badge: isAdmin ? '4% Pool' : 'BV' },
+        { 
+          id: 'withdrawals', 
+          label: isAdmin ? 'Withdrawal Requests' : 'My Withdrawals', 
+          icon: ArrowDownToLine, 
+          badge: pendingWithdrawals > 0 ? (isAdmin ? `${pendingWithdrawals} New` : `${pendingWithdrawals} Pending`) : undefined 
+        },
+        { id: 'wallet-payouts', label: 'Wallet & Payouts', icon: Wallet },
         { id: 'income-settings', label: 'Income & Simulator', icon: IndianRupee, badge: 'Engine' },
         { id: 'team-bonus', label: 'Team Bonus Slabs', icon: Users2 },
         { id: 'direct-royalty', label: 'Royalty & Consultancy', icon: Sparkles },
-        { id: 'rank-rewards', label: 'Lifetime Rewards', icon: Trophy },
-        { id: 'wallet-payouts', label: 'Wallet & Payouts', icon: Wallet, badge: '3' }
+        { id: 'rank-rewards', label: 'Lifetime Rewards', icon: Trophy }
       ]
     },
     {

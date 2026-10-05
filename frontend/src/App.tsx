@@ -134,7 +134,9 @@ export function App() {
 
         {activeTab === 'rank-rewards' && <IncomeSettingsPage user={user} token={token} defaultSection="rewards" />}
 
-        {activeTab === 'wallet-payouts' && <PayoutsPage user={user} token={token} />}
+        {activeTab === 'wallet-payouts' && <PayoutsPage user={user} token={token} defaultSubTab="commissions" />}
+
+        {activeTab === 'withdrawals' && <PayoutsPage user={user} token={token} defaultSubTab="requests" />}
 
         {(activeTab === 'reports' || activeTab === 'cms-content' || activeTab === 'settings') && (
           <div className="page-body">

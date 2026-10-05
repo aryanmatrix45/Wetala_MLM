@@ -22,14 +22,21 @@ import { WithdrawModal } from '../components/WithdrawModal';
 interface PayoutsPageProps {
   user?: any;
   token?: string | null;
+  defaultSubTab?: 'requests' | 'messages' | 'commissions';
 }
 
-export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token }) => {
+export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSubTab = 'requests' }) => {
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
   const currentMemberId = user?.memberId || 'MEM0001';
 
   // Navigation tab
-  const [activeSubTab, setActiveSubTab] = useState<'requests' | 'messages' | 'commissions'>('requests');
+  const [activeSubTab, setActiveSubTab] = useState<'requests' | 'messages' | 'commissions'>(defaultSubTab);
+
+  useEffect(() => {
+    if (defaultSubTab) {
+      setActiveSubTab(defaultSubTab);
+    }
+  }, [defaultSubTab]);
 
   // Withdrawal Requests State
   const [requests, setRequests] = useState<WithdrawalRequestItem[]>([]);
