@@ -19,20 +19,20 @@ export interface ICompensationRule extends Document {
     notes?: string;
   };
   
-  // 2. Binary Bonus (20% standard, first pair 1:2 or 2:1, subsequent 1:1, daily cap ₹4,000 to ₹16,000 by package)
+  // 2. Binary Bonus (₹ rate per pair, 1:1 then 2:1/1:2, package daily capping)
   binaryBonus: {
     isEnabled: boolean;
-    standardBinaryRate: number; // 20% = 0.20
     rateInRupees?: number;      // e.g. ₹250 per pair
     pairBvUnit?: number;        // e.g. 1250 BV per pair
-    specialBinaryRate: number;   // 25% = 0.25 (optional override)
-    isSpecialRateEnabled: boolean;
-    calculationBase: 'BV' | 'PURCHASE_VALUE';
-    volumeCarryForwardMode: 'CARRY_FORWARD' | 'FLUSH';
-    dailyBinaryPayoutCap: number; // ₹4,000 base
-    excessCapPolicy: 'FLUSH' | 'HOLD' | 'CARRY_FORWARD';
-    firstPairRatio: '1:1' | '1:2_or_2:1';
-    subsequentPairRatio: '1:1' | '1:2_or_2:1';
+    standardBinaryRate?: number;
+    specialBinaryRate?: number;
+    isSpecialRateEnabled?: boolean;
+    calculationBase?: 'BV' | 'PURCHASE_VALUE';
+    volumeCarryForwardMode?: 'CARRY_FORWARD' | 'FLUSH';
+    dailyBinaryPayoutCap?: number;
+    excessCapPolicy?: 'FLUSH' | 'HOLD' | 'CARRY_FORWARD';
+    firstPairRatio?: '1:1' | '1:2_or_2:1';
+    subsequentPairRatio?: '1:1' | '1:2_or_2:1';
   };
   
   // 3. Team Bonus Tiers (Repurchase CTO Volume: 1k=15%, 2.5k=10%, 7.5k=7%, 20k=6%, 35k=5%, 70k=4%, 150k=3%, 300k=2%)
