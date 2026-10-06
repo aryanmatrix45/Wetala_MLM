@@ -87,9 +87,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       items: [
         { 
           id: 'packages', 
-          label: isAdmin ? 'Package Management' : 'Buy Joining Package', 
+          label: isAdmin ? 'Package Management' : (user?.packageName || user?.joiningPackageId ? 'Packages & Upgrade' : 'Buy Joining Package'), 
           icon: Package, 
-          badge: isAdmin ? undefined : 'Buy' 
+          badge: isAdmin ? undefined : (user?.packageName || user?.joiningPackageId ? 'Upgrade' : 'Buy') 
         },
         ...(isAdmin ? [
           { id: 'reports', label: 'Financial Reports', icon: BarChart3 },

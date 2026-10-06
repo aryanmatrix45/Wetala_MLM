@@ -6,16 +6,17 @@ import {
   Edit3, 
   Plus, 
   X, 
-  AlertCircle,
-  Share2,
-  Check,
-  Trash2,
-  Table as TableIcon,
-  LayoutGrid,
-  Search,
-  ShieldAlert,
-  Sparkles,
-  Shield
+  AlertCircle, 
+  Share2, 
+  Trash2, 
+  Table as TableIcon, 
+  LayoutGrid, 
+  Search, 
+  ShieldAlert, 
+  Sparkles, 
+  Shield, 
+  TrendingUp, 
+  ArrowRight 
 } from 'lucide-react';
 import { api, type PackageItem } from '../services/api';
 
@@ -85,6 +86,68 @@ const TIER_THEMES = [
   },
 ];
 
+/**
+ * Robustly matches the logged-in member to their current active package in the system.
+ * Handles packageId, packageName, badge name (e.g. STARTER), and daily capping limits.
+ */
+export const findUserPackage = (user: any, pkgs: PackageItem[]): PackageItem | null => {
+  if (!user || user.role === 'admin' || user.role === 'superadmin' || !pkgs || pkgs.length === 0) {
+    return null;
+  }
+
+  // 1. Direct match on joiningPackageId
+  if (user.joiningPackageId) {
+    const byId = pkgs.find(p => 
+      p.packageId?.toLowerCase() === String(user.joiningPackageId).toLowerCase() ||
+      (p as any)._id === user.joiningPackageId
+    );
+    if (byId) return byId;
+  }
+
+  // 2. Direct match on packageId if present on user
+  if (user.packageId) {
+    const byId = pkgs.find(p => 
+      p.packageId?.toLowerCase() === String(user.packageId).toLowerCase() ||
+      (p as any)._id === user.packageId
+    );
+    if (byId) return byId;
+  }
+
+  // 3. Match on packageName or package field (case-insensitive & badge check)
+  const userPkgName = (user.packageName || user.package || '').trim().toLowerCase();
+  if (userPkgName) {
+    // Exact name match (e.g. 'Package 1')
+    const byName = pkgs.find(p => p.name.trim().toLowerCase() === userPkgName);
+    if (byName) return byName;
+
+    // Exact badge match (e.g. 'STARTER' matches 'Starter')
+    const byBadge = pkgs.find(p => p.badge?.trim().toLowerCase() === userPkgName);
+    if (byBadge) return byBadge;
+
+    // Substring match
+    const bySub = pkgs.find(p => 
+      p.name.toLowerCase().includes(userPkgName) || 
+      userPkgName.includes(p.name.toLowerCase()) ||
+      (p.badge && (p.badge.toLowerCase().includes(userPkgName) || userPkgName.includes(p.badge.toLowerCase())))
+    );
+    if (bySub) return bySub;
+  }
+
+  // 4. Daily Capping match (fallback if package name had slight discrepancy)
+  if (user.dailyCapping) {
+    const byCap = pkgs.find(p => p.dailyCapping === user.dailyCapping);
+    if (byCap) return byCap;
+  }
+
+  // 5. Package BV match
+  if (user.packageBv) {
+    const byBv = pkgs.find(p => p.bv === user.packageBv);
+    if (byBv) return byBv;
+  }
+
+  return null;
+};
+
 export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, token: propToken, onUserUpdate }) => {
   // Resolve user and token from props or localStorage
   const savedToken = propToken || localStorage.getItem('wetala_token') || '';
@@ -96,6 +159,9 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Current package active for this member
+  const userCurrentPkg = findUserPackage(user, packages);
 
   // Admin View Mode: 'table' vs 'cards' (Default: 'cards' for Member, 'table' for Admin)
   const [adminViewMode, setAdminViewMode] = useState<'table' | 'cards'>(isAdmin ? 'table' : 'cards');
@@ -158,7 +224,18 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
   useEffect(() => {
     loadPackages();
-  }, []);
+    // Silently refresh current member profile in background to keep session 100% synchronized
+    if (savedToken && !isAdmin) {
+      api.getProfile(savedToken)
+        .then((res) => {
+          if (res.status && res.data) {
+            localStorage.setItem('wetala_user', JSON.stringify(res.data));
+            if (onUserUpdate) onUserUpdate(res.data);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [savedToken]);
 
   const openCreateModal = () => {
     setNewFeatureText('');
@@ -288,20 +365,25 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
   const handleBuyPackage = async () => {
     if (!buyingPkg) return;
+    const isUpgrade = Boolean(userCurrentPkg && userCurrentPkg.packageId !== buyingPkg.packageId);
     try {
       setBuyingLoading(true);
       setFeedback(null);
       const res = await api.buyPackage(buyingPkg.packageId, savedToken);
-      setFeedback({ type: 'success', message: res.message || `Successfully purchased ${buyingPkg.name}!` });
+      setFeedback({ 
+        type: 'success', 
+        message: res.message || (isUpgrade ? `Successfully upgraded to ${buyingPkg.name}!` : `Successfully purchased ${buyingPkg.name}!`) 
+      });
       
       // Update local storage user
       if (user && res.data) {
         const updatedUser = {
           ...user,
-          packageName: res.data.packageName,
-          packageBv: res.data.packageBv,
-          packageRp: res.data.packageRp,
-          dailyCapping: res.data.dailyCapping,
+          packageName: res.data.packageName || buyingPkg.name,
+          joiningPackageId: res.data.joiningPackageId || buyingPkg.packageId,
+          packageBv: res.data.packageBv !== undefined ? res.data.packageBv : buyingPkg.bv,
+          packageRp: res.data.packageRp !== undefined ? res.data.packageRp : buyingPkg.rp,
+          dailyCapping: res.data.dailyCapping !== undefined ? res.data.dailyCapping : buyingPkg.dailyCapping,
         };
         localStorage.setItem('wetala_user', JSON.stringify(updatedUser));
         if (onUserUpdate) onUserUpdate(updatedUser);
@@ -309,7 +391,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
       setBuyingPkg(null);
       await loadPackages();
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Failed to complete package purchase.' });
+      setFeedback({ type: 'error', message: err.message || 'Failed to complete package transaction.' });
     } finally {
       setBuyingLoading(false);
     }
@@ -674,6 +756,69 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
         </div>
       )}
 
+      {/* Member Active Package Overview Banner */}
+      {!loading && !isAdmin && userCurrentPkg && (
+        <div style={{
+          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+          borderRadius: '16px',
+          padding: '20px 24px',
+          marginBottom: '28px',
+          color: 'white',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '16px',
+          boxShadow: '0 10px 25px -5px rgba(15, 23, 42, 0.25)',
+          border: '1px solid rgba(255, 255, 255, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={{
+              width: '46px',
+              height: '46px',
+              borderRadius: '12px',
+              background: 'rgba(16, 185, 129, 0.15)',
+              border: '1px solid rgba(16, 185, 129, 0.3)',
+              color: '#34d399',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <CheckCircle2 size={24} />
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>
+                  Active Membership Tier
+                </span>
+                <span style={{ background: '#10b981', color: 'white', fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '12px' }}>
+                  ACTIVE
+                </span>
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'white', margin: 0 }}>
+                {userCurrentPkg.name} <span style={{ color: '#38bdf8', fontSize: '14px', fontWeight: 700 }}>({userCurrentPkg.badge || 'STARTER'})</span>
+              </h3>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Daily Binary Cap</span>
+              <strong style={{ fontSize: '14px', color: '#f8fafc' }}>₹ {(userCurrentPkg.dailyCapping ?? 4000).toLocaleString()} / Day</strong>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Active Volume</span>
+              <strong style={{ fontSize: '14px', color: '#60a5fa' }}>{userCurrentPkg.bv.toLocaleString()} BV</strong>
+            </div>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Reward Points</span>
+              <strong style={{ fontSize: '14px', color: '#fbbf24' }}>{userCurrentPkg.rp ?? 1} RP</strong>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* MODERN EXECUTIVE CARDS VIEW */}
       {!loading && (!isAdmin || adminViewMode === 'cards') && (
         <div style={{
@@ -684,7 +829,18 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
         }}>
           {packages.map((pkg, idx) => {
             const theme = TIER_THEMES[idx % TIER_THEMES.length];
-            const isCurrent = user?.packageName === pkg.name || user?.joiningPackageId === pkg.packageId;
+            const isCurrent = userCurrentPkg ? (
+              userCurrentPkg.packageId === pkg.packageId ||
+              (userCurrentPkg as any)._id === (pkg as any)._id
+            ) : (user?.packageName === pkg.name || user?.joiningPackageId === pkg.packageId);
+
+            const currentTierNum = userCurrentPkg?.packageNumber || (userCurrentPkg ? packages.findIndex(p => p.packageId === userCurrentPkg.packageId) + 1 : 0);
+            const currentPrice = userCurrentPkg?.price || 0;
+            const thisTierNum = pkg.packageNumber || (idx + 1);
+
+            const isUpgrade = Boolean(userCurrentPkg && !isCurrent && (thisTierNum > currentTierNum || pkg.price > currentPrice));
+            const isLowerTier = Boolean(userCurrentPkg && !isCurrent && (thisTierNum < currentTierNum || pkg.price < currentPrice));
+
             const isPopular = pkg.isPopular !== undefined ? pkg.isPopular : theme.popular;
             const badgeText = pkg.badge || theme.badge;
             const perksList = Array.isArray(pkg.features) ? pkg.features : theme.perks;
@@ -702,18 +858,20 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   background: 'white',
                   border: isCurrent 
                     ? '2px solid #10b981' 
+                    : isUpgrade
+                      ? '1px solid #bfdbfe'
+                      : isPopular 
+                        ? '2px solid #2563eb' 
+                        : '1px solid #e2e8f0',
+                  boxShadow: isCurrent
+                    ? '0 12px 28px -4px rgba(16, 185, 129, 0.16)'
                     : isPopular 
-                      ? '2px solid #2563eb' 
-                      : '1px solid #e2e8f0',
-                  boxShadow: isPopular 
-                    ? '0 12px 28px -4px rgba(37, 99, 235, 0.12)' 
-                    : isCurrent
-                      ? '0 12px 28px -4px rgba(16, 185, 129, 0.12)'
+                      ? '0 12px 28px -4px rgba(37, 99, 235, 0.12)' 
                       : 'var(--shadow-card)',
                   transition: 'all 0.25s ease',
                 }}
               >
-                {/* Popular or Current Top Tag */}
+                {/* Top Badge: Current vs Upgrade vs Popular */}
                 {isCurrent ? (
                   <div style={{
                     position: 'absolute',
@@ -731,8 +889,32 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     gap: '4px',
                     boxShadow: '0 4px 10px rgba(16, 185, 129, 0.35)'
                   }}>
-                    <Check size={12} />
-                    <span>CURRENT PLAN</span>
+                    <CheckCircle2 size={12} />
+                    <span>CURRENT ACTIVE PLAN</span>
+                  </div>
+                ) : isUpgrade ? (
+                  <div style={{
+                    position: 'absolute',
+                    top: '-12px',
+                    right: '24px',
+                    background: isPopular 
+                      ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' 
+                      : 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                    color: 'white',
+                    fontSize: '10px',
+                    fontWeight: 800,
+                    padding: '3px 12px',
+                    borderRadius: '9999px',
+                    letterSpacing: '0.8px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    boxShadow: isPopular 
+                      ? '0 4px 10px rgba(37, 99, 235, 0.35)' 
+                      : '0 4px 10px rgba(124, 58, 237, 0.35)'
+                  }}>
+                    <TrendingUp size={12} />
+                    <span>{isPopular ? 'RECOMMENDED UPGRADE' : 'UPGRADE AVAILABLE'}</span>
                   </div>
                 ) : isPopular ? (
                   <div style={{
@@ -816,6 +998,43 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       / one-time
                     </span>
                   </div>
+
+                  {/* Status Pills under Price */}
+                  {isCurrent && (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: '#ecfdf5',
+                      color: '#059669',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      marginTop: '8px',
+                    }}>
+                      <CheckCircle2 size={13} />
+                      <span>Active on your account</span>
+                    </div>
+                  )}
+
+                  {isUpgrade && userCurrentPkg && (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      background: '#eff6ff',
+                      color: '#2563eb',
+                      padding: '3px 8px',
+                      borderRadius: '6px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      marginTop: '8px',
+                    }}>
+                      <TrendingUp size={13} />
+                      <span>+₹{((pkg.dailyCapping ?? 4000) - (userCurrentPkg.dailyCapping ?? 4000)).toLocaleString()}/day Capping Boost</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Key Metrics Capsules (BV, RP, Capping) */}
@@ -908,7 +1127,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   </strong>
                 </div>
 
-                {/* Package Description (Rendered after Daily Cap) */}
+                {/* Package Description */}
                 {pkg.description && (
                   <div style={{
                     fontSize: '12px',
@@ -961,23 +1180,83 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                         <Trash2 size={16} />
                       </button>
                     </div>
+                  ) : isCurrent ? (
+                    <button
+                      disabled
+                      style={{
+                        width: '100%',
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        padding: '12px',
+                        cursor: 'default',
+                        background: '#ecfdf5',
+                        color: '#059669',
+                        border: '1.5px solid #a7f3d0',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '13px',
+                      }}
+                    >
+                      <CheckCircle2 size={16} />
+                      <span>Already Purchased (Active Plan)</span>
+                    </button>
+                  ) : isUpgrade ? (
+                    <button
+                      onClick={() => setBuyingPkg(pkg)}
+                      className="primary-btn"
+                      style={{
+                        width: '100%',
+                        justifyContent: 'center',
+                        fontWeight: 800,
+                        padding: '12px',
+                        cursor: 'pointer',
+                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '12px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        fontSize: '13px',
+                        boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
+                      }}
+                    >
+                      <TrendingUp size={16} />
+                      <span>Upgrade to {pkg.name}</span>
+                    </button>
+                  ) : isLowerTier ? (
+                    <button
+                      disabled
+                      className="outline-btn"
+                      style={{
+                        width: '100%',
+                        justifyContent: 'center',
+                        fontWeight: 600,
+                        padding: '12px',
+                        cursor: 'not-allowed',
+                        background: '#f8fafc',
+                        color: '#94a3b8',
+                        borderColor: '#e2e8f0',
+                        fontSize: '12px',
+                      }}
+                    >
+                      <span>Included in Current Plan</span>
+                    </button>
                   ) : (
                     <button
                       onClick={() => setBuyingPkg(pkg)}
-                      disabled={isCurrent}
-                      className={isCurrent ? 'outline-btn' : 'primary-btn'}
+                      className="primary-btn"
                       style={{
                         width: '100%',
                         justifyContent: 'center',
                         fontWeight: 700,
                         padding: '12px',
-                        cursor: isCurrent ? 'default' : 'pointer',
-                        background: isCurrent ? '#f8fafc' : undefined,
-                        color: isCurrent ? '#94a3b8' : undefined,
-                        borderColor: isCurrent ? '#e2e8f0' : undefined,
+                        cursor: 'pointer',
                       }}
                     >
-                      {isCurrent ? 'Current Active Package' : `Buy ${pkg.name}`}
+                      Buy {pkg.name}
                     </button>
                   )}
                 </div>
@@ -1607,106 +1886,195 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
         </div>
       )}
 
-      {/* Member Buy Package Confirmation Modal */}
-      {buyingPkg && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 200,
-          padding: '16px',
-        }}>
+      {/* Member Buy / Upgrade Package Confirmation Modal */}
+      {buyingPkg && (() => {
+        const isUpgradeModal = Boolean(userCurrentPkg && userCurrentPkg.packageId !== buyingPkg.packageId);
+        const capDifference = (buyingPkg.dailyCapping ?? 4000) - (userCurrentPkg?.dailyCapping ?? 4000);
+        const bvDifference = buyingPkg.bv - (userCurrentPkg?.bv ?? 0);
+        const rpDifference = (buyingPkg.rp ?? 0) - (userCurrentPkg?.rp ?? 0);
+
+        return (
           <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            width: '460px',
-            maxWidth: '100%',
-            padding: '28px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 200,
+            padding: '16px',
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{
+              background: 'white',
+              borderRadius: '20px',
+              width: '490px',
+              maxWidth: '100%',
+              padding: '28px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '12px',
+                    background: '#eff6ff',
+                    color: '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}>
+                    {isUpgradeModal ? <TrendingUp size={24} /> : <Package size={24} />}
+                  </div>
+                  <div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                      {isUpgradeModal ? 'Confirm Package Upgrade' : 'Confirm Package Purchase'}
+                    </h3>
+                    <p style={{ fontSize: '12px', color: '#64748b' }}>
+                      {isUpgradeModal
+                        ? `Upgrade tier to unlock higher daily payout caps & volume benefits.`
+                        : 'Verify details before confirming your joining package.'}
+                    </p>
+                  </div>
+                </div>
+                <button onClick={() => setBuyingPkg(null)} className="icon-btn">
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Upgrade Visual Comparison */}
+              {isUpgradeModal && userCurrentPkg && (
                 <div style={{
-                  width: '40px',
-                  height: '40px',
-                  borderRadius: '10px',
-                  background: '#eff6ff',
-                  color: '#2563eb',
+                  background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
+                  borderRadius: '14px',
+                  padding: '14px 18px',
+                  border: '1px solid #bfdbfe',
+                  marginBottom: '16px',
                   display: 'flex',
                   alignItems: 'center',
-                  justifyContent: 'center',
+                  justifyContent: 'space-between',
+                  gap: '12px',
                 }}>
-                  <Package size={22} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
-                    Confirm Package Purchase
-                  </h3>
-                  <p style={{ fontSize: '12px', color: '#64748b' }}>
-                    Verify details before confirming your joining package.
-                  </p>
-                </div>
-              </div>
-              <button onClick={() => setBuyingPkg(null)} className="icon-btn">
-                <X size={18} />
-              </button>
-            </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Current Plan</div>
+                    <strong style={{ fontSize: '14px', color: '#334155' }}>{userCurrentPkg.name}</strong>
+                    <div style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>₹{(userCurrentPkg.dailyCapping ?? 4000).toLocaleString()}/day cap</div>
+                  </div>
 
-            <div style={{
-              background: '#f8fafc',
-              borderRadius: '12px',
-              padding: '18px',
-              border: '1px solid #e2e8f0',
-              marginBottom: '20px',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
-                <span style={{ color: '#64748b' }}>Selected Package:</span>
-                <strong style={{ color: '#0f172a' }}>{buyingPkg.name} ({buyingPkg.badge || 'TIER'})</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
-                <span style={{ color: '#64748b' }}>Package Price:</span>
-                <strong style={{ color: '#0f172a', fontSize: '16px' }}>₹ {buyingPkg.price.toLocaleString()}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
-                <span style={{ color: '#64748b' }}>Business Volume (BV):</span>
-                <strong style={{ color: '#2563eb' }}>{buyingPkg.bv.toLocaleString()} BV</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
-                <span style={{ color: '#64748b' }}>Reward Points (RP):</span>
-                <strong style={{ color: '#d97706' }}>{buyingPkg.rp ?? 0} RP</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                <span style={{ color: '#64748b' }}>Daily Binary Capping:</span>
-                <strong style={{ color: '#0f172a' }}>₹ {(buyingPkg.dailyCapping ?? 4000).toLocaleString()} / Day</strong>
-              </div>
-              {buyingPkg.description && (
-                <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
-                  {buyingPkg.description}
+                  <div style={{
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: '#2563eb',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0
+                  }}>
+                    <ArrowRight size={16} />
+                  </div>
+
+                  <div style={{ flex: 1, textAlign: 'right' }}>
+                    <div style={{ fontSize: '10px', color: '#2563eb', fontWeight: 800, textTransform: 'uppercase' }}>Upgraded Tier</div>
+                    <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>{buyingPkg.name}</strong>
+                    <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: 700 }}>₹{(buyingPkg.dailyCapping ?? 4000).toLocaleString()}/day cap</div>
+                  </div>
                 </div>
               )}
-            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button onClick={() => setBuyingPkg(null)} className="outline-btn" disabled={buyingLoading}>
-                Cancel
-              </button>
-              <button 
-                onClick={handleBuyPackage} 
-                className="primary-btn" 
-                disabled={buyingLoading}
-                style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-              >
-                <CheckCircle2 size={16} />
-                <span>{buyingLoading ? 'Processing...' : 'Confirm & Buy Package'}</span>
-              </button>
+              <div style={{
+                background: '#f8fafc',
+                borderRadius: '14px',
+                padding: '18px',
+                border: '1px solid #e2e8f0',
+                marginBottom: '20px',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
+                  <span style={{ color: '#64748b' }}>{isUpgradeModal ? 'Upgraded Package:' : 'Selected Package:'}</span>
+                  <strong style={{ color: '#0f172a' }}>{buyingPkg.name} ({buyingPkg.badge || 'TIER'})</strong>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
+                  <span style={{ color: '#64748b' }}>{isUpgradeModal ? 'Upgrade Price:' : 'Package Price:'}</span>
+                  <strong style={{ color: '#0f172a', fontSize: '16px', fontFamily: 'var(--font-display, sans-serif)' }}>
+                    ₹ {buyingPkg.price.toLocaleString()}
+                  </strong>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
+                  <span style={{ color: '#64748b' }}>Business Volume (BV):</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <strong style={{ color: '#2563eb' }}>{buyingPkg.bv.toLocaleString()} BV</strong>
+                    {isUpgradeModal && bvDifference > 0 && (
+                      <span style={{ fontSize: '11px', color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                        +{bvDifference.toLocaleString()} BV
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
+                  <span style={{ color: '#64748b' }}>Reward Points (RP):</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <strong style={{ color: '#d97706' }}>{buyingPkg.rp ?? 0} RP</strong>
+                    {isUpgradeModal && rpDifference > 0 && (
+                      <span style={{ fontSize: '11px', color: '#b45309', background: '#fffbeb', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                        +{rpDifference} RP
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                  <span style={{ color: '#64748b' }}>Daily Binary Capping:</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <strong style={{ color: '#0f172a' }}>₹ {(buyingPkg.dailyCapping ?? 4000).toLocaleString()} / Day</strong>
+                    {isUpgradeModal && capDifference > 0 && (
+                      <span style={{ fontSize: '11px', color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                        +₹{capDifference.toLocaleString()}/Day Boost
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {buyingPkg.description && (
+                  <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
+                    {buyingPkg.description}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+                <button onClick={() => setBuyingPkg(null)} className="outline-btn" disabled={buyingLoading}>
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleBuyPackage} 
+                  className="primary-btn" 
+                  disabled={buyingLoading}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px',
+                    fontWeight: 800,
+                    padding: '10px 18px',
+                    background: isUpgradeModal ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : undefined 
+                  }}
+                >
+                  {isUpgradeModal ? <TrendingUp size={16} /> : <CheckCircle2 size={16} />}
+                  <span>
+                    {buyingLoading 
+                      ? (isUpgradeModal ? 'Processing Upgrade...' : 'Processing...') 
+                      : (isUpgradeModal ? `Confirm & Upgrade to ${buyingPkg.name}` : 'Confirm & Buy Package')}
+                  </span>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 };

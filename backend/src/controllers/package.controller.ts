@@ -372,12 +372,15 @@ export const PackageController = {
         },
       });
 
+      const isUpgrade = Boolean(member.packageName && member.packageName !== pkg.name);
+
       res.status(HTTP_STATUS.OK).json({
         status: true,
-        message: `Successfully purchased ${pkg.name}!`,
+        message: isUpgrade ? `Successfully upgraded to ${pkg.name}!` : `Successfully purchased ${pkg.name}!`,
         data: {
           memberId: member.memberId,
           packageName: member.packageName,
+          joiningPackageId: member.joiningPackageId,
           packageBv: member.packageBv,
           packageRp: member.packageRp,
           dailyCapping: member.dailyCapping,
