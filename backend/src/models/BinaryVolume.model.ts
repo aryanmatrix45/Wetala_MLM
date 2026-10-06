@@ -17,6 +17,9 @@ export interface IBinaryVolume extends Document {
   leftCarryForwardBV: number;
   rightCarryForwardBV: number;
   
+  // Consumed downline member IDs in binary cycles (never reused)
+  consumedBinaryMemberIds: string[];
+
   lastMatchedAt?: Date;
   updatedAt: Date;
 }
@@ -68,6 +71,10 @@ const binaryVolumeSchema = new Schema<IBinaryVolume>(
       type: Number,
       default: 0,
       min: 0,
+    },
+    consumedBinaryMemberIds: {
+      type: [String],
+      default: [],
     },
     lastMatchedAt: {
       type: Date,

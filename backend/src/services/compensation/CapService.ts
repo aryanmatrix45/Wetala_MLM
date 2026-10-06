@@ -1,6 +1,7 @@
 import { CommissionLedger } from '../../models/CommissionLedger.model';
 import { ICompensationRule } from '../../models/CompensationRule.model';
 import { Member } from '../../models/Member.model';
+import { Package } from '../../models/Package.model';
 import { COMMISSION_TYPE, EXCESS_CAP_POLICY, ROLES } from '../../config/constants';
 import { DecimalUtil } from '../../utils/decimal';
 
@@ -18,6 +19,7 @@ export interface CapEvaluationResult {
 export class CapService {
   /**
    * Calculate daily binary payout capping for a member on a given date.
+   * Capping is strictly determined by the member's purchased package.
    * Superadmin and Admin roles are exempt from binary capping (uncapped earnings).
    */
   static async calculateCappedCommission(
@@ -27,7 +29,7 @@ export class CapService {
     date: Date = new Date()
   ): Promise<CapEvaluationResult> {
     const cleanId = (memberId || '').toUpperCase().trim();
-    const member = await Member.findOne({ memberId: cleanId }).select('role dailyCapping');
+    const member = await Member.findOne({ memberId: cleanId }).select('role dailyCapping joiningPackageId');
     const isAdmin = member && (
       member.role === ROLES.ADMIN ||
       member.role === ROLES.SUPERADMIN ||
@@ -49,9 +51,24 @@ export class CapService {
       };
     }
 
-    const dailyCap = (member && member.dailyCapping && member.dailyCapping > 0)
+    // Daily capping depends strictly on the member's purchased package
+    let dailyCap = (member && member.dailyCapping && member.dailyCapping > 0)
       ? member.dailyCapping
-      : (rules.binaryBonus.dailyBinaryPayoutCap || 4000);
+      : 0;
+
+    // Resolve from member's active purchased package
+    if (!dailyCap && member && member.joiningPackageId) {
+      const pkg = await Package.findOne({ packageId: member.joiningPackageId });
+      if (pkg && pkg.dailyCapping && pkg.dailyCapping > 0) {
+        dailyCap = pkg.dailyCapping;
+      }
+    }
+
+    // If not found, strictly fallback to the entry package cap (e.g. ₹4,000 for Starter)
+    if (!dailyCap) {
+      const starterPkg = await Package.findOne({ isActive: true }).sort({ price: 1 });
+      dailyCap = starterPkg?.dailyCapping || 4000;
+    }
     const excessPolicy = rules.binaryBonus.excessCapPolicy || EXCESS_CAP_POLICY.FLUSH;
 
     // Start and end of the day in UTC/local

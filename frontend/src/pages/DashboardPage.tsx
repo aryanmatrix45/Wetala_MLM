@@ -64,6 +64,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
   const [dashboardWithdrawalKpis, setDashboardWithdrawalKpis] = useState<any>(null);
   const [withdrawalLoading, setWithdrawalLoading] = useState(false);
 
+  // Dynamic Binary Volume & Commission Engine State
+  const [binaryData, setBinaryData] = useState<any>(null);
+
   useEffect(() => {
     if (initialSection === 'welcome-bonus') {
       const el = document.getElementById('welcome-bonus-section');
@@ -74,6 +77,19 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       }
     }
   }, [initialSection]);
+
+  const loadBinaryData = () => {
+    const memberIdToFetch = user?.memberId || 'MEM0001';
+    api.getBinaryVolume(memberIdToFetch)
+      .then((res: any) => {
+        if (res?.status && res?.data) {
+          setBinaryData(res.data);
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to load binary volume:', err);
+      });
+  };
 
   const loadWelcomeBonus = () => {
     const memberIdToFetch = user?.memberId || 'MEM0001';
@@ -133,6 +149,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       });
     loadWelcomeBonus();
     loadWithdrawalData();
+    loadBinaryData();
     return () => { isMounted = false; };
   }, [user?.memberId, isAdmin]);
 
@@ -355,21 +372,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
             </div>
 
-            {/* Member Card 3: Matched Binary Volume */}
-            <div className="kpi-card kpi-card-purple">
-              <div className="kpi-icon-box kpi-icon-purple">
-                <Zap size={26} />
-              </div>
-              <div className="kpi-content">
-                <div className="kpi-label">Matched Binary Volume</div>
-                <div className="kpi-value" style={{ color: '#7c3aed' }}>
-                  12,000 <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
-                </div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                  Left: <strong style={{ color: '#2563eb' }}>15,000 BV</strong> • Right: <strong style={{ color: '#059669' }}>12,000 BV</strong>
-                </div>
-              </div>
-            </div>
 
             {/* Member Card 4: Total Payout / Available Payout Balance */}
             <div className="kpi-card kpi-card-coral" style={{ position: 'relative', overflow: 'hidden' }}>
@@ -445,70 +447,121 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           </button>
         </div>
 
-        {/* Binary Volume Split Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '20px', alignItems: 'center' }}>
-          {/* Leg Balance Meter */}
-          <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>LEFT LEG: 15,000 BV</span>
-              <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669' }}>RIGHT LEG: 12,000 BV</span>
-            </div>
+        {/* Binary Volume Split Grid - 100% Dynamic from Engine */}
+        {(() => {
+          const leftBV = binaryData?.leftTotalBV ?? 0;
+          const rightBV = binaryData?.rightTotalBV ?? 0;
+          const totalVol = leftBV + rightBV;
+          const leftPct = totalVol > 0 ? Math.round((leftBV / totalVol) * 100) : 50;
+          const rightPct = 100 - leftPct;
 
-            {/* Split Bar */}
-            <div style={{ height: '12px', width: '100%', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden', display: 'flex' }}>
-              <div style={{ width: '55%', background: '#3b82f6' }} title="Left Leg: 15,000 BV" />
-              <div style={{ width: '45%', background: '#10b981' }} title="Right Leg: 12,000 BV" />
-            </div>
+          const matchedBV = binaryData?.matchedBV ?? 0;
+          const matchedCycles = binaryData?.matchedCycles ?? 0;
+          const carryLeftBV = binaryData?.carryLeftBV ?? 0;
+          const carryRightBV = binaryData?.carryRightBV ?? 0;
+          const unusedLeftCount = binaryData?.unusedLeftCount ?? 0;
+          const unusedRightCount = binaryData?.unusedRightCount ?? 0;
 
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
-              <span>Matched: <strong style={{ color: '#0f172a' }}>12,000 BV</strong></span>
-              <span>Carry Left: <strong style={{ color: '#2563eb' }}>3,000 BV</strong></span>
-            </div>
-          </div>
+          const ratePerCycle = binaryData?.ratePerCycle ?? 250;
+          const totalBinaryIncome = binaryData?.totalBinaryIncome ?? (matchedCycles * ratePerCycle);
+          const earnedToday = binaryData?.earnedToday ?? 0;
+          const dailyCap = binaryData?.dailyCap ?? (user?.dailyCapping || 4000);
+          const capUtil = binaryData?.dailyCapUtilization ?? (dailyCap > 0 ? Math.min(100, Math.round((earnedToday / dailyCap) * 100)) : 0);
 
-          {/* Raw Commission Estimate */}
-          <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-            <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Standard Binary Commission (20%)</div>
-            <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-display)', margin: '4px 0' }}>
-              ₹ 2,400
-            </div>
-            <div style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>
-              Calculated on 12,000 Matched BV
-            </div>
-          </div>
+          return (
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '20px', alignItems: 'center' }}>
+              {/* Leg Balance Meter */}
+              <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>
+                    LEFT LEG: {leftBV.toLocaleString()} BV ({binaryData?.leftMemberCount ?? 0} M)
+                  </span>
+                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669' }}>
+                    RIGHT LEG: {rightBV.toLocaleString()} BV ({binaryData?.rightMemberCount ?? 0} M)
+                  </span>
+                </div>
 
-          {/* Daily Cap / Payout Policy Progress */}
-          <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-            {isAdmin ? (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
-                  <span>Payout Limit Policy</span>
-                  <span style={{ color: '#059669', fontWeight: 700, background: '#ecfdf5', padding: '2px 8px', borderRadius: '9999px', fontSize: '11px' }}>Uncapped</span>
+                {/* Split Bar */}
+                <div style={{ height: '12px', width: '100%', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden', display: 'flex' }}>
+                  <div style={{ width: `${leftPct}%`, background: '#3b82f6', transition: 'width 0.4s ease' }} title={`Left Leg: ${leftBV.toLocaleString()} BV (${leftPct}%)`} />
+                  <div style={{ width: `${rightPct}%`, background: '#10b981', transition: 'width 0.4s ease' }} title={`Right Leg: ${rightBV.toLocaleString()} BV (${rightPct}%)`} />
                 </div>
-                <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-display)', margin: '8px 0 4px' }}>
-                  Super Admin Account
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                  <span>Matched: <strong style={{ color: '#0f172a' }}>{matchedBV.toLocaleString()} BV</strong> ({matchedCycles} Cycles)</span>
+                  {carryLeftBV > 0 ? (
+                    <span>Carry Left: <strong style={{ color: '#2563eb' }}>{carryLeftBV.toLocaleString()} BV</strong> ({unusedLeftCount} Unused)</span>
+                  ) : carryRightBV > 0 ? (
+                    <span>Carry Right: <strong style={{ color: '#059669' }}>{carryRightBV.toLocaleString()} BV</strong> ({unusedRightCount} Unused)</span>
+                  ) : (
+                    <span>Balanced: <strong style={{ color: '#64748b' }}>0 BV Carry</strong></span>
+                  )}
                 </div>
-                <div style={{ fontSize: '11px', color: '#64748b' }}>
-                  Binary capping is disabled for Admin roles.
+              </div>
+
+              {/* Dynamic Daily Binary Income Box */}
+              <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Daily Binary Income (₹{ratePerCycle}/cycle)</div>
+                  <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '1px 6px', borderRadius: '4px' }}>
+                    {matchedCycles} {matchedCycles === 1 ? 'Pair' : 'Pairs'} Matched
+                  </span>
                 </div>
-              </>
-            ) : (
-              <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
-                  <span>Daily Cap Utilization</span>
-                  <span style={{ color: '#d97706', fontWeight: 700 }}>60%</span>
+                <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-display)', margin: '4px 0' }}>
+                  ₹ {earnedToday.toLocaleString()}
                 </div>
-                <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden', margin: '8px 0' }}>
-                  <div style={{ width: '60%', height: '100%', background: 'linear-gradient(90deg, #f59e0b, #d97706)', borderRadius: '9999px' }} />
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#059669', fontWeight: 600 }}>
+                  <span>Earned Today: <strong>₹ {earnedToday.toLocaleString()}</strong></span>
+                  <span style={{ color: '#64748b' }}>All-Time: <strong>₹ {totalBinaryIncome.toLocaleString()}</strong></span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
-                  <span>Earned Today: <strong>₹ 2,400</strong></span>
-                  <span>Cap: <strong>₹ {user?.dailyCapping ? user.dailyCapping.toLocaleString() : '4,000'}</strong></span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+              </div>
+
+              {/* Daily Cap / Payout Policy Progress */}
+              <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+                {isAdmin && user?.role === 'ADMIN' && !user?.packageName ? (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+                      <span>Payout Limit Policy</span>
+                      <span style={{ color: '#059669', fontWeight: 700, background: '#ecfdf5', padding: '2px 8px', borderRadius: '9999px', fontSize: '11px' }}>Uncapped</span>
+                    </div>
+                    <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-display)', margin: '8px 0 4px' }}>
+                      Super Admin Account
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                      Binary capping is disabled for System Admin roles.
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+                      <span>Daily Cap Utilization</span>
+                      <span style={{ 
+                        fontWeight: 700, 
+                        color: capUtil >= 90 ? '#ef4444' : capUtil >= 60 ? '#d97706' : '#059669' 
+                      }}>
+                        {capUtil}%
+                      </span>
+                    </div>
+                    <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden', margin: '8px 0' }}>
+                      <div style={{ 
+                        width: `${Math.min(100, capUtil)}%`, 
+                        height: '100%', 
+                        background: capUtil >= 90 ? '#ef4444' : capUtil >= 60 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 'linear-gradient(90deg, #10b981, #059669)', 
+                        borderRadius: '9999px',
+                        transition: 'width 0.4s ease' 
+                      }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
+                      <span>Earned Today: <strong style={{ color: '#0f172a' }}>₹ {earnedToday.toLocaleString()}</strong></span>
+                      <span>Cap: <strong style={{ color: '#0f172a' }}>₹ {dailyCap.toLocaleString()}</strong></span>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })()}
+
       </div>
 
       {/* Standalone Welcome Bonus Dashboard Section */}

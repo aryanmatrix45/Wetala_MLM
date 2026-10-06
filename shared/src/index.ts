@@ -55,10 +55,11 @@ export enum IncomeType {
 
 // Binary Matching Rules (Notebook Page 1)
 export interface BinaryRuleConfig {
-  firstPairRatio: '1:2_or_2:1';
-  subsequentPairRatio: '1:1';
-  binaryPercentage: number; // 20%
-  dailyCappingAmount: number; // 4000
+  firstPairRatio: '1:1' | '1:2_or_2:1';
+  subsequentPairRatio: '1:1' | '1:2_or_2:1';
+  binaryPercentage?: number; // legacy alias
+  rateInRupees: number; // e.g. 250 (₹250 per pair)
+  pairBvUnit: number;   // e.g. 1250 BV per pair
   welcomeTurnoverPercent: number; // 4%
   sponsorBinaryPercent: number; // 20%
 }

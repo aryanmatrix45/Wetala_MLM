@@ -86,17 +86,24 @@ export const CompensationController = {
         leftBV = 0,
         rightBV = 0,
         binaryRate = 0.20,
+        rateInRupees,
+        pairBvUnit = 1250,
         dailyCap = 4000,
         alreadyEarnedToday = 0,
         teamVolume = 0,
         purchaseAmount = 0,
       } = req.body;
 
-      // 1. Binary Matching Simulation
+      // 1. Binary Matching Simulation in Rupees
       const matchedBV = DecimalUtil.min(leftBV, rightBV);
       const remainingLeftBV = DecimalUtil.sub(leftBV, matchedBV);
       const remainingRightBV = DecimalUtil.sub(rightBV, matchedBV);
-      const rawBinaryCommission = DecimalUtil.multiplyRate(matchedBV, binaryRate);
+
+      // Binary matching calculation in Rupees
+      const effectiveRateInRupees = rateInRupees !== undefined
+        ? Number(rateInRupees)
+        : (binaryRate > 1 ? Number(binaryRate) : (Number(binaryRate) || 0.20) * pairBvUnit);
+      const rawBinaryCommission = DecimalUtil.round((matchedBV / pairBvUnit) * effectiveRateInRupees, 2);
 
       // Daily Cap Calculation
       const remainingCap = Math.max(0, DecimalUtil.sub(dailyCap, alreadyEarnedToday));

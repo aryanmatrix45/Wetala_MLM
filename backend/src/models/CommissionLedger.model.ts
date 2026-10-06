@@ -24,6 +24,14 @@ export interface ICommissionCalculationDetails {
   excessAmount?: number;
   excessPolicyApplied?: string;
   
+  // Binary Cycle specifics
+  cycles?: any[];
+  cyclesCount?: number;
+  totalGeneratedIncome?: number;
+  consumedMemberIds?: string[];
+  remainingUnusedLeft?: number;
+  remainingUnusedRight?: number;
+
   // Tier / Notes
   tierApplied?: string;
   notes?: string;

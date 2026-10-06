@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Bell, ChevronDown, LogOut, Zap, Search, ShieldCheck } from 'lucide-react';
+import { Menu, Bell, ChevronDown, LogOut, Zap, Search, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { api } from '../services/api';
 
 interface TopNavbarProps {
@@ -148,6 +148,45 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
           <span>MongoDB Live</span>
         </div>
 
+        {/* Capping Exceeded Alert Pill in Topbar */}
+        {(() => {
+          const capNotif = liveNotifs.find((n: any) => 
+            n.title?.toLowerCase().includes('capping') || 
+            n.message?.toLowerCase().includes('capping') ||
+            n.metadata?.action === 'UPGRADE_PACKAGE'
+          );
+          if (!capNotif || !onNavigate) return null;
+          return (
+            <button 
+              className="capping-alert-pill"
+              onClick={() => {
+                if (capNotif._id || capNotif.notificationId) {
+                  api.markNotificationRead(capNotif._id || capNotif.notificationId).catch(() => {});
+                }
+                onNavigate('packages');
+              }}
+              title="Capping limits exceeded! Click to upgrade your package."
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                fontSize: '11.5px',
+                fontWeight: 700,
+                color: '#b91c1c',
+                background: '#fef2f2',
+                padding: '5px 12px',
+                borderRadius: '9999px',
+                border: '1.5px solid #fca5a5',
+                cursor: 'pointer',
+                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.12)',
+              }}
+            >
+              <AlertTriangle size={14} color="#dc2626" />
+              <span>Capping Exceeded • Upgrade Package</span>
+            </button>
+          );
+        })()}
+
         {/* Notification Bell */}
         <div style={{ position: 'relative' }} ref={notifDropdownRef}>
           <button 
@@ -186,38 +225,68 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
                 {liveNotifs.length > 0 ? (
-                  liveNotifs.map((n, i) => (
-                    <div 
-                      key={n._id || i} 
-                      onClick={() => {
-                        setIsNotifOpen(false);
-                        onNavigate?.('withdrawals');
-                      }}
-                      style={{ 
-                        padding: '10px', 
-                        background: n.isRead ? '#f8fafc' : '#eff6ff', 
-                        border: `1px solid ${n.isRead ? '#e2e8f0' : '#bfdbfe'}`,
-                        borderRadius: '8px', 
-                        fontSize: '12px',
-                        cursor: 'pointer' 
-                      }}
-                    >
-                      <div style={{ fontWeight: 700, color: '#0f172a', display: 'flex', justifyContent: 'space-between' }}>
-                        <span>{n.title}</span>
-                        {n.amount ? <span style={{ color: '#059669' }}>₹{n.amount.toLocaleString()}</span> : null}
+                  liveNotifs.map((n, i) => {
+                    const isCapping = n.title?.toLowerCase().includes('capping') || 
+                      n.message?.toLowerCase().includes('capping') || 
+                      n.metadata?.action === 'UPGRADE_PACKAGE';
+
+                    return (
+                      <div 
+                        key={n._id || i} 
+                        onClick={() => {
+                          setIsNotifOpen(false);
+                          if (n._id || n.notificationId) {
+                            api.markNotificationRead(n._id || n.notificationId).catch(() => {});
+                          }
+                          if (isCapping) {
+                            onNavigate?.('packages');
+                          } else {
+                            onNavigate?.('withdrawals');
+                          }
+                        }}
+                        style={{ 
+                          padding: '10px 12px', 
+                          background: isCapping 
+                            ? (n.isRead ? '#fffbeb' : '#fef2f2') 
+                            : (n.isRead ? '#f8fafc' : '#eff6ff'), 
+                          border: `1.5px solid ${isCapping 
+                            ? (n.isRead ? '#fde68a' : '#fca5a5') 
+                            : (n.isRead ? '#e2e8f0' : '#bfdbfe')}`,
+                          borderRadius: '8px', 
+                          fontSize: '12px',
+                          cursor: 'pointer' 
+                        }}
+                      >
+                        <div style={{ fontWeight: 700, color: isCapping ? '#b91c1c' : '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                            {isCapping && <span>⚠️</span>}
+                            <span>{n.title}</span>
+                          </span>
+                          {isCapping ? (
+                            <span style={{ fontSize: '10px', fontWeight: 800, background: '#fee2e2', color: '#dc2626', padding: '1px 6px', borderRadius: '4px' }}>
+                              UPGRADE
+                            </span>
+                          ) : n.amount ? (
+                            <span style={{ color: '#059669' }}>₹{n.amount.toLocaleString()}</span>
+                          ) : null}
+                        </div>
+                        <div style={{ color: '#475569', fontSize: '11px', marginTop: '3px', lineHeight: '1.4' }}>{n.message}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>
+                          <span>{n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
+                          {isCapping && (
+                            <span style={{ color: '#dc2626', fontWeight: 700 }}>Upgrade Package →</span>
+                          )}
+                        </div>
                       </div>
-                      <div style={{ color: '#475569', fontSize: '11px', marginTop: '2px' }}>{n.message}</div>
-                      <div style={{ color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>
-                        {n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
-                      </div>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div style={{ textAlign: 'center', padding: '16px 0', color: '#94a3b8', fontSize: '12px' }}>
                     No recent notifications
                   </div>
                 )}
               </div>
+
               <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
                 <button
                   onClick={() => {

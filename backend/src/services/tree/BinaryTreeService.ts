@@ -490,4 +490,88 @@ export class BinaryTreeService {
     const updatedTree = await this.getBinaryTree(rootMember.memberId, 4);
     return { count: members.length, tree: updatedTree };
   }
+
+  /**
+   * Traverse a binary subtree starting from rootChildMemberId in level-order (BFS, top-to-bottom).
+   * Returns list of member IDs in the exact placement hierarchy order.
+   */
+  static async getSubtreeMembersLevelOrder(rootChildMemberId: string): Promise<string[]> {
+    const cleanId = (rootChildMemberId || '').toUpperCase().trim();
+    if (!cleanId) return [];
+
+    const result: string[] = [];
+    const queue: string[] = [cleanId];
+    const visited = new Set<string>([cleanId]);
+
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      const member = await Member.findOne({ memberId: currentId }).select('memberId isActive status');
+      if (member && member.isActive && member.status !== 'blocked') {
+        result.push(member.memberId);
+      }
+
+      // Query binary left and right children of currentId (in LEFT then RIGHT order)
+      const [left, right] = await Promise.all([
+        Member.findOne({
+          $or: [
+            { parentId: currentId, position: BINARY_POSITION.LEFT },
+            { parentId: currentId, binaryPosition: BINARY_POSITION.LEFT },
+            { binaryParentId: currentId, position: BINARY_POSITION.LEFT },
+            { binaryParentId: currentId, binaryPosition: BINARY_POSITION.LEFT },
+          ],
+        }).select('memberId'),
+        Member.findOne({
+          $or: [
+            { parentId: currentId, position: BINARY_POSITION.RIGHT },
+            { parentId: currentId, binaryPosition: BINARY_POSITION.RIGHT },
+            { binaryParentId: currentId, position: BINARY_POSITION.RIGHT },
+            { binaryParentId: currentId, binaryPosition: BINARY_POSITION.RIGHT },
+          ],
+        }).select('memberId'),
+      ]);
+
+      if (left && !visited.has(left.memberId)) {
+        visited.add(left.memberId);
+        queue.push(left.memberId);
+      }
+      if (right && !visited.has(right.memberId)) {
+        visited.add(right.memberId);
+        queue.push(right.memberId);
+      }
+    }
+
+    return result;
+  }
+
+  /**
+   * Get both Left leg and Right leg active members in level-order under a given member.
+   */
+  static async getMemberLegsLevelOrder(memberId: string): Promise<{ leftMemberIds: string[]; rightMemberIds: string[] }> {
+    const cleanId = (memberId || '').toUpperCase().trim();
+    const [leftChild, rightChild] = await Promise.all([
+      Member.findOne({
+        $or: [
+          { parentId: cleanId, position: BINARY_POSITION.LEFT },
+          { parentId: cleanId, binaryPosition: BINARY_POSITION.LEFT },
+          { binaryParentId: cleanId, position: BINARY_POSITION.LEFT },
+          { binaryParentId: cleanId, binaryPosition: BINARY_POSITION.LEFT },
+        ],
+      }).select('memberId'),
+      Member.findOne({
+        $or: [
+          { parentId: cleanId, position: BINARY_POSITION.RIGHT },
+          { parentId: cleanId, binaryPosition: BINARY_POSITION.RIGHT },
+          { binaryParentId: cleanId, position: BINARY_POSITION.RIGHT },
+          { binaryParentId: cleanId, binaryPosition: BINARY_POSITION.RIGHT },
+        ],
+      }).select('memberId'),
+    ]);
+
+    const [leftMemberIds, rightMemberIds] = await Promise.all([
+      leftChild ? this.getSubtreeMembersLevelOrder(leftChild.memberId) : Promise.resolve([]),
+      rightChild ? this.getSubtreeMembersLevelOrder(rightChild.memberId) : Promise.resolve([]),
+    ]);
+
+    return { leftMemberIds, rightMemberIds };
+  }
 }

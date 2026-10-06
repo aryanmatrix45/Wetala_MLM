@@ -23,6 +23,8 @@ export interface ICompensationRule extends Document {
   binaryBonus: {
     isEnabled: boolean;
     standardBinaryRate: number; // 20% = 0.20
+    rateInRupees?: number;      // e.g. ₹250 per pair
+    pairBvUnit?: number;        // e.g. 1250 BV per pair
     specialBinaryRate: number;   // 25% = 0.25 (optional override)
     isSpecialRateEnabled: boolean;
     calculationBase: 'BV' | 'PURCHASE_VALUE';
@@ -30,7 +32,7 @@ export interface ICompensationRule extends Document {
     dailyBinaryPayoutCap: number; // ₹4,000 base
     excessCapPolicy: 'FLUSH' | 'HOLD' | 'CARRY_FORWARD';
     firstPairRatio: '1:1' | '1:2_or_2:1';
-    subsequentPairRatio: '1:1';
+    subsequentPairRatio: '1:1' | '1:2_or_2:1';
   };
   
   // 3. Team Bonus Tiers (Repurchase CTO Volume: 1k=15%, 2.5k=10%, 7.5k=7%, 20k=6%, 35k=5%, 70k=4%, 150k=3%, 300k=2%)
@@ -177,14 +179,15 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
     binaryBonus: {
       isEnabled: { type: Boolean, default: true },
       standardBinaryRate: { type: Number, default: 0.20 }, // 20%
+      rateInRupees: { type: Number, default: 250 },        // ₹250 per pair
+      pairBvUnit: { type: Number, default: 1250 },         // 1250 BV per pair
       specialBinaryRate: { type: Number, default: 0.25 },   // 25% (optional override)
       isSpecialRateEnabled: { type: Boolean, default: false },
       calculationBase: { type: String, default: 'BV' },
       volumeCarryForwardMode: { type: String, default: 'CARRY_FORWARD' },
-      dailyBinaryPayoutCap: { type: Number, default: 4000 },
       excessCapPolicy: { type: String, default: 'FLUSH' },
-      firstPairRatio: { type: String, default: '1:2_or_2:1' },
-      subsequentPairRatio: { type: String, default: '1:1' },
+      firstPairRatio: { type: String, default: '1:1' },
+      subsequentPairRatio: { type: String, default: '1:2_or_2:1' },
     },
     teamBonus: {
       isEnabled: { type: Boolean, default: true },

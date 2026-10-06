@@ -218,6 +218,13 @@ export const api = {
     return res.json();
   },
 
+  // Binary Volume & Live Matching Stats
+  async getBinaryVolume(memberId: string): Promise<any> {
+    const res = await fetch(`${API_BASE_URL}/binary/volume/${memberId}`);
+    if (!res.ok) throw new Error(`Failed to fetch binary volume: ${res.statusText}`);
+    return res.json();
+  },
+
   // Members
   async getMembers(): Promise<ApiMember[]> {
     const res = await fetch(`${API_BASE_URL}/members`);

@@ -58,14 +58,16 @@ export class CompensationEngine {
         binaryBonus: {
           isEnabled: true,
           standardBinaryRate: 0.20, // 20%
+          rateInRupees: 250,        // ₹250 per pair
+          pairBvUnit: 1250,         // 1250 BV per pair
           specialBinaryRate: 0.25,   // 25% (optional override)
           isSpecialRateEnabled: false,
           calculationBase: 'BV',
           volumeCarryForwardMode: 'CARRY_FORWARD',
           dailyBinaryPayoutCap: 4000, // ₹4,000 base
           excessCapPolicy: 'FLUSH',
-          firstPairRatio: '1:2_or_2:1',
-          subsequentPairRatio: '1:1',
+          firstPairRatio: '1:1',
+          subsequentPairRatio: '1:2_or_2:1',
         },
         teamBonus: {
           isEnabled: true,

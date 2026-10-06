@@ -105,14 +105,16 @@ const FALLBACK_FULL_RULES = {
   binaryBonus: {
     isEnabled: true,
     standardBinaryRate: 0.20,
+    rateInRupees: 250,
+    pairBvUnit: 1250,
     specialBinaryRate: 0.25,
     isSpecialRateEnabled: false,
     calculationBase: 'BV',
     volumeCarryForwardMode: 'CARRY_FORWARD',
     dailyBinaryPayoutCap: 4000,
     excessCapPolicy: 'FLUSH',
-    firstPairRatio: '1:2_or_2:1',
-    subsequentPairRatio: '1:1',
+    firstPairRatio: '1:1',
+    subsequentPairRatio: '1:2_or_2:1',
   },
   teamBonus: {
     isEnabled: true,
@@ -1173,48 +1175,62 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                       </div>
                       <div>
                         <h2 className="card-title">1. Binary Income & Capping</h2>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>First pair 1:2 or 2:1, subsequent 1:1 • 20% Matching Rate</span>
+                        <span style={{ fontSize: '12px', color: '#64748b' }}>
+                          First pair 1:1, subsequent 1:2 or 2:1 • ₹{rules.binaryBonus?.rateInRupees ?? (rules.binaryBonus?.standardBinaryRate ? Math.round(rules.binaryBonus.standardBinaryRate * 1250) : 250)} per pair (1,250 BV)
+                        </span>
                       </div>
                     </div>
                   </div>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                      <div>
-                        <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                          Binary Rate (20% = 0.20)
-                        </label>
-                        {isAdmin ? (
+                    <div>
+                      <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        Binary Rate (₹ per Pair)
+                      </label>
+                      {isAdmin ? (
+                        <div style={{ position: 'relative' }}>
+                          <span style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', fontWeight: 700, color: '#64748b', fontSize: '14px' }}>₹</span>
                           <input
                             type="number"
-                            step="0.01"
-                            value={rules.binaryBonus?.standardBinaryRate}
-                            onChange={(e) => setRules({ ...rules, binaryBonus: { ...rules.binaryBonus, standardBinaryRate: parseFloat(e.target.value) || 0 } })}
-                            style={{ width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                            step="1"
+                            value={rules.binaryBonus?.rateInRupees ?? (rules.binaryBonus?.standardBinaryRate ? Math.round(rules.binaryBonus.standardBinaryRate * 1250) : 250)}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              setRules({
+                                ...rules,
+                                binaryBonus: {
+                                  ...rules.binaryBonus,
+                                  rateInRupees: val,
+                                  standardBinaryRate: val / (rules.binaryBonus?.pairBvUnit || 1250),
+                                }
+                              });
+                            }}
+                            style={{ width: '100%', padding: '10px 14px 10px 28px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '14px', fontWeight: 700, color: '#0f172a' }}
                           />
-                        ) : (
-                          <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                            {((rules.binaryBonus?.standardBinaryRate || 0.20) * 100).toFixed(0)}% (₹250 per 1,250 BV)
-                          </div>
-                        )}
-                      </div>
+                        </div>
+                      ) : (
+                        <div style={{ padding: '10px 14px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '14px', fontWeight: 700, color: '#0f172a' }}>
+                          ₹ {rules.binaryBonus?.rateInRupees ?? (rules.binaryBonus?.standardBinaryRate ? Math.round(rules.binaryBonus.standardBinaryRate * 1250) : 250)} per 1,250 BV pair
+                        </div>
+                      )}
+                      <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                        Configured in Rupees (₹), not percentage (1,250 BV base unit)
+                      </span>
+                    </div>
 
+                    {/* Package Capping Banner */}
+                    <div style={{ padding: '10px 12px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '11.5px', color: '#475569', lineHeight: '1.5' }}>
+                      <div style={{ fontWeight: 700, color: '#0f172a', marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>📦 Member Daily Capping is Package-Based</span>
+                      </div>
                       <div>
-                        <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                          Base Daily Payout Cap (₹)
-                        </label>
-                        {isAdmin ? (
-                          <input
-                            type="number"
-                            value={rules.binaryBonus?.dailyBinaryPayoutCap}
-                            onChange={(e) => setRules({ ...rules, binaryBonus: { ...rules.binaryBonus, dailyBinaryPayoutCap: parseFloat(e.target.value) || 0 } })}
-                            style={{ width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
-                          />
-                        ) : (
-                          <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                            ₹ {rules.binaryBonus?.dailyBinaryPayoutCap?.toLocaleString()} / day (Base)
-                          </div>
-                        )}
+                        Each member's daily binary income is strictly capped by their purchased package. If daily binary income exceeds their package cap (e.g., <strong>₹4,000/day</strong> for Starter), no additional binary income can be earned that day.
+                      </div>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                        <span style={{ background: '#ffffff', padding: '3px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#1e293b' }}>Starter: ₹4,000/day</span>
+                        <span style={{ background: '#ffffff', padding: '3px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#1e293b' }}>Executive: ₹8,000/day</span>
+                        <span style={{ background: '#ffffff', padding: '3px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#1e293b' }}>Professional: ₹12,000/day</span>
+                        <span style={{ background: '#ffffff', padding: '3px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontWeight: 600, color: '#1e293b' }}>Elite: ₹16,000/day</span>
                       </div>
                     </div>
 
@@ -1222,14 +1238,14 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>First Pair Ratio</label>
                         <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#2563eb' }}>
-                          1:2 or 2:1
+                          1:1
                         </div>
                       </div>
 
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>Subsequent Pair Ratio</label>
                         <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#059669' }}>
-                          1:1
+                          1:2 or 2:1
                         </div>
                       </div>
                     </div>
@@ -1666,7 +1682,9 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                     </div>
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid #f1f5f9' }}>
-                      <span style={{ color: '#64748b', fontSize: '13px' }}>Raw Binary Commission (20%)</span>
+                      <span style={{ color: '#64748b', fontSize: '13px' }}>
+                        Raw Binary Commission {rules.binaryBonus?.rateInRupees ? `(₹${rules.binaryBonus.rateInRupees}/cycle)` : ''}
+                      </span>
                       <strong style={{ color: '#0f172a' }}>₹ {(simResult.binaryMatching?.rawCommission ?? simResult.binary?.rawBinaryCommission)?.toLocaleString()}</strong>
                     </div>
 

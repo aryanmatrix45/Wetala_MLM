@@ -2,8 +2,12 @@ import { Request, Response } from 'express';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 import { BinaryVolume } from '../models/BinaryVolume.model';
 import { Member } from '../models/Member.model';
-import { HTTP_STATUS, BINARY_POSITION, BinaryPosition, ROLES } from '../config/constants';
+import { CommissionLedger } from '../models/CommissionLedger.model';
+import { HTTP_STATUS, BINARY_POSITION, BinaryPosition, ROLES, COMMISSION_TYPE } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
+import { CompensationEngine } from '../services/compensation/CompensationEngine';
+import { BinaryBonusService } from '../services/compensation/BinaryBonusService';
+import { AdminNotification } from '../models/AdminNotification.model';
 
 export const BinaryController = {
   /**
@@ -147,28 +151,136 @@ export const BinaryController = {
   },
 
   /**
-   * Get binary volume summary for a member
+   * Get dynamic binary volume, matching cycles, and daily cap summary for a member
    * GET /api/binary/volume/:memberId
    */
   async getVolume(req: Request, res: Response): Promise<void> {
     try {
-      const { memberId } = req.params;
-      const vol = await BinaryVolume.findOne({ memberId: memberId.toUpperCase() });
-      if (!vol) {
-        res.status(HTTP_STATUS.OK).json({
-          status: true,
-          data: {
-            memberId,
-            leftTotalBV: 0,
-            rightTotalBV: 0,
-            leftAvailableBV: 0,
-            rightAvailableBV: 0,
-            matchedTotalBV: 0,
-          },
-        });
+      const cleanId = (req.params.memberId || '').toUpperCase().trim();
+      if (!cleanId) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: 'Member ID is required' });
         return;
       }
-      res.status(HTTP_STATUS.OK).json({ status: true, data: vol });
+
+      const member = await Member.findOne({ memberId: cleanId });
+      if (!member) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({ status: false, message: 'Member not found' });
+        return;
+      }
+
+      const rules = await CompensationEngine.getActiveRules();
+
+      // Automatically evaluate binary cycles according to admin rules if eligible
+      await BinaryBonusService.calculateBinaryIncomeForMember(cleanId, rules);
+
+      // Fetch updated BinaryVolume
+      const vol = await BinaryVolume.findOne({ memberId: cleanId });
+
+      // Fetch level-order downline member IDs for Left and Right legs
+      const { leftMemberIds, rightMemberIds } = await BinaryTreeService.getMemberLegsLevelOrder(cleanId);
+
+      const consumedSet = new Set<string>(vol?.consumedBinaryMemberIds || []);
+      const unusedLeft = leftMemberIds.filter((id) => !consumedSet.has(id));
+      const unusedRight = rightMemberIds.filter((id) => !consumedSet.has(id));
+
+      const pairBvUnit = rules.binaryBonus.pairBvUnit || 1250;
+      const ratePerCycle = rules.binaryBonus.rateInRupees || 250;
+
+      // Commissions from database
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      const [allBinaryComms, todayBinaryComms] = await Promise.all([
+        CommissionLedger.find({
+          memberId: cleanId,
+          type: COMMISSION_TYPE.BINARY_BONUS,
+          status: { $in: ['APPROVED', 'PAID'] },
+        }),
+        CommissionLedger.find({
+          memberId: cleanId,
+          type: COMMISSION_TYPE.BINARY_BONUS,
+          status: { $in: ['APPROVED', 'PAID'] },
+          createdAt: { $gte: todayStart, $lte: todayEnd },
+        }),
+      ]);
+
+      const totalBinaryIncome = allBinaryComms.reduce((sum, c) => sum + (c.grossAmount || c.payableAmount || 0), 0);
+      const earnedToday = todayBinaryComms.reduce((sum, c) => sum + (c.grossAmount || c.payableAmount || 0), 0);
+      const dailyCap = (member.dailyCapping && member.dailyCapping > 0) ? member.dailyCapping : 4000;
+      const dailyCapUtilization = Math.min(100, Math.round((earnedToday / (dailyCap || 1)) * 100));
+      const remainingCap = Math.max(0, dailyCap - earnedToday);
+
+      const matchedCycles = member.matchedPairs || Math.floor((vol?.consumedBinaryMemberIds?.length || 0) / 3);
+      const matchedBV = matchedCycles * pairBvUnit;
+      const leftTotalBV = leftMemberIds.length * pairBvUnit;
+      const rightTotalBV = rightMemberIds.length * pairBvUnit;
+      const leftAvailableBV = unusedLeft.length * pairBvUnit;
+      const rightAvailableBV = unusedRight.length * pairBvUnit;
+      const carryLeftBV = unusedLeft.length * pairBvUnit;
+      const carryRightBV = unusedRight.length * pairBvUnit;
+
+      const isCapExceeded = Boolean(earnedToday > dailyCap && dailyCap > 0);
+      if (isCapExceeded) {
+        try {
+          const existingNotif = await AdminNotification.findOne({
+            recipientId: cleanId,
+            type: 'SYSTEM_ALERT',
+            title: 'Capping Limits Exceeded',
+            createdAt: { $gte: todayStart },
+          });
+          if (!existingNotif) {
+            await AdminNotification.create({
+              notificationId: `NOTIF-CAP-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`,
+              type: 'SYSTEM_ALERT',
+              title: 'Capping Limits Exceeded',
+              message: `Daily capping limit (₹${dailyCap.toLocaleString()}/day) exceeded! Upgrade your package to earn more binary income.`,
+              recipientRole: 'member',
+              recipientId: cleanId,
+              senderId: 'SYSTEM',
+              senderName: 'Binary Engine',
+              isRead: false,
+              metadata: {
+                earnedToday,
+                dailyCap,
+                action: 'UPGRADE_PACKAGE',
+              },
+            });
+          }
+        } catch (e: any) {
+          console.error('Error creating capping notification in getVolume:', e.message);
+        }
+      }
+
+      res.status(HTTP_STATUS.OK).json({
+        status: true,
+        data: {
+          memberId: cleanId,
+          memberName: member.name,
+          leftTotalBV,
+          rightTotalBV,
+          leftAvailableBV,
+          rightAvailableBV,
+          leftMemberCount: leftMemberIds.length,
+          rightMemberCount: rightMemberIds.length,
+          unusedLeftCount: unusedLeft.length,
+          unusedRightCount: unusedRight.length,
+          matchedCycles,
+          matchedBV,
+          carryLeftBV,
+          carryRightBV,
+          ratePerCycle,
+          totalBinaryIncome,
+          earnedToday,
+          dailyCap,
+          dailyCapUtilization,
+          remainingCap,
+          isCapExceeded,
+          consumedMemberIdsCount: vol?.consumedBinaryMemberIds?.length || 0,
+          lastMatchedAt: vol?.lastMatchedAt || null,
+        },
+      });
     } catch (error: any) {
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
     }
