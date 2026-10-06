@@ -607,5 +607,25 @@ export const api = {
     });
     return res.json();
   },
+
+  // Sponsor Binary Income APIs
+  async getSponsorIncomeSummary(memberId: string, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/sponsor/income/summary/${memberId}`, {
+      headers: savedToken ? { Authorization: `Bearer ${savedToken}` } : {},
+    });
+    if (!res.ok) throw new Error(`Failed to fetch sponsor income: ${res.statusText}`);
+    return res.json();
+  },
+
+  async getSponsorIncomeHistory(memberId: string, page: number = 1, limit: number = 20, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/sponsor/income/history/${memberId}?page=${page}&limit=${limit}`, {
+      headers: savedToken ? { Authorization: `Bearer ${savedToken}` } : {},
+    });
+    if (!res.ok) throw new Error(`Failed to fetch sponsor income history: ${res.statusText}`);
+    return res.json();
+  },
 };
+
 

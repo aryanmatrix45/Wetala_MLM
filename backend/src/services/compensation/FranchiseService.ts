@@ -3,6 +3,7 @@ import { CommissionLedger, ICommissionLedger } from '../../models/CommissionLedg
 import { ICompensationRule } from '../../models/CompensationRule.model';
 import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
+import { DeductionUtil } from '../../utils/deduction.util';
 import { COMMISSION_TYPE } from '../../config/constants';
 
 export class FranchiseService {
@@ -43,9 +44,7 @@ export class FranchiseService {
 
     // 1. Franchise Incentive
     const rawFranchiseAmount = DecimalUtil.multiplyRate(purchaseAmount, matchedTier.rate);
-    const tdsDeduction = DecimalUtil.multiplyPercent(rawFranchiseAmount, 5);
-    const adminFee = DecimalUtil.multiplyPercent(rawFranchiseAmount, 5);
-    const netPayable = DecimalUtil.sub(rawFranchiseAmount, DecimalUtil.add(tdsDeduction, adminFee));
+    const franchiseDeductions = DeductionUtil.calculateDeductions(rawFranchiseAmount, rules);
 
     const ledgerId = `COMM-FRAN-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
@@ -58,12 +57,12 @@ export class FranchiseService {
       sourcePurchaseId,
       grossAmount: rawFranchiseAmount,
       grossAmountInPaise: DecimalUtil.toPaise(rawFranchiseAmount),
-      tdsDeduction,
-      tdsDeductionInPaise: DecimalUtil.toPaise(tdsDeduction),
-      adminFee,
-      adminFeeInPaise: DecimalUtil.toPaise(adminFee),
-      payableAmount: netPayable,
-      payableAmountInPaise: DecimalUtil.toPaise(netPayable),
+      tdsDeduction: franchiseDeductions.tdsDeduction,
+      tdsDeductionInPaise: DecimalUtil.toPaise(franchiseDeductions.tdsDeduction),
+      adminFee: franchiseDeductions.adminFee,
+      adminFeeInPaise: DecimalUtil.toPaise(franchiseDeductions.adminFee),
+      payableAmount: franchiseDeductions.netPayable,
+      payableAmountInPaise: DecimalUtil.toPaise(franchiseDeductions.netPayable),
       status: 'APPROVED',
       calculationDetails: {
         sourcePurchaseId,
@@ -73,6 +72,8 @@ export class FranchiseService {
         rateApplied: matchedTier.rate,
         percentageApplied: matchedTier.rate * 100,
         tierApplied: `₹${matchedTier.threshold} (${(matchedTier.rate * 100).toFixed(0)}%)`,
+        tdsRateApplied: franchiseDeductions.tdsRate,
+        adminFeeRateApplied: franchiseDeductions.adminFeeRate,
         notes: `Franchise ${config.incentiveType} incentive for ₹${purchaseAmount} purchase`,
       },
       isReversed: false,
@@ -80,7 +81,7 @@ export class FranchiseService {
 
     await WalletService.creditCommission(
       franchiseMemberId,
-      netPayable,
+      franchiseDeductions.netPayable,
       ledgerId,
       `Franchise Stockist Bonus (${(matchedTier.rate * 100).toFixed(0)}%)`
     );
@@ -91,9 +92,7 @@ export class FranchiseService {
       const uplineMember = await Member.findOne({ memberId: member.sponsorId });
       if (uplineMember && uplineMember.isActive) {
         const rawUplineAmount = DecimalUtil.multiplyRate(purchaseAmount, config.uplineBonusRate);
-        const uplineTds = DecimalUtil.multiplyPercent(rawUplineAmount, 5);
-        const uplineFee = DecimalUtil.multiplyPercent(rawUplineAmount, 5);
-        const uplineNet = DecimalUtil.sub(rawUplineAmount, DecimalUtil.add(uplineTds, uplineFee));
+        const uplineDeductions = DeductionUtil.calculateDeductions(rawUplineAmount, rules);
 
         const uplineLedgerId = `COMM-UPL-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
@@ -106,12 +105,12 @@ export class FranchiseService {
           sourcePurchaseId,
           grossAmount: rawUplineAmount,
           grossAmountInPaise: DecimalUtil.toPaise(rawUplineAmount),
-          tdsDeduction: uplineTds,
-          tdsDeductionInPaise: DecimalUtil.toPaise(uplineTds),
-          adminFee: uplineFee,
-          adminFeeInPaise: DecimalUtil.toPaise(uplineFee),
-          payableAmount: uplineNet,
-          payableAmountInPaise: DecimalUtil.toPaise(uplineNet),
+          tdsDeduction: uplineDeductions.tdsDeduction,
+          tdsDeductionInPaise: DecimalUtil.toPaise(uplineDeductions.tdsDeduction),
+          adminFee: uplineDeductions.adminFee,
+          adminFeeInPaise: DecimalUtil.toPaise(uplineDeductions.adminFee),
+          payableAmount: uplineDeductions.netPayable,
+          payableAmountInPaise: DecimalUtil.toPaise(uplineDeductions.netPayable),
           status: 'APPROVED',
           calculationDetails: {
             sourcePurchaseId,
@@ -121,6 +120,8 @@ export class FranchiseService {
             baseAmount: purchaseAmount,
             rateApplied: config.uplineBonusRate,
             percentageApplied: config.uplineBonusRate * 100,
+            tdsRateApplied: uplineDeductions.tdsRate,
+            adminFeeRateApplied: uplineDeductions.adminFeeRate,
             notes: `Franchise 2% Upline Bonus from ${franchiseMemberId}`,
           },
           isReversed: false,
@@ -128,9 +129,9 @@ export class FranchiseService {
 
         await WalletService.creditCommission(
           uplineMember.memberId,
-          uplineNet,
+          uplineDeductions.netPayable,
           uplineLedgerId,
-          `Franchise Upline Bonus from ${franchiseMemberId}`
+          `Franchise 2% Upline Bonus from ${member.name} (${franchiseMemberId})`
         );
       }
     }

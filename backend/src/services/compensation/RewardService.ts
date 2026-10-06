@@ -4,6 +4,7 @@ import { ICompensationRule } from '../../models/CompensationRule.model';
 import { BinaryVolume } from '../../models/BinaryVolume.model';
 import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
+import { DeductionUtil } from '../../utils/deduction.util';
 import { COMMISSION_TYPE } from '../../config/constants';
 
 export class RewardService {
@@ -54,9 +55,7 @@ export class RewardService {
         }
 
         const rawAmount = tier.rewardAmount;
-        const tdsDeduction = DecimalUtil.multiplyPercent(rawAmount, 5);
-        const adminFee = DecimalUtil.multiplyPercent(rawAmount, 5);
-        const netPayable = DecimalUtil.sub(rawAmount, DecimalUtil.add(tdsDeduction, adminFee));
+        const deductions = DeductionUtil.calculateDeductions(rawAmount, rules);
 
         const ledgerId = `COMM-REW-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
@@ -68,16 +67,18 @@ export class RewardService {
           sourceEventId,
           grossAmount: rawAmount,
           grossAmountInPaise: DecimalUtil.toPaise(rawAmount),
-          tdsDeduction,
-          tdsDeductionInPaise: DecimalUtil.toPaise(tdsDeduction),
-          adminFee,
-          adminFeeInPaise: DecimalUtil.toPaise(adminFee),
-          payableAmount: netPayable,
-          payableAmountInPaise: DecimalUtil.toPaise(netPayable),
+          tdsDeduction: deductions.tdsDeduction,
+          tdsDeductionInPaise: DecimalUtil.toPaise(deductions.tdsDeduction),
+          adminFee: deductions.adminFee,
+          adminFeeInPaise: DecimalUtil.toPaise(deductions.adminFee),
+          payableAmount: deductions.netPayable,
+          payableAmountInPaise: DecimalUtil.toPaise(deductions.netPayable),
           status: 'APPROVED',
           calculationDetails: {
             sourceEventId,
             tierApplied: `${tier.leftRequirement}:${tier.rightRequirement}`,
+            tdsRateApplied: deductions.tdsRate,
+            adminFeeRateApplied: deductions.adminFeeRate,
             notes: `Lifetime Milestone Reward: ${tier.rewardTitle} (${tier.leftRequirement}:${tier.rightRequirement})`,
           },
           isReversed: false,
@@ -85,7 +86,7 @@ export class RewardService {
 
         await WalletService.creditCommission(
           memberId,
-          netPayable,
+          deductions.netPayable,
           ledgerId,
           `Lifetime Reward: ${tier.rewardTitle} (₹${rawAmount})`
         );

@@ -4,6 +4,7 @@ import { ICompensationRule } from '../../models/CompensationRule.model';
 import { SponsorTreeService } from '../tree/SponsorTreeService';
 import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
+import { DeductionUtil } from '../../utils/deduction.util';
 import { COMMISSION_TYPE } from '../../config/constants';
 
 export class UplineBonusService {
@@ -44,9 +45,7 @@ export class UplineBonusService {
       const rawBonus = DecimalUtil.multiplyRate(baseValue, rate);
       if (rawBonus <= 0) continue;
 
-      const tdsDeduction = DecimalUtil.multiplyPercent(rawBonus, 5);
-      const adminFee = DecimalUtil.multiplyPercent(rawBonus, 5);
-      const netPayable = DecimalUtil.sub(rawBonus, DecimalUtil.add(tdsDeduction, adminFee));
+      const deductions = DeductionUtil.calculateDeductions(rawBonus, rules);
 
       const ledgerId = `COMM-UPL-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
@@ -59,12 +58,12 @@ export class UplineBonusService {
         sourcePurchaseId,
         grossAmount: rawBonus,
         grossAmountInPaise: DecimalUtil.toPaise(rawBonus),
-        tdsDeduction,
-        tdsDeductionInPaise: DecimalUtil.toPaise(tdsDeduction),
-        adminFee,
-        adminFeeInPaise: DecimalUtil.toPaise(adminFee),
-        payableAmount: netPayable,
-        payableAmountInPaise: DecimalUtil.toPaise(netPayable),
+        tdsDeduction: deductions.tdsDeduction,
+        tdsDeductionInPaise: DecimalUtil.toPaise(deductions.tdsDeduction),
+        adminFee: deductions.adminFee,
+        adminFeeInPaise: DecimalUtil.toPaise(deductions.adminFee),
+        payableAmount: deductions.netPayable,
+        payableAmountInPaise: DecimalUtil.toPaise(deductions.netPayable),
         status: 'APPROVED',
         calculationDetails: {
           sourcePurchaseId,
@@ -75,6 +74,8 @@ export class UplineBonusService {
           rateApplied: rate,
           percentageApplied: rate * 100,
           tierApplied: `Generation ${level + 1} Upline`,
+          tdsRateApplied: deductions.tdsRate,
+          adminFeeRateApplied: deductions.adminFeeRate,
           notes: `Upline Bonus from ${purchaser.name} (${purchaserMemberId}) @ ${(rate * 100).toFixed(0)}%`,
         },
         isReversed: false,
@@ -82,7 +83,7 @@ export class UplineBonusService {
 
       await WalletService.creditCommission(
         upline.memberId,
-        netPayable,
+        deductions.netPayable,
         ledgerId,
         `Upline Bonus from ${purchaser.name} (${purchaserMemberId})`
       );

@@ -161,6 +161,12 @@ const FALLBACK_FULL_RULES = {
     maxPercentage: 50,
     calculationBase: 'MRP',
   },
+  payoutDeductions: {
+    isEnabled: true,
+    tdsPercent: 5,
+    adminFeePercent: 5,
+    notes: 'Standard deductions: TDS (can be 0-100%) and Admin fee (can be 0-100%). Net credited to wallet.',
+  },
 };
 
 export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({ 
@@ -267,6 +273,16 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
           loadedRules.consultancyBonus = {
             ...(loadedRules.consultancyBonus || {}),
             ...DEFAULT_CONSULTANCY,
+          };
+        }
+
+        // Ensure Payout Deductions settings
+        if (!loadedRules.payoutDeductions || loadedRules.payoutDeductions.tdsPercent === undefined) {
+          loadedRules.payoutDeductions = {
+            isEnabled: true,
+            tdsPercent: 5,
+            adminFeePercent: 5,
+            notes: 'Standard deductions: TDS (can be 0-100%) and Admin fee (can be 0-100%). Net credited to wallet.',
           };
         }
 
@@ -1421,6 +1437,127 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                         )}
                       </div>
                     </div>
+                  </div>
+                </div>
+
+                {/* Card 2C: Payout Deductions & Wallet Settlement (Admin Configurable) */}
+                <div className="dashboard-card" style={{ border: '1px solid #e0e7ff', background: '#f8faff' }}>
+                  <div className="card-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div className="card-title-group">
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Percent size={18} />
+                      </div>
+                      <div>
+                        <h2 className="card-title">Payout Deductions & Wallet Settlement</h2>
+                        <span style={{ fontSize: '12px', color: '#64748b' }}>Admin-configurable deductions (TDS & Admin Fee) • Can be set to anything, even 0%</span>
+                      </div>
+                    </div>
+                    {isAdmin && (
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}>
+                        <input
+                          type="checkbox"
+                          checked={rules.payoutDeductions?.isEnabled ?? true}
+                          onChange={(e) => setRules({ ...rules, payoutDeductions: { ...(rules.payoutDeductions || {}), isEnabled: e.target.checked } })}
+                        />
+                        <span>Apply Deductions</span>
+                      </label>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                          TDS Deduction (%) <span style={{ color: '#64748b', fontWeight: 400 }}>(Can be 0%)</span>
+                        </label>
+                        {isAdmin ? (
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.5"
+                            value={rules.payoutDeductions?.tdsPercent ?? 5}
+                            onChange={(e) => setRules({ ...rules, payoutDeductions: { ...(rules.payoutDeductions || {}), tdsPercent: Math.max(0, parseFloat(e.target.value) || 0) } })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1px solid #c7d2fe', borderRadius: '8px', fontSize: '13px' }}
+                          />
+                        ) : (
+                          <div style={{ padding: '9px 12px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                            {rules.payoutDeductions?.isEnabled === false ? '0% (Disabled)' : `${rules.payoutDeductions?.tdsPercent ?? 5}%`}
+                          </div>
+                        )}
+                        <span style={{ fontSize: '11px', color: '#6366f1', marginTop: '3px', display: 'block' }}>
+                          Tax Deducted at Source (set to 0% for zero deduction)
+                        </span>
+                      </div>
+
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                          Admin Fee (%) <span style={{ color: '#64748b', fontWeight: 400 }}>(Can be 0%)</span>
+                        </label>
+                        {isAdmin ? (
+                          <input
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.5"
+                            value={rules.payoutDeductions?.adminFeePercent ?? 5}
+                            onChange={(e) => setRules({ ...rules, payoutDeductions: { ...(rules.payoutDeductions || {}), adminFeePercent: Math.max(0, parseFloat(e.target.value) || 0) } })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1px solid #c7d2fe', borderRadius: '8px', fontSize: '13px' }}
+                          />
+                        ) : (
+                          <div style={{ padding: '9px 12px', background: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                            {rules.payoutDeductions?.isEnabled === false ? '0% (Disabled)' : `${rules.payoutDeductions?.adminFeePercent ?? 5}%`}
+                          </div>
+                        )}
+                        <span style={{ fontSize: '11px', color: '#6366f1', marginTop: '3px', display: 'block' }}>
+                          Platform maintenance fee (set to 0% for zero deduction)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Live Settlement Calculation Widget */}
+                    {(() => {
+                      const isEnabled = rules.payoutDeductions?.isEnabled !== false;
+                      const tds = isEnabled ? (rules.payoutDeductions?.tdsPercent ?? 5) : 0;
+                      const admin = isEnabled ? (rules.payoutDeductions?.adminFeePercent ?? 5) : 0;
+                      const totalDed = tds + admin;
+                      const netPct = Math.max(0, 100 - totalDed);
+                      const exampleGross = 1000;
+                      const exampleTds = (exampleGross * tds) / 100;
+                      const exampleAdmin = (exampleGross * admin) / 100;
+                      const exampleNet = (exampleGross * netPct) / 100;
+
+                      return (
+                        <div style={{ padding: '12px 16px', background: '#ffffff', borderRadius: '8px', border: '1px solid #c7d2fe' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
+                              Live Settlement Preview: Gross Income − ({tds}% TDS + {admin}% Admin Fee) → <strong>{netPct}% Net Credited to Wallet</strong>
+                            </span>
+                            <span style={{ fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px', background: totalDed === 0 ? '#dcfce7' : '#e0e7ff', color: totalDed === 0 ? '#15803d' : '#4338ca' }}>
+                              {totalDed === 0 ? '✓ Zero Deductions (100% Net Credited)' : `${totalDed}% Total Deductions (${netPct}% Net)`}
+                            </span>
+                          </div>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px', fontSize: '12px', textAlign: 'center', background: '#f8fafc', padding: '8px', borderRadius: '6px' }}>
+                            <div>
+                              <span style={{ color: '#64748b', display: 'block', fontSize: '11px' }}>Example Gross</span>
+                              <strong style={{ color: '#0f172a' }}>₹{exampleGross}</strong>
+                            </div>
+                            <div>
+                              <span style={{ color: '#ef4444', display: 'block', fontSize: '11px' }}>TDS ({tds}%)</span>
+                              <strong style={{ color: '#ef4444' }}>- ₹{exampleTds}</strong>
+                            </div>
+                            <div>
+                              <span style={{ color: '#f59e0b', display: 'block', fontSize: '11px' }}>Admin Fee ({admin}%)</span>
+                              <strong style={{ color: '#f59e0b' }}>- ₹{exampleAdmin}</strong>
+                            </div>
+                            <div>
+                              <span style={{ color: '#10b981', display: 'block', fontSize: '11px' }}>Net to Wallet ({netPct}%)</span>
+                              <strong style={{ color: '#10b981' }}>₹{exampleNet}</strong>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
 

@@ -61,6 +61,8 @@ export interface ICompensationRule extends Document {
     sponsorDepth: number; // direct = 1
     calculationBase: 'BINARY_COMMISSION' | 'BV' | 'DOWNSTREAM_PURCHASE';
     maxPayout?: number;
+    tdsPercent?: number;       // Optional override, default uses payoutDeductions.tdsPercent
+    adminFeePercent?: number;  // Optional override, default uses payoutDeductions.adminFeePercent
   };
   
   // 6. Team Performance Bonus (6 Slabs: 10:10 @ 3% max 10k, up to 25,000:25,000 @ 1% max 15L)
@@ -135,6 +137,14 @@ export interface ICompensationRule extends Document {
     isEnabled: boolean;
     maxPercentage: number; // 50%
     calculationBase: 'COST_PRICE' | 'SELLING_PRICE' | 'MRP' | 'CONFIGURED_BASE';
+  };
+
+  // 13. Payout Deductions (Admin configurable, can be set to anything including 0%)
+  payoutDeductions: {
+    isEnabled: boolean;
+    tdsPercent: number;      // e.g. 5 or 0
+    adminFeePercent: number; // e.g. 5 or 0
+    notes?: string;
   };
   
   createdAt: Date;
@@ -212,6 +222,8 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       sponsorDepth: { type: Number, default: 1 },
       calculationBase: { type: String, default: 'BINARY_COMMISSION' },
       maxPayout: Number,
+      tdsPercent: { type: Number },
+      adminFeePercent: { type: Number },
     },
     teamPerformanceBonus: {
       isEnabled: { type: Boolean, default: true },
@@ -278,6 +290,12 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       isEnabled: { type: Boolean, default: true },
       maxPercentage: { type: Number, default: 50 },
       calculationBase: { type: String, default: 'MRP' },
+    },
+    payoutDeductions: {
+      isEnabled: { type: Boolean, default: true },
+      tdsPercent: { type: Number, default: 5 },       // Standard 5% TDS, can be 0%
+      adminFeePercent: { type: Number, default: 5 },  // Standard 5% Admin fee, can be 0%
+      notes: { type: String, default: 'Standard deductions: TDS (0-100%) and Admin fee (0-100%). Net credited to wallet.' },
     },
   },
   {

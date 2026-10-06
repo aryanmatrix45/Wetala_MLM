@@ -4,6 +4,7 @@ import { ICompensationRule } from '../../models/CompensationRule.model';
 import { BinaryVolume } from '../../models/BinaryVolume.model';
 import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
+import { DeductionUtil } from '../../utils/deduction.util';
 import { COMMISSION_TYPE } from '../../config/constants';
 
 export class TeamPerformanceService {
@@ -62,9 +63,7 @@ export class TeamPerformanceService {
       return null;
     }
 
-    const tdsDeduction = DecimalUtil.multiplyPercent(rawBonus, 5);
-    const adminFee = DecimalUtil.multiplyPercent(rawBonus, 5);
-    const netPayable = DecimalUtil.sub(rawBonus, DecimalUtil.add(tdsDeduction, adminFee));
+    const deductions = DeductionUtil.calculateDeductions(rawBonus, rules);
 
     const ledgerId = `COMM-PERF-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
@@ -77,17 +76,19 @@ export class TeamPerformanceService {
       sourcePurchaseId,
       grossAmount: rawBonus,
       grossAmountInPaise: DecimalUtil.toPaise(rawBonus),
-      tdsDeduction,
-      tdsDeductionInPaise: DecimalUtil.toPaise(tdsDeduction),
-      adminFee,
-      adminFeeInPaise: DecimalUtil.toPaise(adminFee),
-      payableAmount: netPayable,
-      payableAmountInPaise: DecimalUtil.toPaise(netPayable),
+      tdsDeduction: deductions.tdsDeduction,
+      tdsDeductionInPaise: DecimalUtil.toPaise(deductions.tdsDeduction),
+      adminFee: deductions.adminFee,
+      adminFeeInPaise: DecimalUtil.toPaise(deductions.adminFee),
+      payableAmount: deductions.netPayable,
+      payableAmountInPaise: DecimalUtil.toPaise(deductions.netPayable),
       status: 'APPROVED',
       calculationDetails: {
         sourcePurchaseId,
         sourceEventId,
         tierApplied: `${qualifiedTier.leftThreshold}:${qualifiedTier.rightThreshold}`,
+        tdsRateApplied: deductions.tdsRate,
+        adminFeeRateApplied: deductions.adminFeeRate,
         notes: `Team Performance Bonus for milestone ${qualifiedTier.leftThreshold}:${qualifiedTier.rightThreshold}`,
       },
       isReversed: false,
@@ -95,7 +96,7 @@ export class TeamPerformanceService {
 
     await WalletService.creditCommission(
       memberId,
-      netPayable,
+      deductions.netPayable,
       ledgerId,
       `Team Performance Bonus (${qualifiedTier.leftThreshold}:${qualifiedTier.rightThreshold})`
     );

@@ -3,6 +3,7 @@ import { CommissionLedger, ICommissionLedger } from '../../models/CommissionLedg
 import { ICompensationRule } from '../../models/CompensationRule.model';
 import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
+import { DeductionUtil } from '../../utils/deduction.util';
 import { COMMISSION_TYPE, PURCHASE_TYPE, PurchaseType } from '../../config/constants';
 
 export class SelfPurchaseBonusService {
@@ -47,9 +48,7 @@ export class SelfPurchaseBonusService {
       return null;
     }
 
-    const tdsDeduction = DecimalUtil.multiplyPercent(rawBonus, 5);
-    const adminFee = DecimalUtil.multiplyPercent(rawBonus, 5);
-    const netPayable = DecimalUtil.sub(rawBonus, DecimalUtil.add(tdsDeduction, adminFee));
+    const deductions = DeductionUtil.calculateDeductions(rawBonus, rules);
 
     const ledgerId = `COMM-SELF-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
@@ -62,12 +61,12 @@ export class SelfPurchaseBonusService {
       sourcePurchaseId,
       grossAmount: rawBonus,
       grossAmountInPaise: DecimalUtil.toPaise(rawBonus),
-      tdsDeduction,
-      tdsDeductionInPaise: DecimalUtil.toPaise(tdsDeduction),
-      adminFee,
-      adminFeeInPaise: DecimalUtil.toPaise(adminFee),
-      payableAmount: netPayable,
-      payableAmountInPaise: DecimalUtil.toPaise(netPayable),
+      tdsDeduction: deductions.tdsDeduction,
+      tdsDeductionInPaise: DecimalUtil.toPaise(deductions.tdsDeduction),
+      adminFee: deductions.adminFee,
+      adminFeeInPaise: DecimalUtil.toPaise(deductions.adminFee),
+      payableAmount: deductions.netPayable,
+      payableAmountInPaise: DecimalUtil.toPaise(deductions.netPayable),
       status: 'APPROVED',
       calculationDetails: {
         sourcePurchaseId,
@@ -77,6 +76,8 @@ export class SelfPurchaseBonusService {
         baseBV: purchaseBV,
         rateApplied: rate,
         percentageApplied: rate * 100,
+        tdsRateApplied: deductions.tdsRate,
+        adminFeeRateApplied: deductions.adminFeeRate,
         notes: `Self Purchase Bonus: ${(rate * 100).toFixed(0)}% on ${config.calculationBase} (₹${baseValue})`,
       },
       isReversed: false,
@@ -84,9 +85,9 @@ export class SelfPurchaseBonusService {
 
     await WalletService.creditCommission(
       memberId,
-      netPayable,
+      deductions.netPayable,
       ledgerId,
-      `Self Purchase Bonus (${(rate * 100).toFixed(0)}%)`
+      `Self Purchase Cashback (${(rate * 100).toFixed(0)}%)`
     );
 
     return commission;

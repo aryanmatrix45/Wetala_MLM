@@ -68,6 +68,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       title: 'Finance & Compensation',
       items: [
         { id: 'welcome-bonus', label: 'Welcome Bonus', icon: Gift, badge: isAdmin ? '4% Pool' : 'BV' },
+        { id: 'sponsor-income', label: 'Sponsor Binary Income', icon: Users, badge: '20%' },
         { 
           id: 'withdrawals', 
           label: isAdmin ? 'Withdrawal Requests' : 'My Withdrawals', 

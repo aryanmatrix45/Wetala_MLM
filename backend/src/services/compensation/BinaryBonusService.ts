@@ -7,6 +7,8 @@ import { CapService } from './CapService';
 import { WalletService } from '../WalletService';
 import { BinaryTreeService } from '../tree/BinaryTreeService';
 import { DecimalUtil } from '../../utils/decimal';
+import { DeductionUtil } from '../../utils/deduction.util';
+import { SponsorBonusService } from './SponsorBonusService';
 import {
   COMMISSION_TYPE,
   BV_SOURCE_TYPE,
@@ -211,9 +213,8 @@ export class BinaryBonusService {
 
     // 7. If payable amount allowed by daily cap is greater than 0, create commission ledger and credit wallet
     if (payableIncome > 0) {
-      const tdsDeduction = DecimalUtil.multiplyPercent(payableIncome, 5);
-      const adminFee = DecimalUtil.multiplyPercent(payableIncome, 5);
-      const netPayable = DecimalUtil.sub(payableIncome, DecimalUtil.add(tdsDeduction, adminFee));
+      // Dynamic Admin-Configurable Deductions (can be set to anything, even 0%)
+      const deductions = DeductionUtil.calculateDeductions(payableIncome, rules);
 
       const ledgerId = `COMM-BIN-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
@@ -226,12 +227,12 @@ export class BinaryBonusService {
         sourcePurchaseId,
         grossAmount: totalGeneratedIncome,
         grossAmountInPaise: DecimalUtil.toPaise(totalGeneratedIncome),
-        tdsDeduction,
-        tdsDeductionInPaise: DecimalUtil.toPaise(tdsDeduction),
-        adminFee,
-        adminFeeInPaise: DecimalUtil.toPaise(adminFee),
-        payableAmount: netPayable,
-        payableAmountInPaise: DecimalUtil.toPaise(netPayable),
+        tdsDeduction: deductions.tdsDeduction,
+        tdsDeductionInPaise: DecimalUtil.toPaise(deductions.tdsDeduction),
+        adminFee: deductions.adminFee,
+        adminFeeInPaise: DecimalUtil.toPaise(deductions.adminFee),
+        payableAmount: deductions.netPayable,
+        payableAmountInPaise: DecimalUtil.toPaise(deductions.netPayable),
         status: 'APPROVED',
         calculationDetails: {
           sourcePurchaseId,
@@ -249,17 +250,32 @@ export class BinaryBonusService {
           consumedMemberIds: cycleConsumedIds,
           remainingUnusedLeft: unusedLeft.length,
           remainingUnusedRight: unusedRight.length,
-          notes: `Binary Cycles: ${cycles.length} completed cycles @ ₹${ratePerCycle} = ₹${totalGeneratedIncome}. Payable (Capped): ₹${payableIncome}. Consumed ${cycleConsumedIds.length} members.`,
+          tdsRateApplied: deductions.tdsRate,
+          adminFeeRateApplied: deductions.adminFeeRate,
+          notes: `Binary Cycles: ${cycles.length} completed cycles @ ₹${ratePerCycle} = ₹${totalGeneratedIncome}. Payable (Capped): ₹${payableIncome}. Consumed ${cycleConsumedIds.length} members. Deductions: TDS ${deductions.tdsRate}%, Admin ${deductions.adminFeeRate}%.`,
         },
         isReversed: false,
       });
 
       await WalletService.creditCommission(
         cleanId,
-        netPayable,
+        deductions.netPayable,
         ledgerId,
         `Binary Matching Bonus (${cycles.length} cycles @ ₹${ratePerCycle} = ₹${totalGeneratedIncome}, Capped Payable: ₹${payableIncome})`
       );
+
+      // 7B. Trigger Sponsor Binary Bonus (20% to direct sponsor, uncapped, single-leg qualified)
+      try {
+        await SponsorBonusService.processSponsorBonus(
+          cleanId,
+          payableIncome,
+          rules,
+          ledgerId,
+          sourcePurchaseId
+        );
+      } catch (sponsorErr: any) {
+        console.error('Failed to process sponsor binary bonus for earner:', cleanId, sponsorErr.message);
+      }
     }
 
     // 8. If member earns binary income more than their package daily cap on this day, notify member

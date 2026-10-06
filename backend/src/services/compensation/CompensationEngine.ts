@@ -159,6 +159,12 @@ export class CompensationEngine {
           maxPercentage: 50,
           calculationBase: 'MRP',
         },
+        payoutDeductions: {
+          isEnabled: true,
+          tdsPercent: 5,
+          adminFeePercent: 5,
+          notes: 'Standard deductions: TDS (can be 0-100%) and Admin fee (can be 0-100%). Net credited to wallet.',
+        },
       });
     }
     return rules;

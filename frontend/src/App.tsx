@@ -7,6 +7,7 @@ import { GenealogyPage } from './pages/GenealogyPage';
 import { PackagesPage } from './pages/PackagesPage';
 import { IncomeSettingsPage } from './pages/IncomeSettingsPage';
 import { PayoutsPage } from './pages/PayoutsPage';
+import { SponsorIncomePage } from './pages/SponsorIncomePage';
 import { AddMemberModal } from './components/AddMemberModal';
 import { LoginPage } from './pages/LoginPage';
 import { api } from './services/api';
@@ -110,6 +111,10 @@ export function App() {
             onOpenAddMember={() => setIsAddMemberOpen(true)}
             initialSection={activeTab === 'welcome-bonus' ? 'welcome-bonus' : undefined}
           />
+        )}
+
+        {activeTab === 'sponsor-income' && (
+          <SponsorIncomePage user={user} token={token} />
         )}
 
         {activeTab === 'members' && (
