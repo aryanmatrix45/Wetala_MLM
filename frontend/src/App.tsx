@@ -3,6 +3,7 @@ import { Sidebar } from './components/Sidebar';
 import { TopNavbar } from './components/TopNavbar';
 import { DashboardPage } from './pages/DashboardPage';
 import { MembersPage } from './pages/MembersPage';
+import { MemberRequestsPage } from './pages/MemberRequestsPage';
 import { GenealogyPage } from './pages/GenealogyPage';
 import { PackagesPage } from './pages/PackagesPage';
 import { IncomeSettingsPage } from './pages/IncomeSettingsPage';
@@ -71,7 +72,7 @@ export function App() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const handleAddMember = async (memberData: any) => {
-    const res = await api.addMember(memberData);
+    const res = await api.addMember(memberData, token || undefined);
     alert(res.message || `Member ${res.member?.name || memberData.name} registered successfully! Member ID: ${res.member?.memberId}`);
     setIsAddMemberOpen(false);
     setRefreshKey((prev) => prev + 1);
@@ -118,7 +119,22 @@ export function App() {
         )}
 
         {activeTab === 'members' && (
-          <MembersPage key={refreshKey} onOpenAddMember={() => setIsAddMemberOpen(true)} />
+          <MembersPage 
+            key={refreshKey} 
+            user={user} 
+            token={token} 
+            onOpenAddMember={() => setIsAddMemberOpen(true)} 
+            onNavigate={(tab) => setActiveTab(tab)}
+          />
+        )}
+
+        {activeTab === 'member-requests' && (
+          <MemberRequestsPage
+            key={refreshKey}
+            user={user}
+            token={token}
+            onNavigate={(tab) => setActiveTab(tab)}
+          />
         )}
 
         {activeTab === 'genealogy' && <GenealogyPage user={user} token={token} />}
@@ -165,6 +181,7 @@ export function App() {
         isOpen={isAddMemberOpen}
         onClose={() => setIsAddMemberOpen(false)}
         onAddMember={handleAddMember}
+        user={user}
       />
     </div>
   );

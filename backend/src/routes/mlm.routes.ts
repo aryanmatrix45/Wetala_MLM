@@ -4,8 +4,11 @@ import { Member } from '../models/Member.model';
 import { Package } from '../models/Package.model';
 import { CommissionLedger } from '../models/CommissionLedger.model';
 import { Purchase } from '../models/Purchase.model';
-import { HTTP_STATUS, BINARY_POSITION, BinaryPosition } from '../config/constants';
+import { HTTP_STATUS, BINARY_POSITION, BinaryPosition, ROLES } from '../config/constants';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
+import { optionalAuthenticate, authenticate, AuthenticatedRequest } from '../middlewares/auth';
+import { WalletService } from '../services/WalletService';
+import { BVService } from '../services/BVService';
 
 const router = Router();
 
@@ -174,10 +177,33 @@ router.get('/dashboard/stats', async (_req, res) => {
   }
 });
 
-// Member List from MongoDB
-router.get('/members', async (_req, res) => {
+// Member List from MongoDB (Role-scoped: Regular members only see members they added or sponsored)
+router.get('/members', optionalAuthenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const members = await Member.find().sort({ createdAt: -1 });
+    const user = req.user;
+    let query: any = {};
+
+    // If authenticated as a Regular Member:
+    // Only see members they personally added (addedBy) or personally sponsored (sponsorId)
+    if (user && user.role === ROLES.MEMBER && user.memberId) {
+      const userMemberId = user.memberId.toUpperCase().trim();
+      query = {
+        $or: [
+          { addedBy: userMemberId },
+          { sponsorId: userMemberId },
+        ],
+      };
+    } else {
+      // Super Admin / Admin: can filter by status / approvalStatus
+      if (req.query.approvalStatus) {
+        query.approvalStatus = req.query.approvalStatus;
+      }
+      if (req.query.status) {
+        query.status = req.query.status;
+      }
+    }
+
+    const members = await Member.find(query).sort({ createdAt: -1 });
     
     // Map to client contract
     const mapped = members.map(m => ({
@@ -194,6 +220,12 @@ router.get('/members', async (_req, res) => {
       packageName: m.packageName,
       joinDate: m.joinDate,
       status: m.status,
+      approvalStatus: m.approvalStatus || 'approved',
+      addedBy: m.addedBy || 'ADMIN',
+      approvedAt: m.approvedAt,
+      approvedBy: m.approvedBy,
+      rejectionReason: m.rejectionReason || '',
+      isActive: m.isActive,
       leftBv: m.leftBv,
       rightBv: m.rightBv,
       matchedPairs: m.matchedPairs,
@@ -211,7 +243,7 @@ router.get('/members', async (_req, res) => {
 });
 
 // Register New Member with Password & Unique validation
-router.post('/members', async (req, res) => {
+router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const {
       name,
@@ -395,7 +427,32 @@ router.post('/members', async (req, res) => {
     // 5. Generate Sequential Unique Member ID
     const newMemberId = await Member.generateNextMemberId();
 
-    // 6. Create and Save Member in MongoDB (password automatically hashed by pre-save hook)
+    // 6. Creator tracking & Approval determination
+    const reqUser = req.user;
+    let addedBy = 'ADMIN';
+    let approvalStatus: 'pending' | 'approved' = 'pending';
+    let memberStatus: 'active' | 'pending' = 'pending';
+    let isActive = false;
+
+    if (reqUser && (reqUser.role === ROLES.ADMIN || reqUser.role === ROLES.SUPERADMIN)) {
+      addedBy = 'ADMIN';
+      approvalStatus = 'approved';
+      memberStatus = 'active';
+      isActive = true;
+    } else if (reqUser && reqUser.role === ROLES.MEMBER && reqUser.memberId) {
+      addedBy = reqUser.memberId.toUpperCase().trim();
+      approvalStatus = 'pending';
+      memberStatus = 'pending';
+      isActive = false;
+    } else {
+      // Direct self-registration / unauthenticated
+      addedBy = finalSponsorId || 'SYSTEM';
+      approvalStatus = 'pending';
+      memberStatus = 'pending';
+      isActive = false;
+    }
+
+    // 7. Create and Save Member in MongoDB (password automatically hashed by pre-save hook)
     const newMember = await Member.create({
       memberId: newMemberId,
       name: name.trim(),
@@ -414,7 +471,10 @@ router.post('/members', async (req, res) => {
       packageBv: finalPackageBv,
       packageRp: finalPackageRp,
       dailyCapping: finalDailyCapping,
-      status: 'active',
+      status: memberStatus,
+      approvalStatus,
+      addedBy,
+      isActive,
       leftBv: 0,
       rightBv: 0,
       matchedPairs: 0,
@@ -422,9 +482,19 @@ router.post('/members', async (req, res) => {
       walletBalance: 0
     });
 
+    if (isActive) {
+      await WalletService.getOrCreateWallet(newMember.memberId, newMember._id.toString()).catch(() => null);
+      await BVService.getOrCreateBinaryVolume(newMember.memberId, newMember._id.toString()).catch(() => null);
+    }
+
+    const successMessage = approvalStatus === 'pending'
+      ? `Member ${newMember.name} added successfully with ID: ${newMember.memberId}. The request has been forwarded to Super Admin for approval and binary tree activation.`
+      : `Member ${newMember.name} registered and activated successfully with ID: ${newMember.memberId}.`;
+
     res.status(HTTP_STATUS.CREATED).json({
       success: true,
-      message: `Member ${newMember.name} registered successfully with ID: ${newMember.memberId}`,
+      status: true,
+      message: successMessage,
       member: {
         id: newMember._id.toString(),
         memberId: newMember.memberId,
@@ -441,6 +511,8 @@ router.post('/members', async (req, res) => {
         packageName: newMember.packageName,
         joinDate: newMember.joinDate,
         status: newMember.status,
+        approvalStatus: newMember.approvalStatus,
+        addedBy: newMember.addedBy,
         walletBalance: newMember.walletBalance
       }
     });
@@ -452,6 +524,186 @@ router.post('/members', async (req, res) => {
     });
   }
 });
+
+// ==========================================
+// Super Admin Member Request Endpoints
+// ==========================================
+
+// GET all pending member requests for Super Admin
+router.get('/admin/member-requests', authenticate, async (req: AuthenticatedRequest, res) => {
+  try {
+    if (req.user?.role !== ROLES.ADMIN && req.user?.role !== ROLES.SUPERADMIN) {
+      res.status(HTTP_STATUS.FORBIDDEN).json({
+        status: false,
+        message: 'Access restricted to administrators only.'
+      });
+      return;
+    }
+
+    const pendingMembers = await Member.find({ approvalStatus: 'pending' }).sort({ createdAt: -1 });
+
+    const requests = pendingMembers.map(m => ({
+      id: m._id.toString(),
+      memberId: m.memberId,
+      name: m.name,
+      email: m.email,
+      mobile: m.mobile,
+      dob: m.dob || '',
+      sponsorId: m.sponsorId,
+      parentId: m.parentId || m.binaryParentId || '',
+      position: m.position,
+      packageName: m.packageName,
+      packageBv: m.packageBv,
+      addedBy: m.addedBy || 'MEMBER',
+      createdAt: m.createdAt,
+      joinDate: m.joinDate,
+      approvalStatus: m.approvalStatus,
+      status: m.status,
+    }));
+
+    res.json({
+      status: true,
+      totalPending: requests.length,
+      data: requests,
+    });
+  } catch (error: any) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      status: false,
+      message: error.message || 'Failed to fetch pending member requests'
+    });
+  }
+});
+
+// Helper for approving member request
+const handleApproveMember = async (req: AuthenticatedRequest, res: any) => {
+  try {
+    if (req.user?.role !== ROLES.ADMIN && req.user?.role !== ROLES.SUPERADMIN) {
+      res.status(HTTP_STATUS.FORBIDDEN).json({
+        status: false,
+        message: 'Access restricted to administrators only.'
+      });
+      return;
+    }
+
+    const { id } = req.params;
+    const member = await Member.findOne({
+      $or: [
+        { _id: mongoose.Types.ObjectId.isValid(id) ? id : null },
+        { memberId: id.toUpperCase().trim() }
+      ],
+    });
+
+    if (!member) {
+      res.status(HTTP_STATUS.NOT_FOUND).json({
+        status: false,
+        message: `Member request not found for ID: ${id}`
+      });
+      return;
+    }
+
+    if (member.approvalStatus === 'approved' && member.isActive) {
+      res.status(HTTP_STATUS.OK).json({
+        status: true,
+        message: `Member ${member.name} (${member.memberId}) is already approved and active.`,
+        data: member,
+      });
+      return;
+    }
+
+    // Check if placement is still valid; if occupied in meantime, auto-rebalance under sponsor
+    if (member.parentId && member.position) {
+      const targetPos: BinaryPosition = member.position === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
+      const placementCheck = await BinaryTreeService.validatePlacement(member.parentId, targetPos, member.memberId);
+      if (!placementCheck.isValid) {
+        const placementRoot = (member.sponsorId && member.sponsorId !== 'ADMIN') ? member.sponsorId : '';
+        const auto = await BinaryTreeService.findNextAutoPlacement(placementRoot);
+        member.parentId = auto.parentId;
+        member.binaryParentId = auto.parentId;
+        member.placementId = auto.parentId;
+        member.position = auto.position;
+        member.binaryPosition = auto.position;
+      }
+    }
+
+    member.approvalStatus = 'approved';
+    member.status = 'active';
+    member.isActive = true;
+    member.approvedAt = new Date();
+    member.approvedBy = req.user?.email || 'ADMIN';
+    await member.save();
+
+    // Initialize member financial and volume records
+    await WalletService.getOrCreateWallet(member.memberId, member._id.toString()).catch(() => null);
+    await BVService.getOrCreateBinaryVolume(member.memberId, member._id.toString()).catch(() => null);
+
+    res.json({
+      status: true,
+      message: `Member ${member.name} (${member.memberId}) has been accepted! ID is now active in the binary tree.`,
+      data: member,
+    });
+  } catch (error: any) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      status: false,
+      message: error.message || 'Failed to approve member request'
+    });
+  }
+};
+
+// Helper for rejecting member request
+const handleRejectMember = async (req: AuthenticatedRequest, res: any) => {
+  try {
+    if (req.user?.role !== ROLES.ADMIN && req.user?.role !== ROLES.SUPERADMIN) {
+      res.status(HTTP_STATUS.FORBIDDEN).json({
+        status: false,
+        message: 'Access restricted to administrators only.'
+      });
+      return;
+    }
+
+    const { id } = req.params;
+    const { reason } = req.body;
+    const member = await Member.findOne({
+      $or: [
+        { _id: mongoose.Types.ObjectId.isValid(id) ? id : null },
+        { memberId: id.toUpperCase().trim() }
+      ],
+    });
+
+    if (!member) {
+      res.status(HTTP_STATUS.NOT_FOUND).json({
+        status: false,
+        message: `Member request not found for ID: ${id}`
+      });
+      return;
+    }
+
+    member.approvalStatus = 'rejected';
+    member.status = 'rejected';
+    member.isActive = false;
+    member.rejectionReason = (reason || 'Rejected by Super Admin').trim();
+    // Release binary tree slot so others can take it
+    member.parentId = '';
+    member.binaryParentId = '';
+    member.placementId = '';
+    await member.save();
+
+    res.json({
+      status: true,
+      message: `Member request for ${member.name} (${member.memberId}) has been rejected.`,
+      data: member,
+    });
+  } catch (error: any) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      status: false,
+      message: error.message || 'Failed to reject member request'
+    });
+  }
+};
+
+router.put('/admin/member-requests/:id/approve', authenticate, handleApproveMember);
+router.post('/admin/member-requests/:id/approve', authenticate, handleApproveMember);
+router.put('/admin/member-requests/:id/reject', authenticate, handleRejectMember);
+router.post('/admin/member-requests/:id/reject', authenticate, handleRejectMember);
 
 // Binary Tree Hierarchy from Database
 router.get('/genealogy/tree', async (req, res) => {

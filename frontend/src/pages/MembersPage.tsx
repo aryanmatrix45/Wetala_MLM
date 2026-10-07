@@ -1,15 +1,22 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Users, 
   UserCheck, 
   UserX, 
   UserPlus, 
   Search, 
-  Calendar, 
   Filter, 
   RotateCcw, 
-  MoreVertical 
+  Clock, 
+  ArrowRight,
+  ShieldAlert,
+  Sparkles,
+  Phone,
+  Package,
+  Calendar,
+  X
 } from 'lucide-react';
+import { api } from '../services/api';
 
 interface MemberItem {
   id: string;
@@ -18,44 +25,64 @@ interface MemberItem {
   sponsorId: string;
   package: string;
   joinDate: string;
-  status: 'Active' | 'Inactive';
+  status: 'Active' | 'Inactive' | 'Pending' | 'Rejected';
+  approvalStatus: 'pending' | 'approved' | 'rejected';
+  addedBy?: string;
   mobile: string;
 }
 
 interface MembersPageProps {
   onOpenAddMember: () => void;
+  user?: any;
+  token?: string | null;
+  onNavigate?: (tab: string) => void;
 }
 
-export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => {
+export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user, token, onNavigate }) => {
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPackage, setSelectedPackage] = useState('All Packages');
   const [selectedStatus, setSelectedStatus] = useState('All Status');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(true);
 
-  // Fetch live members from backend API
-  React.useEffect(() => {
-    import('../services/api').then(({ api }) => {
-      api.getMembers()
-        .then((data) => {
-          if (Array.isArray(data)) {
-            setMembers(
-              data.map((m: any) => ({
+  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+
+  // Fetch live members from backend API scoped to user role
+  useEffect(() => {
+    setLoading(true);
+    api.getMembers(token || undefined)
+      .then((data) => {
+        if (Array.isArray(data)) {
+          setMembers(
+            data.map((m: any) => {
+              let resolvedStatus: 'Active' | 'Inactive' | 'Pending' | 'Rejected' = 'Inactive';
+              if (m.approvalStatus === 'pending' || m.status === 'pending') {
+                resolvedStatus = 'Pending';
+              } else if (m.approvalStatus === 'rejected' || m.status === 'rejected') {
+                resolvedStatus = 'Rejected';
+              } else if ((m.status || '').toLowerCase() === 'active') {
+                resolvedStatus = 'Active';
+              }
+
+              return {
                 id: m.id || m._id,
                 memberId: m.memberId,
                 name: m.name,
                 sponsorId: m.sponsorId,
-                package: m.packageName || m.package || 'Starter',
+                package: m.packageName || m.package || 'Package 1',
                 joinDate: m.joinDate || 'Recent',
-                status: (m.status || '').toLowerCase() === 'active' ? 'Active' : 'Inactive',
+                status: resolvedStatus,
+                approvalStatus: m.approvalStatus || (resolvedStatus === 'Pending' ? 'pending' : 'approved'),
+                addedBy: m.addedBy || 'ADMIN',
                 mobile: m.mobile || m.phone || '-',
-              }))
-            );
-          }
-        })
-        .catch((err) => console.log('Error fetching members:', err));
-    });
-  }, []);
+              };
+            })
+          );
+        }
+      })
+      .catch((err) => console.error('Error fetching members:', err))
+      .finally(() => setLoading(false));
+  }, [token]);
 
   // Filter logic
   const filteredMembers = members.filter((m) => {
@@ -63,19 +90,14 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
       m.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.memberId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       m.mobile.includes(searchTerm) ||
-      m.sponsorId.toLowerCase().includes(searchTerm.toLowerCase());
+      m.sponsorId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (m.addedBy && m.addedBy.toLowerCase().includes(searchTerm.toLowerCase()));
 
     const matchesPackage = selectedPackage === 'All Packages' || m.package === selectedPackage;
     const matchesStatus = selectedStatus === 'All Status' || m.status === selectedStatus;
 
     return matchesSearch && matchesPackage && matchesStatus;
   });
-
-  const handleToggleStatus = (id: string) => {
-    setMembers((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, status: m.status === 'Active' ? 'Inactive' : 'Active' } : m))
-    );
-  };
 
   const handleReset = () => {
     setSearchTerm('');
@@ -85,257 +107,504 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember }) => 
 
   const totalCount = members.length;
   const activeCount = members.filter((m) => m.status === 'Active').length;
-  const inactiveCount = totalCount - activeCount;
+  const pendingCount = members.filter((m) => m.status === 'Pending').length;
+  const inactiveCount = members.filter((m) => m.status === 'Inactive' || m.status === 'Rejected').length;
   const activePercent = totalCount > 0 ? Math.round((activeCount / totalCount) * 100) : 0;
 
   return (
     <div className="page-body">
-      {/* Top Title & Add Member CTA */}
+      {/* Top Header */}
       <div className="welcome-header">
         <div>
-          <h1 className="page-title">Members</h1>
-          <p className="page-subtitle">Manage all members, view details, activate accounts and more.</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <h1 className="page-title">{isAdmin ? 'All Members Directory' : 'My Registered Members'}</h1>
+            <span style={{
+              background: '#eff6ff',
+              color: '#2563eb',
+              border: '1px solid #bfdbfe',
+              padding: '3px 10px',
+              borderRadius: '20px',
+              fontSize: '11.5px',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <Sparkles size={13} />
+              {isAdmin ? 'Super Admin Mode' : `Sponsor ID: ${user?.memberId || 'MEM0001'}`}
+            </span>
+          </div>
+          <p className="page-subtitle">
+            {isAdmin 
+              ? 'Complete company-wide directory. Track placements, approval states, and member activity.'
+              : `Showing members registered under or sponsored by your ID (${user?.memberId || 'Account'}). New additions require Super Admin approval.`}
+          </p>
         </div>
-        <button onClick={onOpenAddMember} className="primary-btn" style={{ padding: '10px 20px', borderRadius: '8px' }}>
-          <UserPlus size={18} />
-          <span>Add Member</span>
-        </button>
+
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          {isAdmin && pendingCount > 0 && onNavigate && (
+            <button 
+              onClick={() => onNavigate('member-requests')} 
+              className="secondary-btn" 
+              style={{
+                padding: '9px 16px',
+                borderRadius: '10px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#d97706',
+                borderColor: '#fde68a',
+                background: '#fffbeb',
+                fontWeight: 700,
+                fontSize: '13px'
+              }}
+            >
+              <Clock size={16} />
+              <span>{pendingCount} Pending Requests</span>
+            </button>
+          )}
+
+          <button 
+            onClick={onOpenAddMember} 
+            className="primary-btn" 
+            style={{ 
+              padding: '10px 22px', 
+              borderRadius: '10px',
+              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)'
+            }}
+          >
+            <UserPlus size={18} />
+            <span>Add Member</span>
+          </button>
+        </div>
       </div>
 
-      {/* 4 Summary Cards */}
+      {/* Admin Notice Banner if pending requests exist */}
+      {isAdmin && pendingCount > 0 && onNavigate && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '1px solid #fcd34d',
+          borderRadius: '14px',
+          padding: '14px 20px',
+          marginBottom: '22px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '14px',
+          boxShadow: '0 2px 8px rgba(217, 119, 6, 0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{ 
+              background: '#fde68a', 
+              color: '#b45309', 
+              width: '38px', 
+              height: '38px', 
+              borderRadius: '10px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <ShieldAlert size={20} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '14px', color: '#92400e' }}>
+                Action Required: {pendingCount} Member Registration {pendingCount === 1 ? 'Request' : 'Requests'} Pending Approval
+              </div>
+              <div style={{ fontSize: '12.5px', color: '#b45309', marginTop: '2px' }}>
+                New members cannot log in or occupy binary tree legs until you accept their request.
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('member-requests')}
+            className="primary-btn"
+            style={{
+              padding: '8px 18px',
+              fontSize: '13px',
+              background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)',
+              borderRadius: '8px',
+              flexShrink: 0
+            }}
+          >
+            <span>Review & Approve</span>
+            <ArrowRight size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* KPI Cards Grid */}
       <div className="kpi-grid">
         <div className="kpi-card">
           <div className="kpi-icon-box kpi-icon-blue">
-            <Users size={26} />
+            <Users size={24} />
           </div>
           <div className="kpi-content">
-            <div className="kpi-label">Total Members</div>
+            <div className="kpi-label">{isAdmin ? 'Total Members' : 'My Total Members'}</div>
             <div className="kpi-value">{totalCount}</div>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-icon-box kpi-icon-green">
-            <UserCheck size={26} />
+            <UserCheck size={24} />
           </div>
           <div className="kpi-content">
-            <div className="kpi-label">Active Members</div>
+            <div className="kpi-label">Active in Binary Tree</div>
             <div className="kpi-value">
-              {activeCount} {totalCount > 0 && <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 600 }}>↑ {activePercent}%</span>}
-            </div>
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-icon-box kpi-icon-coral">
-            <UserX size={26} />
-          </div>
-          <div className="kpi-content">
-            <div className="kpi-label">Inactive Members</div>
-            <div className="kpi-value">
-              {inactiveCount} {totalCount > 0 && <span style={{ fontSize: '13px', color: '#ef4444', fontWeight: 600 }}>{100 - activePercent}%</span>}
+              {activeCount}
+              {totalCount > 0 && (
+                <span style={{ fontSize: '12px', color: '#059669', background: '#ecfdf5', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+                  ↑ {activePercent}%
+                </span>
+              )}
             </div>
           </div>
         </div>
 
         <div className="kpi-card">
           <div className="kpi-icon-box kpi-icon-gold">
-            <UserPlus size={26} />
+            <Clock size={24} />
           </div>
           <div className="kpi-content">
-            <div className="kpi-label">New This Month</div>
-            <div className="kpi-value">{totalCount}</div>
+            <div className="kpi-label">Pending Approval</div>
+            <div className="kpi-value" style={{ color: '#d97706' }}>
+              {pendingCount}
+              {pendingCount > 0 && (
+                <span style={{ fontSize: '11px', color: '#b45309', background: '#fef3c7', padding: '2px 8px', borderRadius: '12px', fontWeight: 600 }}>
+                  Awaiting Admin
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="kpi-card">
+          <div className="kpi-icon-box kpi-icon-coral">
+            <UserX size={24} />
+          </div>
+          <div className="kpi-content">
+            <div className="kpi-label">Inactive / Rejected</div>
+            <div className="kpi-value">
+              {inactiveCount}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Filter Bar (Image 5 Middle) */}
-      <div className="filter-bar">
-        <div className="search-input-box">
-          <Search size={18} color="#94a3b8" />
-          <input
-            type="text"
-            placeholder="Name, Member ID, Mobile or Email"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      {/* Modern Filter Toolbar */}
+      <div className="table-filter-bar">
+        <div className="filter-group">
+          {/* Search Box */}
+          <div className="filter-search-box">
+            <Search size={16} className="search-icon" />
+            <input 
+              type="text" 
+              placeholder={isAdmin ? "Search by Name, ID, Mobile, Sponsor..." : "Search in my registered members..."}
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+              <button 
+                onClick={() => setSearchTerm('')} 
+                style={{ position: 'absolute', right: '12px', color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer' }}
+              >
+                <X size={15} />
+              </button>
+            )}
+          </div>
+
+          {/* Package Filter */}
+          <div className="filter-select-box">
+            <Filter size={14} className="select-icon" />
+            <select value={selectedPackage} onChange={(e) => setSelectedPackage(e.target.value)}>
+              <option value="All Packages">All Packages</option>
+              <option value="Package 1">Package 1 (₹2,500)</option>
+              <option value="Package 2">Package 2 (₹5,000)</option>
+              <option value="Package 3">Package 3 (₹10,000)</option>
+              <option value="Package 4">Package 4 (₹25,000)</option>
+              <option value="Package 5">Package 5 (₹50,000)</option>
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div className="filter-select-box">
+            <select value={selectedStatus} onChange={(e) => setSelectedStatus(e.target.value)}>
+              <option value="All Status">All Status</option>
+              <option value="Active">● Active Only</option>
+              <option value="Pending">● Pending Approval</option>
+              <option value="Inactive">● Inactive</option>
+              <option value="Rejected">● Rejected</option>
+            </select>
+          </div>
+
+          {/* Reset Action */}
+          {(searchTerm || selectedPackage !== 'All Packages' || selectedStatus !== 'All Status') && (
+            <button className="reset-btn" onClick={handleReset} title="Clear all filters">
+              <RotateCcw size={14} />
+              <span>Clear Filters</span>
+            </button>
+          )}
         </div>
 
-        <select 
-          className="filter-select"
-          value={selectedPackage}
-          onChange={(e) => setSelectedPackage(e.target.value)}
-        >
-          <option value="All Packages">All Packages</option>
-          <option value="Basic">Basic (₹ 3,000)</option>
-          <option value="Premium">Premium (₹ 15,000)</option>
-          <option value="Elite">Elite (₹ 35,000)</option>
-        </select>
-
-        <select 
-          className="filter-select"
-          value={selectedStatus}
-          onChange={(e) => setSelectedStatus(e.target.value)}
-        >
-          <option value="All Status">All Status</option>
-          <option value="Active">Active</option>
-          <option value="Inactive">Inactive</option>
-        </select>
-
-        <div className="filter-select" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#94a3b8' }}>
-          <Calendar size={16} />
-          <span>Select Date</span>
+        {/* Member Counter chip */}
+        <div style={{ fontSize: '13px', fontWeight: 600, color: '#64748b' }}>
+          Showing <span style={{ color: '#0f172a', fontWeight: 700 }}>{filteredMembers.length}</span> of {totalCount} members
         </div>
-
-        <button className="primary-btn" style={{ padding: '9px 18px' }}>
-          <Filter size={15} />
-          <span>Filter</span>
-        </button>
-
-        <button onClick={handleReset} className="outline-btn" style={{ padding: '9px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <RotateCcw size={15} />
-          <span>Reset</span>
-        </button>
       </div>
 
       {/* Members Table Card */}
-      <div className="dashboard-card" style={{ padding: '0px', overflow: 'hidden' }}>
+      <div className="dashboard-card" style={{ padding: 0 }}>
         <div className="table-responsive">
           <table className="data-table">
             <thead>
               <tr>
-                <th style={{ width: '40px' }}>#</th>
+                <th style={{ width: '50px', textAlign: 'center' }}>#</th>
                 <th>Member ID</th>
-                <th>Name</th>
+                <th>Member Name & Phone</th>
                 <th>Sponsor ID</th>
+                {isAdmin && <th>Added By</th>}
                 <th>Package</th>
                 <th>Join Date</th>
                 <th>Status</th>
-                <th>Mobile</th>
                 <th style={{ textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {filteredMembers.map((m, idx) => {
-                const initials = m.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
-                return (
-                  <tr key={m.id}>
-                    <td>{idx + 1}</td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '3px 8px', borderRadius: '6px', fontSize: '12px' }}>
-                        {m.memberId}
-                      </span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <div style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                          color: 'white',
-                          fontWeight: 700,
-                          fontSize: '11.5px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
+              {loading ? (
+                <tr>
+                  <td colSpan={isAdmin ? 9 : 8} style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+                    <div style={{ width: '36px', height: '36px', border: '3px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+                    <p style={{ fontWeight: 600 }}>Loading members directory...</p>
+                  </td>
+                </tr>
+              ) : filteredMembers.length === 0 ? (
+                <tr>
+                  <td colSpan={isAdmin ? 9 : 8} style={{ textAlign: 'center', padding: '60px 20px' }}>
+                    <div style={{ width: '54px', height: '54px', borderRadius: '50%', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                      <Users size={28} />
+                    </div>
+                    <div style={{ fontWeight: 700, fontSize: '15px', color: '#0f172a' }}>
+                      {searchTerm ? 'No matching members found' : 'No members registered yet'}
+                    </div>
+                    <p style={{ color: '#64748b', fontSize: '13.5px', marginTop: '4px' }}>
+                      {searchTerm 
+                        ? 'Try adjusting your search keywords or clearing filters.' 
+                        : isAdmin 
+                        ? 'Click the "Add Member" button to create the first member.' 
+                        : 'Click "Add Member" above to register your first team member!'}
+                    </p>
+                  </td>
+                </tr>
+              ) : (
+                filteredMembers.map((m, idx) => {
+                  const initials = m.name.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase();
+                  
+                  return (
+                    <tr key={m.id}>
+                      {/* Index */}
+                      <td style={{ textAlign: 'center', color: '#94a3b8', fontSize: '12px', fontWeight: 600 }}>
+                        {idx + 1}
+                      </td>
+
+                      {/* Member ID */}
+                      <td>
+                        <span style={{ 
+                          fontWeight: 800, 
+                          color: '#2563eb', 
+                          background: '#eff6ff', 
+                          border: '1px solid #dbeafe',
+                          padding: '4px 9px', 
+                          borderRadius: '8px', 
+                          fontSize: '12.5px',
+                          letterSpacing: '0.4px',
+                          display: 'inline-block'
                         }}>
-                          {initials}
+                          {m.memberId}
+                        </span>
+                      </td>
+
+                      {/* Name & Mobile */}
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '10px',
+                            background: m.status === 'Pending' 
+                              ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)' 
+                              : 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
+                            color: 'white',
+                            fontWeight: 800,
+                            fontSize: '12px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            flexShrink: 0,
+                            boxShadow: '0 2px 6px rgba(0, 0, 0, 0.08)'
+                          }}>
+                            {initials}
+                          </div>
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '13.5px' }}>
+                              {m.name}
+                            </div>
+                            <div style={{ fontSize: '12px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                              <Phone size={11} style={{ color: '#94a3b8' }} />
+                              <span>{m.mobile}</span>
+                            </div>
+                          </div>
                         </div>
-                        <div>
-                          <div style={{ fontWeight: 700, color: '#0f172a' }}>{m.name}</div>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>{m.mobile}</div>
+                      </td>
+
+                      {/* Sponsor ID */}
+                      <td>
+                        <span style={{ 
+                          fontSize: '12px', 
+                          fontWeight: 700, 
+                          color: '#334155',
+                          background: '#f8fafc',
+                          border: '1px solid #e2e8f0',
+                          padding: '3px 8px',
+                          borderRadius: '6px'
+                        }}>
+                          {m.sponsorId}
+                        </span>
+                      </td>
+
+                      {/* Added By (for Admin view) */}
+                      {isAdmin && (
+                        <td>
+                          <span style={{ 
+                            fontSize: '11.5px', 
+                            color: '#475569', 
+                            background: '#f1f5f9', 
+                            padding: '3px 8px', 
+                            borderRadius: '6px',
+                            fontWeight: 600
+                          }}>
+                            {m.addedBy || 'ADMIN'}
+                          </span>
+                        </td>
+                      )}
+
+                      {/* Package */}
+                      <td>
+                        <span style={{ 
+                          padding: '4px 10px', 
+                          borderRadius: '8px', 
+                          fontSize: '12px', 
+                          fontWeight: 700,
+                          background: '#eff6ff',
+                          color: '#2563eb',
+                          border: '1px solid #dbeafe',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '5px'
+                        }}>
+                          <Package size={12} />
+                          {m.package}
+                        </span>
+                      </td>
+
+                      {/* Join Date */}
+                      <td style={{ fontSize: '12.5px', color: '#64748b' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <Calendar size={12} style={{ color: '#94a3b8' }} />
+                          <span>{m.joinDate}</span>
                         </div>
-                      </div>
-                    </td>
-                    <td>
-                      <span style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>{m.sponsorId}</span>
-                    </td>
-                    <td>
-                      <span style={{ 
-                        padding: '3px 10px', 
-                        borderRadius: '6px', 
-                        fontSize: '11.5px', 
-                        fontWeight: 700,
-                        background: m.package === 'Premium' ? '#f5f3ff' : '#eff6ff',
-                        color: m.package === 'Premium' ? '#7c3aed' : '#2563eb'
-                      }}>
-                        {m.package}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: '12.5px', color: '#64748b' }}>{m.joinDate}</td>
-                    <td>
-                      <span 
-                        onClick={() => handleToggleStatus(m.id)}
-                        className={`status-pill ${m.status === 'Active' ? 'status-active' : 'status-inactive'}`}
-                        style={{ cursor: 'pointer' }}
-                        title="Click to toggle status"
-                      >
-                        <span style={{
-                          width: '6px',
-                          height: '6px',
-                          borderRadius: '50%',
-                          background: m.status === 'Active' ? '#10b981' : '#ef4444'
-                        }} />
-                        {m.status}
-                      </span>
-                    </td>
-                    <td style={{ fontSize: '12.5px', color: '#64748b' }}>{m.mobile}</td>
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                        <button className="action-view-btn" onClick={() => alert(`Viewing details for ${m.name} (${m.memberId})`)}>
+                      </td>
+
+                      {/* Status Badge */}
+                      <td>
+                        {m.status === 'Active' && (
+                          <span className="status-pill status-active">
+                            <span style={{
+                              width: '7px',
+                              height: '7px',
+                              borderRadius: '50%',
+                              background: '#10b981',
+                              boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.25)'
+                            }} />
+                            Active
+                          </span>
+                        )}
+
+                        {m.status === 'Pending' && (
+                          <span className="status-pill status-pending" title="Awaiting Super Admin approval">
+                            <Clock size={12} />
+                            Pending Approval
+                          </span>
+                        )}
+
+                        {m.status === 'Inactive' && (
+                          <span className="status-pill status-inactive">
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#94a3b8' }} />
+                            Inactive
+                          </span>
+                        )}
+
+                        {m.status === 'Rejected' && (
+                          <span className="status-pill status-rejected">
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }} />
+                            Rejected
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ textAlign: 'center' }}>
+                        <button 
+                          className="action-view-btn" 
+                          onClick={() => alert(`Member Profile:\n\nName: ${m.name}\nMember ID: ${m.memberId}\nMobile: ${m.mobile}\nSponsor ID: ${m.sponsorId}\nPackage: ${m.package}\nStatus: ${m.status}\nAdded By: ${m.addedBy || 'Direct'}\nJoin Date: ${m.joinDate}`)}
+                          style={{
+                            borderRadius: '8px',
+                            padding: '6px 14px',
+                            fontSize: '12px',
+                            fontWeight: 700
+                          }}
+                        >
                           View
                         </button>
-                        <button className="action-edit-btn" onClick={() => alert(`Editing ${m.name}`)}>
-                          Edit
-                        </button>
-                        <button style={{ color: '#94a3b8', padding: '4px' }}>
-                          <MoreVertical size={16} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
 
-        {/* Pagination Strip (Image 5 Bottom) */}
+        {/* Pagination Strip */}
         <div style={{ 
-          padding: '16px 24px', 
+          padding: '16px 22px', 
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'space-between',
-          borderTop: '1px solid #f1f5f9' 
+          borderTop: '1px solid #f1f5f9',
+          background: '#f8fafc'
         }}>
           <div style={{ fontSize: '13px', color: '#64748b' }}>
-            Showing {filteredMembers.length > 0 ? 1 : 0} to {filteredMembers.length} of {totalCount} members
+            Showing <strong>{filteredMembers.length > 0 ? 1 : 0}</strong> to <strong>{filteredMembers.length}</strong> of <strong>{totalCount}</strong> members
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <button 
               className="outline-btn" 
-              style={{ padding: '6px 12px', fontSize: '12px' }}
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              style={{ padding: '6px 14px', fontSize: '12px', borderRadius: '8px' }}
+              disabled
             >
-              &lt;
+              Previous
             </button>
-            <button className="primary-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>1</button>
-            <button className="outline-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>2</button>
-            <button className="outline-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>3</button>
-            <button className="outline-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>4</button>
-            <button className="outline-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>5</button>
-            <span style={{ color: '#94a3b8', margin: '0 4px' }}>...</span>
-            <button className="outline-btn" style={{ padding: '6px 12px', fontSize: '12px' }}>126</button>
+            <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb', padding: '6px 10px', background: '#eff6ff', borderRadius: '6px' }}>
+              1
+            </span>
             <button 
               className="outline-btn" 
-              style={{ padding: '6px 12px', fontSize: '12px' }}
-              onClick={() => setCurrentPage(p => p + 1)}
+              style={{ padding: '6px 14px', fontSize: '12px', borderRadius: '8px' }}
+              disabled
             >
-              &gt;
+              Next
             </button>
           </div>
         </div>

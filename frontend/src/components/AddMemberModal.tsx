@@ -6,9 +6,11 @@ interface AddMemberModalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddMember: (member: any) => Promise<void> | void;
+  user?: any;
 }
 
-export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onAddMember }) => {
+export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onAddMember, user }) => {
+  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [placementMode, setPlacementMode] = useState<'auto' | 'manual'>('auto');
   const [formData, setFormData] = useState({
@@ -18,7 +20,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
     dob: '',
     password: '',
     confirmPassword: '',
-    sponsorId: '',
+    sponsorId: user?.memberId || '',
     parentId: '',
     placementId: '',
     position: 'LEFT',
@@ -28,6 +30,12 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
 
   useEffect(() => {
     if (isOpen) {
+      if (user?.memberId && !formData.sponsorId) {
+        setFormData((prev) => ({
+          ...prev,
+          sponsorId: user.memberId,
+        }));
+      }
       api.getPackages()
         .then((res) => {
           if (res.status && Array.isArray(res.data) && res.data.length > 0) {
@@ -44,7 +52,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
         })
         .catch((err) => console.error('Failed to load packages in AddMemberModal:', err));
     }
-  }, [isOpen]);
+  }, [isOpen, user?.memberId]);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -201,6 +209,27 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
           }}>
             <AlertCircle size={18} style={{ flexShrink: 0 }} />
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* Regular Member Approval Notice */}
+        {!isAdmin && (
+          <div style={{
+            background: '#eff6ff',
+            border: '1px solid #bfdbfe',
+            color: '#1e40af',
+            borderRadius: '10px',
+            padding: '10px 14px',
+            fontSize: '12.5px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '18px'
+          }}>
+            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <span>
+              <strong>Approval Workflow:</strong> New members registered from your portal are submitted to the Super Admin panel. They will appear in your member list and will be activated in the binary tree once approved.
+            </span>
           </div>
         )}
 

@@ -13,7 +13,8 @@ import {
   Settings, 
   LogOut,
   Gift,
-  ArrowDownToLine
+  ArrowDownToLine,
+  UserCheck
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -27,6 +28,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, user }) => {
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
   const [pendingWithdrawals, setPendingWithdrawals] = useState<number>(0);
+  const [pendingMemberRequests, setPendingMemberRequests] = useState<number>(0);
 
   useEffect(() => {
     if (isAdmin) {
@@ -36,6 +38,14 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
             setPendingWithdrawals(res.kpis.pendingCount);
           } else if (res?.total !== undefined) {
             setPendingWithdrawals(res.total);
+          }
+        })
+        .catch(() => {});
+
+      api.getMemberRequests()
+        .then((res: any) => {
+          if (res?.totalPending !== undefined) {
+            setPendingMemberRequests(res.totalPending);
           }
         })
         .catch(() => {});
@@ -60,7 +70,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     {
       title: 'Network & Genealogy',
       items: [
-        { id: 'members', label: 'Members Directory', icon: Users },
+        { 
+          id: 'members', 
+          label: isAdmin ? 'All Members' : 'My Registered Members', 
+          icon: Users 
+        },
+        ...(isAdmin ? [
+          {
+            id: 'member-requests',
+            label: 'Member Requests',
+            icon: UserCheck,
+            badge: pendingMemberRequests > 0 ? `${pendingMemberRequests} New` : undefined
+          }
+        ] : []),
         { id: 'genealogy', label: 'Binary & Sponsor Tree', icon: GitFork, badge: 'Live' }
       ]
     },

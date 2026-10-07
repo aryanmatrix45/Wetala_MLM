@@ -232,6 +232,7 @@ export class BinaryTreeService {
     };
 
     // Query LEFT and RIGHT children based on binary parentId + position (NOT sponsorId)
+    // Only include approved & non-pending members in the binary tree
     const [leftChild, rightChild] = await Promise.all([
       Member.findOne({
         $or: [
@@ -240,6 +241,8 @@ export class BinaryTreeService {
           { binaryParentId: member.memberId, position: BINARY_POSITION.LEFT },
           { binaryParentId: member.memberId, binaryPosition: BINARY_POSITION.LEFT },
         ],
+        status: { $ne: 'pending' },
+        approvalStatus: { $ne: 'pending' },
       }),
       Member.findOne({
         $or: [
@@ -248,6 +251,8 @@ export class BinaryTreeService {
           { binaryParentId: member.memberId, position: BINARY_POSITION.RIGHT },
           { binaryParentId: member.memberId, binaryPosition: BINARY_POSITION.RIGHT },
         ],
+        status: { $ne: 'pending' },
+        approvalStatus: { $ne: 'pending' },
       }),
     ]);
 

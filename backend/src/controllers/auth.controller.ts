@@ -236,8 +236,10 @@ export const AuthController = {
         packageBv: finalPackageBv,
         packageRp: finalPackageRp,
         dailyCapping: finalDailyCapping,
-        status: 'active',
-        isActive: true,
+        status: 'pending',
+        approvalStatus: 'pending',
+        addedBy: resolvedSponsorId || 'ADMIN',
+        isActive: false,
         leftBv: 0,
         rightBv: 0,
         matchedPairs: 0,
@@ -247,34 +249,10 @@ export const AuthController = {
         joinDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       });
 
-      // 7. Initialize Wallet
-      await WalletService.getOrCreateWallet(newMember.memberId, newMember._id.toString()).catch(() => null);
-
-      // 8. Initialize Binary Volume Record
-      await BinaryVolume.create({
-        memberId: newMember.memberId,
-        userId: newMember._id.toString(),
-        leftAvailableBV: 0,
-        rightAvailableBV: 0,
-        leftTotalBV: 0,
-        rightTotalBV: 0,
-        matchedTotalBV: 0,
-        leftCarryForwardBV: 0,
-        rightCarryForwardBV: 0,
-      }).catch(() => null);
-
-      // 9. Generate JWT Token
-      const token = generateToken({
-        id: newMember._id.toString(),
-        email: newMember.email,
-        role: newMember.role,
-        memberId: newMember.memberId,
-      });
-
       const nameParts = newMember.name.trim().split(' ');
       res.status(HTTP_STATUS.CREATED).json({
         status: true,
-        message: `Account created successfully! Welcome to Wetala, ${newMember.name}.`,
+        message: `Registration request submitted successfully for ${newMember.name}! Member ID: ${newMember.memberId}. Your account is pending Super Admin approval.`,
         memberId: newMember.memberId,
         data: {
           id: newMember._id,
@@ -297,9 +275,10 @@ export const AuthController = {
           packageRp: newMember.packageRp,
           dailyCapping: newMember.dailyCapping,
           status: newMember.status,
+          approvalStatus: newMember.approvalStatus,
           walletBalance: 0,
         },
-        token,
+        token: null,
       });
     } catch (error: any) {
       console.error('[AuthController.register] Error:', error);
@@ -468,6 +447,22 @@ export const AuthController = {
           res.status(HTTP_STATUS.FORBIDDEN).json({
             status: false,
             message: 'This account has been blocked. Please contact support.',
+          });
+          return;
+        }
+
+        if (member.approvalStatus === 'pending' || member.status === 'pending') {
+          res.status(HTTP_STATUS.FORBIDDEN).json({
+            status: false,
+            message: 'Your account registration is currently pending Super Admin approval. You will be able to log in once approved.',
+          });
+          return;
+        }
+
+        if (member.approvalStatus === 'rejected' || member.status === 'rejected') {
+          res.status(HTTP_STATUS.FORBIDDEN).json({
+            status: false,
+            message: `Your registration request was rejected by admin.${member.rejectionReason ? ' Reason: ' + member.rejectionReason : ''}`,
           });
           return;
         }

@@ -2,7 +2,8 @@ import mongoose, { Document, Schema, Model } from 'mongoose';
 import bcrypt from 'bcryptjs';
 import { ROLES, BINARY_POSITION, BinaryPosition } from '../config/constants';
 
-export type MemberStatus = 'active' | 'inactive' | 'blocked';
+export type MemberStatus = 'active' | 'inactive' | 'blocked' | 'pending' | 'rejected';
+export type MemberApprovalStatus = 'pending' | 'approved' | 'rejected';
 
 export interface IMember extends Document {
   memberId: string;
@@ -28,6 +29,11 @@ export interface IMember extends Document {
   
   rank: string;
   status: MemberStatus;
+  approvalStatus: MemberApprovalStatus;
+  addedBy?: string;
+  approvedAt?: Date;
+  approvedBy?: string;
+  rejectionReason?: string;
   isActive: boolean;
   joiningPackageId?: string;
   packageName?: string;
@@ -161,9 +167,34 @@ const memberSchema = new Schema<IMember, IMemberModel>(
     },
     status: {
       type: String,
-      enum: ['active', 'inactive', 'blocked'],
+      enum: ['active', 'inactive', 'blocked', 'pending', 'rejected'],
       default: 'active',
       index: true,
+    },
+    approvalStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'approved',
+      index: true,
+    },
+    addedBy: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      index: true,
+      default: 'ADMIN',
+    },
+    approvedAt: {
+      type: Date,
+    },
+    approvedBy: {
+      type: String,
+      trim: true,
+    },
+    rejectionReason: {
+      type: String,
+      trim: true,
+      default: '',
     },
     isActive: {
       type: Boolean,

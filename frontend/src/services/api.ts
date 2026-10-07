@@ -50,12 +50,21 @@ export interface ApiMember {
   name: string;
   email: string;
   mobile: string;
+  dob?: string;
   sponsorId: string;
+  parentId?: string;
   placementId: string;
-  position: 'left' | 'right';
+  position: 'left' | 'right' | 'LEFT' | 'RIGHT';
   packageName: string;
+  packageBv?: number;
   joinDate: string;
-  status: 'active' | 'inactive';
+  status: 'active' | 'inactive' | 'pending' | 'rejected';
+  approvalStatus?: 'pending' | 'approved' | 'rejected';
+  addedBy?: string;
+  approvedAt?: string;
+  approvedBy?: string;
+  rejectionReason?: string;
+  isActive?: boolean;
   leftBv: number;
   rightBv: number;
   matchedPairs: number;
@@ -226,22 +235,75 @@ export const api = {
   },
 
   // Members
-  async getMembers(): Promise<ApiMember[]> {
-    const res = await fetch(`${API_BASE_URL}/members`);
+  async getMembers(token?: string): Promise<ApiMember[]> {
+    const headers: Record<string, string> = {};
+    const authToken = token || localStorage.getItem('wetala_token');
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/members`, { headers });
     if (!res.ok) throw new Error(`Failed to fetch members: ${res.statusText}`);
     return res.json();
   },
 
-  async addMember(data: any): Promise<any> {
+  async addMember(data: any, token?: string): Promise<any> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const authToken = token || localStorage.getItem('wetala_token');
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
     const res = await fetch(`${API_BASE_URL}/members`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify(data),
     });
     const result = await res.json();
     if (!res.ok) {
       throw new Error(result.message || `Failed to create member: ${res.statusText}`);
     }
+    return result;
+  },
+
+  // Member Approval Requests for Super Admin
+  async getMemberRequests(token?: string): Promise<{ status: boolean; totalPending: number; data: any[] }> {
+    const headers: Record<string, string> = {};
+    const authToken = token || localStorage.getItem('wetala_token');
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/admin/member-requests`, { headers });
+    if (!res.ok) throw new Error(`Failed to fetch member requests: ${res.statusText}`);
+    return res.json();
+  },
+
+  async approveMemberRequest(id: string, token?: string): Promise<any> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const authToken = token || localStorage.getItem('wetala_token');
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/admin/member-requests/${id}/approve`, {
+      method: 'PUT',
+      headers,
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || 'Failed to approve member request');
+    return result;
+  },
+
+  async rejectMemberRequest(id: string, reason?: string, token?: string): Promise<any> {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    const authToken = token || localStorage.getItem('wetala_token');
+    if (authToken) {
+      headers['Authorization'] = `Bearer ${authToken}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/admin/member-requests/${id}/reject`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify({ reason }),
+    });
+    const result = await res.json();
+    if (!res.ok) throw new Error(result.message || 'Failed to reject member request');
     return result;
   },
 
