@@ -5,6 +5,27 @@
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
+/**
+ * Resolves static asset URLs (e.g. /uploads/products/...) relative to the backend origin
+ * or returns full URLs untouched.
+ */
+export const getAssetUrl = (url?: string): string => {
+  if (!url) return '';
+  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
+    return url;
+  }
+  // If API_BASE_URL is an absolute URL (e.g. https://api.panchwatiwellness.com/api), resolve against its origin
+  if (API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')) {
+    try {
+      const u = new URL(API_BASE_URL);
+      return `${u.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+    } catch {
+      return url;
+    }
+  }
+  return url;
+};
+
 export interface DashboardStats {
   status?: boolean;
   totalMembers: number;

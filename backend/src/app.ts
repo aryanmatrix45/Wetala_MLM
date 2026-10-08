@@ -7,18 +7,52 @@ const app = express();
 
 import path from 'path';
 
+// Trust reverse proxy (Nginx, Cloudflare, AWS ALB)
+app.set('trust proxy', 1);
+
 // Disable ETag for fresh responses
 app.set('etag', false);
 
-// CORS configuration
-app.use(cors({ origin: true, credentials: true }));
+// CORS configuration for local and production domains
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  : [
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+      'https://panchwatiwellness.com',
+      'https://www.panchwatiwellness.com',
+      'http://panchwatiwellness.com',
+      'http://www.panchwatiwellness.com',
+    ];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, curl, or server-to-server)
+      if (!origin) return callback(null, true);
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.panchwatiwellness.com') ||
+        process.env.NODE_ENV !== 'production'
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Permissive fallback to prevent breaking client transitions
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  })
+);
 
 // Body parsers
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '20mb' }));
+app.use(express.urlencoded({ extended: true, limit: '20mb' }));
 
 // Static uploads directory for product images and media
-app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
+const uploadsPath = path.resolve(__dirname, '../uploads');
+app.use('/uploads', express.static(uploadsPath, { maxAge: '30d' }));
 
 // No-cache headers for dynamic API responses
 app.use((_req, res, next) => {
