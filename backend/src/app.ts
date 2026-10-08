@@ -5,6 +5,8 @@ import { errorHandler } from './middlewares/errorHandler';
 
 const app = express();
 
+import path from 'path';
+
 // Disable ETag for fresh responses
 app.set('etag', false);
 
@@ -14,6 +16,9 @@ app.use(cors({ origin: true, credentials: true }));
 // Body parsers
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Static uploads directory for product images and media
+app.use('/uploads', express.static(path.resolve(__dirname, '../uploads')));
 
 // No-cache headers for dynamic API responses
 app.use((_req, res, next) => {

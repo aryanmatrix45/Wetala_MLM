@@ -138,6 +138,69 @@ export interface PackageItem {
   isActive: boolean;
 }
 
+export interface ProductImage {
+  url: string;
+  key: string;
+  alt?: string;
+  isPrimary: boolean;
+  sortOrder: number;
+}
+
+export interface CategoryItem {
+  _id?: string;
+  name: string;
+  slug: string;
+  description?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  subcategoryCount?: number;
+  productCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SubcategoryItem {
+  _id?: string;
+  name: string;
+  slug: string;
+  categoryId: string | CategoryItem;
+  description?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  productCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProductItem {
+  _id?: string;
+  productId: string;
+  title: string;
+  name?: string;
+  slug: string;
+  sku: string;
+  shortDescription?: string;
+  description?: string;
+  categoryId?: string | CategoryItem;
+  subcategoryId?: string | SubcategoryItem | null;
+  category?: string;
+  subcategory?: string;
+  brand?: string;
+  businessVolume: number;
+  bv?: number;
+  price: number;
+  priceInPaise?: number;
+  mrp?: number;
+  mrpInPaise?: number;
+  images: ProductImage[];
+  stock: number;
+  stockQuantity?: number;
+  status: 'ACTIVE' | 'INACTIVE';
+  isActive?: boolean;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export const api = {
   // Authentication & SuperAdmin Setup
   async getSuperAdminStatus(): Promise<{ status: boolean; isInitialized: boolean }> {
@@ -487,9 +550,216 @@ export const api = {
     return res.json();
   },
 
-  // Products
-  async getProducts() {
-    const res = await fetch(`${API_BASE_URL}/products`);
+  // Categories (Member & Public)
+  async getCategories() {
+    const res = await fetch(`${API_BASE_URL}/categories`);
+    return res.json();
+  },
+
+  // Categories (SuperAdmin)
+  async adminGetCategories(params?: any, token?: string) {
+    const searchParams = new URLSearchParams(params || {});
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/categories?${searchParams.toString()}`, { headers });
+    return res.json();
+  },
+
+  async adminGetCategoryById(id: string, token?: string) {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/categories/${encodeURIComponent(id)}`, { headers });
+    return res.json();
+  },
+
+  async adminCreateCategory(data: any, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/categories`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async adminUpdateCategory(id: string, data: any, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/categories/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async adminDeleteCategory(id: string, token?: string) {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/categories/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return res.json();
+  },
+
+  async adminUpdateCategoryStatus(id: string, status?: string, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/categories/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(status ? { status } : {}),
+    });
+    return res.json();
+  },
+
+  // Subcategories (Member & Public)
+  async getSubcategories(params?: { categoryId?: string }) {
+    const searchParams = new URLSearchParams(params as any || {});
+    const res = await fetch(`${API_BASE_URL}/subcategories?${searchParams.toString()}`);
+    return res.json();
+  },
+
+  // Subcategories (SuperAdmin)
+  async adminGetSubcategories(params?: any, token?: string) {
+    const searchParams = new URLSearchParams(params || {});
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/subcategories?${searchParams.toString()}`, { headers });
+    return res.json();
+  },
+
+  async adminGetSubcategoryById(id: string, token?: string) {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/subcategories/${encodeURIComponent(id)}`, { headers });
+    return res.json();
+  },
+
+  async adminCreateSubcategory(data: any, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/subcategories`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async adminUpdateSubcategory(id: string, data: any, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/subcategories/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async adminDeleteSubcategory(id: string, token?: string) {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/subcategories/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return res.json();
+  },
+
+  async adminUpdateSubcategoryStatus(id: string, status?: string, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/subcategories/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(status ? { status } : {}),
+    });
+    return res.json();
+  },
+
+  // Products (Member & Public)
+  async getProducts(params?: any) {
+    const searchParams = new URLSearchParams(params || {});
+    const res = await fetch(`${API_BASE_URL}/products?${searchParams.toString()}`);
+    return res.json();
+  },
+
+  async getProductBySlug(slug: string) {
+    const res = await fetch(`${API_BASE_URL}/products/${encodeURIComponent(slug)}`);
+    return res.json();
+  },
+
+  // Products (SuperAdmin Management)
+  async adminGetProducts(params?: any, token?: string) {
+    const searchParams = new URLSearchParams(params || {});
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/products?${searchParams.toString()}`, { headers });
+    return res.json();
+  },
+
+  async adminGetProductById(id: string, token?: string) {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/products/${encodeURIComponent(id)}`, { headers });
+    return res.json();
+  },
+
+  async adminCreateProduct(data: any, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/products`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async adminUpdateProduct(id: string, data: any, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/products/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers,
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  async adminDeleteProduct(id: string, token?: string) {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/products/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers,
+    });
+    return res.json();
+  },
+
+  async adminUpdateProductStatus(id: string, status?: string, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/products/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(status ? { status } : {}),
+    });
+    return res.json();
+  },
+
+  async adminUploadProductImage(data: { data: string; filename?: string; alt?: string }, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/products/upload-image`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify(data),
+    });
     return res.json();
   },
 

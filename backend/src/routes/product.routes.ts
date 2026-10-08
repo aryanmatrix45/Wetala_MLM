@@ -1,10 +1,10 @@
 import { Router } from 'express';
 import { ProductController } from '../controllers/product.controller';
-import { authenticate } from '../middlewares/auth';
 
 const router = Router();
 
+// Member / Public Products (Only ACTIVE products returned)
 router.get('/', ProductController.getProducts);
-router.post('/', authenticate, ProductController.createProduct);
+router.get('/:slug', ProductController.getProductBySlug);
 
 export default router;

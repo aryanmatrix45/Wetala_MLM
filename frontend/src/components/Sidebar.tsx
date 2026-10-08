@@ -14,7 +14,10 @@ import {
   LogOut,
   Gift,
   ArrowDownToLine,
-  UserCheck
+  UserCheck,
+  ShoppingBag,
+  FolderTree,
+  Layers,
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -107,6 +110,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     {
       title: isAdmin ? 'Platform Administration' : 'Member Services',
       items: [
+        ...(isAdmin ? [
+          {
+            id: 'manage-categories',
+            label: 'Manage Categories',
+            icon: FolderTree,
+          },
+          {
+            id: 'manage-subcategories',
+            label: 'Manage Subcategories',
+            icon: Layers,
+          },
+          {
+            id: 'manage-products',
+            label: 'Manage Products',
+            icon: ShoppingBag,
+          },
+        ] : [
+          {
+            id: 'member-products',
+            label: 'Products & Repurchase',
+            icon: ShoppingBag,
+            badge: 'Store',
+          },
+        ]),
         { 
           id: 'packages', 
           label: isAdmin ? 'Package Management' : (user?.packageName || user?.joiningPackageId ? 'Packages & Upgrade' : 'Buy Joining Package'), 

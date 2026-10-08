@@ -7,6 +7,11 @@ import compensationRoutes from './compensation.routes';
 import purchaseRoutes from './purchase.routes';
 import packageRoutes from './package.routes';
 import productRoutes from './product.routes';
+import adminProductRoutes from './adminProduct.routes';
+import categoryRoutes from './category.routes';
+import subcategoryRoutes from './subcategory.routes';
+import adminCategoryRoutes from './adminCategory.routes';
+import adminSubcategoryRoutes from './adminSubcategory.routes';
 import walletRoutes from './wallet.routes';
 import reportRoutes from './report.routes';
 import welcomeBonusRoutes from './welcomeBonus.routes';
@@ -35,8 +40,19 @@ router.use('/purchases', purchaseRoutes);
 // Joining & Repurchase Packages
 router.use('/packages', packageRoutes);
 
-// Products & Stock Inventory
+// Products & Stock Inventory (Members / Public)
 router.use('/products', productRoutes);
+
+// Product Management (SuperAdmin)
+router.use('/admin/products', adminProductRoutes);
+
+// Categories & Subcategories (Members / Public)
+router.use('/categories', categoryRoutes);
+router.use('/subcategories', subcategoryRoutes);
+
+// Category & Subcategory Management (SuperAdmin)
+router.use('/admin/categories', adminCategoryRoutes);
+router.use('/admin/subcategories', adminSubcategoryRoutes);
 
 // Wallets & Transactions
 router.use('/wallet', walletRoutes);

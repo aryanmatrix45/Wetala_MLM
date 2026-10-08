@@ -3,12 +3,16 @@ import { PURCHASE_TYPE, PurchaseType, PURCHASE_STATUS, PurchaseStatus } from '..
 
 export interface IPurchaseItem {
   itemId: string; // packageId or productId
+  productId?: string; // Product document ID snapshot
+  productName?: string; // Product name snapshot
   itemType: 'PACKAGE' | 'PRODUCT';
   name: string;
   quantity: number;
   unitPrice: number;
+  price?: number; // Snapshot of unit price
   unitPriceInPaise: number;
   unitBV: number;
+  businessVolume?: number; // Snapshot of unit business volume
   totalPrice: number;
   totalPriceInPaise: number;
   totalBV: number;
@@ -38,12 +42,16 @@ export interface IPurchase extends Document {
 const purchaseItemSchema = new Schema<IPurchaseItem>(
   {
     itemId: { type: String, required: true },
+    productId: { type: String },
+    productName: { type: String },
     itemType: { type: String, enum: ['PACKAGE', 'PRODUCT'], required: true },
     name: { type: String, required: true },
     quantity: { type: Number, required: true, min: 1 },
     unitPrice: { type: Number, required: true, min: 0 },
+    price: { type: Number, min: 0 },
     unitPriceInPaise: { type: Number, required: true, min: 0 },
     unitBV: { type: Number, required: true, min: 0 },
+    businessVolume: { type: Number, min: 0 },
     totalPrice: { type: Number, required: true, min: 0 },
     totalPriceInPaise: { type: Number, required: true, min: 0 },
     totalBV: { type: Number, required: true, min: 0 },

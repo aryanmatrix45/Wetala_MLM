@@ -11,6 +11,10 @@ import { PayoutsPage } from './pages/PayoutsPage';
 import { SponsorIncomePage } from './pages/SponsorIncomePage';
 import { AddMemberModal } from './components/AddMemberModal';
 import { LoginPage } from './pages/LoginPage';
+import { AdminProductsPage } from './pages/AdminProductsPage';
+import { AdminCategoriesPage } from './pages/AdminCategoriesPage';
+import { AdminSubcategoriesPage } from './pages/AdminSubcategoriesPage';
+import { MemberProductsPage } from './pages/MemberProductsPage';
 import { api } from './services/api';
 
 export function App() {
@@ -145,6 +149,22 @@ export function App() {
             token={token}
             onUserUpdate={(updated) => setUser(updated)}
           />
+        )}
+
+        {activeTab === 'manage-categories' && (
+          <AdminCategoriesPage user={user} token={token} />
+        )}
+
+        {activeTab === 'manage-subcategories' && (
+          <AdminSubcategoriesPage user={user} token={token} />
+        )}
+
+        {activeTab === 'manage-products' && (
+          <AdminProductsPage user={user} token={token} />
+        )}
+
+        {activeTab === 'member-products' && (
+          <MemberProductsPage user={user} token={token} />
         )}
 
         {activeTab === 'income-settings' && <IncomeSettingsPage user={user} token={token} defaultSection="simulator" />}
