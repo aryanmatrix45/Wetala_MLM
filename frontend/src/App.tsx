@@ -22,8 +22,38 @@ export function App() {
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const getInitialTab = () => {
+    const path = window.location.pathname;
+    if (path.startsWith('/product/') || path.startsWith('/products/') || path === '/products') {
+      return 'member-products';
+    }
+    return 'dashboard';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+
+  // Tab switch handler with URL cleanup
+  const handleTabChange = (newTab: string) => {
+    if (newTab !== 'member-products') {
+      if (window.location.pathname.startsWith('/product/') || window.location.pathname.startsWith('/products/')) {
+        window.history.pushState(null, '', '/');
+      }
+    }
+    setActiveTab(newTab);
+  };
+
+  // Listen to browser popstate to handle back/forward navigation
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path.startsWith('/product/') || path.startsWith('/products/')) {
+        setActiveTab('member-products');
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Check saved session on app load
   useEffect(() => {
@@ -101,11 +131,11 @@ export function App() {
   return (
     <div className="app-container">
       {/* Left Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} user={user} onLogout={handleLogout} />
+      <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} user={user} onLogout={handleLogout} />
 
       {/* Main Content Area */}
       <div className="main-wrapper">
-        <TopNavbar user={user} onLogout={handleLogout} onNavigate={(tab) => setActiveTab(tab)} />
+        <TopNavbar user={user} onLogout={handleLogout} onNavigate={handleTabChange} />
 
         {/* Tab Routing */}
         {(activeTab === 'dashboard' || activeTab === 'welcome-bonus') && (

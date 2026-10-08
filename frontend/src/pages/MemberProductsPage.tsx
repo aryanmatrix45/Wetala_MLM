@@ -11,7 +11,12 @@ import {
   AlertCircle,
   Eye,
   ArrowRight,
+  ArrowLeft,
   Image as ImageIcon,
+  ShieldCheck,
+  Package,
+  ChevronRight,
+  Sparkles,
 } from 'lucide-react';
 import { api, type ProductItem, type CategoryItem, type SubcategoryItem } from '../services/api';
 
@@ -37,8 +42,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
   const [categoriesList, setCategoriesList] = useState<CategoryItem[]>([]);
   const [subcategoriesList, setSubcategoriesList] = useState<SubcategoryItem[]>([]);
 
-  // Selected product for details modal
+  // Selected product for full page details view
   const [viewProduct, setViewProduct] = useState<ProductItem | null>(null);
+  const [productLoading, setProductLoading] = useState(false);
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [detailQty, setDetailQty] = useState(1);
 
@@ -120,6 +126,115 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
     loadProducts();
   }, [searchQuery, selectedCategoryId, selectedSubcategoryId]);
 
+  // ==========================================
+  // URL SLUG SYNCHRONIZATION
+  // ==========================================
+
+  // Extract slug from URL path (e.g. /products/:slug or /product/:slug) or query params
+  const extractSlugFromUrl = (): string | null => {
+    const pathname = window.location.pathname;
+    const match = pathname.match(/^\/(?:products|product)\/([^/?#]+)/i);
+    if (match && match[1]) {
+      return decodeURIComponent(match[1]);
+    }
+    const params = new URLSearchParams(window.location.search);
+    const qSlug = params.get('product') || params.get('slug');
+    if (qSlug) return qSlug;
+    return null;
+  };
+
+  // Fetch product by slug from backend
+  const fetchProductBySlug = async (slug: string) => {
+    try {
+      setProductLoading(true);
+      const res = await api.getProductBySlug(slug);
+      if (res.status && res.data) {
+        setViewProduct(res.data);
+        setActiveImageIdx(0);
+        setDetailQty(1);
+      } else {
+        // Fallback: check in products array
+        const found = products.find(
+          (p) => p.slug?.toLowerCase() === slug.toLowerCase() || p.productId === slug
+        );
+        if (found) {
+          setViewProduct(found);
+          setActiveImageIdx(0);
+          setDetailQty(1);
+        } else {
+          setFeedback({
+            type: 'error',
+            message: `Product '${slug}' could not be found or is unavailable.`,
+          });
+          setViewProduct(null);
+          window.history.replaceState(null, '', '/products');
+        }
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch product by slug:', err);
+      // Fallback
+      const found = products.find(
+        (p) => p.slug?.toLowerCase() === slug.toLowerCase() || p.productId === slug
+      );
+      if (found) {
+        setViewProduct(found);
+        setActiveImageIdx(0);
+        setDetailQty(1);
+      } else {
+        setFeedback({
+          type: 'error',
+          message: `Product '${slug}' could not be loaded.`,
+        });
+        setViewProduct(null);
+      }
+    } finally {
+      setProductLoading(false);
+    }
+  };
+
+  // On mount: check if URL contains product slug
+  useEffect(() => {
+    const slug = extractSlugFromUrl();
+    if (slug) {
+      fetchProductBySlug(slug);
+    }
+  }, []);
+
+  // Listen to browser Back / Forward (popstate)
+  useEffect(() => {
+    const handlePopState = () => {
+      const slug = extractSlugFromUrl();
+      if (slug) {
+        if (viewProduct?.slug?.toLowerCase() !== slug.toLowerCase()) {
+          fetchProductBySlug(slug);
+        }
+      } else {
+        setViewProduct(null);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [viewProduct, products]);
+
+  // Open product details and update URL to /products/:slug
+  const handleOpenProduct = (product: ProductItem) => {
+    setViewProduct(product);
+    setActiveImageIdx(0);
+    setDetailQty(1);
+    const slug = product.slug || product.productId || (product as any)._id;
+    if (slug) {
+      window.history.pushState({ slug }, '', `/products/${slug}`);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Close product details and revert URL to /products
+  const handleBackToProducts = () => {
+    setViewProduct(null);
+    window.history.pushState(null, '', '/products');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   // Add Product to Cart
   const handleAddToCart = (product: ProductItem, qty = 1) => {
     const stockAvailable = product.stock ?? product.stockQuantity ?? 0;
@@ -144,6 +259,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
       }
     });
 
+    setIsCartOpen(true);
+  };
+
+  // Buy Now: adds to cart and opens cart drawer for immediate checkout
+  const handleBuyNow = (product: ProductItem, qty = 1) => {
+    handleAddToCart(product, qty);
     setIsCartOpen(true);
   };
 
@@ -197,7 +318,6 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
       setCheckoutLoading(true);
       setFeedback(null);
 
-      // Map cart items for backend order creation
       const itemsPayload = cart.map((item) => ({
         itemId: item.product.productId || (item.product as any)._id,
         productId: (item.product as any)._id || item.product.productId,
@@ -221,7 +341,6 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
           message: `Order #${res.data.purchaseId} placed successfully! ${res.data.totalBV?.toLocaleString()} BV credited to your account.`,
           purchase: res.data,
         });
-        // Reload products to reflect updated inventory
         await loadProducts();
       } else {
         setFeedback({
@@ -240,75 +359,39 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
     }
   };
 
+  // Helper variables for viewProduct
+  const productCategoryName = viewProduct
+    ? (typeof viewProduct.categoryId === 'object' && viewProduct.categoryId?.name
+        ? viewProduct.categoryId.name
+        : viewProduct.category || 'General')
+    : '';
+
+  const productSubcategoryName = viewProduct
+    ? (viewProduct.subcategoryId && typeof viewProduct.subcategoryId === 'object'
+        ? viewProduct.subcategoryId.name
+        : viewProduct.subcategory || '')
+    : '';
+
+  const productStock = viewProduct ? (viewProduct.stock ?? viewProduct.stockQuantity ?? 0) : 0;
+  const isProductOutOfStock = productStock <= 0;
+  const productBV = viewProduct ? (viewProduct.businessVolume ?? viewProduct.bv ?? 0) : 0;
+  const productSavings = viewProduct && viewProduct.mrp && viewProduct.mrp > viewProduct.price
+    ? viewProduct.mrp - viewProduct.price
+    : 0;
+
+  // Related products from same category
+  const relatedProducts = viewProduct
+    ? products
+        .filter((p) => {
+          const pId = p.productId || (p as any)._id;
+          const currentId = viewProduct.productId || (viewProduct as any)._id;
+          return pId !== currentId;
+        })
+        .slice(0, 4)
+    : [];
+
   return (
     <div className="page-body">
-      {/* Top Banner */}
-      <div className="welcome-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #0284c7 100%)',
-                color: 'white',
-                padding: '3px 10px',
-                borderRadius: '20px',
-                fontSize: '11px',
-                fontWeight: 800,
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-              }}
-            >
-              MEMBER STORE
-            </span>
-            <span style={{ color: '#64748b', fontSize: '13px' }}>
-              Panchwati Wellness • Ayurvedic & Health Products
-            </span>
-          </div>
-
-          <h1 className="page-title">Products & Repurchase</h1>
-          <p className="page-subtitle">
-            Browse genuine products, earn independent Business Volume (BV) with every purchase, and qualify for
-            repurchase binary team bonuses.
-          </p>
-        </div>
-
-        {/* Floating Cart Button */}
-        <div>
-          <button
-            onClick={() => setIsCartOpen(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-              background: '#1d72fe',
-              color: '#fff',
-              padding: '10px 18px',
-              borderRadius: '8px',
-              fontWeight: 700,
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(29, 114, 254, 0.3)',
-              position: 'relative',
-            }}
-          >
-            <ShoppingCart size={18} />
-            <span>Cart ({cartItemCount})</span>
-            {cartTotalAmount > 0 && (
-              <span
-                style={{
-                  background: 'rgba(255,255,255,0.2)',
-                  padding: '2px 8px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                }}
-              >
-                ₹{cartTotalAmount.toLocaleString()}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
-
       {/* Order Feedback Alert */}
       {feedback && (
         <div
@@ -345,146 +428,15 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
         </div>
       )}
 
-      {/* Search & Category Filter Bar */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '12px',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px',
-        }}
-      >
-        {/* Search */}
-        <div style={{ position: 'relative', flex: 1, minWidth: '260px', maxWidth: '420px' }}>
-          <Search
-            size={16}
-            style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}
-          />
-          <input
-            type="text"
-            placeholder="Search products by name, benefits, or SKU..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px 14px 10px 38px',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              fontSize: '13px',
-              background: '#fff',
-            }}
-          />
-        </div>
-
-        {/* Category Pills */}
-        <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', flexWrap: 'wrap' }}>
-          <button
-            onClick={() => {
-              setSelectedCategoryId('ALL');
-              setSelectedSubcategoryId('ALL');
-            }}
-            style={{
-              padding: '6px 14px',
-              borderRadius: '20px',
-              fontSize: '12px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: selectedCategoryId === 'ALL' ? '1px solid #2563eb' : '1px solid #cbd5e1',
-              background: selectedCategoryId === 'ALL' ? '#eff6ff' : '#fff',
-              color: selectedCategoryId === 'ALL' ? '#1d4ed8' : '#64748b',
-            }}
-          >
-            All Products
-          </button>
-          {categoriesList.map((cat) => (
-            <button
-              key={cat._id}
-              onClick={() => {
-                setSelectedCategoryId(cat._id);
-                setSelectedSubcategoryId('ALL');
-              }}
-              style={{
-                padding: '6px 14px',
-                borderRadius: '20px',
-                fontSize: '12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: selectedCategoryId === cat._id ? '1px solid #2563eb' : '1px solid #cbd5e1',
-                background: selectedCategoryId === cat._id ? '#eff6ff' : '#fff',
-                color: selectedCategoryId === cat._id ? '#1d4ed8' : '#64748b',
-              }}
-            >
-              {cat.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Subcategory Pills (when a specific category is selected and has subcategories) */}
-      {selectedCategoryId !== 'ALL' && subcategoriesList.length > 0 && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '20px',
-            padding: '10px 16px',
-            background: '#f8fafc',
-            borderRadius: '10px',
-            border: '1px solid #e2e8f0',
-            overflowX: 'auto',
-          }}
-        >
-          <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginRight: '4px', flexShrink: 0 }}>
-            Subcategories:
-          </span>
-          <button
-            onClick={() => setSelectedSubcategoryId('ALL')}
-            style={{
-              padding: '4px 12px',
-              borderRadius: '16px',
-              fontSize: '11px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              border: selectedSubcategoryId === 'ALL' ? '1px solid #0284c7' : '1px solid #cbd5e1',
-              background: selectedSubcategoryId === 'ALL' ? '#e0f2fe' : '#fff',
-              color: selectedSubcategoryId === 'ALL' ? '#0369a1' : '#64748b',
-              flexShrink: 0,
-            }}
-          >
-            All
-          </button>
-          {subcategoriesList.map((subcat) => (
-            <button
-              key={subcat._id}
-              onClick={() => setSelectedSubcategoryId(subcat._id)}
-              style={{
-                padding: '4px 12px',
-                borderRadius: '16px',
-                fontSize: '11px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                border: selectedSubcategoryId === subcat._id ? '1px solid #0284c7' : '1px solid #cbd5e1',
-                background: selectedSubcategoryId === subcat._id ? '#e0f2fe' : '#fff',
-                color: selectedSubcategoryId === subcat._id ? '#0369a1' : '#64748b',
-                flexShrink: 0,
-              }}
-            >
-              {subcat.name}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Products Grid */}
-      {loading ? (
-        <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+      {/* ======================================================== */}
+      {/* VIEW PRODUCT LOADING STATE                               */}
+      {/* ======================================================== */}
+      {productLoading && (
+        <div style={{ padding: '80px 20px', textAlign: 'center', color: '#64748b' }}>
           <div
             style={{
-              width: '32px',
-              height: '32px',
+              width: '40px',
+              height: '40px',
               border: '3px solid #cbd5e1',
               borderTopColor: '#1d72fe',
               borderRadius: '50%',
@@ -492,537 +444,1228 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
               margin: '0 auto 16px',
             }}
           />
-          <p style={{ fontWeight: 500 }}>Loading active products catalog...</p>
-        </div>
-      ) : products.length === 0 ? (
-        <div className="dashboard-card" style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-          <ShoppingBag size={48} style={{ color: '#cbd5e1', margin: '0 auto 16px' }} />
-          <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
-            No Active Products Found
-          </h3>
-          <p style={{ fontSize: '13px', color: '#94a3b8' }}>
-            There are currently no products matching your filter criteria.
-          </p>
-        </div>
-      ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
-          {products.map((prod) => {
-            const primaryImg = prod.images?.find((img) => img.isPrimary) || prod.images?.[0];
-            const stockAvailable = prod.stock ?? prod.stockQuantity ?? 0;
-            const isOutOfStock = stockAvailable <= 0;
-            const bv = prod.businessVolume ?? prod.bv ?? 0;
-            const savings = prod.mrp && prod.mrp > prod.price ? prod.mrp - prod.price : 0;
-
-            return (
-              <div
-                key={prod.productId || (prod as any)._id}
-                className="dashboard-card"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  overflow: 'hidden',
-                  padding: 0,
-                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                  border: '1px solid #e2e8f0',
-                }}
-              >
-                {/* Image Banner */}
-                <div
-                  style={{
-                    position: 'relative',
-                    height: '210px',
-                    background: '#f8fafc',
-                    overflow: 'hidden',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    cursor: 'pointer',
-                  }}
-                  onClick={() => {
-                    setViewProduct(prod);
-                    setActiveImageIdx(0);
-                    setDetailQty(1);
-                  }}
-                >
-                  {primaryImg?.url ? (
-                    <img
-                      src={primaryImg.url}
-                      alt={primaryImg.alt || prod.title}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                      onError={(e) => {
-                        (e.currentTarget as any).src = 'https://placehold.co/300x200?text=Product';
-                      }}
-                    />
-                  ) : (
-                    <ImageIcon size={48} color="#cbd5e1" />
-                  )}
-
-                  {/* Top Badges */}
-                  <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '6px' }}>
-                    <span
-                      style={{
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
-                        fontSize: '11px',
-                        fontWeight: 800,
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        border: '1px solid #bfdbfe',
-                      }}
-                    >
-                      {bv.toLocaleString()} BV
-                    </span>
-                    {savings > 0 && (
-                      <span
-                        style={{
-                          background: '#ecfdf5',
-                          color: '#059669',
-                          fontSize: '11px',
-                          fontWeight: 700,
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                        }}
-                      >
-                        SAVE ₹{savings.toLocaleString()}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Stock Indicator */}
-                  <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        background: isOutOfStock ? '#fef2f2' : '#ecfdf5',
-                        color: isOutOfStock ? '#dc2626' : '#16a34a',
-                        border: `1px solid ${isOutOfStock ? '#fecaca' : '#a7f3d0'}`,
-                      }}
-                    >
-                      {isOutOfStock ? 'Out of Stock' : 'In Stock'}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Card Body */}
-                <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  {/* Category / Subcategory */}
-                  <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-                    <span>
-                      {typeof prod.categoryId === 'object' && prod.categoryId?.name ? prod.categoryId.name : (prod.category || 'General')}
-                    </span>
-                    {(prod.subcategoryId && typeof prod.subcategoryId === 'object' ? prod.subcategoryId.name : prod.subcategory) && (
-                      <span style={{ color: '#0284c7' }}>
-                        • {typeof prod.subcategoryId === 'object' ? prod.subcategoryId.name : prod.subcategory}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Product Title */}
-                  <h3
-                    style={{
-                      fontSize: '15px',
-                      fontWeight: 700,
-                      color: '#0f172a',
-                      marginBottom: '6px',
-                      lineHeight: '1.4',
-                      cursor: 'pointer',
-                    }}
-                    onClick={() => {
-                      setViewProduct(prod);
-                      setActiveImageIdx(0);
-                      setDetailQty(1);
-                    }}
-                  >
-                    {prod.title || prod.name}
-                  </h3>
-
-                  {/* Short description */}
-                  <p
-                    style={{
-                      fontSize: '12px',
-                      color: '#64748b',
-                      lineHeight: '1.4',
-                      marginBottom: '14px',
-                      flex: 1,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {prod.shortDescription || 'High-quality health and wellness product.'}
-                  </p>
-
-                  {/* Price & BV Info Row */}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'baseline',
-                      justifyContent: 'space-between',
-                      marginBottom: '14px',
-                      paddingTop: '10px',
-                      borderTop: '1px solid #f1f5f9',
-                    }}
-                  >
-                    <div>
-                      <span style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
-                        ₹{prod.price?.toLocaleString()}
-                      </span>
-                      {prod.mrp && prod.mrp > prod.price && (
-                        <span style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'line-through', marginLeft: '6px' }}>
-                          ₹{prod.mrp?.toLocaleString()}
-                        </span>
-                      )}
-                    </div>
-
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>
-                      +{bv.toLocaleString()} BV
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setViewProduct(prod);
-                        setActiveImageIdx(0);
-                        setDetailQty(1);
-                      }}
-                      style={{
-                        padding: '8px 12px',
-                        background: '#f8fafc',
-                        color: '#475569',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <Eye size={14} /> Details
-                    </button>
-
-                    <button
-                      type="button"
-                      disabled={isOutOfStock}
-                      onClick={() => handleAddToCart(prod, 1)}
-                      style={{
-                        padding: '8px 12px',
-                        background: isOutOfStock ? '#e2e8f0' : '#1d72fe',
-                        color: isOutOfStock ? '#94a3b8' : '#fff',
-                        border: 'none',
-                        borderRadius: '6px',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        cursor: isOutOfStock ? 'not-allowed' : 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '4px',
-                      }}
-                    >
-                      <ShoppingCart size={14} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          <p style={{ fontWeight: 600, fontSize: '15px', color: '#334155' }}>Loading product details...</p>
         </div>
       )}
 
       {/* ======================================================== */}
-      {/* PRODUCT DETAILS MODAL                                    */}
+      {/* FULL PAGE PRODUCT DETAILS VIEW (AFTER SIDEBAR)          */}
       {/* ======================================================== */}
-      {viewProduct && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.6)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: '20px',
-          }}
-        >
+      {!productLoading && viewProduct && (
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Top Breadcrumb & Actions Bar */}
           <div
             style={{
-              background: '#fff',
-              borderRadius: '16px',
-              width: '840px',
-              maxWidth: '100%',
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              position: 'relative',
-              padding: '28px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '24px',
+              flexWrap: 'wrap',
+              gap: '16px',
             }}
           >
-            {/* Close Button */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={handleBackToProducts}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '9px 18px',
+                  background: '#ffffff',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '8px',
+                  color: '#1e293b',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <ArrowLeft size={16} /> Back to Products
+              </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '13px' }}>
+                <span
+                  style={{ cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}
+                  onClick={handleBackToProducts}
+                >
+                  Store
+                </span>
+                <ChevronRight size={14} color="#94a3b8" />
+                <span style={{ fontWeight: 600, color: '#334155' }}>{productCategoryName}</span>
+                {productSubcategoryName && (
+                  <>
+                    <ChevronRight size={14} color="#94a3b8" />
+                    <span style={{ fontWeight: 600, color: '#0284c7' }}>{productSubcategoryName}</span>
+                  </>
+                )}
+                <ChevronRight size={14} color="#94a3b8" />
+                <span
+                  style={{
+                    color: '#0f172a',
+                    fontWeight: 700,
+                    maxWidth: '300px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {viewProduct.title || viewProduct.name}
+                </span>
+              </div>
+            </div>
+
+            {/* Quick Cart Trigger */}
             <button
-              onClick={() => setViewProduct(null)}
+              onClick={() => setIsCartOpen(true)}
               style={{
-                position: 'absolute',
-                top: '20px',
-                right: '20px',
-                background: '#f1f5f9',
-                border: 'none',
-                borderRadius: '50%',
-                width: '32px',
-                height: '32px',
                 display: 'flex',
                 alignItems: 'center',
-                justifyContent: 'center',
+                gap: '10px',
+                background: '#1d72fe',
+                color: '#fff',
+                padding: '10px 18px',
+                borderRadius: '8px',
+                fontWeight: 700,
+                border: 'none',
                 cursor: 'pointer',
-                color: '#64748b',
+                boxShadow: '0 2px 8px rgba(29, 114, 254, 0.3)',
               }}
             >
-              <X size={18} />
+              <ShoppingCart size={18} />
+              <span>Cart ({cartItemCount})</span>
+              {cartTotalAmount > 0 && (
+                <span
+                  style={{
+                    background: 'rgba(255,255,255,0.2)',
+                    padding: '2px 8px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                  }}
+                >
+                  ₹{cartTotalAmount.toLocaleString()}
+                </span>
+              )}
             </button>
+          </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '360px 1fr', gap: '28px' }}>
-              {/* Left: Image Gallery */}
+          {/* Main Product Showcase Box */}
+          <div
+            className="dashboard-card"
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              padding: '36px',
+              boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.06)',
+              marginBottom: '32px',
+            }}
+          >
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'minmax(320px, 480px) 1fr',
+                gap: '40px',
+                alignItems: 'start',
+              }}
+            >
+              {/* Left Column: Visual Gallery */}
               <div>
-                {/* Main Large Image */}
+                {/* Main Large Image Display */}
                 <div
                   style={{
+                    position: 'relative',
                     width: '100%',
-                    height: '280px',
-                    borderRadius: '10px',
-                    overflow: 'hidden',
+                    height: '420px',
+                    borderRadius: '14px',
                     background: '#f8fafc',
                     border: '1px solid #e2e8f0',
-                    marginBottom: '10px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
+                    overflow: 'hidden',
+                    marginBottom: '16px',
                   }}
                 >
                   {viewProduct.images && viewProduct.images.length > 0 ? (
                     <img
                       src={viewProduct.images[activeImageIdx]?.url || viewProduct.images[0]?.url}
-                      alt={viewProduct.title}
+                      alt={viewProduct.images[activeImageIdx]?.alt || viewProduct.title}
                       style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      onError={(e) => {
+                        (e.currentTarget as any).src = 'https://placehold.co/500x500?text=Product';
+                      }}
                     />
                   ) : (
-                    <ImageIcon size={48} color="#cbd5e1" />
+                    <ImageIcon size={64} color="#cbd5e1" />
                   )}
-                </div>
 
-                {/* Thumbnail strip */}
-                {viewProduct.images && viewProduct.images.length > 1 && (
-                  <div style={{ display: 'flex', gap: '8px', overflowX: 'auto' }}>
-                    {viewProduct.images.map((img, i) => (
-                      <div
-                        key={i}
-                        onClick={() => setActiveImageIdx(i)}
+                  {/* Floating Top Badges */}
+                  <div style={{ position: 'absolute', top: '14px', left: '14px', display: 'flex', gap: '8px' }}>
+                    <span
+                      style={{
+                        background: '#eff6ff',
+                        color: '#1d4ed8',
+                        fontWeight: 800,
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        fontSize: '13px',
+                        border: '1px solid #bfdbfe',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
+                      }}
+                    >
+                      +{productBV.toLocaleString()} BV
+                    </span>
+                    {productSavings > 0 && (
+                      <span
                         style={{
-                          width: '54px',
-                          height: '54px',
-                          borderRadius: '6px',
-                          overflow: 'hidden',
-                          border: activeImageIdx === i ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                          cursor: 'pointer',
-                          flexShrink: 0,
+                          background: '#ecfdf5',
+                          color: '#059669',
+                          fontWeight: 800,
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          fontSize: '13px',
+                          border: '1px solid #a7f3d0',
                         }}
                       >
-                        <img src={img.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                      </div>
+                        SAVE ₹{productSavings.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+
+                  <div style={{ position: 'absolute', top: '14px', right: '14px' }}>
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: 700,
+                        padding: '5px 12px',
+                        borderRadius: '8px',
+                        background: isProductOutOfStock ? '#fef2f2' : '#ecfdf5',
+                        color: isProductOutOfStock ? '#dc2626' : '#16a34a',
+                        border: `1px solid ${isProductOutOfStock ? '#fecaca' : '#a7f3d0'}`,
+                      }}
+                    >
+                      {isProductOutOfStock ? 'Out of Stock' : 'In Stock'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Thumbnails Row */}
+                {viewProduct.images && viewProduct.images.length > 1 && (
+                  <div style={{ display: 'flex', gap: '10px', overflowX: 'auto', paddingBottom: '6px' }}>
+                    {viewProduct.images.map((img, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => setActiveImageIdx(i)}
+                        style={{
+                          width: '74px',
+                          height: '74px',
+                          borderRadius: '10px',
+                          overflow: 'hidden',
+                          border: activeImageIdx === i ? '2.5px solid #2563eb' : '1px solid #cbd5e1',
+                          background: '#fff',
+                          padding: '2px',
+                          cursor: 'pointer',
+                          flexShrink: 0,
+                          transition: 'all 0.15s ease',
+                          transform: activeImageIdx === i ? 'scale(1.03)' : 'scale(1)',
+                          boxShadow: activeImageIdx === i ? '0 4px 12px rgba(37, 99, 235, 0.2)' : 'none',
+                        }}
+                      >
+                        <img
+                          src={img.url}
+                          alt={img.alt || ''}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }}
+                        />
+                      </button>
                     ))}
                   </div>
                 )}
+
+                {/* Direct Selling Assurance Badges */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '10px',
+                    marginTop: '20px',
+                    padding: '16px',
+                    background: '#f8fafc',
+                    borderRadius: '12px',
+                    border: '1px solid #f1f5f9',
+                    textAlign: 'center',
+                  }}
+                >
+                  <div>
+                    <ShieldCheck size={20} color="#10b981" style={{ margin: '0 auto 4px' }} />
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>100% Genuine</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Certified Herbal</div>
+                  </div>
+                  <div>
+                    <Sparkles size={20} color="#2563eb" style={{ margin: '0 auto 4px' }} />
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>Instant BV</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Binary Credited</div>
+                  </div>
+                  <div>
+                    <Package size={20} color="#8b5cf6" style={{ margin: '0 auto 4px' }} />
+                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>Safe Packaging</div>
+                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Fast Dispatch</div>
+                  </div>
+                </div>
               </div>
 
-              {/* Right: Product Specs & Actions */}
+              {/* Right Column: Specifications & Purchase Actions */}
               <div>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* Categories & SKU Badges */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
                   <span
                     style={{
                       background: '#f1f5f9',
                       color: '#475569',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      fontSize: '11px',
-                      fontWeight: 600,
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 700,
                     }}
                   >
-                    Category: {typeof viewProduct.categoryId === 'object' && viewProduct.categoryId?.name ? viewProduct.categoryId.name : (viewProduct.category || 'General')}
+                    Category: {productCategoryName}
                   </span>
-                  {(viewProduct.subcategoryId && typeof viewProduct.subcategoryId === 'object' ? viewProduct.subcategoryId.name : viewProduct.subcategory) && (
+                  {productSubcategoryName && (
                     <span
                       style={{
                         background: '#e0f2fe',
                         color: '#0369a1',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontSize: '11px',
-                        fontWeight: 600,
+                        padding: '4px 10px',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        fontWeight: 700,
                       }}
                     >
-                      Subcategory: {typeof viewProduct.subcategoryId === 'object' ? viewProduct.subcategoryId.name : viewProduct.subcategory}
+                      Subcategory: {productSubcategoryName}
                     </span>
                   )}
-                  <span style={{ fontSize: '11px', color: '#64748b' }}>SKU: {viewProduct.sku}</span>
+                  <span
+                    style={{
+                      background: '#faf5ff',
+                      color: '#7e22ce',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      border: '1px solid #f3e8ff',
+                    }}
+                  >
+                    SKU: {viewProduct.sku}
+                  </span>
                 </div>
 
-                <h2 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>
+                {/* Product Title */}
+                <h1
+                  style={{
+                    fontSize: '28px',
+                    fontWeight: 800,
+                    color: '#0f172a',
+                    marginBottom: '10px',
+                    lineHeight: '1.3',
+                  }}
+                >
                   {viewProduct.title || viewProduct.name}
-                </h2>
+                </h1>
 
-                <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
-                  {viewProduct.shortDescription}
-                </p>
+                {/* Brand name if available */}
+                {viewProduct.brand && (
+                  <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '12px' }}>
+                    Brand: <strong style={{ color: '#1e293b' }}>{viewProduct.brand}</strong>
+                  </div>
+                )}
 
-                {/* Price & BV Box */}
+                {/* Short description */}
+                {viewProduct.shortDescription && (
+                  <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.6', marginBottom: '24px' }}>
+                    {viewProduct.shortDescription}
+                  </p>
+                )}
+
+                {/* Price & Business Volume Highlight Box */}
                 <div
                   style={{
-                    background: '#f8fafc',
-                    padding: '16px',
-                    borderRadius: '10px',
-                    border: '1px solid #e2e8f0',
-                    marginBottom: '20px',
+                    background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
+                    padding: '24px',
+                    borderRadius: '14px',
+                    border: '1px solid #dbeafe',
+                    marginBottom: '24px',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
+                    flexWrap: 'wrap',
+                    gap: '20px',
                   }}
                 >
                   <div>
-                    <div style={{ fontSize: '24px', fontWeight: 900, color: '#0f172a' }}>
-                      ₹{viewProduct.price?.toLocaleString()}
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
+                      <span style={{ fontSize: '32px', fontWeight: 900, color: '#0f172a' }}>
+                        ₹{viewProduct.price?.toLocaleString()}
+                      </span>
+                      {viewProduct.mrp && viewProduct.mrp > viewProduct.price && (
+                        <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>
+                          MRP ₹{viewProduct.mrp?.toLocaleString()}
+                        </span>
+                      )}
+                      {productSavings > 0 && viewProduct.mrp && (
+                        <span
+                          style={{
+                            background: '#10b981',
+                            color: '#fff',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                          }}
+                        >
+                          {Math.round((productSavings / viewProduct.mrp) * 100)}% OFF
+                        </span>
+                      )}
                     </div>
-                    {viewProduct.mrp && viewProduct.mrp > viewProduct.price && (
-                      <div style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'line-through' }}>
-                        MRP ₹{viewProduct.mrp?.toLocaleString()}
-                      </div>
-                    )}
+                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                      Inclusive of all applicable taxes
+                    </div>
                   </div>
 
                   <div style={{ textAlign: 'right' }}>
                     <div
                       style={{
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        background: '#2563eb',
+                        color: '#ffffff',
                         fontWeight: 800,
-                        padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '14px',
-                        border: '1px solid #bfdbfe',
-                      }}
-                    >
-                      {(viewProduct.businessVolume ?? viewProduct.bv ?? 0).toLocaleString()} BV
-                    </div>
-                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                      Credited upon purchase
-                    </div>
-                  </div>
-                </div>
-
-                {/* Stock status */}
-                <div style={{ marginBottom: '16px', fontSize: '13px' }}>
-                  <span style={{ fontWeight: 600, color: '#334155' }}>Availability: </span>
-                  {(() => {
-                    const stock = viewProduct.stock ?? viewProduct.stockQuantity ?? 0;
-                    return (
-                      <span style={{ fontWeight: 700, color: stock > 0 ? '#16a34a' : '#dc2626' }}>
-                        {stock > 0 ? `${stock} units in stock` : 'Currently Out of Stock'}
-                      </span>
-                    );
-                  })()}
-                </div>
-
-                {/* Quantity and Add to Cart Row */}
-                {(viewProduct.stock ?? viewProduct.stockQuantity ?? 0) > 0 && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '24px' }}>
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        border: '1px solid #cbd5e1',
+                        padding: '6px 14px',
                         borderRadius: '8px',
-                        overflow: 'hidden',
+                        fontSize: '16px',
+                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
                       }}
                     >
-                      <button
-                        onClick={() => setDetailQty(Math.max(1, detailQty - 1))}
-                        style={{ padding: '8px 12px', background: '#f8fafc', border: 'none', cursor: 'pointer' }}
+                      <Sparkles size={16} /> {productBV.toLocaleString()} BV
+                    </div>
+                    <div style={{ fontSize: '11.5px', color: '#1d4ed8', fontWeight: 600, marginTop: '4px' }}>
+                      Credited directly to binary volume
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stock Status */}
+                <div style={{ marginBottom: '24px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 600, color: '#334155' }}>Availability:</span>
+                  {isProductOutOfStock ? (
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: '#dc2626',
+                        background: '#fef2f2',
+                        padding: '3px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #fecaca',
+                      }}
+                    >
+                      Currently Out of Stock
+                    </span>
+                  ) : (
+                    <span
+                      style={{
+                        fontWeight: 700,
+                        color: '#16a34a',
+                        background: '#ecfdf5',
+                        padding: '3px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid #a7f3d0',
+                      }}
+                    >
+                      {productStock} units in stock
+                    </span>
+                  )}
+                </div>
+
+                {/* Quantity Stepper & Action Buttons */}
+                {!isProductOutOfStock ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>Quantity:</div>
+                      <div
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          border: '1px solid #cbd5e1',
+                          borderRadius: '8px',
+                          overflow: 'hidden',
+                          background: '#fff',
+                        }}
                       >
-                        <Minus size={14} />
-                      </button>
-                      <span style={{ padding: '8px 16px', fontWeight: 700, fontSize: '14px' }}>{detailQty}</span>
-                      <button
-                        onClick={() =>
-                          setDetailQty(
-                            Math.min(viewProduct.stock ?? viewProduct.stockQuantity ?? 100, detailQty + 1)
-                          )
-                        }
-                        style={{ padding: '8px 12px', background: '#f8fafc', border: 'none', cursor: 'pointer' }}
-                      >
-                        <Plus size={14} />
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => setDetailQty(Math.max(1, detailQty - 1))}
+                          style={{ padding: '10px 14px', background: '#f8fafc', border: 'none', cursor: 'pointer', color: '#334155' }}
+                        >
+                          <Minus size={15} />
+                        </button>
+                        <span style={{ padding: '10px 20px', fontWeight: 800, fontSize: '15px', color: '#0f172a' }}>
+                          {detailQty}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setDetailQty(Math.min(productStock, detailQty + 1))}
+                          style={{ padding: '10px 14px', background: '#f8fafc', border: 'none', cursor: 'pointer', color: '#334155' }}
+                        >
+                          <Plus size={15} />
+                        </button>
+                      </div>
+                      <span style={{ fontSize: '12px', color: '#64748b' }}>
+                        Subtotal: <strong>₹{(viewProduct.price * detailQty).toLocaleString()}</strong> (+{(productBV * detailQty).toLocaleString()} BV)
+                      </span>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        handleAddToCart(viewProduct, detailQty);
-                        setViewProduct(null);
-                      }}
-                      className="btn-primary"
-                      style={{
-                        flex: 1,
-                        padding: '12px',
-                        fontSize: '14px',
-                        fontWeight: 700,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '8px',
-                      }}
-                    >
-                      <ShoppingCart size={16} /> Add {detailQty} to Cart
-                    </button>
-                  </div>
-                )}
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '6px' }}>
+                      <button
+                        type="button"
+                        onClick={() => handleAddToCart(viewProduct, detailQty)}
+                        style={{
+                          padding: '14px 20px',
+                          background: '#1d72fe',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '10px',
+                          fontSize: '14px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          boxShadow: '0 4px 14px rgba(29, 114, 254, 0.3)',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <ShoppingCart size={18} /> Add {detailQty} to Cart
+                      </button>
 
-                {/* Rich Description */}
-                <div>
-                  <h4 style={{ fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                    Product Details & Directions
-                  </h4>
+                      <button
+                        type="button"
+                        onClick={() => handleBuyNow(viewProduct, detailQty)}
+                        style={{
+                          padding: '14px 20px',
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                          color: '#ffffff',
+                          border: 'none',
+                          borderRadius: '10px',
+                          fontSize: '14px',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
+                          transition: 'all 0.15s ease',
+                        }}
+                      >
+                        <ArrowRight size={18} /> Buy Now
+                      </button>
+                    </div>
+                  </div>
+                ) : (
                   <div
                     style={{
-                      maxHeight: '180px',
-                      overflowY: 'auto',
-                      padding: '12px',
-                      borderRadius: '8px',
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
+                      padding: '16px',
+                      background: '#fef2f2',
+                      border: '1px solid #fecaca',
+                      borderRadius: '10px',
+                      color: '#991b1b',
+                      marginBottom: '24px',
                       fontSize: '13px',
-                      lineHeight: '1.5',
-                      color: '#475569',
                     }}
-                    dangerouslySetInnerHTML={{
-                      __html: viewProduct.description || '<em>No additional description provided.</em>',
-                    }}
-                  />
-                </div>
+                  >
+                    This item is currently sold out. Please browse other products in the store.
+                  </div>
+                )}
               </div>
             </div>
           </div>
+
+          {/* Detailed Description & Directions Full-Width Card */}
+          <div
+            className="dashboard-card"
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              padding: '32px',
+              marginBottom: '32px',
+              boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            <h3
+              style={{
+                fontSize: '18px',
+                fontWeight: 800,
+                color: '#0f172a',
+                marginBottom: '16px',
+                paddingBottom: '12px',
+                borderBottom: '1px solid #f1f5f9',
+              }}
+            >
+              Product Details & Directions
+            </h3>
+
+            <div
+              style={{
+                fontSize: '14px',
+                lineHeight: '1.7',
+                color: '#334155',
+              }}
+              dangerouslySetInnerHTML={{
+                __html: viewProduct.description || '<em>No additional description provided.</em>',
+              }}
+            />
+          </div>
+
+          {/* Product Specifications Grid */}
+          <div
+            className="dashboard-card"
+            style={{
+              background: '#ffffff',
+              borderRadius: '16px',
+              border: '1px solid #e2e8f0',
+              padding: '32px',
+              marginBottom: '32px',
+              boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            <h3
+              style={{
+                fontSize: '18px',
+                fontWeight: 800,
+                color: '#0f172a',
+                marginBottom: '18px',
+                paddingBottom: '12px',
+                borderBottom: '1px solid #f1f5f9',
+              }}
+            >
+              Specifications & Parameters
+            </h3>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
+                gap: '16px',
+              }}
+            >
+              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>SKU Code</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>{viewProduct.sku}</div>
+              </div>
+
+              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Category</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>{productCategoryName}</div>
+              </div>
+
+              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Subcategory</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>{productSubcategoryName || 'General'}</div>
+              </div>
+
+              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Business Volume (BV)</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#2563eb', marginTop: '4px' }}>{productBV.toLocaleString()} BV</div>
+              </div>
+
+              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Inventory Status</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: isProductOutOfStock ? '#dc2626' : '#16a34a', marginTop: '4px' }}>
+                  {isProductOutOfStock ? 'Out of Stock' : `${productStock} in stock`}
+                </div>
+              </div>
+
+              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Direct Selling Eligibility</div>
+                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>Binary & Repurchase Bonus</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Related Products in Store */}
+          {relatedProducts.length > 0 && (
+            <div style={{ marginTop: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
+                  More Products in {productCategoryName}
+                </h3>
+                <button
+                  type="button"
+                  onClick={handleBackToProducts}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#2563eb',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  View All Products →
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px' }}>
+                {relatedProducts.map((relProd) => {
+                  const relImg = relProd.images?.find((img) => img.isPrimary) || relProd.images?.[0];
+                  const relStock = relProd.stock ?? relProd.stockQuantity ?? 0;
+                  const relOutOfStock = relStock <= 0;
+                  const relBV = relProd.businessVolume ?? relProd.bv ?? 0;
+
+                  return (
+                    <div
+                      key={relProd.productId || (relProd as any)._id}
+                      className="dashboard-card"
+                      style={{
+                        padding: 0,
+                        overflow: 'hidden',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        flexDirection: 'column',
+                      }}
+                    >
+                      <div
+                        style={{ height: '170px', background: '#f8fafc', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        onClick={() => handleOpenProduct(relProd)}
+                      >
+                        {relImg?.url ? (
+                          <img src={relImg.url} alt={relProd.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <ImageIcon size={36} color="#cbd5e1" />
+                        )}
+                      </div>
+
+                      <div style={{ padding: '14px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                        <h4
+                          onClick={() => handleOpenProduct(relProd)}
+                          style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px', cursor: 'pointer', lineHeight: '1.3' }}
+                        >
+                          {relProd.title || relProd.name}
+                        </h4>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 'auto', paddingTop: '10px' }}>
+                          <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>₹{relProd.price?.toLocaleString()}</span>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>+{relBV.toLocaleString()} BV</span>
+                        </div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenProduct(relProd)}
+                            style={{
+                              padding: '6px 10px',
+                              background: '#f8fafc',
+                              color: '#334155',
+                              border: '1px solid #cbd5e1',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 600,
+                              cursor: 'pointer',
+                            }}
+                          >
+                            Details
+                          </button>
+                          <button
+                            type="button"
+                            disabled={relOutOfStock}
+                            onClick={() => handleAddToCart(relProd, 1)}
+                            style={{
+                              padding: '6px 10px',
+                              background: relOutOfStock ? '#e2e8f0' : '#1d72fe',
+                              color: relOutOfStock ? '#94a3b8' : '#fff',
+                              border: 'none',
+                              borderRadius: '6px',
+                              fontSize: '12px',
+                              fontWeight: 700,
+                              cursor: relOutOfStock ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            Add
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
       {/* ======================================================== */}
-      {/* CART DRAWER / MODAL                                      */}
+      {/* CATALOG LIST VIEW (WHEN NO PRODUCT IS OPEN)             */}
+      {/* ======================================================== */}
+      {!productLoading && !viewProduct && (
+        <>
+          {/* Top Banner */}
+          <div className="welcome-header" style={{ marginBottom: '24px' }}>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                <span
+                  style={{
+                    background: 'linear-gradient(135deg, #10b981 0%, #0284c7 100%)',
+                    color: 'white',
+                    padding: '3px 10px',
+                    borderRadius: '20px',
+                    fontSize: '11px',
+                    fontWeight: 800,
+                    letterSpacing: '0.5px',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  MEMBER STORE
+                </span>
+                <span style={{ color: '#64748b', fontSize: '13px' }}>
+                  Panchwati Wellness • Ayurvedic & Health Products
+                </span>
+              </div>
+
+              <h1 className="page-title">Products & Repurchase</h1>
+              <p className="page-subtitle">
+                Browse genuine products, earn independent Business Volume (BV) with every purchase, and qualify for
+                repurchase binary team bonuses.
+              </p>
+            </div>
+
+            {/* Floating Cart Button */}
+            <div>
+              <button
+                onClick={() => setIsCartOpen(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  background: '#1d72fe',
+                  color: '#fff',
+                  padding: '10px 18px',
+                  borderRadius: '8px',
+                  fontWeight: 700,
+                  border: 'none',
+                  cursor: 'pointer',
+                  boxShadow: '0 2px 8px rgba(29, 114, 254, 0.3)',
+                  position: 'relative',
+                }}
+              >
+                <ShoppingCart size={18} />
+                <span>Cart ({cartItemCount})</span>
+                {cartTotalAmount > 0 && (
+                  <span
+                    style={{
+                      background: 'rgba(255,255,255,0.2)',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                    }}
+                  >
+                    ₹{cartTotalAmount.toLocaleString()}
+                  </span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Search & Category Filter Bar */}
+          <div
+            style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '12px',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              marginBottom: '24px',
+            }}
+          >
+            {/* Search */}
+            <div style={{ position: 'relative', flex: 1, minWidth: '260px', maxWidth: '420px' }}>
+              <Search
+                size={16}
+                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}
+              />
+              <input
+                type="text"
+                placeholder="Search products by name, benefits, or SKU..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px 10px 38px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '13px',
+                  background: '#fff',
+                }}
+              />
+            </div>
+
+            {/* Category Pills */}
+            <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '4px', flexWrap: 'wrap' }}>
+              <button
+                onClick={() => {
+                  setSelectedCategoryId('ALL');
+                  setSelectedSubcategoryId('ALL');
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '20px',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: selectedCategoryId === 'ALL' ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                  background: selectedCategoryId === 'ALL' ? '#eff6ff' : '#fff',
+                  color: selectedCategoryId === 'ALL' ? '#1d4ed8' : '#64748b',
+                }}
+              >
+                All Products
+              </button>
+              {categoriesList.map((cat) => (
+                <button
+                  key={cat._id}
+                  onClick={() => {
+                    setSelectedCategoryId(cat._id);
+                    setSelectedSubcategoryId('ALL');
+                  }}
+                  style={{
+                    padding: '6px 14px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: selectedCategoryId === cat._id ? '1px solid #2563eb' : '1px solid #cbd5e1',
+                    background: selectedCategoryId === cat._id ? '#eff6ff' : '#fff',
+                    color: selectedCategoryId === cat._id ? '#1d4ed8' : '#64748b',
+                  }}
+                >
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Subcategory Pills */}
+          {selectedCategoryId !== 'ALL' && subcategoriesList.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                marginBottom: '20px',
+                padding: '10px 16px',
+                background: '#f8fafc',
+                borderRadius: '10px',
+                border: '1px solid #e2e8f0',
+                overflowX: 'auto',
+              }}
+            >
+              <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginRight: '4px', flexShrink: 0 }}>
+                Subcategories:
+              </span>
+              <button
+                onClick={() => setSelectedSubcategoryId('ALL')}
+                style={{
+                  padding: '4px 12px',
+                  borderRadius: '16px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  border: selectedSubcategoryId === 'ALL' ? '1px solid #0284c7' : '1px solid #cbd5e1',
+                  background: selectedSubcategoryId === 'ALL' ? '#e0f2fe' : '#fff',
+                  color: selectedSubcategoryId === 'ALL' ? '#0369a1' : '#64748b',
+                  flexShrink: 0,
+                }}
+              >
+                All
+              </button>
+              {subcategoriesList.map((subcat) => (
+                <button
+                  key={subcat._id}
+                  onClick={() => setSelectedSubcategoryId(subcat._id)}
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: '16px',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: selectedSubcategoryId === subcat._id ? '1px solid #0284c7' : '1px solid #cbd5e1',
+                    background: selectedSubcategoryId === subcat._id ? '#e0f2fe' : '#fff',
+                    color: selectedSubcategoryId === subcat._id ? '#0369a1' : '#64748b',
+                    flexShrink: 0,
+                  }}
+                >
+                  {subcat.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Products Grid */}
+          {loading ? (
+            <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  border: '3px solid #cbd5e1',
+                  borderTopColor: '#1d72fe',
+                  borderRadius: '50%',
+                  animation: 'spin 0.8s linear infinite',
+                  margin: '0 auto 16px',
+                }}
+              />
+              <p style={{ fontWeight: 500 }}>Loading active products catalog...</p>
+            </div>
+          ) : products.length === 0 ? (
+            <div className="dashboard-card" style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
+              <ShoppingBag size={48} style={{ color: '#cbd5e1', margin: '0 auto 16px' }} />
+              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
+                No Active Products Found
+              </h3>
+              <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+                There are currently no products matching your filter criteria.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '20px' }}>
+              {products.map((prod) => {
+                const primaryImg = prod.images?.find((img) => img.isPrimary) || prod.images?.[0];
+                const stockAvailable = prod.stock ?? prod.stockQuantity ?? 0;
+                const isOutOfStock = stockAvailable <= 0;
+                const bv = prod.businessVolume ?? prod.bv ?? 0;
+                const savings = prod.mrp && prod.mrp > prod.price ? prod.mrp - prod.price : 0;
+
+                return (
+                  <div
+                    key={prod.productId || (prod as any)._id}
+                    className="dashboard-card"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden',
+                      padding: 0,
+                      transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    {/* Image Banner */}
+                    <div
+                      style={{
+                        position: 'relative',
+                        height: '210px',
+                        background: '#f8fafc',
+                        overflow: 'hidden',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                      }}
+                      onClick={() => handleOpenProduct(prod)}
+                    >
+                      {primaryImg?.url ? (
+                        <img
+                          src={primaryImg.url}
+                          alt={primaryImg.alt || prod.title}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          onError={(e) => {
+                            (e.currentTarget as any).src = 'https://placehold.co/300x200?text=Product';
+                          }}
+                        />
+                      ) : (
+                        <ImageIcon size={48} color="#cbd5e1" />
+                      )}
+
+                      {/* Top Badges */}
+                      <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '6px' }}>
+                        <span
+                          style={{
+                            background: '#eff6ff',
+                            color: '#1d4ed8',
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            border: '1px solid #bfdbfe',
+                          }}
+                        >
+                          {bv.toLocaleString()} BV
+                        </span>
+                        {savings > 0 && (
+                          <span
+                            style={{
+                              background: '#ecfdf5',
+                              color: '#059669',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              borderRadius: '6px',
+                            }}
+                          >
+                            SAVE ₹{savings.toLocaleString()}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Stock Indicator */}
+                      <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: isOutOfStock ? '#fef2f2' : '#ecfdf5',
+                            color: isOutOfStock ? '#dc2626' : '#16a34a',
+                            border: `1px solid ${isOutOfStock ? '#fecaca' : '#a7f3d0'}`,
+                          }}
+                        >
+                          {isOutOfStock ? 'Out of Stock' : 'In Stock'}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Card Body */}
+                    <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
+                      {/* Category / Subcategory */}
+                      <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                        <span>
+                          {typeof prod.categoryId === 'object' && prod.categoryId?.name ? prod.categoryId.name : (prod.category || 'General')}
+                        </span>
+                        {(prod.subcategoryId && typeof prod.subcategoryId === 'object' ? prod.subcategoryId.name : prod.subcategory) && (
+                          <span style={{ color: '#0284c7' }}>
+                            • {typeof prod.subcategoryId === 'object' ? prod.subcategoryId.name : prod.subcategory}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Product Title */}
+                      <h3
+                        style={{
+                          fontSize: '15px',
+                          fontWeight: 700,
+                          color: '#0f172a',
+                          marginBottom: '6px',
+                          lineHeight: '1.4',
+                          cursor: 'pointer',
+                        }}
+                        onClick={() => handleOpenProduct(prod)}
+                      >
+                        {prod.title || prod.name}
+                      </h3>
+
+                      {/* Short description */}
+                      <p
+                        style={{
+                          fontSize: '12px',
+                          color: '#64748b',
+                          lineHeight: '1.4',
+                          marginBottom: '14px',
+                          flex: 1,
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        {prod.shortDescription || 'High-quality health and wellness product.'}
+                      </p>
+
+                      {/* Price & BV Info Row */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'baseline',
+                          justifyContent: 'space-between',
+                          marginBottom: '14px',
+                          paddingTop: '10px',
+                          borderTop: '1px solid #f1f5f9',
+                        }}
+                      >
+                        <div>
+                          <span style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                            ₹{prod.price?.toLocaleString()}
+                          </span>
+                          {prod.mrp && prod.mrp > prod.price && (
+                            <span style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'line-through', marginLeft: '6px' }}>
+                              ₹{prod.mrp?.toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+
+                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>
+                          +{bv.toLocaleString()} BV
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenProduct(prod)}
+                          style={{
+                            padding: '8px 12px',
+                            background: '#f8fafc',
+                            color: '#475569',
+                            border: '1px solid #cbd5e1',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <Eye size={14} /> Details
+                        </button>
+
+                        <button
+                          type="button"
+                          disabled={isOutOfStock}
+                          onClick={() => handleAddToCart(prod, 1)}
+                          style={{
+                            padding: '8px 12px',
+                            background: isOutOfStock ? '#e2e8f0' : '#1d72fe',
+                            color: isOutOfStock ? '#94a3b8' : '#fff',
+                            border: 'none',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            cursor: isOutOfStock ? 'not-allowed' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '4px',
+                          }}
+                        >
+                          <ShoppingCart size={14} /> {isOutOfStock ? 'Out of Stock' : 'Add to Cart'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* ======================================================== */}
+      {/* CART DRAWER                                              */}
       {/* ======================================================== */}
       {isCartOpen && (
         <div
@@ -1266,3 +1909,5 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
     </div>
   );
 };
+
+export default MemberProductsPage;
