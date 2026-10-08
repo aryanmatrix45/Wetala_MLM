@@ -1232,7 +1232,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
                   MEMBER STORE
                 </span>
                 <span style={{ color: '#64748b', fontSize: '13px' }}>
-                  Panchwati Wellness • Ayurvedic & Health Products
+                  Panchveda Wellness • Ayurvedic & Health Products
                 </span>
               </div>
 
