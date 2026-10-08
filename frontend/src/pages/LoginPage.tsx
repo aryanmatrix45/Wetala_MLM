@@ -160,7 +160,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           }}>
             PW
           </div>
-          <h1 className="login-title">Panchwati Wellness</h1>
+          <h1 className="login-title">Panchveda Wellness</h1>
           <p className="login-subtitle">
             {authMode === 'login' 
               ? 'Access your distributor dashboard & compensation ledger' 

@@ -20,10 +20,12 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
       'http://localhost:5173',
       'http://localhost:3000',
       'http://127.0.0.1:5173',
-      'https://panchwatiwellness.com',
-      'https://www.panchwatiwellness.com',
-      'http://panchwatiwellness.com',
-      'http://www.panchwatiwellness.com',
+      'https://panchvedawellness.com',
+      'https://www.panchvedawellness.com',
+      'http://panchvedawellness.com',
+      'http://www.panchvedawellness.com',
+      'https://api.panchvedawellness.com',
+      'https://api.consultivewellness.com',
     ];
 
 app.use(
@@ -33,7 +35,8 @@ app.use(
       if (!origin) return callback(null, true);
       if (
         allowedOrigins.includes(origin) ||
-        origin.endsWith('.panchwatiwellness.com') ||
+        origin.endsWith('.panchvedawellness.com') ||
+        origin.endsWith('.consultivewellness.com') ||
         process.env.NODE_ENV !== 'production'
       ) {
         return callback(null, true);

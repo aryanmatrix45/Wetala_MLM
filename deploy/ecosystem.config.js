@@ -7,7 +7,7 @@
 module.exports = {
   apps: [
     {
-      name: 'panchwati-backend',
+      name: 'panchveda-backend',
       cwd: './backend',
       script: 'dist/server.js',
       instances: 'max', // Scale across available CPU cores (or set to 1)

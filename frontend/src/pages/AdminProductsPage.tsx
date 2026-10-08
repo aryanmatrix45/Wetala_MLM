@@ -250,7 +250,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
       sku: `WET-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
       categoryId: defaultCatId,
       subcategoryId: '',
-      brand: 'Panchwati Wellness',
+      brand: 'Panchveda Wellness',
       shortDescription: '',
       description: '<p>Enter comprehensive product details, benefits, ingredients, and usage guidelines here.</p>',
       price: '',
@@ -607,7 +607,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
               SUPERADMIN MODULE
             </span>
             <span style={{ color: '#64748b', fontSize: '13px' }}>
-              Panchwati Wellness • Direct Selling E-Commerce
+              Panchveda Wellness • Direct Selling E-Commerce
             </span>
           </div>
 
@@ -1337,7 +1337,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                     </label>
                     <input
                       type="text"
-                      placeholder="e.g. Panchwati Wellness"
+                      placeholder="e.g. Panchveda Wellness"
                       value={formData.brand}
                       onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
                       style={{

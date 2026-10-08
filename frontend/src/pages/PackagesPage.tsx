@@ -26,7 +26,7 @@ interface PackagesPageProps {
   onUserUpdate?: (updatedUser: any) => void;
 }
 
-// Harmonious themes matching Panchwati Wellness project design system
+// Harmonious themes matching Panchveda Wellness project design system
 const TIER_THEMES = [
   {
     badge: 'STARTER',
@@ -422,7 +422,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
               letterSpacing: '0.5px',
               textTransform: 'uppercase'
             }}>
-              {isAdmin ? 'ADMIN CONTROL' : 'PANCHWATI WELLNESS'}
+              {isAdmin ? 'ADMIN CONTROL' : 'PANCHVEDA WELLNESS'}
             </span>
             <span style={{ color: '#64748b', fontSize: '13px' }}>
               {isAdmin ? 'Manage joining packages & compensation rules' : 'Choose your joining package • Grow together'}

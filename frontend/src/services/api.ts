@@ -14,7 +14,7 @@ export const getAssetUrl = (url?: string): string => {
   if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
     return url;
   }
-  // If API_BASE_URL is an absolute URL (e.g. https://api.panchwatiwellness.com/api), resolve against its origin
+  // If API_BASE_URL is an absolute URL (e.g. https://api.panchvedawellness.com/api), resolve against its origin
   if (API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')) {
     try {
       const u = new URL(API_BASE_URL);
