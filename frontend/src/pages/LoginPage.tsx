@@ -143,22 +143,26 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         {/* Brand Header */}
         <div style={{ textAlign: 'center', marginBottom: '22px' }}>
           <div style={{
-            width: '54px',
-            height: '54px',
-            borderRadius: '16px',
-            background: 'linear-gradient(135deg, #10b981 0%, #0284c7 100%)',
             display: 'inline-flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: 'white',
-            fontWeight: 900,
-            fontSize: '20px',
-            letterSpacing: '0.5px',
-            fontFamily: 'var(--font-display)',
-            boxShadow: '0 8px 24px rgba(16, 185, 129, 0.35)',
-            marginBottom: '12px'
+            marginBottom: '14px',
+            position: 'relative',
           }}>
-            PW
+            <img 
+              src="/logo.png" 
+              alt="Panchveda Wellness" 
+              style={{
+                width: '86px',
+                height: '86px',
+                borderRadius: '50%',
+                objectFit: 'contain',
+                background: '#ffffff',
+                padding: '2px',
+                border: '2px solid rgba(234, 179, 8, 0.45)',
+                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35), 0 0 20px rgba(16, 185, 129, 0.25)',
+              }}
+            />
           </div>
           <h1 className="login-title">Panchveda Wellness</h1>
           <p className="login-subtitle">

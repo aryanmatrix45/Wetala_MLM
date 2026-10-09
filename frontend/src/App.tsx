@@ -114,10 +114,15 @@ export function App() {
 
   if (loading) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
+      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0b1120' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: '40px', height: '40px', border: '3px solid #e2e8f0', borderTopColor: '#1d72fe', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <p style={{ color: '#64748b', fontSize: '14px', fontWeight: 500 }}>Connecting to Panchveda Wellness...</p>
+          <img 
+            src="/logo.png" 
+            alt="Panchveda Wellness" 
+            style={{ width: '68px', height: '68px', borderRadius: '50%', marginBottom: '16px', border: '2px solid rgba(234, 179, 8, 0.4)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }} 
+          />
+          <div style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#10b981', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+          <p style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500 }}>Connecting to Panchveda Wellness...</p>
         </div>
       </div>
     );

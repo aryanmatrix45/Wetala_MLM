@@ -155,6 +155,23 @@ input, select, textarea {
   gap: 12px;
 }
 
+.sidebar-brand-img {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #ffffff;
+  padding: 1.5px;
+  border: 1.5px solid rgba(234, 179, 8, 0.45);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25), 0 0 10px rgba(16, 185, 129, 0.15);
+  flex-shrink: 0;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.sidebar-brand-img:hover {
+  transform: scale(1.05);
+}
+
 .logo-emblem {
   width: 38px;
   height: 38px;
