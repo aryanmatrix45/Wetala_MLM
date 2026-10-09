@@ -33,6 +33,7 @@ export function App() {
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Tab switch handler with URL cleanup
   const handleTabChange = (newTab: string) => {
@@ -42,6 +43,7 @@ export function App() {
       }
     }
     setActiveTab(newTab);
+    setIsSidebarOpen(false);
   };
 
   // Listen to browser popstate to handle back/forward navigation
@@ -136,12 +138,33 @@ export function App() {
 
   return (
     <div className="app-container">
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-backdrop" 
+          onClick={() => setIsSidebarOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Left Sidebar */}
-      <Sidebar activeTab={activeTab} setActiveTab={handleTabChange} user={user} onLogout={handleLogout} />
+      <Sidebar 
+        activeTab={activeTab} 
+        setActiveTab={handleTabChange} 
+        user={user} 
+        onLogout={handleLogout} 
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+      />
 
       {/* Main Content Area */}
       <div className="main-wrapper">
-        <TopNavbar user={user} onLogout={handleLogout} onNavigate={handleTabChange} />
+        <TopNavbar 
+          user={user} 
+          onLogout={handleLogout} 
+          onNavigate={handleTabChange} 
+          onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+        />
 
         {/* Tab Routing */}
         {(activeTab === 'dashboard' || activeTab === 'welcome-bonus') && (

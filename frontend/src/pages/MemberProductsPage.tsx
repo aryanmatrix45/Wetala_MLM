@@ -567,8 +567,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'minmax(320px, 480px) 1fr',
-                gap: '40px',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
+                gap: '30px',
                 alignItems: 'start',
               }}
             >
@@ -690,7 +690,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(3, 1fr)',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(90px, 1fr))',
                     gap: '10px',
                     marginTop: '20px',
                     padding: '16px',

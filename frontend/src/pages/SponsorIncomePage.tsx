@@ -92,55 +92,51 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
   };
 
   return (
-    <div className="page-container" style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto' }}>
+    <div className="page-body" style={{ maxWidth: '1400px', margin: '0 auto', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       {/* Top Banner & Header */}
-      <div style={{ marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)' }}>
-                <Users size={22} />
-              </div>
-              <div>
-                <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                  Sponsor Binary Income
-                </h1>
-                <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>
-                  20% Direct Matching Bonus on all binary income earned by your direct team
-                </p>
-              </div>
-            </div>
+      <div className="welcome-header" style={{ marginBottom: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px', minWidth: 0, maxWidth: '100%' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(79, 70, 229, 0.3)' }}>
+            <Users size={22} />
           </div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <h1 className="page-title" style={{ margin: 0, wordBreak: 'break-word' }}>
+              Sponsor Binary Income
+            </h1>
+            <p className="page-subtitle" style={{ margin: '3px 0 0 0', lineHeight: 1.4, wordBreak: 'break-word' }}>
+              20% Direct Matching Bonus on all binary income earned by your direct team
+            </p>
+          </div>
+        </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '20px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <Zap size={14} /> 100% Uncapped
-            </span>
-            <span style={{ fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '20px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <ShieldCheck size={14} /> Single-Leg Qualified
-            </span>
-            <span style={{ fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '20px', background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe', display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <Percent size={14} /> {deductions.isEnabled ? `${deductions.tdsPercent}% TDS + ${deductions.adminFeePercent}% Admin Fee (${deductions.netPercent}% Net)` : 'Zero Deductions (100% Net)'}
-            </span>
-            <button
-              onClick={fetchSponsorIncomeData}
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', padding: '7px 14px', borderRadius: '8px', background: '#f8fafc', color: '#475569', fontWeight: 600, border: '1px solid #e2e8f0', cursor: 'pointer' }}
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
-            </button>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', maxWidth: '100%' }}>
+          <span style={{ fontSize: '12px', fontWeight: 700, padding: '5px 12px', borderRadius: '20px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+            <Zap size={14} /> 100% Uncapped
+          </span>
+          <span style={{ fontSize: '12px', fontWeight: 700, padding: '5px 12px', borderRadius: '20px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+            <ShieldCheck size={14} /> Single-Leg Qualified
+          </span>
+          <span style={{ fontSize: '12px', fontWeight: 700, padding: '5px 12px', borderRadius: '20px', background: '#f5f3ff', color: '#7c3aed', border: '1px solid #ddd6fe', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
+            <Percent size={14} /> {deductions.isEnabled ? `${deductions.netPercent}% Net Payout` : '100% Net Payout'}
+          </span>
+          <button
+            onClick={fetchSponsorIncomeData}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', padding: '6px 12px', borderRadius: '8px', background: '#f8fafc', color: '#475569', fontWeight: 600, border: '1px solid #e2e8f0', cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> Refresh
+          </button>
         </div>
       </div>
 
       {error && (
-        <div style={{ padding: '14px 18px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', color: '#b91c1c', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <AlertCircle size={18} />
+        <div style={{ padding: '14px 18px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', color: '#b91c1c', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, maxWidth: '100%', wordBreak: 'break-word' }}>
+          <AlertCircle size={18} style={{ flexShrink: 0 }} />
           <span>{error}</span>
         </div>
       )}
 
       {/* 4 Top KPI Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+      <div className="kpi-grid" style={{ marginBottom: '24px' }}>
         {/* KPI 1 */}
         <div className="dashboard-card" style={{ padding: '20px', borderRadius: '14px', background: 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)', border: '1px solid #e0e7ff', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
@@ -207,21 +203,21 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
       </div>
 
       {/* Somras™ Core Rules Box (Transparent Member Rules) */}
-      <div className="dashboard-card" style={{ padding: '22px', borderRadius: '14px', background: '#ffffff', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
+      <div className="dashboard-card" style={{ padding: '22px', borderRadius: '14px', background: '#ffffff', border: '1px solid #e2e8f0', marginBottom: '24px', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: '#e0e7ff', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
             <Info size={16} />
           </div>
-          <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+          <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', margin: 0, wordBreak: 'break-word' }}>
             Sponsor Binary Income Rules & Payout Policy
           </h2>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '14px' }}>
+        <div className="sponsor-rules-grid">
           {/* Rule Item 1 */}
-          <div style={{ padding: '14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+          <div style={{ padding: '14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <CheckCircle2 size={16} color="#4f46e5" />
+              <CheckCircle2 size={16} color="#4f46e5" style={{ flexShrink: 0 }} />
               <strong style={{ fontSize: '13px', color: '#1e293b' }}>20% on Direct's Binary Income</strong>
             </div>
             <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
@@ -230,9 +226,9 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
           </div>
 
           {/* Rule Item 2 */}
-          <div style={{ padding: '14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+          <div style={{ padding: '14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <CheckCircle2 size={16} color="#059669" />
+              <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0 }} />
               <strong style={{ fontSize: '13px', color: '#1e293b' }}>No Leg Balancing Required</strong>
             </div>
             <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
@@ -241,9 +237,9 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
           </div>
 
           {/* Rule Item 3 */}
-          <div style={{ padding: '14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+          <div style={{ padding: '14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <CheckCircle2 size={16} color="#d97706" />
+              <CheckCircle2 size={16} color="#d97706" style={{ flexShrink: 0 }} />
               <strong style={{ fontSize: '13px', color: '#1e293b' }}>100% Uncapped (No Daily Cap)</strong>
             </div>
             <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
@@ -252,9 +248,9 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
           </div>
 
           {/* Rule Item 4 */}
-          <div style={{ padding: '14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0' }}>
+          <div style={{ padding: '14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
-              <CheckCircle2 size={16} color="#7c3aed" />
+              <CheckCircle2 size={16} color="#7c3aed" style={{ flexShrink: 0 }} />
               <strong style={{ fontSize: '13px', color: '#1e293b' }}>Wallet Settlement & Deductions</strong>
             </div>
             <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
@@ -269,29 +265,29 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
       </div>
 
       {/* Main Section: Direct Team Members & Money Earned Through Each Sponsor Member */}
-      <div className="dashboard-card" style={{ padding: '24px', borderRadius: '14px', background: '#ffffff', border: '1px solid #e2e8f0', marginBottom: '24px' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
-          <div>
-            <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+      <div className="dashboard-card" style={{ padding: '24px', borderRadius: '14px', background: '#ffffff', border: '1px solid #e2e8f0', marginBottom: '24px', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '14px' }}>
+          <div style={{ minWidth: 0, flex: '1 1 280px' }}>
+            <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0, wordBreak: 'break-word' }}>
               Direct Team Members & Sponsor Earnings Breakdown
             </h2>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>
+            <span style={{ fontSize: '12px', color: '#64748b', display: 'block', marginTop: '2px' }}>
               All members sponsored by you, their binary earnings, and how much money you earned from each person
             </span>
           </div>
 
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ position: 'relative' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap', flex: '1 1 auto', minWidth: 0, width: '100%', maxWidth: '100%' }}>
+            <div style={{ position: 'relative', flex: '1 1 180px', minWidth: '140px' }}>
               <Search size={15} style={{ position: 'absolute', left: '10px', top: '10px', color: '#94a3b8' }} />
               <input
                 type="text"
                 placeholder="Search member name or ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                style={{ padding: '8px 12px 8px 32px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', width: '220px' }}
+                style={{ padding: '8px 12px 8px 32px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', width: '100%', boxSizing: 'border-box' }}
               />
             </div>
-            <div style={{ display: 'flex', borderRadius: '8px', border: '1px solid #cbd5e1', overflow: 'hidden' }}>
+            <div style={{ display: 'flex', borderRadius: '8px', border: '1px solid #cbd5e1', overflow: 'hidden', flexShrink: 0 }}>
               {(['ALL', 'LEFT', 'RIGHT'] as const).map((pos) => (
                 <button
                   key={pos}
@@ -314,13 +310,13 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
         </div>
 
         {filteredDirects.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
             <Users size={36} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
             <p style={{ margin: 0, fontWeight: 600 }}>No direct team members found matching your search.</p>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table" style={{ width: '100%', fontSize: '13px' }}>
+          <div className="table-responsive">
+            <table className="data-table" style={{ width: '100%', minWidth: '780px', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', textAlign: 'left' }}>
                   <th style={{ padding: '12px' }}>Direct Member Name</th>
@@ -338,7 +334,7 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
                   <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
                     <td style={{ padding: '12px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#ede9fe', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px' }}>
+                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#ede9fe', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: '12px', flexShrink: 0 }}>
                           {direct.name?.charAt(0)?.toUpperCase() || 'M'}
                         </div>
                         <div>
@@ -388,25 +384,25 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
       </div>
 
       {/* Recent Sponsor Bonus Payout Ledger */}
-      <div className="dashboard-card" style={{ padding: '24px', borderRadius: '14px', background: '#ffffff', border: '1px solid #e2e8f0' }}>
+      <div className="dashboard-card" style={{ padding: '24px', borderRadius: '14px', background: '#ffffff', border: '1px solid #e2e8f0', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
         <div style={{ marginBottom: '18px' }}>
-          <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+          <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0, wordBreak: 'break-word' }}>
             Recent Sponsor Bonus Wallet Credits
           </h2>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
+          <span style={{ fontSize: '12px', color: '#64748b', display: 'block', marginTop: '2px' }}>
             Live record of 20% sponsor bonuses credited directly into your wallet
           </span>
         </div>
 
         {recentPayouts.length === 0 ? (
-          <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+          <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
             <Sparkles size={36} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
             <p style={{ margin: 0, fontWeight: 600 }}>No sponsor bonus credits recorded yet.</p>
             <span style={{ fontSize: '12px', color: '#94a3b8' }}>Bonus credits will appear automatically as soon as your direct referrals complete binary cycles.</span>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table" style={{ width: '100%', fontSize: '13px' }}>
+          <div className="table-responsive">
+            <table className="data-table" style={{ width: '100%', minWidth: '650px', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', textAlign: 'left' }}>
                   <th style={{ padding: '12px' }}>Ledger ID</th>

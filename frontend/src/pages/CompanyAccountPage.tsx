@@ -389,7 +389,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
           </div>
 
           <form onSubmit={handleSaveDetails}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.9fr', gap: '24px', alignItems: 'start' }}>
+            <div className="company-admin-studio-grid">
               
               {/* Active Tab Configuration Card */}
               <div className="dashboard-card" style={{ padding: '28px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)' }}>
@@ -407,7 +407,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                       </div>
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '18px' }}>
+                    <div className="company-admin-form-row">
                       <div style={{ gridColumn: 'span 2' }}>
                         <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                           Account Holder / Beneficiary Name *
@@ -684,7 +684,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                         />
                       </div>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                      <div className="company-admin-form-row">
                         <div>
                           <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                             Payment Support Phone
@@ -808,19 +808,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
         <div>
           
           {/* Official Security Guarantee Badge */}
-          <div style={{
-            background: 'linear-gradient(135deg, #0b1329 0%, #1e293b 100%)',
-            borderRadius: '16px',
-            padding: '20px 24px',
-            marginBottom: '26px',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            gap: '18px',
-            boxShadow: '0 10px 25px -5px rgba(11, 19, 41, 0.25)',
-            border: '1px solid rgba(255, 255, 255, 0.08)'
-          }}>
+          <div className="company-security-banner">
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
               <div style={{
                 width: '46px',
@@ -871,7 +859,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
           </div>
 
           {/* Core Grid: QR Code (Left) + Bank Details (Right) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.35fr', gap: '26px', alignItems: 'start' }}>
+          <div className="company-account-grid">
             
             {/* =================================================================== */}
             {/* COLUMN 1: QR CODE & UPI EXPRESS PAY CARD                           */}
@@ -916,19 +904,21 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                 <div style={{
                   display: 'inline-block',
                   background: '#ffffff',
-                  padding: '18px',
+                  padding: '16px',
                   borderRadius: '20px',
                   boxShadow: '0 12px 35px -8px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.04)',
                   border: '2px solid #e2e8f0',
                   position: 'relative',
-                  marginBottom: '16px'
+                  marginBottom: '16px',
+                  maxWidth: '100%'
                 }}>
                   <img 
                     src={effectiveQrCodeUrl} 
                     alt="Company Payment QR Code" 
                     style={{ 
-                      width: '230px', 
-                      height: '230px', 
+                      width: '220px', 
+                      height: '220px', 
+                      maxWidth: '100%',
                       objectFit: 'contain', 
                       display: 'block',
                       borderRadius: '8px'
@@ -1155,13 +1145,15 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                     border: '1.5px solid #bfdbfe',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '12px'
                   }}>
-                    <div>
+                    <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                       <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.5px' }}>
                         Account Number
                       </div>
-                      <div style={{ fontSize: '20px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', letterSpacing: '1px', marginTop: '3px' }}>
+                      <div style={{ fontSize: 'clamp(16px, 4.5vw, 20px)', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', letterSpacing: '1px', marginTop: '3px', wordBreak: 'break-all' }}>
                         {formattedAccountNumber}
                       </div>
                     </div>
@@ -1198,13 +1190,15 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                     border: '1.5px solid #bfdbfe',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between'
+                    justifyContent: 'space-between',
+                    flexWrap: 'wrap',
+                    gap: '12px'
                   }}>
-                    <div>
+                    <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                       <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.5px' }}>
                         IFSC Code (Zero 0 in the 5th character)
                       </div>
-                      <div style={{ fontSize: '19px', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', letterSpacing: '1px', marginTop: '3px' }}>
+                      <div style={{ fontSize: 'clamp(15px, 4vw, 19px)', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', letterSpacing: '1px', marginTop: '3px' }}>
                         {formData.ifscCode || 'SBIN0001234'}
                       </div>
                     </div>
@@ -1262,7 +1256,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                   </div>
 
                   {/* Bank & Branch Row */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+                  <div className="company-bank-branch-grid">
                     <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
                       <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
                         Bank Name
@@ -1304,7 +1298,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px', marginBottom: '18px' }}>
+                <div className="company-payment-steps-grid">
                   
                   {/* Step 1 */}
                   <div style={{ background: '#ffffff', padding: '14px', borderRadius: '12px', border: '1px solid #fef08a' }}>

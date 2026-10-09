@@ -19,6 +19,7 @@ import {
   FolderTree,
   Layers,
   Landmark,
+  X
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -27,9 +28,11 @@ interface SidebarProps {
   setActiveTab: (tab: string) => void;
   onLogout?: () => void;
   user?: any;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, user }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, user, isOpen, onClose }) => {
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
   const [pendingWithdrawals, setPendingWithdrawals] = useState<number>(0);
   const [pendingMemberRequests, setPendingMemberRequests] = useState<number>(0);
@@ -156,7 +159,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
   ];
 
   return (
-    <aside className="sidebar">
+    <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
       {/* Brand Logo */}
       <div className="sidebar-logo">
         <div className="logo-brand-wrap">
@@ -170,6 +173,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
             <span className="logo-badge">Direct Selling</span>
           </div>
         </div>
+        {onClose && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="sidebar-close-btn"
+            aria-label="Close navigation"
+          >
+            <X size={18} />
+          </button>
+        )}
       </div>
 
       {/* Navigation Menu */}
@@ -183,7 +196,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
               return (
                 <button
                   key={item.id}
-                  onClick={() => setActiveTab(item.id)}
+                  onClick={() => {
+                    setActiveTab(item.id);
+                    onClose?.();
+                  }}
                   className={`menu-item ${isActive ? 'active' : ''}`}
                 >
                   <Icon size={18} style={{ color: isActive ? '#ffffff' : '#94a3b8' }} />
@@ -201,7 +217,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
 
         <div style={{ marginTop: 'auto', paddingTop: '16px' }}>
           <button 
-            onClick={() => onLogout ? onLogout() : alert('Logging out...')} 
+            onClick={() => {
+              onClose?.();
+              if (onLogout) onLogout();
+              else alert('Logging out...');
+            }} 
             className="menu-item" 
             style={{ color: '#f87171' }}
           >

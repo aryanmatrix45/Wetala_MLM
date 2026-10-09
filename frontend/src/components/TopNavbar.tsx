@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Bell, ChevronDown, LogOut, Zap, Search, ShieldCheck, AlertTriangle } from 'lucide-react';
+import { Menu, Bell, ChevronDown, LogOut, Zap, Search, ShieldCheck, AlertTriangle, X } from 'lucide-react';
 import { api } from '../services/api';
 
 interface TopNavbarProps {
@@ -132,7 +132,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
         )}
 
         {/* Live Engine Badge */}
-        <div style={{
+        <div className="header-live-badge" style={{
           display: 'flex',
           alignItems: 'center',
           gap: '6px',
@@ -202,28 +202,38 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
           </button>
 
           {isNotifOpen && (
-            <div style={{
-              position: 'absolute',
-              top: 'calc(100% + 12px)',
-              right: '0',
-              width: '320px',
-              background: '#ffffff',
-              borderRadius: '16px',
-              boxShadow: '0 20px 35px -6px rgba(15, 23, 42, 0.15)',
-              border: '1px solid #e2e8f0',
-              padding: '16px',
-              zIndex: 50,
-              animation: 'fadeIn 0.15s ease-out'
-            }}>
+            <div className="notification-dropdown-menu">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
-                  {isAdmin ? 'Admin Alerts & Requests' : 'Account Notifications'}
-                </span>
-                <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>
-                  {unreadCount > 0 ? `${unreadCount} New` : 'Up to date'}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
+                    {isAdmin ? 'Admin Alerts & Requests' : 'Account Notifications'}
+                  </span>
+                  <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 700, background: '#eff6ff', padding: '2px 7px', borderRadius: '12px' }}>
+                    {unreadCount > 0 ? `${unreadCount} New` : 'Up to date'}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsNotifOpen(false)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: '#f1f5f9',
+                    color: '#64748b',
+                    cursor: 'pointer',
+                    border: 'none',
+                    padding: 0
+                  }}
+                  title="Close notifications"
+                >
+                  <X size={14} />
+                </button>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '340px', overflowY: 'auto' }}>
                 {liveNotifs.length > 0 ? (
                   liveNotifs.map((n, i) => {
                     const isCapping = n.title?.toLowerCase().includes('capping') || 

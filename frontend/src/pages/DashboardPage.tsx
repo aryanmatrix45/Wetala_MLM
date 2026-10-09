@@ -532,7 +532,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           const capUtil = binaryData?.dailyCapUtilization ?? (dailyCap > 0 ? Math.min(100, Math.round((earnedToday / dailyCap) * 100)) : 0);
 
           return (
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '20px', alignItems: 'center' }}>
+            <div className="dashboard-binary-banner-grid">
               {/* Leg Balance Meter */}
               <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -884,7 +884,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             )}
           </div>
 
-          <div className="table-responsive" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
+          <div className="table-responsive" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflowX: 'auto' }}>
             <table className="data-table" style={{ margin: 0 }}>
               <thead>
                 <tr style={{ background: '#f8fafc' }}>
@@ -1692,7 +1692,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             </div>
 
             {/* Scrollable Table Area */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '0' }}>
+            <div className="table-responsive" style={{ flex: 1, overflow: 'auto', padding: '0' }}>
               <table className="data-table" style={{ margin: 0, width: '100%' }}>
                 <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 2 }}>
                   <tr>

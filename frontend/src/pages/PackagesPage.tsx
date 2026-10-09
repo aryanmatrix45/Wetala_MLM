@@ -1307,7 +1307,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 
                 {/* Name, Badge, Tier Number */}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
                   <div>
                     <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
                       Package Name *
@@ -1578,7 +1578,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
             <form onSubmit={handleCreatePackage}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
                   <div>
                     <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
                       Package Name *

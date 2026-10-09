@@ -1172,7 +1172,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
       {/* ======================================================== */}
       {(viewMode === 'create' || viewMode === 'edit') && (
         <form onSubmit={handleSubmitForm}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '24px' }}>
             {/* Left Column: Core Fields & Rich Text */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Card 1: Basic Information */}
@@ -1856,7 +1856,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
       {/* ======================================================== */}
       {viewMode === 'details' && selectedProduct && (
         <div className="dashboard-card" style={{ padding: '28px' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: '32px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '32px' }}>
             {/* Left: Images Carousel / Gallery */}
             <div>
               {/* Primary Image View */}
@@ -1961,7 +1961,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(4, 1fr)',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                   gap: '12px',
                   background: '#f8fafc',
                   padding: '16px',

@@ -547,7 +547,8 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
               )}
             </div>
 
-            <table className="data-table" style={{ fontSize: '13px', marginTop: '12px' }}>
+            <div className="table-responsive">
+              <table className="data-table" style={{ fontSize: '13px', marginTop: '12px' }}>
               <thead>
                 <tr>
                   <th>Tier ID</th>
@@ -624,6 +625,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Card 4: Team Performance Bonus (6 Slabs) */}
@@ -662,7 +664,8 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
               )}
             </div>
 
-            <table className="data-table" style={{ fontSize: '13px', marginTop: '12px' }}>
+            <div className="table-responsive">
+              <table className="data-table" style={{ fontSize: '13px', marginTop: '12px' }}>
               <thead>
                 <tr>
                   <th>Slab ID</th>
@@ -758,6 +761,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                 ))}
               </tbody>
             </table>
+            </div>
             <div style={{ fontSize: '12px', color: '#64748b', marginTop: '12px' }}>
               * All qualified team members equally divide the CTO pool. No daily capping applies to Team Performance Bonus.
             </div>
@@ -792,7 +796,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '16px', marginBottom: '20px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginTop: '16px', marginBottom: '20px' }}>
               <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                 <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Monthly CTO Pool Share</span>
                 <div style={{ fontSize: '24px', fontWeight: 900, color: '#8b5cf6', marginTop: '4px' }}>
@@ -888,7 +892,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
               <div style={{ fontSize: '14px', fontWeight: 800, color: '#166534', marginBottom: '14px' }}>
                 4-MONTH CONSECUTIVE REPURCHASE REWARD TIMELINE
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '16px' }}>
                 <div style={{ background: '#ffffff', padding: '14px', borderRadius: '10px', border: '1.5px solid #86efac', textAlign: 'center' }}>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#166534' }}>MONTH 1</span>
                   <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: '4px 0' }}>₹2,500 DP</div>
@@ -916,7 +920,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
             </div>
 
             {isAdmin && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', background: '#f8fafc', padding: '16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                 <div>
                   <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>Qualifying Monthly Purchase (₹ DP)</label>
                   <input
@@ -1180,7 +1184,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
               )}
 
               {/* Grid: Binary Matching & Welcome Bonus */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '24px' }}>
                 
                 {/* Card 1: Binary Income & Daily Cap */}
                 <div className="dashboard-card">
@@ -1609,7 +1613,8 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                   </div>
                 </div>
 
-                <table className="data-table" style={{ fontSize: '13px', marginTop: '12px' }}>
+                <div className="table-responsive">
+                  <table className="data-table" style={{ fontSize: '13px', marginTop: '12px' }}>
                   <thead>
                     <tr>
                       <th>Stock Point Investment (₹)</th>
@@ -1681,13 +1686,14 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             </div>
           )}
 
           {/* Sub-tab 2: Simulator Panel */}
           {activeTab === 'simulator' && isAdmin && (
-            <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '26px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))', gap: '26px' }}>
               <div className="dashboard-card">
                 <div className="card-header-row" style={{ marginBottom: '18px' }}>
                   <div className="card-title-group">
@@ -1882,7 +1888,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
           {/* Sub-tab 3: Member Personal Status View */}
           {activeTab === 'my-status' && !isAdmin && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 250px), 1fr))', gap: '20px' }}>
                 <div className="dashboard-card" style={{ borderLeft: '4px solid #2563eb' }}>
                   <span style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase' }}>Active Package</span>
                   <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
