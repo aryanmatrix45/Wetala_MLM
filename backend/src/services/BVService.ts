@@ -57,6 +57,21 @@ export class BVService {
       isImmutable: true,
     });
 
+    // Update member's cumulative personal BV and check binary tree participation threshold (100 BV)
+    const member = await Member.findOne({ memberId });
+    if (member) {
+      member.personalBv = (member.personalBv || 0) + bvAmount;
+      if (member.personalBv >= 100) {
+        if (!member.isBinaryActive) {
+          member.isBinaryActive = true;
+          if (!member.binaryActivatedAt) {
+            member.binaryActivatedAt = new Date();
+          }
+        }
+      }
+      await member.save();
+    }
+
     return ledger;
   }
 

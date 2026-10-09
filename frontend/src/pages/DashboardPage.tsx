@@ -239,6 +239,67 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
         </div>
       </div>
 
+      {/* 100 BV Binary Income Tree Participation Banner for Distributors */}
+      {!isAdmin && (user?.personalBv || 0) < 100 && (
+        <div style={{
+          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
+          border: '1px solid #fde68a',
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '16px',
+          boxShadow: '0 2px 8px rgba(245, 158, 11, 0.1)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '10px',
+              background: '#fef3c7',
+              color: '#d97706',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0
+            }}>
+              <AlertCircle size={24} />
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: '15px', color: '#92400e' }}>
+                Binary Tree Income Participation: Pending ({user?.personalBv || 0} / 100 BV)
+              </div>
+              <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#b45309' }}>
+                Your account is active for login! To participate in the binary income tree and earn matching bonuses, your account requires a minimum of <strong>100 Business Volume (BV)</strong>. Purchase products to activate binary participation.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => onNavigate('products')}
+            className="primary-btn"
+            style={{
+              background: '#d97706',
+              color: '#fff',
+              border: 'none',
+              padding: '10px 18px',
+              borderRadius: '8px',
+              fontWeight: 700,
+              fontSize: '13px',
+              flexShrink: 0,
+              boxShadow: '0 4px 12px rgba(217, 119, 6, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
+          >
+            <ShoppingCart size={15} />
+            <span>Shop for 100 BV</span>
+          </button>
+        </div>
+      )}
+
       {/* Top KPI Metrics */}
       <div className={`kpi-grid ${isAdmin ? 'kpi-grid-6' : ''}`}>
         {isAdmin ? (
@@ -347,11 +408,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">Distributor Status</div>
-                <div className="kpi-value" style={{ fontSize: '20px', color: '#1d4ed8' }}>
-                  Active Node
+                <div className="kpi-value" style={{ fontSize: '18px', color: (user?.personalBv || 0) >= 100 ? '#10b981' : '#d97706' }}>
+                  {(user?.personalBv || 0) >= 100 ? 'Binary Active' : 'Login Active'}
                 </div>
-                <div style={{ fontSize: '12px', color: '#059669', fontWeight: 700, marginTop: '4px' }}>
-                  {user?.packageName || 'Package 1'} ({welcomeBonus?.qualifyingBusinessVolume || 1250} BV)
+                <div style={{ fontSize: '12px', color: (user?.personalBv || 0) >= 100 ? '#059669' : '#b45309', fontWeight: 700, marginTop: '4px' }}>
+                  {(user?.personalBv || 0) >= 100 
+                    ? `Tree Qualified: ${(user?.personalBv || 0).toLocaleString()} BV` 
+                    : `Tree Inactive: ${(user?.personalBv || 0)}/100 BV`}
                 </div>
               </div>
             </div>

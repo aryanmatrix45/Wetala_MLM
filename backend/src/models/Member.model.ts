@@ -47,6 +47,9 @@ export interface IMember extends Document {
   // High-level volume cache (detailed audit stored in BinaryVolume & BVLedger)
   leftBv: number;
   rightBv: number;
+  personalBv: number;
+  isBinaryActive: boolean;
+  binaryActivatedAt?: Date;
   matchedPairs: number;
   totalIncome: number;
   walletBalance: number;
@@ -237,6 +240,19 @@ const memberSchema = new Schema<IMember, IMemberModel>(
       type: Number,
       default: 0,
     },
+    personalBv: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    isBinaryActive: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    binaryActivatedAt: {
+      type: Date,
+    },
     matchedPairs: {
       type: Number,
       default: 0,
@@ -308,6 +324,18 @@ memberSchema.pre('save', async function () {
   const normalizedPos = rawPos === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
   this.position = normalizedPos;
   this.binaryPosition = normalizedPos;
+
+  // Minimum 100 Business Volume (BV) required to participate in Binary Income Tree
+  if ((this.personalBv || 0) >= 100) {
+    if (!this.isBinaryActive) {
+      this.isBinaryActive = true;
+      if (!this.binaryActivatedAt) {
+        this.binaryActivatedAt = new Date();
+      }
+    }
+  } else {
+    this.isBinaryActive = false;
+  }
 
   // Hash password if modified
   if (this.isModified('password') && this.password) {

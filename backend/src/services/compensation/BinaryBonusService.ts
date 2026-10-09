@@ -81,6 +81,13 @@ export class BinaryBonusService {
       return emptyResult;
     }
 
+    // Minimum 100 Business Volume required to participate in and earn from the binary income tree
+    const minRequiredBv = rules.binaryBonus?.minPersonalBvRequired ?? 100;
+    const isMemberBinaryQualified = member.isBinaryActive || (member.personalBv || 0) >= minRequiredBv;
+    if (!isMemberBinaryQualified) {
+      return emptyResult;
+    }
+
     let vol = await BinaryVolume.findOne({ memberId: cleanId });
     if (!vol) {
       vol = await BinaryVolume.create({

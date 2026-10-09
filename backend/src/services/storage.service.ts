@@ -1,13 +1,16 @@
 import fs from 'fs';
 import path from 'path';
 
-// Target directory for uploaded product images
+// Target directory for uploads
 const UPLOAD_ROOT = path.resolve(__dirname, '../../uploads');
 const PRODUCT_UPLOAD_DIR = path.join(UPLOAD_ROOT, 'products');
+const ACCOUNTS_UPLOAD_DIR = path.join(UPLOAD_ROOT, 'accounts');
 
-// Ensure upload directory exists
-if (!fs.existsSync(PRODUCT_UPLOAD_DIR)) {
-  fs.mkdirSync(PRODUCT_UPLOAD_DIR, { recursive: true });
+// Ensure upload directories exist
+for (const dir of [PRODUCT_UPLOAD_DIR, ACCOUNTS_UPLOAD_DIR]) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 }
 
 export interface StoredImageResult {
@@ -19,8 +22,8 @@ export interface StoredImageResult {
 }
 
 export const StorageService = {
-  getUploadDir(): string {
-    return PRODUCT_UPLOAD_DIR;
+  getUploadDir(subfolder: string = 'products'): string {
+    return subfolder === 'accounts' ? ACCOUNTS_UPLOAD_DIR : PRODUCT_UPLOAD_DIR;
   },
 
   /**
@@ -28,7 +31,8 @@ export const StorageService = {
    */
   async saveImageBase64(
     base64Data: string,
-    filenameHint: string = 'product_image'
+    filenameHint: string = 'image',
+    subfolder: string = 'products'
   ): Promise<StoredImageResult> {
     // Check if base64 has a data URL prefix
     let mimeType = 'image/jpeg';
@@ -50,14 +54,16 @@ export const StorageService = {
     const safeHint = filenameHint
       .replace(/[^a-zA-Z0-9_-]/g, '_')
       .substring(0, 30);
-    const key = `prod_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
-    const filePath = path.join(PRODUCT_UPLOAD_DIR, key);
+    const prefix = subfolder === 'accounts' ? 'qr' : 'prod';
+    const key = `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
+    const targetDir = subfolder === 'accounts' ? ACCOUNTS_UPLOAD_DIR : PRODUCT_UPLOAD_DIR;
+    const filePath = path.join(targetDir, key);
 
     const buffer = Buffer.from(base64String, 'base64');
     await fs.promises.writeFile(filePath, buffer);
 
     return {
-      url: `/uploads/products/${key}`,
+      url: `/uploads/${subfolder}/${key}`,
       key,
       originalName: safeHint + ext,
       sizeBytes: buffer.length,
@@ -68,11 +74,12 @@ export const StorageService = {
   /**
    * Delete image file by its key
    */
-  async deleteImageByKey(key: string): Promise<boolean> {
+  async deleteImageByKey(key: string, subfolder: string = 'products'): Promise<boolean> {
     if (!key || key.includes('..') || key.includes('/') || key.includes('\\')) {
       return false;
     }
-    const filePath = path.join(PRODUCT_UPLOAD_DIR, key);
+    const targetDir = subfolder === 'accounts' ? ACCOUNTS_UPLOAD_DIR : PRODUCT_UPLOAD_DIR;
+    const filePath = path.join(targetDir, key);
     if (fs.existsSync(filePath)) {
       try {
         await fs.promises.unlink(filePath);

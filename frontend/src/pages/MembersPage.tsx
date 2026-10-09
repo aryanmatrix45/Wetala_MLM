@@ -29,6 +29,8 @@ interface MemberItem {
   approvalStatus: 'pending' | 'approved' | 'rejected';
   addedBy?: string;
   mobile: string;
+  personalBv: number;
+  isBinaryActive: boolean;
 }
 
 interface MembersPageProps {
@@ -64,6 +66,9 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
                 resolvedStatus = 'Active';
               }
 
+              const pBv = Number(m.personalBv || 0);
+              const isBinActive = Boolean(m.isBinaryActive || pBv >= 100);
+
               return {
                 id: m.id || m._id,
                 memberId: m.memberId,
@@ -75,6 +80,8 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
                 approvalStatus: m.approvalStatus || (resolvedStatus === 'Pending' ? 'pending' : 'approved'),
                 addedBy: m.addedBy || 'ADMIN',
                 mobile: m.mobile || m.phone || '-',
+                personalBv: pBv,
+                isBinaryActive: isBinActive,
               };
             })
           );
@@ -366,21 +373,22 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
                 {isAdmin && <th>Added By</th>}
                 <th>Package</th>
                 <th>Join Date</th>
-                <th>Status</th>
+                <th>Account Status</th>
+                <th>Binary Tree</th>
                 <th style={{ textAlign: 'center' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
+                  <td colSpan={isAdmin ? 10 : 9} style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
                     <div style={{ width: '36px', height: '36px', border: '3px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
                     <p style={{ fontWeight: 600 }}>Loading members directory...</p>
                   </td>
                 </tr>
               ) : filteredMembers.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} style={{ textAlign: 'center', padding: '60px 20px' }}>
+                  <td colSpan={isAdmin ? 10 : 9} style={{ textAlign: 'center', padding: '60px 20px' }}>
                     <div style={{ width: '54px', height: '54px', borderRadius: '50%', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
                       <Users size={28} />
                     </div>
@@ -548,6 +556,43 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
                           <span className="status-pill status-rejected">
                             <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }} />
                             Rejected
+                          </span>
+                        )}
+                      </td>
+
+                      {/* Binary Tree Status */}
+                      <td>
+                        {m.isBinaryActive ? (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: '#ecfdf5',
+                            color: '#065f46',
+                            border: '1px solid #a7f3d0',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: 700
+                          }}>
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                            Active ({m.personalBv} BV)
+                          </span>
+                        ) : (
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            background: '#fffbeb',
+                            color: '#b45309',
+                            border: '1px solid #fde68a',
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            fontSize: '11.5px',
+                            fontWeight: 600
+                          }} title="Requires minimum 100 BV in account to participate in binary tree">
+                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }} />
+                            Pending ({m.personalBv}/100 BV)
                           </span>
                         )}
                       </td>

@@ -322,22 +322,35 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
               {node.packageName || 'Basic'}
             </span>
 
-            <span style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontSize: '11px',
-              fontWeight: 700,
-              color: isActive ? '#059669' : '#dc2626'
-            }}>
-              <span style={{
-                width: '6px',
-                height: '6px',
-                borderRadius: '50%',
-                background: isActive ? '#10b981' : '#ef4444'
-              }} />
-              {isActive ? 'Active' : 'Inactive'}
-            </span>
+            {(() => {
+              const isBinActive = node.isBinaryActive || (node.personalBv || 0) >= 100;
+              const pBv = node.personalBv || 0;
+
+              if (!isActive) {
+                return (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', fontWeight: 700, color: '#dc2626' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }} />
+                    Inactive
+                  </span>
+                );
+              }
+
+              if (isBinActive) {
+                return (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', fontWeight: 700, color: '#059669' }} title={`Binary Qualified with ${pBv} BV`}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                    Binary Active
+                  </span>
+                );
+              }
+
+              return (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 700, color: '#d97706' }} title={`Pending 100 BV requirement (${pBv}/100 BV)`}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }} />
+                  Needs 100 BV
+                </span>
+              );
+            })()}
           </div>
 
           {/* User Icon & Name */}

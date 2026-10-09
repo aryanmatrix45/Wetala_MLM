@@ -86,6 +86,9 @@ export interface ApiMember {
   approvedBy?: string;
   rejectionReason?: string;
   isActive?: boolean;
+  personalBv?: number;
+  isBinaryActive?: boolean;
+  binaryActivatedAt?: string;
   leftBv: number;
   rightBv: number;
   matchedPairs: number;
@@ -140,6 +143,28 @@ export interface WithdrawalSummary {
   approvedCount: number;
   paidCount: number;
   rejectedCount: number;
+}
+
+export interface CompanyAccountData {
+  _id?: string;
+  accountId: string;
+  bankName: string;
+  accountHolderName: string;
+  accountNumber: string;
+  ifscCode: string;
+  branchName: string;
+  accountType: string;
+  upiId: string;
+  upiHolderName: string;
+  qrCodeUrl: string;
+  qrCodeKey?: string;
+  depositInstructions?: string;
+  supportPhone?: string;
+  supportEmail?: string;
+  isActive: boolean;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface PackageItem {
@@ -977,6 +1002,69 @@ export const api = {
       headers: savedToken ? { Authorization: `Bearer ${savedToken}` } : {},
     });
     if (!res.ok) throw new Error(`Failed to fetch sponsor income history: ${res.statusText}`);
+    return res.json();
+  },
+
+  // Company Payment Account & QR Code APIs
+  async getCompanyAccount(token?: string): Promise<{ status: boolean; data: CompanyAccountData }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/company-account`, {
+      headers: savedToken ? { Authorization: `Bearer ${savedToken}` } : {},
+    });
+    if (!res.ok) throw new Error(`Failed to fetch company account: ${res.statusText}`);
+    return res.json();
+  },
+
+  async updateCompanyAccount(
+    data: Partial<CompanyAccountData>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: CompanyAccountData }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/company-account`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to update company account details');
+    }
+    return res.json();
+  },
+
+  async uploadCompanyQR(
+    base64Image: string,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: { qrCodeUrl: string; qrCodeKey: string; account: CompanyAccountData } }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/company-account/upload-qr`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify({ base64Image }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to upload QR code');
+    }
+    return res.json();
+  },
+
+  async removeCompanyQR(token?: string): Promise<{ status: boolean; message: string; data: CompanyAccountData }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/company-account/qr`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || 'Failed to remove QR code');
+    }
     return res.json();
   },
 };

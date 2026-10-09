@@ -18,6 +18,7 @@ import {
   ShoppingBag,
   FolderTree,
   Layers,
+  Landmark,
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -134,6 +135,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
             badge: 'Store',
           },
         ]),
+        { 
+          id: 'company-account', 
+          label: isAdmin ? 'Company Account & QR' : 'Company Bank & QR', 
+          icon: Landmark, 
+          badge: isAdmin ? undefined : 'Pay'
+        },
         { 
           id: 'packages', 
           label: isAdmin ? 'Package Management' : (user?.packageName || user?.joiningPackageId ? 'Packages & Upgrade' : 'Buy Joining Package'), 

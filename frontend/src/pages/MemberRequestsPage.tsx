@@ -72,7 +72,7 @@ export const MemberRequestsPage: React.FC<MemberRequestsPageProps> = ({ token, o
 
   const handleApprove = async (reqItem: MemberRequestItem) => {
     const confirmApprove = window.confirm(
-      `Are you sure you want to approve and activate ${reqItem.name} (${reqItem.memberId})? This will immediately place them in the binary tree.`
+      `Are you sure you want to accept and approve ${reqItem.name} (${reqItem.memberId})?\n\n- They will be granted immediate login access.\n- Binary income tree participation will activate once their account accumulates minimum 100 BV.`
     );
     if (!confirmApprove) return;
 
@@ -82,7 +82,7 @@ export const MemberRequestsPage: React.FC<MemberRequestsPageProps> = ({ token, o
       const res = await api.approveMemberRequest(reqItem.id || reqItem.memberId, token || undefined);
       setFeedbackMessage({
         type: 'success',
-        text: res.message || `Member ${reqItem.name} (${reqItem.memberId}) approved and activated in binary tree!`,
+        text: res.message || `Member ${reqItem.name} (${reqItem.memberId}) approved! Login access enabled.`,
       });
       await fetchRequests();
     } catch (err: any) {
@@ -155,7 +155,7 @@ export const MemberRequestsPage: React.FC<MemberRequestsPageProps> = ({ token, o
             </span>
           </div>
           <p className="page-subtitle">
-            Review and accept new member registrations submitted by members. Once accepted, their ID activates and appears in the binary tree.
+            Review and accept new member registrations. Once accepted, members can immediately log in. Binary income tree participation will activate when their account accumulates minimum 100 BV.
           </p>
         </div>
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -218,8 +218,8 @@ export const MemberRequestsPage: React.FC<MemberRequestsPageProps> = ({ token, o
             <ShieldCheck size={24} />
           </div>
           <div className="kpi-content">
-            <div className="kpi-label">Tree Protection</div>
-            <div className="kpi-value" style={{ fontSize: '18px', color: '#059669' }}>Binary Locked</div>
+            <div className="kpi-label">Binary Qualification</div>
+            <div className="kpi-value" style={{ fontSize: '18px', color: '#059669' }}>Min. 100 BV</div>
           </div>
         </div>
 

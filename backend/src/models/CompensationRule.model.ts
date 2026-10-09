@@ -24,6 +24,7 @@ export interface ICompensationRule extends Document {
     isEnabled: boolean;
     rateInRupees?: number;      // e.g. ₹250 per pair
     pairBvUnit?: number;        // e.g. 1250 BV per pair
+    minPersonalBvRequired?: number; // Minimum 100 BV required for binary participation
     standardBinaryRate?: number;
     specialBinaryRate?: number;
     isSpecialRateEnabled?: boolean;
@@ -191,6 +192,7 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       standardBinaryRate: { type: Number, default: 0.20 }, // 20%
       rateInRupees: { type: Number, default: 250 },        // ₹250 per pair
       pairBvUnit: { type: Number, default: 1250 },         // 1250 BV per pair
+      minPersonalBvRequired: { type: Number, default: 100 }, // 100 BV threshold
       specialBinaryRate: { type: Number, default: 0.25 },   // 25% (optional override)
       isSpecialRateEnabled: { type: Boolean, default: false },
       calculationBase: { type: String, default: 'BV' },

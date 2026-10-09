@@ -16,8 +16,12 @@ import walletRoutes from './wallet.routes';
 import reportRoutes from './report.routes';
 import welcomeBonusRoutes from './welcomeBonus.routes';
 import withdrawalRoutes from './withdrawal.routes';
+import companyAccountRoutes from './companyAccount.routes';
 
 const router = Router();
+
+// Company Official Payment Account & QR Code Details (Admin Configurable / Member View-Only)
+router.use('/company-account', companyAccountRoutes);
 
 // Authentication & Profile
 router.use('/auth', authRoutes);

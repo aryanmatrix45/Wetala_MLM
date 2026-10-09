@@ -10,6 +10,8 @@ export interface BinaryNodeDTO {
   rank: string;
   packageName: string;
   isActive: boolean;
+  isBinaryActive: boolean;
+  personalBv: number;
   status: string;
   joinedAt: Date;
   parentId?: string;
@@ -193,6 +195,8 @@ export class BinaryTreeService {
         rank: member.rank || 'Distributor',
         packageName: member.packageName || 'Basic',
         isActive: member.isActive,
+        isBinaryActive: member.isBinaryActive || (member.personalBv || 0) >= 100,
+        personalBv: member.personalBv || 0,
         status: member.status,
         joinedAt: member.joinedAt || member.createdAt,
         leftBv: 0,
@@ -219,6 +223,8 @@ export class BinaryTreeService {
       rank: member.rank || 'Distributor',
       packageName: member.packageName || 'Basic',
       isActive: member.isActive,
+      isBinaryActive: member.isBinaryActive || (member.personalBv || 0) >= 100,
+      personalBv: member.personalBv || 0,
       status: member.status,
       joinedAt: member.joinedAt || member.createdAt,
       parentId: member.parentId || member.binaryParentId || undefined,
@@ -510,8 +516,10 @@ export class BinaryTreeService {
 
     while (queue.length > 0) {
       const currentId = queue.shift()!;
-      const member = await Member.findOne({ memberId: currentId }).select('memberId isActive status');
-      if (member && member.isActive && member.status !== 'blocked') {
+      const member = await Member.findOne({ memberId: currentId }).select('memberId isActive isBinaryActive personalBv status');
+      // Only members with minimum 100 Business Volume participate in the binary income matching tree
+      const isBinaryParticipating = member && member.isActive && member.status !== 'blocked' && (member.isBinaryActive || (member.personalBv || 0) >= 100);
+      if (isBinaryParticipating) {
         result.push(member.memberId);
       }
 

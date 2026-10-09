@@ -226,6 +226,9 @@ router.get('/members', optionalAuthenticate, async (req: AuthenticatedRequest, r
       approvedBy: m.approvedBy,
       rejectionReason: m.rejectionReason || '',
       isActive: m.isActive,
+      personalBv: m.personalBv || 0,
+      isBinaryActive: m.isBinaryActive || false,
+      binaryActivatedAt: m.binaryActivatedAt,
       leftBv: m.leftBv,
       rightBv: m.rightBv,
       matchedPairs: m.matchedPairs,
@@ -475,6 +478,8 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
       approvalStatus,
       addedBy,
       isActive,
+      personalBv: 0,
+      isBinaryActive: false,
       leftBv: 0,
       rightBv: 0,
       matchedPairs: 0,
@@ -488,8 +493,8 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
     }
 
     const successMessage = approvalStatus === 'pending'
-      ? `Member ${newMember.name} added successfully with ID: ${newMember.memberId}. The request has been forwarded to Super Admin for approval and binary tree activation.`
-      : `Member ${newMember.name} registered and activated successfully with ID: ${newMember.memberId}.`;
+      ? `Member ${newMember.name} added successfully with ID: ${newMember.memberId}. The request has been forwarded to Super Admin for approval. Login will be enabled once approved, and binary tree participation requires minimum 100 BV.`
+      : `Member ${newMember.name} registered successfully with ID: ${newMember.memberId}. Account can log in. Binary income participation requires minimum 100 BV.`;
 
     res.status(HTTP_STATUS.CREATED).json({
       success: true,
@@ -627,7 +632,8 @@ const handleApproveMember = async (req: AuthenticatedRequest, res: any) => {
 
     member.approvalStatus = 'approved';
     member.status = 'active';
-    member.isActive = true;
+    member.isActive = true; // Enables login access
+    member.isBinaryActive = (member.personalBv || 0) >= 100;
     member.approvedAt = new Date();
     member.approvedBy = req.user?.email || 'ADMIN';
     await member.save();
@@ -636,9 +642,13 @@ const handleApproveMember = async (req: AuthenticatedRequest, res: any) => {
     await WalletService.getOrCreateWallet(member.memberId, member._id.toString()).catch(() => null);
     await BVService.getOrCreateBinaryVolume(member.memberId, member._id.toString()).catch(() => null);
 
+    const binaryStatusMsg = member.isBinaryActive
+      ? 'ID is active in the binary income tree.'
+      : 'ID can now log in. Binary income tree participation will activate once account reaches minimum 100 BV.';
+
     res.json({
       status: true,
-      message: `Member ${member.name} (${member.memberId}) has been accepted! ID is now active in the binary tree.`,
+      message: `Member ${member.name} (${member.memberId}) has been accepted! ${binaryStatusMsg}`,
       data: member,
     });
   } catch (error: any) {

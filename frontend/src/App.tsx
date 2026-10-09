@@ -15,6 +15,7 @@ import { AdminProductsPage } from './pages/AdminProductsPage';
 import { AdminCategoriesPage } from './pages/AdminCategoriesPage';
 import { AdminSubcategoriesPage } from './pages/AdminSubcategoriesPage';
 import { MemberProductsPage } from './pages/MemberProductsPage';
+import { CompanyAccountPage } from './pages/CompanyAccountPage';
 import { api } from './services/api';
 
 export function App() {
@@ -184,6 +185,10 @@ export function App() {
             token={token}
             onUserUpdate={(updated) => setUser(updated)}
           />
+        )}
+
+        {activeTab === 'company-account' && (
+          <CompanyAccountPage user={user} token={token} />
         )}
 
         {activeTab === 'manage-categories' && (
