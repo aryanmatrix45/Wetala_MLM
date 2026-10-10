@@ -841,21 +841,6 @@ export const api = {
     return res.json();
   },
 
-  // Purchases
-  async getPurchases(params?: any) {
-    const searchParams = new URLSearchParams(params || {});
-    const res = await fetch(`${API_BASE_URL}/purchases?${searchParams.toString()}`);
-    return res.json();
-  },
-
-  async createPurchase(data: any) {
-    const res = await fetch(`${API_BASE_URL}/purchases`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
-    });
-    return res.json();
-  },
 
   // Wallet
   async getWallet(memberId: string) {
@@ -1099,6 +1084,159 @@ export const api = {
     }
     return res.json();
   },
+
+  // Purchase Requests & Multi-stage Order Approvals
+  async requestPurchase(
+    data: { memberId?: string; type?: string; items: any[]; notes?: string },
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: any }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/purchases/request`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to submit purchase request');
+    }
+    return resJson;
+  },
+
+  async createPurchase(
+    data: { memberId?: string; type?: string; items: any[]; notes?: string },
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: any }> {
+    return this.requestPurchase(data, token);
+  },
+
+  async approvePurchaseInstructions(
+    purchaseId: string,
+    adminMessage?: string,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: any }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/purchases/${purchaseId}/approve-instructions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify({ adminMessage }),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to send payment instructions');
+    }
+    return resJson;
+  },
+
+  async submitPurchasePayment(
+    purchaseId: string,
+    paymentData: { utrNumber: string; payerName: string; paymentMode?: string; paymentProofUrl?: string; notes?: string },
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: any }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/purchases/${purchaseId}/submit-payment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(paymentData),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to submit payment details');
+    }
+    return resJson;
+  },
+
+  async verifyAndPayPurchase(
+    purchaseId: string,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: any; compensation?: any }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/purchases/${purchaseId}/verify-and-pay`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to verify and mark purchase as paid');
+    }
+    return resJson;
+  },
+
+  async rejectPurchase(
+    purchaseId: string,
+    reason?: string,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: any }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/purchases/${purchaseId}/reject`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify({ reason }),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to reject purchase request');
+    }
+    return resJson;
+  },
+
+  async getMemberPurchaseHistory(
+    memberId: string,
+    token?: string
+  ): Promise<{ status: boolean; data: { member: any; summary: any; history: any[] } }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/purchases/member/${encodeURIComponent(memberId)}/history`, {
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch member purchase history');
+    }
+    return resJson;
+  },
+
+  async getPurchases(
+    params?: { stage?: string; memberId?: string; type?: string; search?: string; page?: number; limit?: number },
+    token?: string
+  ): Promise<{ status: boolean; data: any[]; pagination: { total: number; page: number; limit: number } }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const searchParams = new URLSearchParams();
+    if (params?.stage) searchParams.append('stage', params.stage);
+    if (params?.memberId) searchParams.append('memberId', params.memberId);
+    if (params?.type) searchParams.append('type', params.type);
+    if (params?.search) searchParams.append('search', params.search);
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
+
+    const res = await fetch(`${API_BASE_URL}/purchases?${searchParams.toString()}`, {
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch purchases');
+    }
+    return resJson;
+  },
 };
+
 
 

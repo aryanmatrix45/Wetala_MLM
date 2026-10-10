@@ -343,11 +343,11 @@ export const MemberRequestsPage: React.FC<MemberRequestsPageProps> = ({ token, o
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Package size={14} style={{ color: '#64748b' }} />
                           <span style={{ fontWeight: 500, color: '#0f172a', fontSize: '13px' }}>
-                            {reqItem.packageName || 'Package 1'}
+                            {reqItem.packageName || 'No Package'}
                           </span>
                         </div>
                         <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '2px' }}>
-                          {reqItem.packageBv ? `${reqItem.packageBv} BV` : '1,250 BV'}
+                          {reqItem.packageBv ? `${reqItem.packageBv} BV` : '0 BV'}
                         </div>
                       </td>
 

@@ -18,19 +18,61 @@ export interface IPurchaseItem {
   totalBV: number;
 }
 
+export interface ICompanyAccountSnapshot {
+  bankName?: string;
+  accountHolderName?: string;
+  accountNumber?: string;
+  ifscCode?: string;
+  branchName?: string;
+  accountType?: string;
+  upiId?: string;
+  upiHolderName?: string;
+  qrCodeUrl?: string;
+  depositInstructions?: string;
+  supportPhone?: string;
+}
+
+export type PurchaseApprovalStage =
+  | 'REQUESTED'
+  | 'PAYMENT_INSTRUCTIONS_SENT'
+  | 'PAYMENT_SUBMITTED'
+  | 'VERIFIED_AND_PAID'
+  | 'REJECTED';
+
 export interface IPurchase extends Document {
   purchaseId: string;
   userId: string; // memberId or _id
   memberId: string;
+  memberName?: string;
+  memberMobile?: string;
+  memberEmail?: string;
   type: PurchaseType;
   items: IPurchaseItem[];
   totalAmount: number;
   totalAmountInPaise: number;
   totalBV: number;
   status: PurchaseStatus;
-  paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+  paymentStatus: 'PENDING' | 'SUBMITTED' | 'PAID' | 'FAILED' | 'REFUNDED';
   paymentMethod?: string;
   transactionId: string;
+  
+  // Multi-step Purchase & Approval lifecycle
+  approvalStage: PurchaseApprovalStage;
+  adminMessage?: string;
+  companyAccountSnapshot?: ICompanyAccountSnapshot;
+  
+  // Member Payment Submission
+  payerName?: string;
+  utrNumber?: string;
+  paymentMode?: string;
+  paymentProofUrl?: string;
+  paymentSubmittedAt?: Date;
+
+  // Verification & Audit
+  verifiedBy?: string;
+  verifiedAt?: Date;
+  rejectionReason?: string;
+
   notes?: string;
   completedAt?: Date;
   cancelledAt?: Date;
@@ -78,6 +120,19 @@ const purchaseSchema = new Schema<IPurchase>(
       required: true,
       index: true,
     },
+    memberName: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    memberMobile: {
+      type: String,
+      trim: true,
+    },
+    memberEmail: {
+      type: String,
+      trim: true,
+    },
     type: {
       type: String,
       enum: [PURCHASE_TYPE.JOINING, PURCHASE_TYPE.REPURCHASE, PURCHASE_TYPE.RETAIL, PURCHASE_TYPE.OTHER],
@@ -114,13 +169,74 @@ const purchaseSchema = new Schema<IPurchase>(
     },
     paymentStatus: {
       type: String,
-      enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'],
+      enum: ['PENDING', 'SUBMITTED', 'PAID', 'FAILED', 'REFUNDED'],
       default: 'PENDING',
       index: true,
     },
+    approvalStage: {
+      type: String,
+      enum: [
+        'REQUESTED',
+        'PAYMENT_INSTRUCTIONS_SENT',
+        'PAYMENT_SUBMITTED',
+        'VERIFIED_AND_PAID',
+        'REJECTED',
+      ],
+      default: 'REQUESTED',
+      index: true,
+    },
+    adminMessage: {
+      type: String,
+      trim: true,
+    },
+    companyAccountSnapshot: {
+      bankName: { type: String },
+      accountHolderName: { type: String },
+      accountNumber: { type: String },
+      ifscCode: { type: String },
+      branchName: { type: String },
+      accountType: { type: String },
+      upiId: { type: String },
+      upiHolderName: { type: String },
+      qrCodeUrl: { type: String },
+      depositInstructions: { type: String },
+      supportPhone: { type: String },
+    },
+    payerName: {
+      type: String,
+      trim: true,
+    },
+    utrNumber: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    paymentMode: {
+      type: String,
+      enum: ['UPI', 'NEFT', 'IMPS', 'NET_BANKING', 'QR_SCAN', 'CASH', 'OTHER', 'ONLINE'],
+      default: 'UPI',
+    },
+    paymentProofUrl: {
+      type: String,
+      trim: true,
+    },
+    paymentSubmittedAt: {
+      type: Date,
+    },
+    verifiedBy: {
+      type: String,
+      trim: true,
+    },
+    verifiedAt: {
+      type: Date,
+    },
+    rejectionReason: {
+      type: String,
+      trim: true,
+    },
     paymentMethod: {
       type: String,
-      default: 'WALLET',
+      default: 'BANK_TRANSFER',
     },
     transactionId: {
       type: String,

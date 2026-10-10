@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, UserPlus, CheckCircle2, Lock, Eye, EyeOff, Mail, Phone, Calendar, User, AlertCircle } from 'lucide-react';
-import { api, type PackageItem } from '../services/api';
+import { api } from '../services/api';
 
 interface AddMemberModalProps {
   isOpen: boolean;
@@ -11,7 +11,6 @@ interface AddMemberModalProps {
 
 export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onAddMember, user }) => {
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
-  const [packages, setPackages] = useState<PackageItem[]>([]);
   const [placementMode, setPlacementMode] = useState<'auto' | 'manual'>('auto');
   const [formData, setFormData] = useState({
     name: '',
@@ -24,8 +23,6 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
     parentId: '',
     placementId: '',
     position: 'LEFT',
-    package: 'Package 1',
-    packageId: 'PKG-1',
   });
 
   useEffect(() => {
@@ -36,21 +33,6 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
           sponsorId: user.memberId,
         }));
       }
-      api.getPackages()
-        .then((res) => {
-          if (res.status && Array.isArray(res.data) && res.data.length > 0) {
-            const activePkgs = res.data.filter((p) => p.isActive);
-            setPackages(activePkgs);
-            if (activePkgs.length > 0) {
-              setFormData((prev) => ({
-                ...prev,
-                package: activePkgs[0].name,
-                packageId: activePkgs[0].packageId,
-              }));
-            }
-          }
-        })
-        .catch((err) => console.error('Failed to load packages in AddMemberModal:', err));
     }
   }, [isOpen, user?.memberId]);
 
@@ -113,8 +95,6 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
 
       const payload: any = {
         ...formData,
-        packageName: formData.package,
-        packageId: formData.packageId,
         sponsorId: formData.sponsorId.trim().toUpperCase(),
       };
 
@@ -458,39 +438,6 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
             </div>
           )}
 
-          {/* Package Selection */}
-          <div>
-            <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-              Joining Package *
-            </label>
-            <select
-              value={formData.packageId || formData.package}
-              onChange={(e) => {
-                const sel = packages.find((p) => p.packageId === e.target.value || p.name === e.target.value);
-                setFormData({
-                  ...formData,
-                  packageId: sel ? sel.packageId : e.target.value,
-                  package: sel ? sel.name : e.target.value,
-                });
-              }}
-              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: 'white' }}
-            >
-              {packages.length > 0 ? (
-                packages.map((pkg) => (
-                  <option key={pkg.packageId} value={pkg.packageId}>
-                    {pkg.name} (₹ {pkg.price.toLocaleString()} — {pkg.bv.toLocaleString()} BV | {pkg.rp || 1} RP | Cap: ₹{(pkg.dailyCapping || 4000).toLocaleString()})
-                  </option>
-                ))
-              ) : (
-                <>
-                  <option value="PKG-1">Package 1 (₹ 3,000 — 1,250 BV | 1 RP)</option>
-                  <option value="PKG-2">Package 2 (₹ 6,500 — 2,500 BV | 2 RP)</option>
-                  <option value="PKG-3">Package 3 (₹ 15,000 — 5,000 BV | 4 RP)</option>
-                  <option value="PKG-4">Package 4 (₹ 35,000 — 10,000 BV | 8 RP)</option>
-                </>
-              )}
-            </select>
-          </div>
 
           {/* Action buttons */}
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '14px', paddingTop: '14px', borderTop: '1px solid #f1f5f9' }}>

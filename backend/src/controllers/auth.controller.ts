@@ -192,7 +192,7 @@ export const AuthController = {
       // 4. Generate Next Sequential Member ID
       const newMemberId = await Member.generateNextMemberId();
 
-      // 5. Resolve Dynamic Package from MongoDB
+      // 5. Resolve Dynamic Package from MongoDB (only if explicitly specified)
       const targetPkgIdentifier = packageId || packageName || pkgInput;
       let selectedPackage = null;
       if (targetPkgIdentifier) {
@@ -206,15 +206,11 @@ export const AuthController = {
         });
       }
 
-      if (!selectedPackage) {
-        selectedPackage = await Package.findOne({ isActive: true }).sort({ packageNumber: 1, price: 1 });
-      }
-
-      const finalPackageName = selectedPackage ? selectedPackage.name : (packageName || 'Package 1');
-      const finalPackageId = selectedPackage ? selectedPackage.packageId : 'PKG-1';
-      const finalPackageBv = selectedPackage ? selectedPackage.bv : 1250;
-      const finalPackageRp = selectedPackage ? selectedPackage.rp : 1;
-      const finalDailyCapping = selectedPackage ? selectedPackage.dailyCapping : 4000;
+      const finalPackageName = selectedPackage ? selectedPackage.name : null;
+      const finalPackageId = selectedPackage ? selectedPackage.packageId : null;
+      const finalPackageBv = selectedPackage ? selectedPackage.bv : 0;
+      const finalPackageRp = selectedPackage ? selectedPackage.rp : 0;
+      const finalDailyCapping = selectedPackage ? (selectedPackage.dailyCapping || 0) : 0;
 
       // 6. Create Member record (Password hashed automatically by Member schema pre-save hook)
       const newMember = await Member.create({
@@ -504,7 +500,7 @@ export const AuthController = {
             role: ROLES.MEMBER,
             status: member.status,
             packageName: member.packageName,
-            joiningPackageId: member.joiningPackageId || (member.packageName?.toLowerCase() === 'starter' ? 'PKG-1' : (member.packageName === 'Package 1' ? 'PKG-1' : undefined)),
+            joiningPackageId: member.joiningPackageId || undefined,
             packageBv: member.packageBv,
             packageRp: member.packageRp,
             dailyCapping: member.dailyCapping,
@@ -593,7 +589,7 @@ export const AuthController = {
             role: ROLES.MEMBER,
             status: member.status,
             packageName: member.packageName,
-            joiningPackageId: member.joiningPackageId || (member.packageName?.toLowerCase() === 'starter' ? 'PKG-1' : (member.packageName === 'Package 1' ? 'PKG-1' : undefined)),
+            joiningPackageId: member.joiningPackageId || undefined,
             packageBv: member.packageBv,
             packageRp: member.packageRp,
             dailyCapping: member.dailyCapping,

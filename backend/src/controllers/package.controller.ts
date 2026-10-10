@@ -310,22 +310,33 @@ export const PackageController = {
         return;
       }
 
-      // Update Member Package details
-      member.packageName = pkg.name;
-      member.joiningPackageId = pkg.packageId;
-      member.packageBv = pkg.bv;
-      member.packageRp = pkg.rp;
-      member.dailyCapping = pkg.dailyCapping;
-      member.status = 'active';
-      member.isActive = true;
-      await member.save();
+      // Check if member already has a pending purchase request for a package
+      const existingPending = await Purchase.findOne({
+        memberId: member.memberId,
+        'items.itemType': 'PACKAGE',
+        approvalStage: { $in: ['REQUESTED', 'PAYMENT_INSTRUCTIONS_SENT', 'PAYMENT_SUBMITTED'] },
+      });
 
-      // Create purchase transaction record
+      if (existingPending) {
+        res.status(HTTP_STATUS.OK).json({
+          status: true,
+          message: `You already have an active request for ${existingPending.items[0]?.name || 'a package'}. Stage: ${existingPending.approvalStage}.`,
+          data: existingPending,
+        });
+        return;
+      }
+
+      // Create purchase transaction record in REQUESTED stage
       const purchaseId = `PUR-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      const tempTxnId = `REQ-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+
       const purchase = await Purchase.create({
         purchaseId,
         userId: member._id.toString(),
         memberId: member.memberId,
+        memberName: member.name,
+        memberMobile: member.mobile,
+        memberEmail: member.email,
         type: PURCHASE_TYPE.JOINING,
         items: [
           {
@@ -344,18 +355,13 @@ export const PackageController = {
         totalAmount: pkg.price,
         totalAmountInPaise: pkg.priceInPaise || Math.round(pkg.price * 100),
         totalBV: pkg.bv,
-        status: PURCHASE_STATUS.COMPLETED,
-        paymentMethod: 'ONLINE',
-        paymentStatus: 'PAID',
-        notes: `Dynamic package purchase: ${pkg.name}`,
+        status: PURCHASE_STATUS.PENDING,
+        paymentStatus: 'PENDING',
+        approvalStage: 'REQUESTED',
+        paymentMethod: 'BANK_TRANSFER',
+        transactionId: tempTxnId,
+        notes: `Package purchase request initiated: ${pkg.name}`,
       });
-
-      // Distribute volume into binary tree & calculate commissions
-      try {
-        await CompensationEngine.processPurchaseCompleted(purchase.purchaseId);
-      } catch (compErr) {
-        console.warn('[buyPackage] Compensation calculation notice:', compErr);
-      }
 
       await AuditService.log({
         action: 'MEMBER_BUY_PACKAGE',
@@ -372,19 +378,18 @@ export const PackageController = {
         },
       });
 
-      const isUpgrade = Boolean(member.packageName && member.packageName !== pkg.name);
-
       res.status(HTTP_STATUS.OK).json({
         status: true,
-        message: isUpgrade ? `Successfully upgraded to ${pkg.name}!` : `Successfully purchased ${pkg.name}!`,
+        message: `Package request for ${pkg.name} submitted to Super Admin! Please await payment instructions.`,
         data: {
           memberId: member.memberId,
-          packageName: member.packageName,
-          joiningPackageId: member.joiningPackageId,
-          packageBv: member.packageBv,
-          packageRp: member.packageRp,
-          dailyCapping: member.dailyCapping,
+          packageId: pkg.packageId,
+          packageName: pkg.name,
+          price: pkg.price,
+          bv: pkg.bv,
           purchaseId: purchase.purchaseId,
+          approvalStage: purchase.approvalStage,
+          purchase,
         },
       });
     } catch (error: any) {

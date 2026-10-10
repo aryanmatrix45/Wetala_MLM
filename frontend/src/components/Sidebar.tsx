@@ -19,6 +19,7 @@ import {
   FolderTree,
   Layers,
   Landmark,
+  ShoppingCart,
   X
 } from 'lucide-react';
 import { api } from '../services/api';
@@ -36,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
   const [pendingWithdrawals, setPendingWithdrawals] = useState<number>(0);
   const [pendingMemberRequests, setPendingMemberRequests] = useState<number>(0);
+  const [pendingPurchaseRequests, setPendingPurchaseRequests] = useState<number>(0);
 
   useEffect(() => {
     if (isAdmin) {
@@ -56,11 +58,30 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
           }
         })
         .catch(() => {});
+
+      api.getPurchases({ stage: 'REQUESTED', limit: 1 })
+        .then((res: any) => {
+          if (res?.pagination?.total !== undefined) {
+            setPendingPurchaseRequests(res.pagination.total);
+          }
+        })
+        .catch(() => {});
     } else if (user?.memberId) {
       api.getMyWithdrawals(undefined, user.memberId)
         .then((res: any) => {
           if (res?.summary?.pendingCount !== undefined) {
             setPendingWithdrawals(res.summary.pendingCount);
+          }
+        })
+        .catch(() => {});
+
+      api.getPurchases({ memberId: user.memberId, limit: 20 })
+        .then((res: any) => {
+          if (Array.isArray(res?.data)) {
+            const active = res.data.filter((p: any) =>
+              ['REQUESTED', 'PAYMENT_INSTRUCTIONS_SENT', 'PAYMENT_SUBMITTED'].includes(p.approvalStage)
+            ).length;
+            setPendingPurchaseRequests(active);
           }
         })
         .catch(() => {});
@@ -151,6 +172,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
           icon: Package, 
           badge: isAdmin ? undefined : (user?.packageName || user?.joiningPackageId ? 'Upgrade' : 'Buy') 
         },
+        { 
+          id: 'purchase-requests', 
+          label: isAdmin ? 'Purchase & Package Requests' : 'My Orders & Purchases', 
+          icon: ShoppingCart, 
+          badge: pendingPurchaseRequests > 0 ? (isAdmin ? `${pendingPurchaseRequests} New` : `${pendingPurchaseRequests} Active`) : undefined,
+        },
         ...(isAdmin ? [
           { id: 'reports', label: 'Financial Reports', icon: BarChart3 },
           { id: 'settings', label: 'System Settings', icon: Settings }
@@ -235,8 +262,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       {/* Bottom Live System Indicator */}
       <div className="sidebar-footer-card">
         <div className="system-status-indicator">
-          <div className="pulse-dot"></div>
-          <span>{isAdmin ? 'System Engine Active' : 'Binary Engine Active'}</span>
+          <div className="pulse-dot" style={!isAdmin && !user?.packageName ? { background: '#94a3b8' } : undefined}></div>
+          <span>{isAdmin ? 'System Engine Active' : (user?.packageName ? 'Binary Engine Active' : 'No Active Package')}</span>
         </div>
         <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {isAdmin ? (
@@ -246,7 +273,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
             </>
           ) : (
             <>
-              <span>Daily Cap: ₹{user?.dailyCapping ? user.dailyCapping.toLocaleString() : '4,000'}</span>
+              <span>Daily Cap: {user?.packageName && user?.dailyCapping ? `₹${user.dailyCapping.toLocaleString()}` : 'No Active Plan'}</span>
               <span>v2.4.0</span>
             </>
           )}

@@ -17,6 +17,7 @@ import { AdminCategoriesPage } from './pages/AdminCategoriesPage';
 import { AdminSubcategoriesPage } from './pages/AdminSubcategoriesPage';
 import { MemberProductsPage } from './pages/MemberProductsPage';
 import { CompanyAccountPage } from './pages/CompanyAccountPage';
+import { PurchaseRequestsPage } from './pages/PurchaseRequestsPage';
 import { api } from './services/api';
 
 export function App() {
@@ -215,6 +216,10 @@ export function App() {
           />
         )}
 
+        {activeTab === 'purchase-requests' && (
+          <PurchaseRequestsPage user={user} token={token || undefined} />
+        )}
+
         {activeTab === 'company-account' && (
           <CompanyAccountPage user={user} token={token} />
         )}
@@ -232,7 +237,7 @@ export function App() {
         )}
 
         {activeTab === 'member-products' && (
-          <MemberProductsPage user={user} token={token} />
+          <MemberProductsPage user={user} token={token} onNavigate={(tab) => setActiveTab(tab)} />
         )}
 
         {activeTab === 'income-settings' && <IncomeSettingsPage user={user} token={token} defaultSection="simulator" />}

@@ -403,7 +403,7 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
       }
     }
 
-    // 4. Resolve Dynamic Package from MongoDB
+    // 4. Resolve Dynamic Package from MongoDB (only if explicitly specified)
     const targetPkgIdentifier = packageId || packageName || pkgInput;
     let selectedPackage = null;
     if (targetPkgIdentifier) {
@@ -417,15 +417,11 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
       });
     }
 
-    if (!selectedPackage) {
-      selectedPackage = await Package.findOne({ isActive: true }).sort({ packageNumber: 1, price: 1 });
-    }
-
-    const finalPackageName = selectedPackage ? selectedPackage.name : (packageName || 'Package 1');
-    const finalPackageId = selectedPackage ? selectedPackage.packageId : 'PKG-1';
-    const finalPackageBv = selectedPackage ? selectedPackage.bv : 1250;
-    const finalPackageRp = selectedPackage ? selectedPackage.rp : 1;
-    const finalDailyCapping = selectedPackage ? selectedPackage.dailyCapping : 4000;
+    const finalPackageName = selectedPackage ? selectedPackage.name : null;
+    const finalPackageId = selectedPackage ? selectedPackage.packageId : null;
+    const finalPackageBv = selectedPackage ? selectedPackage.bv : 0;
+    const finalPackageRp = selectedPackage ? selectedPackage.rp : 0;
+    const finalDailyCapping = selectedPackage ? (selectedPackage.dailyCapping || 0) : 0;
 
     // 5. Generate Sequential Unique Member ID
     const newMemberId = await Member.generateNextMemberId();

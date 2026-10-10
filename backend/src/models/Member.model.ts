@@ -35,8 +35,8 @@ export interface IMember extends Document {
   approvedBy?: string;
   rejectionReason?: string;
   isActive: boolean;
-  joiningPackageId?: string;
-  packageName?: string;
+  joiningPackageId?: string | null;
+  packageName?: string | null;
   packageBv?: number;
   packageRp?: number;
   dailyCapping?: number;
@@ -207,22 +207,23 @@ const memberSchema = new Schema<IMember, IMemberModel>(
     joiningPackageId: {
       type: String,
       ref: 'Package',
+      default: null,
     },
     packageName: {
       type: String,
-      default: 'Package 1',
+      default: null,
     },
     packageBv: {
       type: Number,
-      default: 1250,
+      default: 0,
     },
     packageRp: {
       type: Number,
-      default: 1,
+      default: 0,
     },
     dailyCapping: {
       type: Number,
-      default: 4000,
+      default: 0,
     },
     joinedAt: {
       type: Date,

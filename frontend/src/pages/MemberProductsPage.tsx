@@ -17,12 +17,17 @@ import {
   Package,
   ChevronRight,
   Sparkles,
+  FileText,
+  Send,
+  Info,
+  Clock,
 } from 'lucide-react';
 import { api, type ProductItem, type CategoryItem, type SubcategoryItem } from '../services/api';
 
 interface MemberProductsPageProps {
   user?: any;
   token?: string | null;
+  onNavigate?: (tab: string) => void;
 }
 
 interface CartItem {
@@ -30,7 +35,7 @@ interface CartItem {
   quantity: number;
 }
 
-export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: propUser }) => {
+export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: propUser, onNavigate }) => {
   const savedUserStr = localStorage.getItem('wetala_user');
   const user = propUser || (savedUserStr ? JSON.parse(savedUserStr) : null);
 
@@ -58,6 +63,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
     }
   });
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [orderNotes, setOrderNotes] = useState('');
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string; purchase?: any } | null>(null);
 
@@ -330,15 +337,18 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
         memberId: user.memberId,
         type: 'REPURCHASE',
         items: itemsPayload,
-        notes: `Product Repurchase order placed by member ${user.name || user.memberId}`,
+        notes: orderNotes.trim() || `Product Repurchase order placed by member ${user.name || user.memberId}`,
       });
 
       if (res.status && res.data) {
         setCart([]);
+        localStorage.removeItem('wetala_cart');
         setIsCartOpen(false);
+        setIsReviewModalOpen(false);
+        setOrderNotes('');
         setFeedback({
           type: 'success',
-          message: `Order #${res.data.purchaseId} placed successfully! ${res.data.totalBV?.toLocaleString()} BV credited to your account.`,
+          message: `Repurchase request #${res.data.purchaseId} submitted to Super Admin! Super Admin will review and provide company payment details.`,
           purchase: res.data,
         });
         await loadProducts();
@@ -413,9 +423,32 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
               <div style={{ fontWeight: 700, fontSize: '14px' }}>{feedback.message}</div>
               {feedback.purchase && (
                 <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.9 }}>
-                  Transaction ID: {feedback.purchase.transactionId} • Total Amount: ₹
+                  Request ID: {feedback.purchase.purchaseId || feedback.purchase.transactionId} • Total Amount: ₹
                   {feedback.purchase.totalAmount?.toLocaleString()}
                 </div>
+              )}
+              {feedback.type === 'success' && onNavigate && (
+                <button
+                  onClick={() => onNavigate('purchase-requests')}
+                  style={{
+                    marginTop: '8px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 12px',
+                    background: '#059669',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  <Clock size={13} />
+                  <span>Track in Purchase Requests</span>
+                  <ArrowRight size={13} />
+                </button>
               )}
             </div>
           </div>
@@ -1860,29 +1893,33 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
                   <span>₹{cartTotalAmount.toLocaleString()}</span>
                 </div>
 
-                {/* Checkout Button */}
+                {/* Review Order & Proceed Button */}
                 <button
-                  onClick={handleCheckout}
-                  disabled={checkoutLoading}
+                  onClick={() => {
+                    setIsCartOpen(false);
+                    setIsReviewModalOpen(true);
+                  }}
+                  disabled={checkoutLoading || cart.length === 0}
                   style={{
                     width: '100%',
-                    padding: '12px',
-                    background: '#1d72fe',
+                    padding: '13px',
+                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
                     color: '#fff',
-                    borderRadius: '8px',
+                    borderRadius: '10px',
                     fontWeight: 700,
                     fontSize: '14px',
                     border: 'none',
-                    cursor: checkoutLoading ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 2px 6px rgba(29, 114, 254, 0.3)',
+                    cursor: checkoutLoading || cart.length === 0 ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     gap: '8px',
                   }}
                 >
+                  <FileText size={16} />
+                  <span>Review Order & Proceed</span>
                   <ArrowRight size={16} />
-                  <span>{checkoutLoading ? 'Processing Order...' : 'Place Repurchase Order'}</span>
                 </button>
 
                 <button
@@ -1903,6 +1940,358 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ======================================================== */}
+      {/* ORDER REVIEW & PURCHASE REQUEST CONFIRMATION MODAL       */}
+      {/* ======================================================== */}
+      {isReviewModalOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.65)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1050,
+            padding: '16px',
+          }}
+        >
+          <div
+            style={{
+              background: '#ffffff',
+              borderRadius: '20px',
+              maxWidth: '600px',
+              width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
+              padding: '28px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '44px',
+                    height: '44px',
+                    borderRadius: '12px',
+                    background: '#eff6ff',
+                    color: '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <ShoppingBag size={22} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    Review Repurchase Order
+                  </h3>
+                  <p style={{ fontSize: '12px', color: '#64748b', margin: '3px 0 0' }}>
+                    Verify items before submitting your purchase request to Super Admin
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setIsReviewModalOpen(false);
+                  setIsCartOpen(true);
+                }}
+                className="icon-btn"
+                style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Selected Products List */}
+            <div>
+              <div
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  color: '#475569',
+                  marginBottom: '8px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                }}
+              >
+                Order Items ({cartItemCount})
+              </div>
+              <div
+                style={{
+                  maxHeight: '220px',
+                  overflowY: 'auto',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  background: '#f8fafc',
+                  padding: '8px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '8px',
+                }}
+              >
+                {cart.map((item) => {
+                  const prodId = item.product.productId || (item.product as any)._id;
+                  const primaryImg = item.product.images?.find((img) => img.isPrimary) || item.product.images?.[0];
+                  const bv = (item.product.businessVolume ?? item.product.bv ?? 0) * item.quantity;
+                  const itemTotal = item.product.price * item.quantity;
+
+                  return (
+                    <div
+                      key={prodId}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '10px 12px',
+                        background: '#ffffff',
+                        borderRadius: '8px',
+                        border: '1px solid #e2e8f0',
+                        gap: '12px',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                        <div
+                          style={{
+                            width: '42px',
+                            height: '42px',
+                            borderRadius: '6px',
+                            overflow: 'hidden',
+                            border: '1px solid #e2e8f0',
+                            background: '#f8fafc',
+                            flexShrink: 0,
+                          }}
+                        >
+                          {primaryImg?.url ? (
+                            <img src={primaryImg.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          ) : (
+                            <ImageIcon size={18} color="#cbd5e1" style={{ margin: '12px auto' }} />
+                          )}
+                        </div>
+                        <div style={{ minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: '13px',
+                              fontWeight: 700,
+                              color: '#0f172a',
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              maxWidth: '220px',
+                            }}
+                          >
+                            {item.product.title || item.product.name}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#64748b' }}>
+                            Qty: <strong style={{ color: '#0f172a' }}>{item.quantity}</strong> × ₹{item.product.price.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                        <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
+                          ₹{itemTotal.toLocaleString()}
+                        </div>
+                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb' }}>
+                          +{bv.toLocaleString()} BV
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Metrics Highlights Card */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '10px',
+              }}
+            >
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Total Items
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                  {cartItemCount} Units
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '10px', color: '#2563eb', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Total Volume
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: 800, color: '#1d4ed8', marginTop: '2px' }}>
+                  +{cartTotalBV.toLocaleString()} BV
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '12px',
+                  padding: '12px',
+                  textAlign: 'center',
+                }}
+              >
+                <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                  Payable Total
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                  ₹{cartTotalAmount.toLocaleString()}
+                </div>
+              </div>
+            </div>
+
+            {/* Explanation / Multi-Step Pipeline Notice */}
+            <div
+              style={{
+                background: '#f0f9ff',
+                border: '1px solid #bae6fd',
+                borderRadius: '14px',
+                padding: '14px 16px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: '#0369a1',
+                  fontWeight: 700,
+                  fontSize: '13px',
+                  marginBottom: '8px',
+                }}
+              >
+                <Info size={16} />
+                <span>Next Steps in the Purchase Workflow</span>
+              </div>
+              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#0369a1', lineHeight: '1.6' }}>
+                <li>Your request will be submitted directly to Super Admin for approval.</li>
+                <li>Once approved, you will receive company bank account & UPI QR details to make payment.</li>
+                <li>Submit your transaction ID (UTR) after payment for instant admin verification.</li>
+                <li><strong>+{cartTotalBV.toLocaleString()} BV</strong> will be credited to your account upon verification.</li>
+              </ul>
+            </div>
+
+            {/* Optional Delivery / Order Notes */}
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: 700,
+                  color: '#64748b',
+                  marginBottom: '4px',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Delivery Note / Instructions (Optional)
+              </label>
+              <input
+                type="text"
+                value={orderNotes}
+                onChange={(e) => setOrderNotes(e.target.value)}
+                placeholder="e.g. Please ship via standard courier to registered address"
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '13px',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+
+            {/* Modal Actions */}
+            <div style={{ display: 'flex', gap: '12px', marginTop: '4px' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsReviewModalOpen(false);
+                  setIsCartOpen(true);
+                }}
+                className="outline-btn"
+                style={{
+                  flex: 1,
+                  justifyContent: 'center',
+                  padding: '11px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  borderRadius: '10px',
+                  border: '1.5px solid #cbd5e1',
+                  background: '#fff',
+                  cursor: 'pointer',
+                  color: '#475569',
+                }}
+              >
+                <ArrowLeft size={16} />
+                <span>Back to Cart</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleCheckout}
+                disabled={checkoutLoading}
+                style={{
+                  flex: 1.6,
+                  justifyContent: 'center',
+                  padding: '11px',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  borderRadius: '10px',
+                  border: 'none',
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  color: '#fff',
+                  cursor: checkoutLoading ? 'not-allowed' : 'pointer',
+                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                }}
+              >
+                <Send size={16} />
+                <span>
+                  {checkoutLoading ? 'Submitting Request...' : 'Send Request to Super Admin'}
+                </span>
+              </button>
+            </div>
           </div>
         </div>
       )}

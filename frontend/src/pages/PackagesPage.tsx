@@ -16,7 +16,12 @@ import {
   Sparkles, 
   Shield, 
   TrendingUp, 
-  ArrowRight 
+  ArrowRight,
+  Landmark,
+  QrCode,
+  Clock,
+  Send,
+  CreditCard
 } from 'lucide-react';
 import { api, type PackageItem } from '../services/api';
 
@@ -95,54 +100,42 @@ export const findUserPackage = (user: any, pkgs: PackageItem[]): PackageItem | n
     return null;
   }
 
-  // 1. Direct match on joiningPackageId
-  if (user.joiningPackageId) {
+  // A member MUST have an explicit package assigned (packageName, joiningPackageId, or packageId)
+  const userPkgName = (user.packageName || user.package || '').trim();
+  const userPkgId = (user.joiningPackageId || user.packageId || '').trim();
+
+  // If the member has no package assigned, they are a free / unactivated member with NO active package
+  if (!userPkgName && !userPkgId) {
+    return null;
+  }
+
+  // 1. Direct match on joiningPackageId / packageId
+  if (userPkgId) {
     const byId = pkgs.find(p => 
-      p.packageId?.toLowerCase() === String(user.joiningPackageId).toLowerCase() ||
-      (p as any)._id === user.joiningPackageId
+      p.packageId?.toLowerCase() === userPkgId.toLowerCase() ||
+      (p as any)._id === userPkgId
     );
     if (byId) return byId;
   }
 
-  // 2. Direct match on packageId if present on user
-  if (user.packageId) {
-    const byId = pkgs.find(p => 
-      p.packageId?.toLowerCase() === String(user.packageId).toLowerCase() ||
-      (p as any)._id === user.packageId
-    );
-    if (byId) return byId;
-  }
-
-  // 3. Match on packageName or package field (case-insensitive & badge check)
-  const userPkgName = (user.packageName || user.package || '').trim().toLowerCase();
-  if (userPkgName) {
+  // 2. Match on packageName or package field (case-insensitive & badge check)
+  if (userPkgName && userPkgName.toLowerCase() !== 'null' && userPkgName.toLowerCase() !== 'undefined') {
+    const lowerName = userPkgName.toLowerCase();
     // Exact name match (e.g. 'Package 1')
-    const byName = pkgs.find(p => p.name.trim().toLowerCase() === userPkgName);
+    const byName = pkgs.find(p => p.name.trim().toLowerCase() === lowerName);
     if (byName) return byName;
 
     // Exact badge match (e.g. 'STARTER' matches 'Starter')
-    const byBadge = pkgs.find(p => p.badge?.trim().toLowerCase() === userPkgName);
+    const byBadge = pkgs.find(p => p.badge?.trim().toLowerCase() === lowerName);
     if (byBadge) return byBadge;
 
     // Substring match
     const bySub = pkgs.find(p => 
-      p.name.toLowerCase().includes(userPkgName) || 
-      userPkgName.includes(p.name.toLowerCase()) ||
-      (p.badge && (p.badge.toLowerCase().includes(userPkgName) || userPkgName.includes(p.badge.toLowerCase())))
+      p.name.toLowerCase().includes(lowerName) || 
+      lowerName.includes(p.name.toLowerCase()) ||
+      (p.badge && (p.badge.toLowerCase().includes(lowerName) || lowerName.includes(p.badge.toLowerCase())))
     );
     if (bySub) return bySub;
-  }
-
-  // 4. Daily Capping match (fallback if package name had slight discrepancy)
-  if (user.dailyCapping) {
-    const byCap = pkgs.find(p => p.dailyCapping === user.dailyCapping);
-    if (byCap) return byCap;
-  }
-
-  // 5. Package BV match
-  if (user.packageBv) {
-    const byBv = pkgs.find(p => p.bv === user.packageBv);
-    if (byBv) return byBv;
   }
 
   return null;
@@ -177,6 +170,16 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
   const [buyingPkg, setBuyingPkg] = useState<PackageItem | null>(null);
   const [buyingLoading, setBuyingLoading] = useState(false);
 
+  // Active Multi-Stage Package Request for current member
+  const [activePackageRequest, setActivePackageRequest] = useState<any | null>(null);
+  const [submittingPayment, setSubmittingPayment] = useState<boolean>(false);
+  const [paymentForm, setPaymentForm] = useState({
+    utrNumber: '',
+    payerName: user?.name || '',
+    paymentMode: 'UPI',
+    notes: '',
+  });
+
   // Dynamic Features state for form modal
   const [newFeatureText, setNewFeatureText] = useState('');
 
@@ -207,6 +210,21 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
     isActive: true,
   });
 
+  const loadMemberRequests = async () => {
+    if (isAdmin || !user?.memberId) return;
+    try {
+      const res = await api.getPurchases({ memberId: user.memberId, type: 'JOINING' }, savedToken);
+      if (res.status && Array.isArray(res.data)) {
+        const pending = res.data.find((p: any) =>
+          ['REQUESTED', 'PAYMENT_INSTRUCTIONS_SENT', 'PAYMENT_SUBMITTED'].includes(p.approvalStage)
+        );
+        setActivePackageRequest(pending || null);
+      }
+    } catch (e) {
+      console.warn('Could not load package requests:', e);
+    }
+  };
+
   const loadPackages = async () => {
     try {
       setLoading(true);
@@ -224,6 +242,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
   useEffect(() => {
     loadPackages();
+    loadMemberRequests();
     // Silently refresh current member profile in background to keep session 100% synchronized
     if (savedToken && !isAdmin) {
       api.getProfile(savedToken)
@@ -365,35 +384,45 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
   const handleBuyPackage = async () => {
     if (!buyingPkg) return;
-    const isUpgrade = Boolean(userCurrentPkg && userCurrentPkg.packageId !== buyingPkg.packageId);
     try {
       setBuyingLoading(true);
       setFeedback(null);
       const res = await api.buyPackage(buyingPkg.packageId, savedToken);
       setFeedback({ 
         type: 'success', 
-        message: res.message || (isUpgrade ? `Successfully upgraded to ${buyingPkg.name}!` : `Successfully purchased ${buyingPkg.name}!`) 
+        message: res.message || `Package request for ${buyingPkg.name} submitted to Super Admin! Please await payment instructions.` 
       });
-      
-      // Update local storage user
-      if (user && res.data) {
-        const updatedUser = {
-          ...user,
-          packageName: res.data.packageName || buyingPkg.name,
-          joiningPackageId: res.data.joiningPackageId || buyingPkg.packageId,
-          packageBv: res.data.packageBv !== undefined ? res.data.packageBv : buyingPkg.bv,
-          packageRp: res.data.packageRp !== undefined ? res.data.packageRp : buyingPkg.rp,
-          dailyCapping: res.data.dailyCapping !== undefined ? res.data.dailyCapping : buyingPkg.dailyCapping,
-        };
-        localStorage.setItem('wetala_user', JSON.stringify(updatedUser));
-        if (onUserUpdate) onUserUpdate(updatedUser);
-      }
       setBuyingPkg(null);
+      await loadMemberRequests();
       await loadPackages();
     } catch (err: any) {
-      setFeedback({ type: 'error', message: err.message || 'Failed to complete package transaction.' });
+      setFeedback({ type: 'error', message: err.message || 'Failed to submit package request.' });
     } finally {
       setBuyingLoading(false);
+    }
+  };
+
+  const handleSubmitPayment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!activePackageRequest) return;
+    if (!paymentForm.utrNumber.trim()) {
+      setFeedback({ type: 'error', message: 'Please provide Bank UTR / Transaction reference ID.' });
+      return;
+    }
+    if (!paymentForm.payerName.trim()) {
+      setFeedback({ type: 'error', message: 'Please provide Payer Full Name.' });
+      return;
+    }
+    try {
+      setSubmittingPayment(true);
+      setFeedback(null);
+      const res = await api.submitPurchasePayment(activePackageRequest.purchaseId, paymentForm, savedToken);
+      setFeedback({ type: 'success', message: res.message || 'Payment details submitted for verification!' });
+      await loadMemberRequests();
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Failed to submit payment details.' });
+    } finally {
+      setSubmittingPayment(false);
     }
   };
 
@@ -819,6 +848,183 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
         </div>
       )}
 
+      {/* Member Active Package Request & Payment Instructions Workflow */}
+      {!loading && !isAdmin && activePackageRequest && (
+        <div style={{ marginBottom: '28px' }}>
+          {activePackageRequest.approvalStage === 'REQUESTED' && (
+            <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '16px', padding: '18px 22px', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#92400e', fontWeight: 800, fontSize: '16px', marginBottom: '6px' }}>
+                <Clock size={20} />
+                Package Request Pending Super Admin Approval
+              </div>
+              <p style={{ margin: 0, fontSize: '13px', color: '#b45309', lineHeight: 1.5 }}>
+                You have requested <strong>{activePackageRequest.items[0]?.name}</strong> (Order #{activePackageRequest.purchaseId}) for <strong>₹{activePackageRequest.totalAmount.toLocaleString()}</strong> ({activePackageRequest.totalBV.toLocaleString()} BV). Super Admin will review your request and send company bank details, UPI ID, and QR code to complete payment.
+              </p>
+            </div>
+          )}
+
+          {activePackageRequest.approvalStage === 'PAYMENT_INSTRUCTIONS_SENT' && (
+            <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '18px', padding: '24px', boxShadow: '0 8px 30px rgba(2, 132, 199, 0.12)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px' }}>
+                <div>
+                  <span style={{ background: '#0284c7', color: 'white', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    ACTION REQUIRED • STEP 2: MAKE PAYMENT
+                  </span>
+                  <h3 style={{ margin: '8px 0 0 0', fontSize: '19px', fontWeight: 800, color: '#0f172a' }}>
+                    Payment Instructions for {activePackageRequest.items[0]?.name}
+                  </h3>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Amount to Pay</div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, color: '#059669' }}>
+                    ₹ {activePackageRequest.totalAmount.toLocaleString()}{' '}
+                    <span style={{ fontSize: '13px', color: '#0284c7', fontWeight: 700 }}>({activePackageRequest.totalBV.toLocaleString()} BV)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Admin Note */}
+              {activePackageRequest.adminMessage && (
+                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '12px 16px', marginBottom: '18px', fontSize: '13px', color: '#0369a1', lineHeight: 1.5 }}>
+                  <strong style={{ display: 'block', marginBottom: '2px' }}>Super Admin Message:</strong>
+                  {activePackageRequest.adminMessage}
+                </div>
+              )}
+
+              {/* Company Account Snapshot Cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '22px' }}>
+                {/* Bank Card */}
+                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                    <Landmark size={18} className="text-sky-600" />
+                    Company Bank Account Details
+                  </div>
+                  <div style={{ fontSize: '13px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div><span style={{ color: '#64748b' }}>Bank Name:</span> <strong>{activePackageRequest.companyAccountSnapshot?.bankName || 'State Bank of India'}</strong></div>
+                    <div><span style={{ color: '#64748b' }}>A/C Holder:</span> <strong>{activePackageRequest.companyAccountSnapshot?.accountHolderName || 'Panchveda Wellness Pvt Ltd'}</strong></div>
+                    <div><span style={{ color: '#64748b' }}>Account No:</span> <strong style={{ color: '#0284c7', fontSize: '14px', letterSpacing: '0.5px' }}>{activePackageRequest.companyAccountSnapshot?.accountNumber || '9876543210123'}</strong></div>
+                    <div><span style={{ color: '#64748b' }}>IFSC Code:</span> <strong style={{ letterSpacing: '0.5px' }}>{activePackageRequest.companyAccountSnapshot?.ifscCode || 'SBIN0001234'}</strong></div>
+                    <div><span style={{ color: '#64748b' }}>Branch:</span> {activePackageRequest.companyAccountSnapshot?.branchName || 'Main Branch'}</div>
+                  </div>
+                </div>
+
+                {/* UPI & QR Card */}
+                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px', display: 'flex', gap: '14px', alignItems: 'center' }}>
+                  {activePackageRequest.companyAccountSnapshot?.qrCodeUrl && (
+                    <img
+                      src={activePackageRequest.companyAccountSnapshot.qrCodeUrl}
+                      alt="Company Payment QR"
+                      style={{ width: '96px', height: '96px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', flexShrink: 0 }}
+                    />
+                  )}
+                  <div style={{ fontSize: '13px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <QrCode size={18} className="text-purple-600" />
+                      Company UPI ID & QR Code
+                    </div>
+                    <div><span style={{ color: '#64748b' }}>UPI Handle:</span> <strong style={{ color: '#7e22ce', fontSize: '14px' }}>{activePackageRequest.companyAccountSnapshot?.upiId || 'panchveda@sbi'}</strong></div>
+                    <div><span style={{ color: '#64748b' }}>Payee Name:</span> {activePackageRequest.companyAccountSnapshot?.upiHolderName || 'Panchveda Wellness'}</div>
+                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Scan using GPay, PhonePe, Paytm, or BHIM.</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Proof Submission Form */}
+              <form onSubmit={handleSubmitPayment} style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '14px', padding: '20px' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 800, color: '#581c87', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <CreditCard size={18} />
+                  Submit Your Payment Proof & UTR Reference
+                </h4>
+                <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#6b21a8' }}>
+                  After completing the transfer, enter the transaction UTR number and the sender name below. Super Admin will verify and activate your package immediately.
+                </p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#4c1d95', marginBottom: '4px' }}>
+                      Bank UTR / Transaction ID *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. 423456789012 or UPI Ref"
+                      value={paymentForm.utrNumber}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, utrNumber: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #c084fc', fontSize: '13px', background: '#fff' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#4c1d95', marginBottom: '4px' }}>
+                      Payer Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Name on bank / UPI account"
+                      value={paymentForm.payerName}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, payerName: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #c084fc', fontSize: '13px', background: '#fff' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#4c1d95', marginBottom: '4px' }}>
+                      Payment Mode
+                    </label>
+                    <select
+                      value={paymentForm.paymentMode}
+                      onChange={(e) => setPaymentForm({ ...paymentForm, paymentMode: e.target.value })}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #c084fc', fontSize: '13px', background: '#fff' }}
+                    >
+                      <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+                      <option value="IMPS">IMPS Instant Bank Transfer</option>
+                      <option value="NEFT">NEFT Bank Transfer</option>
+                      <option value="QR_SCAN">QR Code Scan</option>
+                      <option value="NET_BANKING">Net Banking</option>
+                    </select>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={submittingPayment}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: '#7c3aed',
+                    color: '#fff',
+                    border: 'none',
+                    padding: '12px 24px',
+                    borderRadius: '8px',
+                    fontWeight: 700,
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)',
+                  }}
+                >
+                  <CheckCircle2 size={16} />
+                  {submittingPayment ? 'Submitting Details...' : 'Submit Payment Details for Verification'}
+                </button>
+              </form>
+            </div>
+          )}
+
+          {activePackageRequest.approvalStage === 'PAYMENT_SUBMITTED' && (
+            <div style={{ background: '#faf5ff', border: '1px solid #d8b4fe', borderRadius: '16px', padding: '18px 22px', boxShadow: '0 4px 12px rgba(168, 85, 247, 0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#6b21a8', fontWeight: 800, fontSize: '16px', marginBottom: '6px' }}>
+                <Clock size={20} />
+                Payment Verification in Progress
+              </div>
+              <p style={{ margin: 0, fontSize: '13px', color: '#581c87', lineHeight: 1.5 }}>
+                Your payment details (UTR: <strong>{activePackageRequest.utrNumber}</strong>, Payer: <strong>{activePackageRequest.payerName}</strong>) for <strong>{activePackageRequest.items[0]?.name}</strong> have been submitted. The Super Admin is verifying the credit. Upon verification, your package and business volume will be activated immediately.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* MODERN EXECUTIVE CARDS VIEW */}
       {!loading && (!isAdmin || adminViewMode === 'cards') && (
         <div style={{
@@ -832,7 +1038,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
             const isCurrent = userCurrentPkg ? (
               userCurrentPkg.packageId === pkg.packageId ||
               (userCurrentPkg as any)._id === (pkg as any)._id
-            ) : (user?.packageName === pkg.name || user?.joiningPackageId === pkg.packageId);
+            ) : Boolean(user?.packageName && user.packageName.trim() !== '' && user.packageName === pkg.name);
 
             const currentTierNum = userCurrentPkg?.packageNumber || (userCurrentPkg ? packages.findIndex(p => p.packageId === userCurrentPkg.packageId) + 1 : 0);
             const currentPrice = userCurrentPkg?.price || 0;
@@ -2044,6 +2250,10 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     {buyingPkg.description}
                   </div>
                 )}
+                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#0369a1' }}>
+                  <Send size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }} />
+                  Your request will be submitted to Super Admin. Once approved, the company bank details, UPI ID, and QR code will be provided to complete payment.
+                </div>
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
@@ -2063,11 +2273,11 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     background: isUpgradeModal ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : undefined 
                   }}
                 >
-                  {isUpgradeModal ? <TrendingUp size={16} /> : <CheckCircle2 size={16} />}
+                  <Send size={16} />
                   <span>
                     {buyingLoading 
-                      ? (isUpgradeModal ? 'Processing Upgrade...' : 'Processing...') 
-                      : (isUpgradeModal ? `Confirm & Upgrade to ${buyingPkg.name}` : 'Confirm & Buy Package')}
+                      ? 'Submitting Request...' 
+                      : (isUpgradeModal ? `Submit Upgrade Request` : 'Submit Purchase Request')}
                   </span>
                 </button>
               </div>
