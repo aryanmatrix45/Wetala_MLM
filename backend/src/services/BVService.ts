@@ -101,9 +101,11 @@ export class BVService {
       if (isLeft) {
         vol.leftTotalBV += bvAmount;
         vol.leftAvailableBV += bvAmount;
+        vol.leftCarryForwardBV = vol.leftAvailableBV;
       } else {
         vol.rightTotalBV += bvAmount;
         vol.rightAvailableBV += bvAmount;
+        vol.rightCarryForwardBV = vol.rightAvailableBV;
       }
       await vol.save();
 
@@ -121,13 +123,14 @@ export class BVService {
         ledgerId: `BV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
         userId: ancestorMember._id.toString(),
         memberId: ancestorMember.memberId,
+        sourceMemberId: purchaserMemberId,
         sourceType,
         referenceId,
         position: leg,
         openingBV,
         earnedBV: bvAmount,
         consumedBV: 0,
-        carriedForwardBV: 0,
+        carriedForwardBV: isLeft ? vol.leftAvailableBV : vol.rightAvailableBV,
         flushedBV: 0,
         closingBV,
         description: `Team BV credited from ${purchaserMemberId} on ${leg} leg (${sourceType})`,

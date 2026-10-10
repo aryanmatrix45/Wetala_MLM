@@ -337,9 +337,13 @@ export const api = {
   },
 
   // Binary Volume & Live Matching Stats
-  async getBinaryVolume(memberId: string): Promise<any> {
-    const res = await fetch(`${API_BASE_URL}/binary/volume/${memberId}`);
-    if (!res.ok) throw new Error(`Failed to fetch binary volume: ${res.statusText}`);
+  async getBinaryVolume(memberId: string, token?: string): Promise<any> {
+    const headers: Record<string, string> = {};
+    const savedToken = token || localStorage.getItem('wetala_token');
+    if (savedToken) {
+      headers['Authorization'] = `Bearer ${savedToken}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/binary/volume/${memberId}`, { headers });
     return res.json();
   },
 
@@ -522,6 +526,34 @@ export const api = {
       headers['Authorization'] = `Bearer ${token}`;
     }
     const res = await fetch(`${API_BASE_URL}/binary/extremes?${params.toString()}`, { headers });
+    return res.json();
+  },
+
+  async getBinaryLedger(memberId: string, params?: { page?: number; limit?: number; leg?: string }, token?: string) {
+    const searchParams = new URLSearchParams();
+    if (params?.page) searchParams.append('page', String(params.page));
+    if (params?.limit) searchParams.append('limit', String(params.limit));
+    if (params?.leg) searchParams.append('leg', params.leg);
+
+    const headers: Record<string, string> = {};
+    const savedToken = token || localStorage.getItem('wetala_token');
+    if (savedToken) {
+      headers['Authorization'] = `Bearer ${savedToken}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/binary/ledger/${memberId}?${searchParams.toString()}`, { headers });
+    return res.json();
+  },
+
+  async settleDailyBinary(date?: string, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token');
+    const res = await fetch(`${API_BASE_URL}/binary/settle-daily`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify({ date }),
+    });
     return res.json();
   },
 

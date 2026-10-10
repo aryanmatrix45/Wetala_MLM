@@ -1,5 +1,16 @@
-import React, { useState } from 'react';
-import { X, ArrowDownRight, Wallet, AlertCircle, CheckCircle2, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { 
+  X, 
+  ArrowDownRight, 
+  Wallet, 
+  AlertCircle, 
+  CheckCircle2, 
+  ShieldCheck, 
+  Lock, 
+  ShoppingBag, 
+  Package, 
+  AlertTriangle
+} from 'lucide-react';
 import { api } from '../services/api';
 
 interface WithdrawModalProps {
@@ -11,6 +22,7 @@ interface WithdrawModalProps {
   effectiveAvailable?: number;
   user?: any;
   onSuccess: () => void;
+  onNavigate?: (tab: string) => void;
 }
 
 export const WithdrawModal: React.FC<WithdrawModalProps> = ({
@@ -22,6 +34,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   effectiveAvailable,
   user,
   onSuccess,
+  onNavigate,
 }) => {
   const maxAllowed = effectiveAvailable !== undefined ? effectiveAvailable : Math.max(0, availablePayout - pendingAmount);
   const [amount, setAmount] = useState<string>('');
@@ -29,6 +42,47 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const isPrivileged = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+
+  // Lifetime Personal BV Eligibility State (1,250 BV threshold)
+  const [bvInfo, setBvInfo] = useState<{
+    lifetimePersonalBV: number;
+    minWithdrawalBVRequired: number;
+    isWithdrawalEligible: boolean;
+    shortfallBV: number;
+    loadingBV: boolean;
+  }>({
+    lifetimePersonalBV: user?.personalBv || 0,
+    minWithdrawalBVRequired: 1250,
+    isWithdrawalEligible: isPrivileged || (user?.personalBv || 0) >= 1250,
+    shortfallBV: Math.max(0, 1250 - (user?.personalBv || 0)),
+    loadingBV: false,
+  });
+
+  useEffect(() => {
+    if (isOpen && user?.memberId) {
+      setBvInfo((prev) => ({ ...prev, loadingBV: true }));
+      api.getWithdrawalBalanceSummary(user.memberId)
+        .then((res: any) => {
+          if (res?.status && res?.data) {
+            const currentLifetime = res.data.lifetimePersonalBV ?? (user?.personalBv || 0);
+            const minReq = res.data.minWithdrawalBVRequired || 1250;
+            const eligible = isPrivileged || currentLifetime >= minReq;
+            setBvInfo({
+              lifetimePersonalBV: currentLifetime,
+              minWithdrawalBVRequired: minReq,
+              isWithdrawalEligible: eligible,
+              shortfallBV: Math.max(0, minReq - currentLifetime),
+              loadingBV: false,
+            });
+          }
+        })
+        .catch(() => {
+          setBvInfo((prev) => ({ ...prev, loadingBV: false }));
+        });
+    }
+  }, [isOpen, user?.memberId, isPrivileged]);
 
   if (!isOpen) return null;
 
@@ -40,6 +94,19 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     const calculated = Math.floor(maxAllowed * (pct / 100));
     setAmount(calculated > 0 ? calculated.toString() : '');
     setError(null);
+  };
+
+  const handleActionNavigate = (targetTab: string) => {
+    onClose();
+    if (onNavigate) {
+      onNavigate(targetTab);
+    } else {
+      if (targetTab === 'member-products') {
+        window.location.href = '/products';
+      } else {
+        window.location.href = `/${targetTab}`;
+      }
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -77,6 +144,263 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     }
   };
 
+  // =========================================================================
+  // POP-UP VIEW 1: INELIGIBLE (Lifetime Personal BV < 1,250 BV)
+  // =========================================================================
+  if (!isPrivileged && !bvInfo.isWithdrawalEligible && !bvInfo.loadingBV) {
+    const progressPercent = Math.min(100, Math.round((bvInfo.lifetimePersonalBV / bvInfo.minWithdrawalBVRequired) * 100));
+
+    return (
+      <div
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(15, 23, 42, 0.75)',
+          backdropFilter: 'blur(6px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '16px',
+          animation: 'fadeIn 0.2s ease-out',
+        }}
+        onClick={(e) => {
+          if (e.target === e.currentTarget) onClose();
+        }}
+      >
+        <div
+          style={{
+            background: '#ffffff',
+            borderRadius: '20px',
+            width: '100%',
+            maxWidth: '520px',
+            boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
+            border: '1px solid #fed7aa',
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Header */}
+          <div
+            style={{
+              padding: '22px 24px',
+              background: 'linear-gradient(135deg, #7c2d12 0%, #c2410c 100%)',
+              color: '#ffffff',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div
+                style={{
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '12px',
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                }}
+              >
+                <Lock size={22} color="#ffffff" />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>
+                  Withdrawal Requirement Not Met
+                </h2>
+                <p style={{ fontSize: '12px', color: '#fed7aa', margin: '3px 0 0' }}>
+                  Minimum 1,250 Lifetime Business Volume (BV) Required
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              style={{
+                background: 'rgba(255, 255, 255, 0.15)',
+                border: 'none',
+                color: '#ffffff',
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+              }}
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Modal Body */}
+          <div style={{ padding: '24px' }}>
+            {/* Warning Message Box */}
+            <div
+              style={{
+                background: '#fff7ed',
+                border: '1px solid #ffedd5',
+                borderRadius: '12px',
+                padding: '16px',
+                marginBottom: '20px',
+                display: 'flex',
+                gap: '12px',
+              }}
+            >
+              <AlertTriangle size={22} color="#ea580c" style={{ flexShrink: 0, marginTop: '2px' }} />
+              <div>
+                <p style={{ fontSize: '13.5px', color: '#9a3412', fontWeight: 600, margin: 0, lineHeight: 1.55 }}>
+                  Your lifetime business volume that you have bought by a product or by a package has not reached <strong>1,250 BV</strong>.
+                </p>
+                <p style={{ fontSize: '12.5px', color: '#c2410c', margin: '6px 0 0', lineHeight: 1.5 }}>
+                  You cannot send a withdrawal request to the super admin until your lifetime personal purchases reach at least <strong>1,250 BV</strong>. For that, please buy a product or buy any package.
+                </p>
+              </div>
+            </div>
+
+            {/* Lifetime BV Progress Card */}
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '14px',
+                padding: '18px',
+                marginBottom: '20px',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <span style={{ fontSize: '12px', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                  Lifetime Personal Purchases
+                </span>
+                <span style={{ fontSize: '13px', fontWeight: 800, color: '#ea580c' }}>
+                  {progressPercent}% Completed
+                </span>
+              </div>
+
+              {/* Progress Bar */}
+              <div style={{ height: '10px', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden', marginBottom: '14px' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${progressPercent}%`,
+                    background: 'linear-gradient(90deg, #ea580c 0%, #f97316 100%)',
+                    borderRadius: '9999px',
+                    transition: 'width 0.5s ease',
+                  }}
+                />
+              </div>
+
+              {/* Stats Split Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', textAlign: 'center' }}>
+                <div style={{ padding: '8px', background: '#ffffff', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>Your BV</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                    {bvInfo.lifetimePersonalBV.toLocaleString()}
+                  </div>
+                </div>
+
+                <div style={{ padding: '8px', background: '#ffffff', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>Required</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#059669', marginTop: '2px' }}>
+                    {bvInfo.minWithdrawalBVRequired.toLocaleString()}
+                  </div>
+                </div>
+
+                <div style={{ padding: '8px', background: '#ffffff', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ fontSize: '11px', color: '#64748b' }}>Needed</div>
+                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#dc2626', marginTop: '2px' }}>
+                    {bvInfo.shortfallBV.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '12px', lineHeight: 1.4 }}>
+                ℹ All Business Volume from any package purchases or product repurchases accumulates across your lifetime.
+              </div>
+            </div>
+
+            {/* Quick Actions (Buy Product / Buy Package) */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+              <button
+                type="button"
+                onClick={() => handleActionNavigate('member-products')}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)',
+                }}
+              >
+                <ShoppingBag size={16} />
+                <span>Buy Products</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleActionNavigate('packages')}
+                style={{
+                  padding: '12px 14px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                  color: '#ffffff',
+                  border: 'none',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                }}
+              >
+                <Package size={16} />
+                <span>Buy Package</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              style={{
+                width: '100%',
+                padding: '10px',
+                borderRadius: '10px',
+                background: '#f1f5f9',
+                color: '#475569',
+                border: 'none',
+                fontSize: '12.5px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 2: ELIGIBLE FORM (Lifetime BV >= 1,250 BV or Privileged Admin)
+  // =========================================================================
   return (
     <div
       style={{
@@ -208,6 +532,12 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             </div>
           </div>
 
+          {/* Qualified Badge */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px', fontSize: '11.5px', color: '#059669', fontWeight: 600 }}>
+            <ShieldCheck size={15} color="#10b981" />
+            <span>Lifetime Purchase Qualified ({bvInfo.lifetimePersonalBV.toLocaleString()} BV / 1,250 BV)</span>
+          </div>
+
           {pendingAmount > 0 && (
             <div
               style={{
@@ -223,17 +553,16 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                 color: '#b45309',
               }}
             >
-              <AlertCircle size={15} style={{ flexShrink: 0 }} />
-              <div>
-                ₹ {pendingAmount.toLocaleString()} is currently queued in pending requests. Remaining requestable limit is{' '}
-                <strong>₹ {maxAllowed.toLocaleString()}</strong>.
-              </div>
+              <AlertCircle size={15} color="#d97706" style={{ flexShrink: 0 }} />
+              <span>
+                Pending requests: <strong>₹ {pendingAmount.toLocaleString()}</strong>. Remaining allowed: <strong>₹ {maxAllowed.toLocaleString()}</strong>
+              </span>
             </div>
           )}
         </div>
 
-        {/* Form Body */}
-        <form onSubmit={handleSubmit} style={{ padding: '10px 24px 24px', overflowY: 'auto' }}>
+        {/* Withdrawal Form */}
+        <form onSubmit={handleSubmit} style={{ padding: '10px 24px 24px', display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto' }}>
           {error && (
             <div
               style={{
@@ -241,7 +570,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                 background: '#fef2f2',
                 border: '1px solid #fecaca',
                 borderRadius: '10px',
-                color: '#dc2626',
+                color: '#b91c1c',
                 fontSize: '13px',
                 display: 'flex',
                 alignItems: 'center',
@@ -349,34 +678,26 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                   onMouseEnter={(e) => {
                     e.currentTarget.style.background = '#eff6ff';
                     e.currentTarget.style.borderColor = '#93c5fd';
-                    e.currentTarget.style.color = '#1d4ed8';
                   }}
                   onMouseLeave={(e) => {
                     e.currentTarget.style.background = '#f8fafc';
                     e.currentTarget.style.borderColor = '#e2e8f0';
-                    e.currentTarget.style.color = '#334155';
                   }}
                 >
-                  {pct === 100 ? 'Max (100%)' : `${pct}%`}
+                  {pct}%
                 </button>
               ))}
             </div>
-
-            {isOverLimit && (
-              <div style={{ color: '#ef4444', fontSize: '11.5px', marginTop: '4px', fontWeight: 600 }}>
-                Amount exceeds your allowable limit of ₹{maxAllowed.toLocaleString()}.
-              </div>
-            )}
           </div>
 
           {/* Optional Note Field */}
-          <div style={{ marginBottom: '18px' }}>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
-              Note / Bank Remarks <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b', display: 'block', marginBottom: '6px' }}>
+              Remarks / Transaction Note <span style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
             </label>
             <textarea
-              rows={3}
-              placeholder="e.g. Bank Account details, IFSC Code, or payment reference note..."
+              rows={2}
+              placeholder="e.g. Bank transfer request, preferred account note..."
               value={note}
               onChange={(e) => setNote(e.target.value)}
               disabled={loading}
@@ -384,48 +705,27 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                 width: '100%',
                 padding: '10px 12px',
                 fontSize: '13px',
-                borderRadius: '12px',
+                color: '#0f172a',
                 border: '1px solid #cbd5e1',
+                borderRadius: '10px',
                 outline: 'none',
-                fontFamily: 'inherit',
                 resize: 'none',
                 background: '#ffffff',
               }}
             />
           </div>
 
-          {/* Policy Information Notice */}
-          <div
-            style={{
-              padding: '12px 14px',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: '12px',
-              marginBottom: '20px',
-              fontSize: '11.5px',
-              color: '#64748b',
-              lineHeight: 1.5,
-              display: 'flex',
-              gap: '10px',
-            }}
-          >
-            <ShieldCheck size={18} color="#059669" style={{ flexShrink: 0, marginTop: '2px' }} />
-            <div>
-              Requests are recorded as <strong>PENDING</strong> and reviewed by administration. Balance is only deducted once the admin disburses and marks the request as <strong>PAID</strong>.
-            </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+          {/* Actions */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
               style={{
-                padding: '10px 20px',
+                padding: '10px 18px',
                 fontSize: '13px',
                 fontWeight: 600,
-                color: '#475569',
+                color: '#64748b',
                 background: '#f1f5f9',
                 border: 'none',
                 borderRadius: '10px',
@@ -478,4 +778,5 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     </div>
   );
 };
+
 export default WithdrawModal;

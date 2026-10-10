@@ -9,6 +9,7 @@ import { PackagesPage } from './pages/PackagesPage';
 import { IncomeSettingsPage } from './pages/IncomeSettingsPage';
 import { PayoutsPage } from './pages/PayoutsPage';
 import { SponsorIncomePage } from './pages/SponsorIncomePage';
+import { BinaryLedgerPage } from './pages/BinaryLedgerPage';
 import { AddMemberModal } from './components/AddMemberModal';
 import { LoginPage } from './pages/LoginPage';
 import { AdminProductsPage } from './pages/AdminProductsPage';
@@ -181,6 +182,10 @@ export function App() {
           <SponsorIncomePage user={user} token={token} />
         )}
 
+        {activeTab === 'binary-ledger' && (
+          <BinaryLedgerPage user={user} token={token} />
+        )}
+
         {activeTab === 'members' && (
           <MembersPage 
             key={refreshKey} 
@@ -238,9 +243,9 @@ export function App() {
 
         {activeTab === 'rank-rewards' && <IncomeSettingsPage user={user} token={token} defaultSection="rewards" />}
 
-        {activeTab === 'wallet-payouts' && <PayoutsPage user={user} token={token} defaultSubTab="commissions" />}
+        {activeTab === 'wallet-payouts' && <PayoutsPage user={user} token={token} defaultSubTab="commissions" onNavigate={handleTabChange} />}
 
-        {activeTab === 'withdrawals' && <PayoutsPage user={user} token={token} defaultSubTab="requests" />}
+        {activeTab === 'withdrawals' && <PayoutsPage user={user} token={token} defaultSubTab="requests" onNavigate={handleTabChange} />}
 
         {(activeTab === 'reports' || activeTab === 'cms-content' || activeTab === 'settings') && (
           <div className="page-body">

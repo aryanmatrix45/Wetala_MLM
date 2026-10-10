@@ -23,9 +23,10 @@ interface PayoutsPageProps {
   user?: any;
   token?: string | null;
   defaultSubTab?: 'requests' | 'messages' | 'commissions';
+  onNavigate?: (tab: string) => void;
 }
 
-export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSubTab = 'requests' }) => {
+export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSubTab = 'requests', onNavigate }) => {
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
   const currentMemberId = user?.memberId || 'MEM0001';
 
@@ -997,6 +998,7 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
         effectiveAvailable={memberBalance?.effectiveAvailable}
         user={user}
         onSuccess={loadData}
+        onNavigate={onNavigate}
       />
     </div>
   );

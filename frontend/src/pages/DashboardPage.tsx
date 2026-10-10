@@ -25,7 +25,8 @@ import {
   PlusCircle,
   CreditCard,
   Check,
-  ArrowDownRight
+  ArrowDownRight,
+  BarChart3
 } from 'lucide-react';
 import { WithdrawModal } from '../components/WithdrawModal';
 import { AdminWithdrawalActionModal, type AdminActionType } from '../components/AdminWithdrawalActionModal';
@@ -501,13 +502,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             </div>
           </div>
 
-          <button 
-            onClick={() => onNavigate('income-settings')} 
-            className="primary-btn" 
-            style={{ fontSize: '12px', padding: '6px 14px' }}
-          >
-            <Zap size={14} /> Open Simulator
-          </button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button 
+              onClick={() => onNavigate('binary-ledger')} 
+              className="secondary-btn" 
+              style={{ fontSize: '12px', padding: '6px 14px' }}
+            >
+              <BarChart3 size={14} /> View BV Ledger
+            </button>
+            <button 
+              onClick={() => onNavigate('income-settings')} 
+              className="primary-btn" 
+              style={{ fontSize: '12px', padding: '6px 14px' }}
+            >
+              <Zap size={14} /> Open Simulator
+            </button>
+          </div>
         </div>
 
         {/* Binary Volume Split Grid - 100% Dynamic from Engine */}
@@ -524,6 +534,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           const carryRightBV = binaryData?.carryRightBV ?? 0;
           const unusedLeftCount = binaryData?.unusedLeftCount ?? 0;
           const unusedRightCount = binaryData?.unusedRightCount ?? 0;
+          const reservedBV = binaryData?.reservedBV ?? 0;
+          const reservedSide = binaryData?.reservedSide ?? null;
 
           const ratePerCycle = binaryData?.ratePerCycle ?? 250;
           const totalBinaryIncome = binaryData?.totalBinaryIncome ?? (matchedCycles * ratePerCycle);
@@ -550,8 +562,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                   <div style={{ width: `${rightPct}%`, background: '#10b981', transition: 'width 0.4s ease' }} title={`Right Leg: ${rightBV.toLocaleString()} BV (${rightPct}%)`} />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
                   <span>Matched: <strong style={{ color: '#0f172a' }}>{matchedBV.toLocaleString()} BV</strong> ({matchedCycles} Cycles)</span>
+                  {reservedBV > 0 && (
+                    <span style={{ color: '#d97706', fontWeight: 700, background: '#fef3c7', padding: '1px 6px', borderRadius: '4px' }}>
+                      Reserved (Stage 2): {reservedBV.toLocaleString()} BV ({reservedSide})
+                    </span>
+                  )}
                   {carryLeftBV > 0 ? (
                     <span>Carry Left: <strong style={{ color: '#2563eb' }}>{carryLeftBV.toLocaleString()} BV</strong> ({unusedLeftCount} Unused)</span>
                   ) : carryRightBV > 0 ? (
@@ -1787,6 +1804,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
         onSuccess={() => {
           loadWithdrawalData();
         }}
+        onNavigate={onNavigate}
       />
 
       {/* Admin Action Modal */}

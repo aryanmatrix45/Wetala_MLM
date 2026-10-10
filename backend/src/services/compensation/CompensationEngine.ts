@@ -61,8 +61,11 @@ export class CompensationEngine {
           pairBvUnit: 1250,         // 1250 BV per pair
           volumeCarryForwardMode: 'CARRY_FORWARD',
           excessCapPolicy: 'FLUSH',
-          firstPairRatio: '1:1',
-          subsequentPairRatio: '1:2_or_2:1',
+          firstPairRatio: '2:1_or_1:2',
+          subsequentPairRatio: '1:1',
+          firstPayoutDominantBv: 2500,
+          firstPayoutOppositeBv: 1250,
+          secondPayoutNewBv: 1250,
         },
         teamBonus: {
           isEnabled: true,

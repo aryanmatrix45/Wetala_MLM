@@ -587,4 +587,108 @@ export class BinaryTreeService {
 
     return { leftMemberIds, rightMemberIds };
   }
+
+  /**
+   * Check whether the required sponsor/member condition is satisfied on both the LEFT and RIGHT
+   * sides of a member's binary tree.
+   *
+   * Requirement: The member must have at least one personally sponsored active member in their
+   * LEFT binary subtree AND at least one personally sponsored active member in their RIGHT binary subtree.
+   * Note: The binary parent and sponsor are distinct relationships.
+   */
+  static async checkSponsorLegEligibility(memberId: string): Promise<{
+    isQualified: boolean;
+    hasLeftSponsor: boolean;
+    hasRightSponsor: boolean;
+    leftSponsorMemberIds: string[];
+    rightSponsorMemberIds: string[];
+  }> {
+    const cleanId = (memberId || '').toUpperCase().trim();
+    if (!cleanId) {
+      return { isQualified: false, hasLeftSponsor: false, hasRightSponsor: false, leftSponsorMemberIds: [], rightSponsorMemberIds: [] };
+    }
+
+    const [leftChild, rightChild] = await Promise.all([
+      Member.findOne({
+        $or: [
+          { parentId: cleanId, position: BINARY_POSITION.LEFT },
+          { parentId: cleanId, binaryPosition: BINARY_POSITION.LEFT },
+          { binaryParentId: cleanId, position: BINARY_POSITION.LEFT },
+          { binaryParentId: cleanId, binaryPosition: BINARY_POSITION.LEFT },
+        ],
+      }).select('memberId'),
+      Member.findOne({
+        $or: [
+          { parentId: cleanId, position: BINARY_POSITION.RIGHT },
+          { parentId: cleanId, binaryPosition: BINARY_POSITION.RIGHT },
+          { binaryParentId: cleanId, position: BINARY_POSITION.RIGHT },
+          { binaryParentId: cleanId, binaryPosition: BINARY_POSITION.RIGHT },
+        ],
+      }).select('memberId'),
+    ]);
+
+    const findSponsoredInSubtree = async (rootChildId?: string): Promise<string[]> => {
+      if (!rootChildId) return [];
+      const sponsoredIds: string[] = [];
+      const queue: string[] = [rootChildId];
+      const visited = new Set<string>([rootChildId]);
+
+      while (queue.length > 0) {
+        const currentId = queue.shift()!;
+        const currentMember = await Member.findOne({ memberId: currentId }).select('memberId sponsorId isActive status');
+        if (currentMember && currentMember.isActive && currentMember.status !== 'blocked') {
+          if ((currentMember.sponsorId || '').toUpperCase().trim() === cleanId) {
+            sponsoredIds.push(currentMember.memberId);
+          }
+        }
+
+        const [left, right] = await Promise.all([
+          Member.findOne({
+            $or: [
+              { parentId: currentId, position: BINARY_POSITION.LEFT },
+              { parentId: currentId, binaryPosition: BINARY_POSITION.LEFT },
+              { binaryParentId: currentId, position: BINARY_POSITION.LEFT },
+              { binaryParentId: currentId, binaryPosition: BINARY_POSITION.LEFT },
+            ],
+          }).select('memberId'),
+          Member.findOne({
+            $or: [
+              { parentId: currentId, position: BINARY_POSITION.RIGHT },
+              { parentId: currentId, binaryPosition: BINARY_POSITION.RIGHT },
+              { binaryParentId: currentId, position: BINARY_POSITION.RIGHT },
+              { binaryParentId: currentId, binaryPosition: BINARY_POSITION.RIGHT },
+            ],
+          }).select('memberId'),
+        ]);
+
+        if (left && !visited.has(left.memberId)) {
+          visited.add(left.memberId);
+          queue.push(left.memberId);
+        }
+        if (right && !visited.has(right.memberId)) {
+          visited.add(right.memberId);
+          queue.push(right.memberId);
+        }
+      }
+
+      return sponsoredIds;
+    };
+
+    const [leftSponsorMemberIds, rightSponsorMemberIds] = await Promise.all([
+      leftChild ? findSponsoredInSubtree(leftChild.memberId) : Promise.resolve([]),
+      rightChild ? findSponsoredInSubtree(rightChild.memberId) : Promise.resolve([]),
+    ]);
+
+    const hasLeftSponsor = leftSponsorMemberIds.length > 0;
+    const hasRightSponsor = rightSponsorMemberIds.length > 0;
+    const isQualified = hasLeftSponsor && hasRightSponsor;
+
+    return {
+      isQualified,
+      hasLeftSponsor,
+      hasRightSponsor,
+      leftSponsorMemberIds,
+      rightSponsorMemberIds,
+    };
+  }
 }

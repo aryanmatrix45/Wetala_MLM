@@ -11,6 +11,10 @@ const startServer = async () => {
     // Connect to MongoDB Atlas
     await connectDB();
 
+    // Start Daily Automated Binary Settlement Scheduler
+    const { DailyBinarySettlementService } = await import('./services/compensation/DailyBinarySettlementService');
+    DailyBinarySettlementService.startDailyScheduler();
+
     // Start Express listener
     const server = app.listen(Number(PORT), '0.0.0.0', () => {
       console.log(`[WetalaMLM] Server running on port ${PORT}`);

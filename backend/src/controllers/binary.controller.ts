@@ -3,6 +3,7 @@ import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 import { BinaryVolume } from '../models/BinaryVolume.model';
 import { Member } from '../models/Member.model';
 import { CommissionLedger } from '../models/CommissionLedger.model';
+import { BVLedger } from '../models/BVLedger.model';
 import { HTTP_STATUS, BINARY_POSITION, BinaryPosition, ROLES, COMMISSION_TYPE } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { CompensationEngine } from '../services/compensation/CompensationEngine';
@@ -212,14 +213,17 @@ export const BinaryController = {
       const dailyCapUtilization = Math.min(100, Math.round((earnedToday / (dailyCap || 1)) * 100));
       const remainingCap = Math.max(0, dailyCap - earnedToday);
 
-      const matchedCycles = member.matchedPairs || Math.floor((vol?.consumedBinaryMemberIds?.length || 0) / 3);
-      const matchedBV = matchedCycles * pairBvUnit;
-      const leftTotalBV = leftMemberIds.length * pairBvUnit;
-      const rightTotalBV = rightMemberIds.length * pairBvUnit;
-      const leftAvailableBV = unusedLeft.length * pairBvUnit;
-      const rightAvailableBV = unusedRight.length * pairBvUnit;
-      const carryLeftBV = unusedLeft.length * pairBvUnit;
-      const carryRightBV = unusedRight.length * pairBvUnit;
+      const matchedCycles = vol?.payoutCount || member.matchedPairs || 0;
+      const matchedBV = vol?.matchedTotalBV || 0;
+      const leftTotalBV = vol?.leftTotalBV || member.leftBv || 0;
+      const rightTotalBV = vol?.rightTotalBV || member.rightBv || 0;
+      const leftAvailableBV = vol?.leftAvailableBV || 0;
+      const rightAvailableBV = vol?.rightAvailableBV || 0;
+      const reservedBV = vol?.reservedBV || 0;
+      const reservedSide = vol?.reservedSide || null;
+      const payoutCount = vol?.payoutCount || 0;
+      const carryLeftBV = vol?.leftCarryForwardBV ?? leftAvailableBV;
+      const carryRightBV = vol?.rightCarryForwardBV ?? rightAvailableBV;
 
       const isCapExceeded = Boolean(earnedToday > dailyCap && dailyCap > 0);
       if (isCapExceeded) {
@@ -262,6 +266,9 @@ export const BinaryController = {
           rightTotalBV,
           leftAvailableBV,
           rightAvailableBV,
+          reservedBV,
+          reservedSide,
+          payoutCount,
           leftMemberCount: leftMemberIds.length,
           rightMemberCount: rightMemberIds.length,
           unusedLeftCount: unusedLeft.length,
@@ -311,6 +318,83 @@ export const BinaryController = {
         status: true,
         message: `Successfully reorganized ${result.count} members into balanced level-order binary tree.`,
         data: result.tree,
+      });
+    } catch (error: any) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
+    }
+  },
+
+  /**
+   * Get Business Volume (BV) audit ledger and consumption history for a member
+   * GET /api/binary/ledger/:memberId?page=1&limit=50&leg=LEFT|RIGHT
+   */
+  async getLedger(req: Request, res: Response): Promise<void> {
+    try {
+      const cleanId = (req.params.memberId || '').toUpperCase().trim();
+      const { page = 1, limit = 50, leg } = req.query;
+
+      const member = await Member.findOne({ memberId: cleanId });
+      if (!member) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({ status: false, message: 'Member not found' });
+        return;
+      }
+
+      const vol = await BinaryVolume.findOne({ memberId: cleanId });
+      const query: any = { memberId: cleanId };
+      if (leg) {
+        query.position = String(leg).toUpperCase();
+      }
+
+      const skip = (Number(page) - 1) * Number(limit);
+      const [records, total] = await Promise.all([
+        BVLedger.find(query).sort({ createdAt: -1 }).skip(skip).limit(Number(limit)),
+        BVLedger.countDocuments(query),
+      ]);
+
+      res.status(HTTP_STATUS.OK).json({
+        status: true,
+        summary: {
+          memberId: cleanId,
+          memberName: member.name,
+          leftTotalBV: vol?.leftTotalBV || member.leftBv || 0,
+          rightTotalBV: vol?.rightTotalBV || member.rightBv || 0,
+          leftAvailableBV: vol?.leftAvailableBV || 0,
+          rightAvailableBV: vol?.rightAvailableBV || 0,
+          leftCarryForwardBV: vol?.leftCarryForwardBV ?? (vol?.leftAvailableBV || 0),
+          rightCarryForwardBV: vol?.rightCarryForwardBV ?? (vol?.rightAvailableBV || 0),
+          reservedBV: vol?.reservedBV || 0,
+          reservedSide: vol?.reservedSide || null,
+          consumedTotalBV: vol?.consumedTotalBV || vol?.matchedTotalBV || 0,
+          payoutCount: vol?.payoutCount || member.matchedPairs || 0,
+          dailyCapping: member.dailyCapping || 4000,
+        },
+        data: records,
+        pagination: {
+          total,
+          page: Number(page),
+          limit: Number(limit),
+          pages: Math.ceil(total / Number(limit)),
+        },
+      });
+    } catch (error: any) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
+    }
+  },
+
+  /**
+   * Admin manual trigger for daily binary settlement
+   * POST /api/binary/settle-daily
+   */
+  async settleDaily(req: Request, res: Response): Promise<void> {
+    try {
+      const { date } = req.body;
+      const targetDate = date ? new Date(date) : new Date();
+      const { DailyBinarySettlementService } = await import('../services/compensation/DailyBinarySettlementService');
+      const summary = await DailyBinarySettlementService.executeDailySettlement(targetDate, (req as any).user?.email || 'ADMIN');
+      res.status(HTTP_STATUS.OK).json({
+        status: true,
+        message: `Daily binary settlement completed for ${summary.date}. Processed ${summary.details.length} earners.`,
+        data: summary,
       });
     } catch (error: any) {
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });

@@ -17,6 +17,10 @@ export interface IBVLedger extends Document {
   flushedBV: number;
   closingBV: number;
   
+  sourceMemberId?: string; // Member who generated the BV
+  reservedBV?: number; // BV reserved for subsequent payouts
+  payoutSequence?: number; // Payout cycle/sequence reference (1, 2, 3...)
+  
   description: string;
   isImmutable: boolean;
   createdAt: Date;
@@ -93,6 +97,18 @@ const bvLedgerSchema = new Schema<IBVLedger>(
       type: Number,
       required: true,
       default: 0,
+    },
+    sourceMemberId: {
+      type: String,
+      trim: true,
+      index: true,
+    },
+    reservedBV: {
+      type: Number,
+      default: 0,
+    },
+    payoutSequence: {
+      type: Number,
     },
     description: {
       type: String,

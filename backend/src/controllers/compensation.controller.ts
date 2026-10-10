@@ -94,16 +94,74 @@ export const CompensationController = {
         purchaseAmount = 0,
       } = req.body;
 
-      // 1. Binary Matching Simulation in Rupees
-      const matchedBV = DecimalUtil.min(leftBV, rightBV);
-      const remainingLeftBV = DecimalUtil.sub(leftBV, matchedBV);
-      const remainingRightBV = DecimalUtil.sub(rightBV, matchedBV);
-
-      // Binary matching calculation in Rupees
+      // 1. Binary Matching Sequential Simulation in Rupees
+      let simLeft = Number(leftBV) || 0;
+      let simRight = Number(rightBV) || 0;
+      let simPayoutCount = Number(req.body.payoutCount || 0);
+      let simReservedSide: 'LEFT' | 'RIGHT' | null = req.body.reservedSide || null;
+      let simReservedBV = Number(req.body.reservedBV || 0);
       const effectiveRateInRupees = rateInRupees !== undefined
         ? Number(rateInRupees)
-        : (binaryRate > 1 ? Number(binaryRate) : (Number(binaryRate) || 0.20) * pairBvUnit);
-      const rawBinaryCommission = DecimalUtil.round((matchedBV / pairBvUnit) * effectiveRateInRupees, 2);
+        : 250;
+
+      const simCycles: any[] = [];
+      let simProgress = true;
+      while (simProgress) {
+        simProgress = false;
+        if (simPayoutCount === 0) {
+          const canLeft = simLeft >= 2500 && simRight >= 1250;
+          const canRight = simRight >= 2500 && simLeft >= 1250;
+          if (canLeft || canRight) {
+            const isLeft = (canLeft && canRight) ? (simLeft >= simRight) : canLeft;
+            if (isLeft) {
+              simLeft -= 2500;
+              simRight -= 1250;
+              simReservedSide = 'LEFT';
+              simReservedBV = 2500;
+              simPayoutCount = 1;
+              simCycles.push({ stage: 'FIRST_PAYOUT', payoutSequence: 1, ratio: '2:1', amount: effectiveRateInRupees });
+              simProgress = true;
+            } else {
+              simRight -= 2500;
+              simLeft -= 1250;
+              simReservedSide = 'RIGHT';
+              simReservedBV = 2500;
+              simPayoutCount = 1;
+              simCycles.push({ stage: 'FIRST_PAYOUT', payoutSequence: 1, ratio: '1:2', amount: effectiveRateInRupees });
+              simProgress = true;
+            }
+          }
+        } else if (simPayoutCount === 1) {
+          if (simReservedSide === 'LEFT' && simReservedBV >= 2500 && simRight >= 1250) {
+            simRight -= 1250;
+            simReservedBV = 0;
+            simReservedSide = null;
+            simPayoutCount = 2;
+            simCycles.push({ stage: 'SECOND_PAYOUT', payoutSequence: 2, ratio: '2:1', amount: effectiveRateInRupees });
+            simProgress = true;
+          } else if (simReservedSide === 'RIGHT' && simReservedBV >= 2500 && simLeft >= 1250) {
+            simLeft -= 1250;
+            simReservedBV = 0;
+            simReservedSide = null;
+            simPayoutCount = 2;
+            simCycles.push({ stage: 'SECOND_PAYOUT', payoutSequence: 2, ratio: '1:2', amount: effectiveRateInRupees });
+            simProgress = true;
+          }
+        } else if (simPayoutCount >= 2) {
+          if (simLeft >= 1250 && simRight >= 1250) {
+            simLeft -= 1250;
+            simRight -= 1250;
+            simPayoutCount += 1;
+            simCycles.push({ stage: 'SUBSEQUENT', payoutSequence: simPayoutCount, ratio: '1:1', amount: effectiveRateInRupees });
+            simProgress = true;
+          }
+        }
+      }
+
+      const rawBinaryCommission = simCycles.length * effectiveRateInRupees;
+      const remainingLeftBV = simLeft;
+      const remainingRightBV = simRight;
+      const matchedBV = (leftBV - remainingLeftBV) + (rightBV - remainingRightBV);
 
       // Daily Cap Calculation
       const remainingCap = Math.max(0, DecimalUtil.sub(dailyCap, alreadyEarnedToday));

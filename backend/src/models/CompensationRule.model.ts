@@ -32,8 +32,11 @@ export interface ICompensationRule extends Document {
     volumeCarryForwardMode?: 'CARRY_FORWARD' | 'FLUSH';
     dailyBinaryPayoutCap?: number;
     excessCapPolicy?: 'FLUSH' | 'HOLD' | 'CARRY_FORWARD';
-    firstPairRatio?: '1:1' | '1:2_or_2:1';
-    subsequentPairRatio?: '1:1' | '1:2_or_2:1';
+    firstPairRatio?: string; // '2:1_or_1:2' (2500:1250 or 1250:2500)
+    subsequentPairRatio?: string; // '1:1' (1250:1250)
+    firstPayoutDominantBv?: number; // 2500
+    firstPayoutOppositeBv?: number; // 1250
+    secondPayoutNewBv?: number; // 1250
   };
   
   // 3. Team Bonus Tiers (Repurchase CTO Volume: 1k=15%, 2.5k=10%, 7.5k=7%, 20k=6%, 35k=5%, 70k=4%, 150k=3%, 300k=2%)
@@ -198,8 +201,11 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       calculationBase: { type: String, default: 'BV' },
       volumeCarryForwardMode: { type: String, default: 'CARRY_FORWARD' },
       excessCapPolicy: { type: String, default: 'FLUSH' },
-      firstPairRatio: { type: String, default: '1:1' },
-      subsequentPairRatio: { type: String, default: '1:2_or_2:1' },
+      firstPairRatio: { type: String, default: '2:1_or_1:2' },
+      subsequentPairRatio: { type: String, default: '1:1' },
+      firstPayoutDominantBv: { type: Number, default: 2500 },
+      firstPayoutOppositeBv: { type: Number, default: 1250 },
+      secondPayoutNewBv: { type: Number, default: 1250 },
     },
     teamBonus: {
       isEnabled: { type: Boolean, default: true },

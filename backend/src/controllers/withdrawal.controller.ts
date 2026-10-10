@@ -4,6 +4,7 @@ import { WithdrawalRequest, IWithdrawalRequest } from '../models/WithdrawalReque
 import { AdminNotification } from '../models/AdminNotification.model';
 import { Wallet } from '../models/Wallet.model';
 import { Member } from '../models/Member.model';
+import { Purchase } from '../models/Purchase.model';
 import { WalletTransaction } from '../models/WalletTransaction.model';
 import { AuditLog } from '../models/AuditLog.model';
 import { WalletService } from '../services/WalletService';
@@ -60,6 +61,30 @@ export const WithdrawalController = {
 
       const wallet = await WalletService.getOrCreateWallet(targetMemberId, member._id.toString());
       const availableBalance = wallet.availableBalance ?? DecimalUtil.fromPaise(wallet.availableBalanceInPaise ?? 0);
+
+      // Check lifetime personal BV eligibility (minimum 1,250 BV required for withdrawals)
+      const purchaseAgg = await Purchase.aggregate([
+        { $match: { memberId: targetMemberId, paymentStatus: 'PAID' } },
+        { $group: { _id: null, totalBV: { $sum: '$totalBV' } } }
+      ]);
+      const purchaseBV = purchaseAgg[0]?.totalBV || 0;
+      const lifetimePersonalBV = Math.max(member.personalBv || 0, purchaseBV);
+      const MIN_WITHDRAWAL_BV = 1250;
+
+      const isPrivilegedAdmin = user.role === ROLES.ADMIN || user.role === ROLES.SUPERADMIN;
+      if (!isPrivilegedAdmin && lifetimePersonalBV < MIN_WITHDRAWAL_BV) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          code: 'MIN_BV_REQUIREMENT_NOT_MET',
+          message: `Minimum lifetime personal purchase of 1,250 BV required to request withdrawals. Your current lifetime personal BV is ${lifetimePersonalBV.toLocaleString()} BV. Please purchase products or packages to reach 1,250 BV.`,
+          data: {
+            requiredBV: MIN_WITHDRAWAL_BV,
+            currentBV: lifetimePersonalBV,
+            shortfallBV: MIN_WITHDRAWAL_BV - lifetimePersonalBV,
+          }
+        });
+        return;
+      }
 
       // Check against current pending/approved requests
       const activeRequests = await WithdrawalRequest.find({
@@ -176,6 +201,14 @@ export const WithdrawalController = {
       const member = await Member.findOne({ memberId });
       const wallet = member ? await WalletService.getOrCreateWallet(memberId, member._id.toString()) : null;
 
+      const purchaseAgg = await Purchase.aggregate([
+        { $match: { memberId, paymentStatus: 'PAID' } },
+        { $group: { _id: null, totalBV: { $sum: '$totalBV' } } }
+      ]);
+      const purchaseBV = purchaseAgg[0]?.totalBV || 0;
+      const lifetimePersonalBV = Math.max(member?.personalBv || 0, purchaseBV);
+      const MIN_WITHDRAWAL_BV = 1250;
+
       const summary = {
         availablePayout: wallet ? wallet.availableBalance : 0,
         totalPayout: wallet ? wallet.totalEarned : (member?.totalIncome || 0),
@@ -188,6 +221,10 @@ export const WithdrawalController = {
         approvedCount: requests.filter(r => r.status === 'APPROVED').length,
         paidCount: requests.filter(r => r.status === 'PAID').length,
         rejectedCount: requests.filter(r => r.status === 'REJECTED').length,
+        lifetimePersonalBV,
+        minWithdrawalBVRequired: MIN_WITHDRAWAL_BV,
+        isWithdrawalEligible: lifetimePersonalBV >= MIN_WITHDRAWAL_BV,
+        shortfallBV: Math.max(0, MIN_WITHDRAWAL_BV - lifetimePersonalBV),
       };
 
       res.status(HTTP_STATUS.OK).json({
@@ -221,6 +258,14 @@ export const WithdrawalController = {
       });
       const pendingSum = activeRequests.reduce((sum, r) => sum + (r.requestedAmount || 0), 0);
 
+      const purchaseAgg = await Purchase.aggregate([
+        { $match: { memberId, paymentStatus: 'PAID' } },
+        { $group: { _id: null, totalBV: { $sum: '$totalBV' } } }
+      ]);
+      const purchaseBV = purchaseAgg[0]?.totalBV || 0;
+      const lifetimePersonalBV = Math.max(member.personalBv || 0, purchaseBV);
+      const MIN_WITHDRAWAL_BV = 1250;
+
       res.status(HTTP_STATUS.OK).json({
         status: true,
         data: {
@@ -231,7 +276,11 @@ export const WithdrawalController = {
           withdrawnAmount: wallet.withdrawnAmount,
           pendingAmount: pendingSum,
           effectiveAvailable: Math.max(0, wallet.availableBalance - pendingSum),
-          pendingRequestsCount: activeRequests.length
+          pendingRequestsCount: activeRequests.length,
+          lifetimePersonalBV,
+          minWithdrawalBVRequired: MIN_WITHDRAWAL_BV,
+          isWithdrawalEligible: lifetimePersonalBV >= MIN_WITHDRAWAL_BV,
+          shortfallBV: Math.max(0, MIN_WITHDRAWAL_BV - lifetimePersonalBV),
         }
       });
     } catch (error: any) {

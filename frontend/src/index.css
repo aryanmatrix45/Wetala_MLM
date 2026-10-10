@@ -135,24 +135,31 @@ input, select, textarea {
    ========================================================================== */
 .sidebar {
   width: 268px;
+  min-width: 268px;
+  max-width: 268px;
   background: var(--bg-sidebar);
   border-right: 1px solid rgba(255, 255, 255, 0.08);
   display: flex;
   flex-direction: column;
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  bottom: 0;
   height: 100vh;
-  z-index: 40;
+  height: 100dvh;
+  z-index: 50;
   box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s ease;
+  transition: transform 0.3s ease;
+  overflow: hidden;
 }
 
 .sidebar-logo {
-  padding: 24px 22px 18px;
+  padding: 20px 22px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
 }
 
 .logo-brand-wrap {
@@ -216,13 +223,28 @@ input, select, textarea {
 }
 
 .sidebar-menu {
-  flex: 1;
-  padding: 16px 14px 28px;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 14px 12px 24px;
   overflow-y: auto;
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 3px;
+}
+
+.sidebar-menu::-webkit-scrollbar {
+  width: 5px;
+}
+.sidebar-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+.sidebar-menu::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+}
+.sidebar-menu::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.28);
 }
 
 .sidebar-section-label {
@@ -324,14 +346,16 @@ input, select, textarea {
    Header & Top Navbar
    ========================================================================== */
 .main-wrapper {
+  margin-left: 268px;
+  width: calc(100% - 268px);
+  min-width: 0;
+  max-width: calc(100% - 268px);
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
   overflow-x: hidden;
   background: transparent;
-  width: 100%;
-  min-width: 0;
-  max-width: 100%;
 }
 
 .top-header {
@@ -2131,7 +2155,9 @@ input, select, textarea {
   }
 
   .main-wrapper {
+    margin-left: 0;
     width: 100%;
+    max-width: 100%;
     min-width: 0;
     flex: 1;
     overflow-x: hidden;

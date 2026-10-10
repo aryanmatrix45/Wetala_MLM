@@ -5,7 +5,9 @@
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/server.js",
+    "test": "tsx tests/binaryBonusSequential.test.ts",
+    "test:binary": "tsx tests/binaryBonusSequential.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
