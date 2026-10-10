@@ -231,11 +231,10 @@ export const AuthController = {
         packageName: finalPackageName,
         packageBv: finalPackageBv,
         packageRp: finalPackageRp,
-        dailyCapping: finalDailyCapping,
-        status: 'pending',
-        approvalStatus: 'pending',
-        addedBy: resolvedSponsorId || 'ADMIN',
-        isActive: false,
+        status: totalMemberCount === 0 ? 'active' : 'pending',
+        approvalStatus: totalMemberCount === 0 ? 'approved' : 'pending',
+        addedBy: totalMemberCount === 0 ? 'ADMIN' : (resolvedSponsorId || 'ADMIN'),
+        isActive: totalMemberCount === 0,
         personalBv: 0,
         isBinaryActive: false,
         leftBv: 0,
@@ -248,9 +247,13 @@ export const AuthController = {
       });
 
       const nameParts = newMember.name.trim().split(' ');
+      const successMessage = totalMemberCount === 0
+        ? `🎉 Root Member setup successful for ${newMember.name}! Member ID: ${newMember.memberId}. Account is active as the Root of the tree.`
+        : `Registration request submitted successfully for ${newMember.name}! Member ID: ${newMember.memberId}. Your account is pending Super Admin approval.`;
+
       res.status(HTTP_STATUS.CREATED).json({
         status: true,
-        message: `Registration request submitted successfully for ${newMember.name}! Member ID: ${newMember.memberId}. Your account is pending Super Admin approval.`,
+        message: successMessage,
         memberId: newMember.memberId,
         data: {
           id: newMember._id,

@@ -100,7 +100,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
         phone: regPhone.trim(),
         password: regPassword,
         confirmPassword: regConfirmPassword,
-        sponsorId: 'MEM0001',
+        sponsorId: 'ADMIN',
       });
 
       if (res.status) {

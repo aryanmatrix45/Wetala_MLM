@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, CheckCircle2, Lock, Eye, EyeOff, Mail, Phone, Calendar, User, AlertCircle } from 'lucide-react';
+import { X, UserPlus, CheckCircle2, Lock, Eye, EyeOff, Mail, Phone, Calendar, User, AlertCircle, Sparkles } from 'lucide-react';
 import { api } from '../services/api';
 
 interface AddMemberModalProps {
@@ -25,8 +25,21 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
     position: 'LEFT',
   });
 
+  const [isFirstMember, setIsFirstMember] = useState(false);
+
   useEffect(() => {
     if (isOpen) {
+      // Check if any members exist in the system to adapt root registration
+      api.getMembers().then((members) => {
+        if (Array.isArray(members) && members.length === 0) {
+          setIsFirstMember(true);
+        } else {
+          setIsFirstMember(false);
+        }
+      }).catch(() => {
+        setIsFirstMember(false);
+      });
+
       if (user?.memberId && !formData.sponsorId) {
         setFormData((prev) => ({
           ...prev,
@@ -63,7 +76,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
       return;
     }
 
-    if (!formData.sponsorId.trim()) {
+    if (!isFirstMember && !formData.sponsorId.trim()) {
       setError('Please enter Sponsor ID (e.g. ADMIN or an existing Member ID).');
       return;
     }
@@ -95,7 +108,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
 
       const payload: any = {
         ...formData,
-        sponsorId: formData.sponsorId.trim().toUpperCase(),
+        sponsorId: formData.sponsorId ? formData.sponsorId.trim().toUpperCase() : '',
       };
 
       if (placementMode === 'manual') {
@@ -189,6 +202,27 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
           }}>
             <AlertCircle size={18} style={{ flexShrink: 0 }} />
             <span>{error}</span>
+          </div>
+        )}
+
+        {/* First Member Root Notice */}
+        {isFirstMember && (
+          <div style={{
+            background: '#ecfdf5',
+            border: '1px solid #a7f3d0',
+            color: '#065f46',
+            borderRadius: '10px',
+            padding: '10px 14px',
+            fontSize: '12.5px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            marginBottom: '18px'
+          }}>
+            <Sparkles size={16} style={{ flexShrink: 0, color: '#059669' }} />
+            <span>
+              <strong>First Member (Root Node):</strong> No members exist yet. This person will be created as the Root Member of the entire tree. Sponsor ID is optional (defaults to ADMIN).
+            </span>
           </div>
         )}
 
@@ -342,12 +376,13 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                Sponsor ID * <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>(e.g. ADMIN or Member ID)</span>
+                Sponsor ID {isFirstMember ? <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>(Optional - Root Node)</span> : '*'}
+                {!isFirstMember && <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}> (e.g. ADMIN or Member ID)</span>}
               </label>
               <input
                 type="text"
-                required
-                placeholder="Enter Sponsor ID (ADMIN or MEM0001)"
+                required={!isFirstMember}
+                placeholder={isFirstMember ? "Optional (Root Member defaults to ADMIN)" : "Enter Sponsor ID (ADMIN or MEM0001)"}
                 value={formData.sponsorId}
                 onChange={(e) => setFormData({ ...formData, sponsorId: e.target.value.toUpperCase() })}
                 style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}

@@ -340,18 +340,10 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
     }
 
     // 3. Sponsor ID and Binary Placement (Distinct relationships)
-    if (!sponsorId || !sponsorId.trim()) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: false,
-        message: 'Sponsor ID is required. Please provide ADMIN or an existing Member ID.'
-      });
-      return;
-    }
-
     const totalCount = await Member.countDocuments();
     let finalParentId = '';
     let finalPos: BinaryPosition = BINARY_POSITION.LEFT;
-    let finalSponsorId = sponsorId.trim().toUpperCase();
+    let finalSponsorId = (sponsorId || '').trim().toUpperCase();
 
     const requestedParentId = (parentId || placementId || '').trim().toUpperCase();
     const rawPosition = (position || '').trim().toUpperCase();
@@ -360,17 +352,20 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
     );
 
     if (totalCount === 0) {
-      // First member in system: root node
-      if (finalSponsorId !== 'ADMIN') {
-        res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: false,
-          message: 'The initial member must have sponsor ID "ADMIN".'
-        });
-        return;
-      }
+      // First member in system: ROOT NODE of the MLM tree
+      // No sponsor ID required; defaults to 'ADMIN' as root placeholder
+      finalSponsorId = finalSponsorId || 'ADMIN';
       finalParentId = '';
       finalPos = BINARY_POSITION.LEFT;
     } else {
+      // All subsequent members strictly require a sponsor ID
+      if (!finalSponsorId) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Sponsor ID is required. Please provide ADMIN or an existing Member ID.'
+        });
+        return;
+      }
       // Validate sponsor ID: can be 'ADMIN' or an existing member
       if (finalSponsorId !== 'ADMIN') {
         const sponsorExists = await Member.findOne({ memberId: finalSponsorId });
@@ -435,7 +430,13 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
     let memberStatus: 'active' | 'pending' = 'pending';
     let isActive = false;
 
-    if (reqUser && (reqUser.role === ROLES.ADMIN || reqUser.role === ROLES.SUPERADMIN)) {
+    if (totalCount === 0) {
+      // The initial root member is automatically activated and approved
+      addedBy = 'ADMIN';
+      approvalStatus = 'approved';
+      memberStatus = 'active';
+      isActive = true;
+    } else if (reqUser && (reqUser.role === ROLES.ADMIN || reqUser.role === ROLES.SUPERADMIN)) {
       addedBy = 'ADMIN';
       approvalStatus = 'approved';
       memberStatus = 'active';
