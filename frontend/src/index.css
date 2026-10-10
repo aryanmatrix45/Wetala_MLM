@@ -908,6 +908,14 @@ input, select, textarea {
   margin-bottom: 30px;
 }
 
+.dashboard-table-card {
+  padding: 24px 0 0 !important;
+}
+
+.dashboard-table-card .card-header-row {
+  padding: 0 24px 16px !important;
+}
+
 .dashboard-card {
   background: var(--bg-card);
   border-radius: var(--radius-lg);
@@ -2201,6 +2209,12 @@ input, select, textarea {
   .page-title {
     font-size: 22px;
   }
+
+  .dashboard-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+    margin-bottom: 22px !important;
+  }
 }
 
 /* Mobile Screens (<= 640px) */
@@ -2254,6 +2268,35 @@ input, select, textarea {
   .dashboard-card {
     padding: 16px 14px !important;
     border-radius: 14px !important;
+  }
+
+  .dashboard-grid-2 {
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    margin-bottom: 20px !important;
+  }
+
+  .dashboard-table-card {
+    padding: 16px 0 0 !important;
+  }
+
+  .dashboard-table-card .card-header-row {
+    padding: 0 14px 14px !important;
+  }
+
+  .card-header-row {
+    flex-wrap: wrap !important;
+    gap: 10px !important;
+    margin-bottom: 16px !important;
+  }
+
+  .card-title-group {
+    max-width: 100% !important;
+    flex: 1 1 100% !important;
+  }
+
+  .table-responsive .data-table {
+    min-width: 520px;
   }
 
   .kpi-grid,

@@ -1260,8 +1260,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       {/* Split Tables: Recent Registrations & Recent Payouts */}
       <div className="dashboard-grid-2">
         {/* Recent Registrations Table */}
-        <div className="dashboard-card" style={{ padding: '24px 0 0' }}>
-          <div className="card-header-row" style={{ padding: '0 24px 16px' }}>
+        <div className="dashboard-card dashboard-table-card">
+          <div className="card-header-row">
             <h2 className="card-title">Recent Enrollments</h2>
             <button onClick={() => onNavigate('members')} className="primary-btn" style={{ fontSize: '11px', padding: '6px 12px' }}>
               View All
@@ -1346,8 +1346,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
         </div>
 
         {/* Live Withdrawal Requests & Action Hub */}
-        <div className="dashboard-card" style={{ padding: '24px 0 0' }}>
-          <div className="card-header-row" style={{ padding: '0 24px 16px' }}>
+        <div className="dashboard-card dashboard-table-card">
+          <div className="card-header-row">
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <h2 className="card-title">{isAdmin ? 'Withdrawal Requests & Actions' : 'My Withdrawal Requests'}</h2>
