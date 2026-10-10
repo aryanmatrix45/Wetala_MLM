@@ -39,10 +39,29 @@ interface DashboardPageProps {
   initialSection?: string;
 }
 
+const SkeletonText: React.FC<{ width?: string | number; height?: string | number; borderRadius?: string | number; style?: React.CSSProperties }> = ({
+  width = '100%',
+  height = '1em',
+  borderRadius = '6px',
+  style,
+}) => (
+  <span
+    className="skeleton-shimmer"
+    style={{
+      width,
+      height,
+      borderRadius,
+      ...style,
+    }}
+  />
+);
+
 export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, onOpenAddMember, initialSection }) => {
   const [trendRange, setTrendRange] = useState('30');
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
   const [welcomeBonus, setWelcomeBonus] = useState<any>(null);
+  const [welcomeBonusLoading, setWelcomeBonusLoading] = useState(true);
   const [settling, setSettling] = useState(false);
   const [settleMsg, setSettleMsg] = useState('');
   const [isFullPayoutModalOpen, setIsFullPayoutModalOpen] = useState(false);
@@ -67,6 +86,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
 
   // Dynamic Binary Volume & Commission Engine State
   const [binaryData, setBinaryData] = useState<any>(null);
+  const [binaryLoading, setBinaryLoading] = useState(true);
 
   useEffect(() => {
     if (initialSection === 'welcome-bonus') {
@@ -80,6 +100,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
   }, [initialSection]);
 
   const loadBinaryData = () => {
+    setBinaryLoading(true);
     const memberIdToFetch = user?.memberId || 'MEM0001';
     api.getBinaryVolume(memberIdToFetch)
       .then((res: any) => {
@@ -89,10 +110,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       })
       .catch((err) => {
         console.error('Failed to load binary volume:', err);
+      })
+      .finally(() => {
+        setBinaryLoading(false);
       });
   };
 
   const loadWelcomeBonus = () => {
+    setWelcomeBonusLoading(true);
     const memberIdToFetch = user?.memberId || 'MEM0001';
     api.getWelcomeBonusMemberStatus(memberIdToFetch)
       .then((res: any) => {
@@ -102,6 +127,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       })
       .catch((err) => {
         console.error('Failed to load Welcome Bonus status:', err);
+      })
+      .finally(() => {
+        setWelcomeBonusLoading(false);
       });
   };
 
@@ -139,6 +167,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
 
   useEffect(() => {
     let isMounted = true;
+    setStatsLoading(true);
     api.getDashboardStats()
       .then((data: any) => {
         if (isMounted) {
@@ -147,6 +176,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       })
       .catch((err) => {
         console.error('Failed to load dashboard stats:', err);
+      })
+      .finally(() => {
+        if (isMounted) {
+          setStatsLoading(false);
+        }
       });
     loadWelcomeBonus();
     loadWithdrawalData();
@@ -172,18 +206,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
     }
   };
 
-  // Live registrations data
-  const fallbackRegistrations = [
-    { name: 'Amit Kumar', id: 'MEM0126', package: 'Premium', bv: '5,000 BV', date: '12 Sep 2025', status: 'Active', leg: 'LEFT' },
-    { name: 'Priya Singh', id: 'MEM0125', package: 'Basic', bv: '1,250 BV', date: '12 Sep 2025', status: 'Active', leg: 'RIGHT' },
-    { name: 'Neha Verma', id: 'MEM0124', package: 'Premium', bv: '5,000 BV', date: '11 Sep 2025', status: 'Active', leg: 'LEFT' },
-    { name: 'Suresh Yadav', id: 'MEM0123', package: 'Basic', bv: '1,250 BV', date: '11 Sep 2025', status: 'Active', leg: 'RIGHT' },
-    { name: 'Manish Jain', id: 'MEM0122', package: 'Elite', bv: '10,000 BV', date: '10 Sep 2025', status: 'Active', leg: 'LEFT' }
-  ];
-
-  const recentRegistrations = stats?.recentMembers && stats.recentMembers.length > 0
-    ? stats.recentMembers
-    : fallbackRegistrations;
+  const recentRegistrations = stats?.recentMembers || [];
 
 
 
@@ -216,7 +239,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div className="date-pill">
             <Calendar size={15} color="#64748b" />
-            <span>Today, 12 Sep 2025</span>
+            <span>Today, {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </div>
 
           {!isAdmin && (
@@ -312,10 +335,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">Total Distributors</div>
-                <div className="kpi-value">{stats ? stats.totalMembers.toLocaleString() : '13'}</div>
+                <div className="kpi-value">
+                  {statsLoading ? <SkeletonText width="60px" height="28px" /> : (stats?.totalMembers ?? 0).toLocaleString()}
+                </div>
                 <div className="kpi-trend-pill kpi-trend-up">
                   <ArrowUpRight size={13} />
-                  <span>{stats?.quickStats?.activePercent ?? 100}% Active Network</span>
+                  <span>
+                    {statsLoading ? <SkeletonText width="70px" height="12px" /> : `${stats?.quickStats?.activePercent ?? 100}% Active Network`}
+                  </span>
                 </div>
               </div>
             </div>
@@ -327,9 +354,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">New Registrations</div>
-                <div className="kpi-value">{stats ? stats.newRegistrations.toLocaleString() : '13'}</div>
+                <div className="kpi-value">
+                  {statsLoading ? <SkeletonText width="60px" height="28px" /> : (stats?.newRegistrations ?? 0).toLocaleString()}
+                </div>
                 <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
-                  {stats?.registrationsToday ? `Today: +${stats.registrationsToday} joined` : 'Verified & Active'}
+                  {statsLoading ? (
+                    <SkeletonText width="90px" height="12px" />
+                  ) : stats?.registrationsToday ? (
+                    `Today: +${stats.registrationsToday} joined`
+                  ) : (
+                    'Verified & Active'
+                  )}
                 </div>
               </div>
             </div>
@@ -342,7 +377,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <div className="kpi-content">
                 <div className="kpi-label">Total Gross Value</div>
                 <div className="kpi-value">
-                  ₹ {stats ? (stats.totalGrossValue || stats.totalJoiningRevenue || stats.totalPackagePrice || 73500).toLocaleString() : '73,500'}
+                  ₹ {statsLoading ? (
+                    <SkeletonText width="80px" height="28px" />
+                  ) : (
+                    (stats?.totalGrossValue || stats?.totalJoiningRevenue || stats?.totalPackagePrice || 0).toLocaleString()
+                  )}
                 </div>
                 <div className="kpi-trend-pill kpi-trend-up">
                   <ArrowUpRight size={13} />
@@ -359,10 +398,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <div className="kpi-content">
                 <div className="kpi-label" style={{ color: '#065f46', fontWeight: 700 }}>Weekly Gross Volume</div>
                 <div className="kpi-value" style={{ color: '#047857' }}>
-                  {(stats?.weeklyGrossBusinessVolume || stats?.weeklyGrossValue || welcomeBonus?.currentWeeklyCompanyGBV || 7200).toLocaleString()} <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                  {statsLoading ? (
+                    <SkeletonText width="80px" height="28px" />
+                  ) : (
+                    (stats?.weeklyGrossBusinessVolume ?? stats?.weeklyGrossValue ?? welcomeBonus?.currentWeeklyCompanyGBV ?? 0).toLocaleString()
+                  )}{' '}
+                  <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
                 </div>
                 <div style={{ fontSize: '11px', color: '#059669', fontWeight: 700, marginTop: '3px' }}>
-                  4% Pool: {Math.round(((stats?.weeklyGrossBusinessVolume || stats?.weeklyGrossValue || welcomeBonus?.currentWeeklyCompanyGBV || 7200) * 0.04)).toLocaleString()} BV / week
+                  4% Pool: {statsLoading ? '...' : Math.round(((stats?.weeklyGrossBusinessVolume ?? stats?.weeklyGrossValue ?? welcomeBonus?.currentWeeklyCompanyGBV ?? 0) * 0.04)).toLocaleString()} BV / week
                 </div>
               </div>
             </div>
@@ -375,7 +419,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <div className="kpi-content">
                 <div className="kpi-label">Total Business Volume</div>
                 <div className="kpi-value" style={{ color: '#7c3aed' }}>
-                  {(stats?.totalBusinessVolume || stats?.totalBV || 27500).toLocaleString()} <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                  {statsLoading ? (
+                    <SkeletonText width="80px" height="28px" />
+                  ) : (
+                    (stats?.totalBusinessVolume ?? stats?.totalBV ?? 0).toLocaleString()
+                  )}{' '}
+                  <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
                 </div>
                 <div className="kpi-trend-pill" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
                   <ArrowUpRight size={13} />
@@ -392,10 +441,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <div className="kpi-content">
                 <div className="kpi-label">Total Joining Price</div>
                 <div className="kpi-value">
-                  ₹ {stats ? (stats.totalPackagePrice || stats.totalJoiningRevenue || 73500).toLocaleString() : '73,500'}
+                  ₹ {statsLoading ? (
+                    <SkeletonText width="80px" height="28px" />
+                  ) : (
+                    (stats?.totalPackagePrice || stats?.totalJoiningRevenue || 0).toLocaleString()
+                  )}
                 </div>
                 <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
-                  Price Total of <strong style={{ color: '#059669' }}>{stats ? stats.totalMembers : '13'} Joined Members</strong>
+                  Price Total of{' '}
+                  <strong style={{ color: '#059669' }}>
+                    {statsLoading ? '...' : (stats?.totalMembers ?? 0)} Joined Members
+                  </strong>
                 </div>
               </div>
             </div>
@@ -428,10 +484,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <div className="kpi-content">
                 <div className="kpi-label" style={{ color: '#065f46', fontWeight: 700 }}>Welcome Bonus Earned</div>
                 <div className="kpi-value" style={{ color: '#047857' }}>
-                  {(welcomeBonus?.totalWelcomeBonusEarned || 0).toLocaleString()} <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                  {welcomeBonusLoading ? (
+                    <SkeletonText width="60px" height="28px" />
+                  ) : (
+                    (welcomeBonus?.totalWelcomeBonusEarned || 0).toLocaleString()
+                  )}{' '}
+                  <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
                 </div>
                 <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
-                  Remaining Cap: {(welcomeBonus?.remainingBonus || 0).toLocaleString()} BV
+                  Remaining Cap: {welcomeBonusLoading ? '...' : (welcomeBonus?.remainingBonus || 0).toLocaleString()} BV
                 </div>
               </div>
             </div>
@@ -445,10 +506,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <div className="kpi-content">
                 <div className="kpi-label">Available Payout Balance</div>
                 <div className="kpi-value" style={{ color: '#1d4ed8' }}>
-                  ₹ {(memberWithdrawalSummary?.availablePayout ?? user?.walletBalance ?? 0).toLocaleString()}
+                  ₹ {withdrawalLoading ? (
+                    <SkeletonText width="70px" height="28px" />
+                  ) : (
+                    (memberWithdrawalSummary?.availablePayout ?? user?.walletBalance ?? 0).toLocaleString()
+                  )}
                 </div>
                 <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
-                  Total Payout: <strong style={{ color: '#0f172a' }}>₹ {(memberWithdrawalSummary?.totalPayout ?? user?.totalIncome ?? 0).toLocaleString()}</strong>
+                  Total Payout: <strong style={{ color: '#0f172a' }}>₹ {withdrawalLoading ? '...' : (memberWithdrawalSummary?.totalPayout ?? user?.totalIncome ?? 0).toLocaleString()}</strong>
                   {(memberWithdrawalSummary?.pendingAmount > 0 || (memberWithdrawalSummary?.totalPending > 0)) && (
                     <span style={{ color: '#d97706', display: 'block', fontWeight: 600, fontSize: '11px', marginTop: '1px' }}>
                       Pending: ₹ {(memberWithdrawalSummary?.pendingAmount || memberWithdrawalSummary?.totalPending || 0).toLocaleString()}
@@ -549,32 +614,50 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>
-                    LEFT LEG: {leftBV.toLocaleString()} BV ({binaryData?.leftMemberCount ?? 0} M)
+                    {binaryLoading ? (
+                      <SkeletonText width="120px" height="14px" />
+                    ) : (
+                      `LEFT LEG: ${leftBV.toLocaleString()} BV (${binaryData?.leftMemberCount ?? 0} M)`
+                    )}
                   </span>
                   <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669' }}>
-                    RIGHT LEG: {rightBV.toLocaleString()} BV ({binaryData?.rightMemberCount ?? 0} M)
+                    {binaryLoading ? (
+                      <SkeletonText width="120px" height="14px" />
+                    ) : (
+                      `RIGHT LEG: ${rightBV.toLocaleString()} BV (${binaryData?.rightMemberCount ?? 0} M)`
+                    )}
                   </span>
                 </div>
 
                 {/* Split Bar */}
-                <div style={{ height: '12px', width: '100%', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden', display: 'flex' }}>
-                  <div style={{ width: `${leftPct}%`, background: '#3b82f6', transition: 'width 0.4s ease' }} title={`Left Leg: ${leftBV.toLocaleString()} BV (${leftPct}%)`} />
-                  <div style={{ width: `${rightPct}%`, background: '#10b981', transition: 'width 0.4s ease' }} title={`Right Leg: ${rightBV.toLocaleString()} BV (${rightPct}%)`} />
-                </div>
+                {binaryLoading ? (
+                  <SkeletonText width="100%" height="12px" borderRadius="9999px" />
+                ) : (
+                  <div style={{ height: '12px', width: '100%', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden', display: 'flex' }}>
+                    <div style={{ width: `${leftPct}%`, background: '#3b82f6', transition: 'width 0.4s ease' }} title={`Left Leg: ${leftBV.toLocaleString()} BV (${leftPct}%)`} />
+                    <div style={{ width: `${rightPct}%`, background: '#10b981', transition: 'width 0.4s ease' }} title={`Right Leg: ${rightBV.toLocaleString()} BV (${rightPct}%)`} />
+                  </div>
+                )}
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
-                  <span>Matched: <strong style={{ color: '#0f172a' }}>{matchedBV.toLocaleString()} BV</strong> ({matchedCycles} Cycles)</span>
-                  {reservedBV > 0 && (
-                    <span style={{ color: '#d97706', fontWeight: 700, background: '#fef3c7', padding: '1px 6px', borderRadius: '4px' }}>
-                      Reserved (Stage 2): {reservedBV.toLocaleString()} BV ({reservedSide})
-                    </span>
-                  )}
-                  {carryLeftBV > 0 ? (
-                    <span>Carry Left: <strong style={{ color: '#2563eb' }}>{carryLeftBV.toLocaleString()} BV</strong> ({unusedLeftCount} Unused)</span>
-                  ) : carryRightBV > 0 ? (
-                    <span>Carry Right: <strong style={{ color: '#059669' }}>{carryRightBV.toLocaleString()} BV</strong> ({unusedRightCount} Unused)</span>
+                  {binaryLoading ? (
+                    <SkeletonText width="180px" height="13px" />
                   ) : (
-                    <span>Balanced: <strong style={{ color: '#64748b' }}>0 BV Carry</strong></span>
+                    <>
+                      <span>Matched: <strong style={{ color: '#0f172a' }}>{matchedBV.toLocaleString()} BV</strong> ({matchedCycles} Cycles)</span>
+                      {reservedBV > 0 && (
+                        <span style={{ color: '#d97706', fontWeight: 700, background: '#fef3c7', padding: '1px 6px', borderRadius: '4px' }}>
+                          Reserved (Stage 2): {reservedBV.toLocaleString()} BV ({reservedSide})
+                        </span>
+                      )}
+                      {carryLeftBV > 0 ? (
+                        <span>Carry Left: <strong style={{ color: '#2563eb' }}>{carryLeftBV.toLocaleString()} BV</strong> ({unusedLeftCount} Unused)</span>
+                      ) : carryRightBV > 0 ? (
+                        <span>Carry Right: <strong style={{ color: '#059669' }}>{carryRightBV.toLocaleString()} BV</strong> ({unusedRightCount} Unused)</span>
+                      ) : (
+                        <span>Balanced: <strong style={{ color: '#64748b' }}>0 BV Carry</strong></span>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -583,16 +666,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Daily Binary Income (₹{ratePerCycle}/cycle)</div>
-                  <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '1px 6px', borderRadius: '4px' }}>
-                    {matchedCycles} {matchedCycles === 1 ? 'Pair' : 'Pairs'} Matched
-                  </span>
+                  {binaryLoading ? (
+                    <SkeletonText width="60px" height="14px" />
+                  ) : (
+                    <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '1px 6px', borderRadius: '4px' }}>
+                      {matchedCycles} {matchedCycles === 1 ? 'Pair' : 'Pairs'} Matched
+                    </span>
+                  )}
                 </div>
                 <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-display)', margin: '4px 0' }}>
-                  ₹ {earnedToday.toLocaleString()}
+                  ₹ {binaryLoading ? <SkeletonText width="80px" height="26px" /> : earnedToday.toLocaleString()}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#059669', fontWeight: 600 }}>
-                  <span>Earned Today: <strong>₹ {earnedToday.toLocaleString()}</strong></span>
-                  <span style={{ color: '#64748b' }}>All-Time: <strong>₹ {totalBinaryIncome.toLocaleString()}</strong></span>
+                  <span>Earned Today: <strong>₹ {binaryLoading ? '...' : earnedToday.toLocaleString()}</strong></span>
+                  <span style={{ color: '#64748b' }}>All-Time: <strong>₹ {binaryLoading ? '...' : totalBinaryIncome.toLocaleString()}</strong></span>
                 </div>
               </div>
 
@@ -615,25 +702,35 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                   <>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
                       <span>Daily Cap Utilization</span>
-                      <span style={{ 
-                        fontWeight: 700, 
-                        color: capUtil >= 90 ? '#ef4444' : capUtil >= 60 ? '#d97706' : '#059669' 
-                      }}>
-                        {capUtil}%
-                      </span>
+                      {binaryLoading ? (
+                        <SkeletonText width="35px" height="13px" />
+                      ) : (
+                        <span style={{ 
+                          fontWeight: 700, 
+                          color: capUtil >= 90 ? '#ef4444' : capUtil >= 60 ? '#d97706' : '#059669' 
+                        }}>
+                          {capUtil}%
+                        </span>
+                      )}
                     </div>
-                    <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden', margin: '8px 0' }}>
-                      <div style={{ 
-                        width: `${Math.min(100, capUtil)}%`, 
-                        height: '100%', 
-                        background: capUtil >= 90 ? '#ef4444' : capUtil >= 60 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 'linear-gradient(90deg, #10b981, #059669)', 
-                        borderRadius: '9999px',
-                        transition: 'width 0.4s ease' 
-                      }} />
-                    </div>
+                    {binaryLoading ? (
+                      <div style={{ margin: '8px 0' }}>
+                        <SkeletonText width="100%" height="8px" borderRadius="9999px" />
+                      </div>
+                    ) : (
+                      <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden', margin: '8px 0' }}>
+                        <div style={{ 
+                          width: `${Math.min(100, capUtil)}%`, 
+                          height: '100%', 
+                          background: capUtil >= 90 ? '#ef4444' : capUtil >= 60 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 'linear-gradient(90deg, #10b981, #059669)', 
+                          borderRadius: '9999px',
+                          transition: 'width 0.4s ease' 
+                        }} />
+                      </div>
+                    )}
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
-                      <span>Earned Today: <strong style={{ color: '#0f172a' }}>₹ {earnedToday.toLocaleString()}</strong></span>
-                      <span>Cap: <strong style={{ color: '#0f172a' }}>₹ {dailyCap.toLocaleString()}</strong></span>
+                      <span>Earned Today: <strong style={{ color: '#0f172a' }}>₹ {binaryLoading ? '...' : earnedToday.toLocaleString()}</strong></span>
+                      <span>Cap: <strong style={{ color: '#0f172a' }}>₹ {binaryLoading ? '...' : dailyCap.toLocaleString()}</strong></span>
                     </div>
                   </>
                 )}
@@ -1080,11 +1177,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
                 <span style={{ color: '#64748b', fontWeight: 600 }}>Active Distributors</span>
                 <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                  {stats?.quickStats?.activeMembers ?? (stats ? stats.totalMembers : 11)} ({stats?.quickStats?.activePercent ?? 100}%)
+                  {statsLoading ? (
+                    <SkeletonText width="70px" height="14px" />
+                  ) : (
+                    `${stats?.quickStats?.activeMembers ?? stats?.totalMembers ?? 0} (${stats?.quickStats?.activePercent ?? 100}%)`
+                  )}
                 </span>
               </div>
               <div style={{ height: '7px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                <div style={{ width: `${stats?.quickStats?.activePercent ?? 100}%`, height: '100%', background: '#10b981', borderRadius: '9999px' }} />
+                <div style={{ width: `${statsLoading ? 100 : (stats?.quickStats?.activePercent ?? 100)}%`, height: '100%', background: '#10b981', borderRadius: '9999px', transition: 'width 0.4s ease' }} />
               </div>
             </div>
 
@@ -1093,11 +1194,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
                 <span style={{ color: '#64748b', fontWeight: 600 }}>Inactive Distributors</span>
                 <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                  {stats?.quickStats?.inactiveMembers ?? 0} ({100 - (stats?.quickStats?.activePercent ?? 100)}%)
+                  {statsLoading ? (
+                    <SkeletonText width="70px" height="14px" />
+                  ) : (
+                    `${stats?.quickStats?.inactiveMembers ?? 0} (${100 - (stats?.quickStats?.activePercent ?? 100)}%)`
+                  )}
                 </span>
               </div>
               <div style={{ height: '7px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                <div style={{ width: `${100 - (stats?.quickStats?.activePercent ?? 100)}%`, height: '100%', background: '#ef4444', borderRadius: '9999px' }} />
+                <div style={{ width: `${statsLoading ? 0 : (100 - (stats?.quickStats?.activePercent ?? 100))}%`, height: '100%', background: '#ef4444', borderRadius: '9999px', transition: 'width 0.4s ease' }} />
               </div>
             </div>
 
@@ -1108,7 +1213,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Total Package Orders</span>
               </div>
               <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
-                {stats ? stats.totalMembers.toLocaleString() : '13'}
+                {statsLoading ? <SkeletonText width="40px" height="16px" /> : (stats?.totalMembers ?? 0).toLocaleString()}
               </span>
             </div>
 
@@ -1119,7 +1224,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Total Business Volume (BV)</span>
               </div>
               <span style={{ fontSize: '14px', fontWeight: 800, color: '#7c3aed' }}>
-                {(stats?.totalBusinessVolume || stats?.totalBV || 27500).toLocaleString()} BV
+                {statsLoading ? <SkeletonText width="70px" height="16px" /> : `${(stats?.totalBusinessVolume ?? stats?.totalBV ?? 0).toLocaleString()} BV`}
               </span>
             </div>
 
@@ -1129,7 +1234,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 <ShoppingCart size={18} color="#0284c7" />
                 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Repurchase Turnover</span>
               </div>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>₹ 12,40,000</span>
+              <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
+                {statsLoading ? (
+                  <SkeletonText width="60px" height="16px" />
+                ) : (
+                  `₹ ${(stats?.repurchaseTurnover ?? stats?.quickStats?.repurchaseTurnover ?? 0).toLocaleString()}`
+                )}
+              </span>
             </div>
 
             {/* Ranks Achieved */}
@@ -1138,7 +1249,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 <Award size={18} color="#f59e0b" />
                 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Rank Achievers</span>
               </div>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>32</span>
+              <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
+                {statsLoading ? <SkeletonText width="30px" height="16px" /> : (stats?.rankAchievers ?? stats?.quickStats?.rankAchievers ?? 0)}
+              </span>
             </div>
           </div>
         </div>
@@ -1168,43 +1281,65 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 </tr>
               </thead>
               <tbody>
-                {recentRegistrations.map((row, idx) => (
-                  <tr key={idx}>
-                    <td>{idx + 1}</td>
-                    <td>
-                      <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.name}</div>
-                      <div style={{ fontSize: '11px', color: '#64748b' }}>{row.id}</div>
-                    </td>
-                    <td>
-                      <span style={{
-                        padding: '3px 8px',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        background: row.package === 'Elite' ? '#fdf2f8' : row.package === 'Premium' ? '#f5f3ff' : '#eff6ff',
-                        color: row.package === 'Elite' ? '#db2777' : row.package === 'Premium' ? '#7c3aed' : '#2563eb'
-                      }}>
-                        {row.package}
-                      </span>
-                    </td>
-                    <td style={{ fontWeight: 700, color: '#059669' }}>{row.bv}</td>
-                    <td>
-                      <span style={{
-                        fontSize: '11px',
-                        fontWeight: 700,
-                        color: row.leg === 'LEFT' ? '#2563eb' : '#10b981',
-                        background: row.leg === 'LEFT' ? '#eff6ff' : '#ecfdf5',
-                        padding: '2px 8px',
-                        borderRadius: '4px'
-                      }}>
-                        {row.leg}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="status-pill status-active">{row.status}</span>
+                {statsLoading ? (
+                  [...Array(5)].map((_, idx) => (
+                    <tr key={idx}>
+                      <td><SkeletonText width="15px" height="14px" /></td>
+                      <td>
+                        <SkeletonText width="100px" height="14px" style={{ marginBottom: '4px' }} />
+                        <SkeletonText width="60px" height="11px" />
+                      </td>
+                      <td><SkeletonText width="65px" height="20px" borderRadius="6px" /></td>
+                      <td><SkeletonText width="60px" height="14px" /></td>
+                      <td><SkeletonText width="45px" height="18px" borderRadius="4px" /></td>
+                      <td><SkeletonText width="55px" height="18px" borderRadius="9999px" /></td>
+                    </tr>
+                  ))
+                ) : recentRegistrations.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ textAlign: 'center', padding: '28px 16px', color: '#94a3b8', fontSize: '13px' }}>
+                      No recent enrollments found.
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  recentRegistrations.map((row, idx) => (
+                    <tr key={idx}>
+                      <td>{idx + 1}</td>
+                      <td>
+                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.name}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>{row.id}</div>
+                      </td>
+                      <td>
+                        <span style={{
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          background: row.package === 'Elite' ? '#fdf2f8' : row.package === 'Premium' ? '#f5f3ff' : '#eff6ff',
+                          color: row.package === 'Elite' ? '#db2777' : row.package === 'Premium' ? '#7c3aed' : '#2563eb'
+                        }}>
+                          {row.package}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 700, color: '#059669' }}>{row.bv}</td>
+                      <td>
+                        <span style={{
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          color: row.leg === 'LEFT' ? '#2563eb' : '#10b981',
+                          background: row.leg === 'LEFT' ? '#eff6ff' : '#ecfdf5',
+                          padding: '2px 8px',
+                          borderRadius: '4px'
+                        }}>
+                          {row.leg}
+                        </span>
+                      </td>
+                      <td>
+                        <span className="status-pill status-active">{row.status}</span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

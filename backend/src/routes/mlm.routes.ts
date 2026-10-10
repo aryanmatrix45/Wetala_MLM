@@ -87,8 +87,12 @@ router.get('/dashboard/stats', async (_req, res) => {
       }
     }
 
+    let repurchaseTurnover = 0;
+    let repurchaseBv = 0;
     if (purchases && purchases.length > 0) {
       for (const p of purchases) {
+        repurchaseTurnover += (p.totalAmount || 0);
+        repurchaseBv += (p.totalBV || 0);
         const d = p.createdAt;
         if (d && new Date(d) >= weekStart) {
           weeklyGrossBusinessVolume += (p.totalBV || 0);
@@ -97,20 +101,14 @@ router.get('/dashboard/stats', async (_req, res) => {
       }
     }
 
-    // Default to configured weekly baseline (e.g. ₹7,200) if no events registered this current calendar week
-    if (weeklyGrossBusinessVolume === 0) {
-      weeklyGrossBusinessVolume = 7200;
-    }
-    if (weeklyPackagePrice === 0) {
-      weeklyPackagePrice = 7200;
-    }
-
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const registrationsToday = members.filter(m => {
       const d = m.createdAt || m.joinedAt;
       return d && new Date(d) >= todayStart;
     }).length;
+
+    const rankAchievers = members.filter(m => m.rank && !['distributor', 'member', 'none', ''].includes(m.rank.toLowerCase().trim())).length;
 
     // Commissions / Payouts from database CommissionLedger
     const totalCommissionsPaid = commissions
@@ -156,17 +154,21 @@ router.get('/dashboard/stats', async (_req, res) => {
       weeklyGrossValue: weeklyPackagePrice,
       totalPayoutMonth: totalPayoutAmount,
       pendingPayouts: pendingPayoutAmount,
+      repurchaseTurnover,
+      rankAchievers,
       recentMembers,
       quickStats: {
         activeMembers,
         activePercent,
         inactiveMembers,
         totalBusinessVolume,
-        repurchaseBv: 0,
-        repurchasePercent: 0,
+        repurchaseBv,
+        repurchasePercent: totalBusinessVolume > 0 ? Math.round((repurchaseBv / totalBusinessVolume) * 100) : 0,
         activeFranchises: 0,
         franchisePercent: 0,
         pendingPayouts: pendingPayoutAmount,
+        repurchaseTurnover,
+        rankAchievers,
       },
     });
   } catch (error: any) {

@@ -42,6 +42,8 @@ export interface DashboardStats {
   weeklyGrossRevenue?: number;
   weeklyGrossValue?: number;
   pendingPayouts: number;
+  repurchaseTurnover?: number;
+  rankAchievers?: number;
   recentMembers?: Array<{
     id: string;
     name: string;
@@ -62,6 +64,8 @@ export interface DashboardStats {
     activeFranchises: number;
     franchisePercent: number;
     pendingPayouts: number;
+    repurchaseTurnover?: number;
+    rankAchievers?: number;
   };
 }
 
