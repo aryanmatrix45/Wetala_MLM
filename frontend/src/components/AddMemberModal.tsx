@@ -422,7 +422,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <input
                 type="text"
-                placeholder="PAN Number (Optional)"
+                placeholder="PAN Card Number"
                 value={formData.panNumber}
                 onChange={(e) => setFormData({ ...formData, panNumber: e.target.value.toUpperCase() })}
                 style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px' }}

@@ -380,7 +380,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               1. Personal Information
             </h3>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '14px', marginBottom: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: '14px', marginBottom: '14px' }}>
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                   Full Name *
@@ -412,9 +412,25 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
                   <option value="Other">Other</option>
                 </select>
               </div>
+
+              <div>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                  Date of Birth (Optional)
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input
+                    type="text"
+                    placeholder="dd/mm/yyyy"
+                    value={formData.dob}
+                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                    style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
+                  />
+                </div>
+              </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
@@ -445,18 +461,19 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
                       color: '#1e293b',
                       outline: 'none',
                       cursor: 'pointer',
-                      flexShrink: 0
+                      flexShrink: 0,
+                      minWidth: '76px'
                     }}
                   >
-                    <option value="+91">🇮🇳 +91 (India)</option>
-                    <option value="+1">🇺🇸 +1 (US)</option>
-                    <option value="+44">🇬🇧 +44 (UK)</option>
-                    <option value="+971">🇦🇪 +971 (UAE)</option>
-                    <option value="+65">🇸🇬 +65 (SG)</option>
-                    <option value="+61">🇦🇺 +61 (AU)</option>
-                    <option value="+966">🇸🇦 +966 (SA)</option>
-                    <option value="+977">🇳🇵 +977 (NP)</option>
-                    <option value="+880">🇧🇩 +880 (BD)</option>
+                    <option value="+91">🇮🇳 +91</option>
+                    <option value="+1">🇺🇸 +1</option>
+                    <option value="+44">🇬🇧 +44</option>
+                    <option value="+971">🇦🇪 +971</option>
+                    <option value="+65">🇸🇬 +65</option>
+                    <option value="+61">🇦🇺 +61</option>
+                    <option value="+966">🇸🇦 +966</option>
+                    <option value="+977">🇳🇵 +977</option>
+                    <option value="+880">🇧🇩 +880</option>
                   </select>
                   <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
                     <Phone size={15} style={{ position: 'absolute', left: '10px', color: '#94a3b8' }} />
@@ -496,22 +513,6 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
                     placeholder="email@example.com"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Date of Birth (Optional)
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    type="text"
-                    placeholder="dd/mm/yyyy"
-                    value={formData.dob}
-                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
                     style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
                   />
                 </div>
@@ -600,7 +601,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  PAN Card Number (Optional)
+                  PAN Card Number
                 </label>
                 <div style={{ position: 'relative' }}>
                   <CreditCard size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
