@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, UserPlus, CheckCircle2, Lock, Eye, EyeOff, Mail, Phone, Calendar, User, AlertCircle, Sparkles } from 'lucide-react';
+import { X, UserPlus, CheckCircle2, Lock, Eye, EyeOff, Mail, Phone, Calendar, User, AlertCircle, Sparkles, ArrowLeft, ArrowRight } from 'lucide-react';
 import { api } from '../services/api';
 
 interface AddMemberModalProps {
@@ -11,17 +11,22 @@ interface AddMemberModalProps {
 
 export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onAddMember, user }) => {
   const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
-  const [placementMode, setPlacementMode] = useState<'auto' | 'manual'>('auto');
   const [formData, setFormData] = useState({
     name: '',
+    countryCode: '+91',
     mobile: '',
     email: '',
     dob: '',
+    gender: 'Male',
+    address: '',
+    state: '',
+    city: '',
+    pincode: '',
+    panNumber: '',
+    aadhaarNumber: '',
     password: '',
     confirmPassword: '',
     sponsorId: user?.memberId || '',
-    parentId: '',
-    placementId: '',
     position: 'LEFT',
   });
 
@@ -66,8 +71,19 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
       return;
     }
 
-    if (!formData.mobile.trim()) {
+    const cleanMobile = formData.mobile.trim();
+    if (!cleanMobile) {
       setError('Please provide 10-digit mobile number.');
+      return;
+    }
+
+    if (!/^\d+$/.test(cleanMobile)) {
+      setError('Mobile number must contain digits only. Non-numeric characters and letters are not allowed.');
+      return;
+    }
+
+    if (cleanMobile.length !== 10) {
+      setError('Mobile number must contain exactly 10 digits.');
       return;
     }
 
@@ -76,16 +92,21 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
       return;
     }
 
+    if (formData.aadhaarNumber && formData.aadhaarNumber.trim()) {
+      const cleanAadhaar = formData.aadhaarNumber.trim().replace(/\s+/g, '');
+      if (!/^\d+$/.test(cleanAadhaar) || /[^\d\s]/.test(formData.aadhaarNumber)) {
+        setError('Aadhaar number must contain digits only. Letters and special characters are not allowed.');
+        return;
+      }
+      if (cleanAadhaar.length !== 12) {
+        setError('Aadhaar number must contain exactly 12 digits.');
+        return;
+      }
+    }
+
     if (!isFirstMember && !formData.sponsorId.trim()) {
       setError('Please enter Sponsor ID (e.g. ADMIN or an existing Member ID).');
       return;
-    }
-
-    if (placementMode === 'manual') {
-      if (!formData.parentId.trim()) {
-        setError('Please specify Binary Parent ID for manual placement.');
-        return;
-      }
     }
 
     if (!formData.password) {
@@ -107,27 +128,23 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
       setLoading(true);
 
       const payload: any = {
-        ...formData,
-        sponsorId: formData.sponsorId ? formData.sponsorId.trim().toUpperCase() : '',
+        name: formData.name.trim(),
+        countryCode: formData.countryCode,
+        mobile: cleanMobile,
+        email: formData.email.trim(),
+        dob: formData.dob ? formData.dob.trim() : undefined,
+        gender: formData.gender,
+        address: formData.address.trim() || undefined,
+        state: formData.state.trim() || undefined,
+        city: formData.city.trim() || undefined,
+        pincode: formData.pincode.trim() || undefined,
+        panNumber: formData.panNumber.trim().toUpperCase() || undefined,
+        aadhaarNumber: formData.aadhaarNumber ? formData.aadhaarNumber.trim().replace(/\s+/g, '') : undefined,
+        password: formData.password,
+        confirmPassword: formData.confirmPassword,
+        sponsorId: formData.sponsorId ? formData.sponsorId.trim().toUpperCase() : (isFirstMember ? 'ADMIN' : ''),
+        position: formData.position.toUpperCase(),
       };
-
-      if (placementMode === 'manual') {
-        const cleanParent = formData.parentId.trim().toUpperCase();
-        const pos = formData.position.toUpperCase();
-        // Client-side quick check
-        const valRes = await api.validatePlacement(cleanParent, pos);
-        if (!valRes.status) {
-          setError(valRes.message || `Position ${pos} under ${cleanParent} is not available.`);
-          setLoading(false);
-          return;
-        }
-        payload.parentId = cleanParent;
-        payload.placementId = cleanParent;
-        payload.position = pos;
-      } else {
-        delete payload.parentId;
-        delete payload.placementId;
-      }
 
       await onAddMember(payload);
     } catch (err: any) {
@@ -268,21 +285,73 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
           </div>
 
           {/* Mobile & Email */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: '12px' }}>
             <div>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                Mobile Number * (Unique)
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input
-                  type="tel"
-                  required
-                  placeholder="Enter 10 digit mobile"
-                  value={formData.mobile}
-                  onChange={(e) => setFormData({ ...formData, mobile: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                />
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
+                  Mobile Number * (Unique)
+                </label>
+                <span style={{ fontSize: '10.5px', color: formData.mobile.length === 10 ? '#10b981' : '#94a3b8', fontWeight: 600 }}>
+                  {formData.mobile.length}/10 digits
+                </span>
+              </div>
+              <div style={{
+                display: 'flex',
+                borderRadius: '8px',
+                border: '1px solid #cbd5e1',
+                overflow: 'hidden',
+                background: '#ffffff',
+                boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
+              }}>
+                <select
+                  value={formData.countryCode}
+                  onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
+                  style={{
+                    padding: '9px 6px',
+                    border: 'none',
+                    borderRight: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    fontSize: '12.5px',
+                    fontWeight: 600,
+                    color: '#1e293b',
+                    outline: 'none',
+                    cursor: 'pointer',
+                    flexShrink: 0
+                  }}
+                >
+                  <option value="+91">🇮🇳 +91</option>
+                  <option value="+1">🇺🇸 +1</option>
+                  <option value="+44">🇬🇧 +44</option>
+                  <option value="+971">🇦🇪 +971</option>
+                  <option value="+65">🇸🇬 +65</option>
+                  <option value="+61">🇦🇺 +61</option>
+                  <option value="+966">🇸🇦 +966</option>
+                  <option value="+977">🇳🇵 +977</option>
+                  <option value="+880">🇧🇩 +880</option>
+                </select>
+                <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
+                  <Phone size={15} style={{ position: 'absolute', left: '10px', color: '#94a3b8' }} />
+                  <input
+                    type="tel"
+                    required
+                    maxLength={10}
+                    placeholder="10 digit mobile"
+                    value={formData.mobile}
+                    onChange={(e) => {
+                      // Reject non-numeric characters and cap at 10 digits
+                      const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormData({ ...formData, mobile: digits });
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '9px 10px 9px 30px',
+                      border: 'none',
+                      fontSize: '12.5px',
+                      outline: 'none',
+                      letterSpacing: '0.5px'
+                    }}
+                  />
+                </div>
               </div>
             </div>
 
@@ -304,20 +373,79 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
             </div>
           </div>
 
-          {/* Date of Birth */}
+          {/* Date of Birth & Gender */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                Date of Birth (Optional)
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  type="text"
+                  placeholder="dd/mm/yyyy"
+                  value={formData.dob}
+                  onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                Gender
+              </label>
+              <select
+                value={formData.gender}
+                onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', background: '#fff' }}
+              >
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Address & City/State */}
           <div>
             <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-              Date of Birth (Optional)
+              Address & State/City (Optional)
             </label>
-            <div style={{ position: 'relative' }}>
-              <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+            <input
+              type="text"
+              placeholder="Street Address, City, State, PIN"
+              value={formData.address}
+              onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+              style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', marginBottom: '8px' }}
+            />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
               <input
                 type="text"
-                placeholder="dd/mm/yyyy"
-                value={formData.dob}
-                onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
+                placeholder="PAN Number (Optional)"
+                value={formData.panNumber}
+                onChange={(e) => setFormData({ ...formData, panNumber: e.target.value.toUpperCase() })}
+                style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px' }}
               />
+              <div>
+                <input
+                  type="text"
+                  maxLength={12}
+                  placeholder="12-digit Aadhaar Number (Optional)"
+                  value={formData.aadhaarNumber}
+                  onChange={(e) => {
+                    // Reject non-numeric characters and limit to 12 digits
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 12);
+                    setFormData({ ...formData, aadhaarNumber: digits });
+                  }}
+                  style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                />
+                {formData.aadhaarNumber && (
+                  <span style={{ fontSize: '10.5px', color: formData.aadhaarNumber.length === 12 ? '#10b981' : '#f59e0b', display: 'block', marginTop: '3px' }}>
+                    {formData.aadhaarNumber.length}/12 digits
+                  </span>
+                )}
+              </div>
             </div>
           </div>
 
@@ -372,8 +500,8 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
             </div>
           </div>
 
-          {/* Sponsor ID & Placement Leg */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+          {/* Sponsor ID & Directional Placement Leg */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                 Sponsor ID {isFirstMember ? <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>(Optional - Root Node)</span> : '*'}
@@ -391,87 +519,59 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
 
             <div>
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                Binary Placement
+                Placement Leg *
               </label>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
                   type="button"
-                  onClick={() => setPlacementMode('auto')}
+                  onClick={() => setFormData({ ...formData, position: 'LEFT' })}
                   style={{
                     flex: 1,
-                    padding: '8px 10px',
+                    padding: '9px 10px',
                     borderRadius: '8px',
-                    border: placementMode === 'auto' ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                    background: placementMode === 'auto' ? '#eff6ff' : '#f8fafc',
-                    color: placementMode === 'auto' ? '#1d4ed8' : '#64748b',
-                    fontWeight: 600,
-                    fontSize: '12px',
-                    cursor: 'pointer'
+                    border: formData.position === 'LEFT' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    background: formData.position === 'LEFT' ? '#eff6ff' : '#f8fafc',
+                    color: formData.position === 'LEFT' ? '#1d4ed8' : '#64748b',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  ⚡ Auto (BFS)
+                  <ArrowLeft size={15} />
+                  <span>LEFT Leg</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPlacementMode('manual')}
+                  onClick={() => setFormData({ ...formData, position: 'RIGHT' })}
                   style={{
                     flex: 1,
-                    padding: '8px 10px',
+                    padding: '9px 10px',
                     borderRadius: '8px',
-                    border: placementMode === 'manual' ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                    background: placementMode === 'manual' ? '#eff6ff' : '#f8fafc',
-                    color: placementMode === 'manual' ? '#1d4ed8' : '#64748b',
-                    fontWeight: 600,
-                    fontSize: '12px',
-                    cursor: 'pointer'
+                    border: formData.position === 'RIGHT' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                    background: formData.position === 'RIGHT' ? '#eff6ff' : '#f8fafc',
+                    color: formData.position === 'RIGHT' ? '#1d4ed8' : '#64748b',
+                    fontWeight: 700,
+                    fontSize: '12.5px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    transition: 'all 0.15s ease'
                   }}
                 >
-                  🎯 Manual
+                  <span>RIGHT Leg</span>
+                  <ArrowRight size={15} />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Manual Placement Details: Distinct Binary Tree Placement */}
-          {placementMode === 'manual' && (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1.2fr 1fr',
-              gap: '12px',
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              padding: '12px',
-              borderRadius: '8px'
-            }}>
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Binary Parent ID * <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}>(Under whom placed)</span>
-                </label>
-                <input
-                  type="text"
-                  required={placementMode === 'manual'}
-                  placeholder="e.g. MEM0006"
-                  value={formData.parentId}
-                  onChange={(e) => setFormData({ ...formData, parentId: e.target.value.toUpperCase() })}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Position *
-                </label>
-                <select
-                  value={formData.position}
-                  onChange={(e) => setFormData({ ...formData, position: e.target.value })}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}
-                >
-                  <option value="LEFT">LEFT Leg</option>
-                  <option value="RIGHT">RIGHT Leg</option>
-                </select>
-              </div>
-            </div>
-          )}
 
 
           {/* Action buttons */}

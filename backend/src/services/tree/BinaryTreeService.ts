@@ -432,13 +432,110 @@ export class BinaryTreeService {
   }
 
   /**
-   * Find available placement slot under given member (defaults to balanced auto-placement)
+   * Sponsor-Driven Directional Extreme Leg Placement:
+   * Starting from sponsor member, continuously step down the selected leg
+   * (LEFT -> leftChild -> leftChild... or RIGHT -> rightChild -> rightChild...)
+   * until a node with an empty slot on that leg is reached.
+   * Returns:
+   * - parentId
+   * - parentName
+   * - position (the requested leg)
+   * - traversalPath: array of member IDs traversed
+   */
+  static async findExtremeLegPlacement(
+    sponsorMemberId: string,
+    leg: BinaryPosition | string
+  ): Promise<{
+    parentId: string;
+    parentName: string;
+    position: BinaryPosition;
+    traversalPath: string[];
+  }> {
+    const rawLeg = (leg || '').toUpperCase().trim();
+    const normalizedLeg: BinaryPosition =
+      rawLeg === BINARY_POSITION.RIGHT || rawLeg === 'RIGHT'
+        ? BINARY_POSITION.RIGHT
+        : BINARY_POSITION.LEFT;
+
+    let cleanSponsorId = (sponsorMemberId || '').toUpperCase().trim();
+
+    // If sponsor is missing, 'ADMIN', or 'ROOT', find the root member of the company
+    let sponsor: IMember | null = null;
+    if (!cleanSponsorId || cleanSponsorId === 'ADMIN' || cleanSponsorId === 'ROOT') {
+      sponsor = await Member.findOne().sort({ createdAt: 1 });
+    } else {
+      sponsor = await Member.findOne({ memberId: cleanSponsorId });
+      // Fallback to root member if sponsor ID not found
+      if (!sponsor) {
+        sponsor = await Member.findOne().sort({ createdAt: 1 });
+      }
+    }
+
+    // Edge case: if tree is completely empty, new member will be Root
+    if (!sponsor) {
+      return {
+        parentId: '',
+        parentName: 'Root Company',
+        position: normalizedLeg,
+        traversalPath: [],
+      };
+    }
+
+    let currentNode = sponsor;
+    const traversalPath: string[] = [currentNode.memberId];
+    const visited = new Set<string>([currentNode.memberId]);
+
+    // Traverse down along the chosen leg until an empty slot is encountered
+    while (currentNode) {
+      const child: IMember | null = await Member.findOne({
+        $or: [
+          { parentId: currentNode.memberId, position: normalizedLeg },
+          { parentId: currentNode.memberId, binaryPosition: normalizedLeg },
+          { binaryParentId: currentNode.memberId, position: normalizedLeg },
+          { binaryParentId: currentNode.memberId, binaryPosition: normalizedLeg },
+        ],
+        status: { $ne: 'rejected' },
+      }).select('memberId name parentId position binaryParentId binaryPosition');
+
+      if (!child) {
+        // Found the node with an empty slot on this leg!
+        return {
+          parentId: currentNode.memberId,
+          parentName: currentNode.name,
+          position: normalizedLeg,
+          traversalPath,
+        };
+      }
+
+      // Loop guard
+      if (visited.has(child.memberId)) {
+        break;
+      }
+      visited.add(child.memberId);
+      traversalPath.push(child.memberId);
+
+      // Step down along the same leg
+      currentNode = child;
+    }
+
+    return {
+      parentId: currentNode.memberId,
+      parentName: currentNode.name,
+      position: normalizedLeg,
+      traversalPath,
+    };
+  }
+
+  /**
+   * Find available placement slot under given member using directional extreme leg placement
    */
   static async findAvailablePlacement(
     startMemberId: string,
     preferredLeg?: BinaryPosition
   ): Promise<{ parentId: string; position: BinaryPosition }> {
-    return this.findNextAutoPlacement(startMemberId);
+    const leg = preferredLeg || BINARY_POSITION.LEFT;
+    const res = await this.findExtremeLegPlacement(startMemberId, leg);
+    return { parentId: res.parentId, position: res.position };
   }
 
   /**

@@ -28,12 +28,22 @@ export const AuthController = {
         email,
         phone,
         mobile,
+        countryCode,
         password,
         confirmPassword,
         sponsorId,
         parentId,
         placementId,
         position,
+        dob,
+        gender,
+        address,
+        state,
+        city,
+        pincode,
+        panNumber,
+        aadhaarNumber,
+        termsAccepted,
         packageId,
         packageName,
         package: pkgInput,
@@ -72,18 +82,69 @@ export const AuthController = {
       if (!memberPhone) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
           status: false,
-          message: 'Phone number is required',
+          message: 'Mobile number is required',
         });
         return;
       }
 
-      const cleanPhone = memberPhone.replace(/[^0-9]/g, '');
-      if (cleanPhone.length < 10) {
+      // 1. Mobile Number Validation: Must contain exactly 10 numeric digits, no non-numeric characters
+      const cleanPhone = String(memberPhone).trim();
+      let strippedPhone = cleanPhone;
+      if (strippedPhone.startsWith('+91')) {
+        strippedPhone = strippedPhone.slice(3).trim();
+      } else if (strippedPhone.startsWith('+')) {
+        strippedPhone = strippedPhone.replace(/^\+\d{1,4}\s*/, '').trim();
+      }
+
+      // Reject non-numeric characters
+      if (!/^\d+$/.test(strippedPhone)) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
           status: false,
-          message: 'Please provide a valid phone number with at least 10 digits',
+          message: 'Mobile number must contain digits only. Letters and special characters are not allowed.',
         });
         return;
+      }
+
+      // Reject invalid lengths
+      if (strippedPhone.length !== 10) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Mobile number must contain exactly 10 digits.',
+        });
+        return;
+      }
+
+      const validMobile = strippedPhone;
+      let resolvedCountryCode = (countryCode || '+91').trim();
+      if (!/^\+\d{1,4}$/.test(resolvedCountryCode)) {
+        resolvedCountryCode = '+91';
+      }
+
+      // 2. Aadhaar Number Validation: Must contain exactly 12 numeric digits, reject letters and special characters
+      let validAadhaar = '';
+      if (aadhaarNumber && String(aadhaarNumber).trim()) {
+        const rawAadhaarInput = String(aadhaarNumber).trim();
+        const compactAadhaar = rawAadhaarInput.replace(/\s+/g, '');
+
+        // Reject non-numeric characters
+        if (!/^\d+$/.test(compactAadhaar) || /[^\d\s]/.test(rawAadhaarInput)) {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({
+            status: false,
+            message: 'Aadhaar number must contain numeric digits only. Letters and special characters are not allowed.',
+          });
+          return;
+        }
+
+        // Reject invalid length
+        if (compactAadhaar.length !== 12) {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({
+            status: false,
+            message: 'Aadhaar number must contain exactly 12 digits.',
+          });
+          return;
+        }
+
+        validAadhaar = compactAadhaar;
       }
 
       if (!password) {
@@ -122,15 +183,15 @@ export const AuthController = {
       }
 
       const existingPhoneMember = await Member.findOne({
-        $or: [{ mobile: memberPhone }, { mobile: cleanPhone }, { phone: memberPhone }, { phone: cleanPhone }],
+        $or: [{ mobile: validMobile }, { phone: validMobile }],
       });
       const existingPhoneAdmin = await Admin.findOne({
-        $or: [{ phone: memberPhone }, { phone: cleanPhone }],
+        $or: [{ phone: validMobile }],
       });
       if (existingPhoneMember || existingPhoneAdmin) {
         res.status(HTTP_STATUS.CONFLICT).json({
           status: false,
-          message: `Phone number "${memberPhone}" is already registered. Phone must be unique.`,
+          message: `Phone number "${validMobile}" is already registered. Phone must be unique.`,
         });
         return;
       }
@@ -141,11 +202,9 @@ export const AuthController = {
       let finalParentId = '';
       let finalPosition: BinaryPosition = BINARY_POSITION.LEFT;
 
-      const requestedParentId = (parentId || placementId || '').trim().toUpperCase();
       const rawPosition = (position || '').trim().toUpperCase();
-      const isManualPlacement = Boolean(
-        requestedParentId && (rawPosition === 'LEFT' || rawPosition === 'RIGHT')
-      );
+      const targetPos: BinaryPosition =
+        rawPosition === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
 
       if (totalMemberCount === 0) {
         resolvedSponsorId = 'ADMIN';
@@ -164,29 +223,10 @@ export const AuthController = {
           }
         }
 
-        if (isManualPlacement) {
-          // Manual Placement: Explicit sponsorId, parentId, and position
-          const targetPos: BinaryPosition =
-            rawPosition === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
-
-          const validation = await BinaryTreeService.validatePlacement(requestedParentId, targetPos);
-          if (!validation.isValid) {
-            res.status(HTTP_STATUS.BAD_REQUEST).json({
-              status: false,
-              message: validation.error || `Position ${targetPos} under parent ${requestedParentId} is not available.`,
-            });
-            return;
-          }
-
-          finalParentId = requestedParentId;
-          finalPosition = targetPos;
-        } else {
-          // Automatic Placement: Use BFS to find the first available slot
-          const placementRoot = (resolvedSponsorId && resolvedSponsorId !== 'ADMIN') ? resolvedSponsorId : '';
-          const autoPlacement = await BinaryTreeService.findNextAutoPlacement(placementRoot);
-          finalParentId = autoPlacement.parentId;
-          finalPosition = autoPlacement.position;
-        }
+        // Directional Extreme Leg Placement: Traverse down sponsor's chosen leg to first empty slot
+        const placement = await BinaryTreeService.findExtremeLegPlacement(resolvedSponsorId, targetPos);
+        finalParentId = placement.parentId;
+        finalPosition = placement.position;
       }
 
       // 4. Generate Next Sequential Member ID
@@ -217,8 +257,18 @@ export const AuthController = {
         memberId: newMemberId,
         name: memberName,
         email: memberEmail,
-        mobile: memberPhone,
-        phone: memberPhone,
+        countryCode: resolvedCountryCode,
+        mobile: validMobile,
+        phone: validMobile,
+        dob: dob ? String(dob).trim() : '',
+        gender: gender ? String(gender).trim() : '',
+        address: address ? String(address).trim() : '',
+        state: state ? String(state).trim() : '',
+        city: city ? String(city).trim() : '',
+        pincode: pincode ? String(pincode).trim() : '',
+        panNumber: panNumber ? String(panNumber).trim().toUpperCase() : '',
+        aadhaarNumber: validAadhaar,
+        termsAccepted: termsAccepted !== false,
         password,
         role: ROLES.MEMBER,
         sponsorId: resolvedSponsorId,
@@ -604,6 +654,19 @@ export const AuthController = {
             requiredBinaryBv: 100,
             leftBv: member.leftBv,
             rightBv: member.rightBv,
+            countryCode: member.countryCode || '+91',
+            gender: member.gender || '',
+            dob: member.dob || '',
+            address: member.address || '',
+            city: member.city || '',
+            state: member.state || '',
+            pincode: member.pincode || '',
+            panNumber: member.panNumber || '',
+            aadhaarNumber: member.aadhaarNumber
+              ? (member.aadhaarNumber.replace(/\D/g, '').length >= 4
+                  ? `•••• •••• ${member.aadhaarNumber.replace(/\D/g, '').slice(-4)}`
+                  : '••••')
+              : '',
             createdAt: member.createdAt,
           },
         });
@@ -745,6 +808,61 @@ export const AuthController = {
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         status: false,
         message: error.message || 'Internal server error updating profile',
+      });
+    }
+  },
+
+  /**
+   * Public Sponsor Lookup (for referral link & pre-registration)
+   * GET /api/auth/sponsor-lookup/:sponsorId
+   */
+  async sponsorLookup(req: Request, res: Response): Promise<void> {
+    try {
+      const rawId = (req.params.sponsorId || (req.query.sponsorId as string) || (req.query.ref as string) || '').trim().toUpperCase();
+      if (!rawId) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: 'Sponsor ID is required.' });
+        return;
+      }
+
+      if (rawId === 'ADMIN') {
+        const rootMember = await Member.findOne().sort({ createdAt: 1 });
+        res.status(HTTP_STATUS.OK).json({
+          status: true,
+          data: {
+            memberId: 'ADMIN',
+            name: rootMember ? `${rootMember.name} (Root Admin)` : 'Company Admin',
+            status: 'active',
+            rank: 'Company',
+          },
+        });
+        return;
+      }
+
+      const member = await Member.findOne({ memberId: rawId }).select('memberId name rank status packageName isActive');
+      if (!member) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({
+          status: false,
+          message: `Sponsor ID "${rawId}" does not exist. Please enter a valid Sponsor ID.`,
+        });
+        return;
+      }
+
+      res.status(HTTP_STATUS.OK).json({
+        status: true,
+        data: {
+          memberId: member.memberId,
+          name: member.name,
+          rank: member.rank || 'Distributor',
+          status: member.status,
+          packageName: member.packageName || 'Basic',
+          isActive: member.isActive,
+        },
+      });
+    } catch (error: any) {
+      console.error('[AuthController.sponsorLookup] Error:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        status: false,
+        message: error.message || 'Error looking up sponsor',
       });
     }
   },

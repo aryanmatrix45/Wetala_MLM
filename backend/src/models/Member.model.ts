@@ -10,8 +10,17 @@ export interface IMember extends Document {
   name: string;
   email: string;
   mobile: string;
+  countryCode?: string;
   phone?: string;
   dob?: string;
+  gender?: string;
+  address?: string;
+  state?: string;
+  city?: string;
+  pincode?: string;
+  panNumber?: string;
+  aadhaarNumber?: string;
+  termsAccepted?: boolean;
   password?: string;
   role: string;
   
@@ -93,6 +102,11 @@ const memberSchema = new Schema<IMember, IMemberModel>(
       index: true,
       match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please provide a valid email address'],
     },
+    countryCode: {
+      type: String,
+      trim: true,
+      default: '+91',
+    },
     mobile: {
       type: String,
       required: [true, 'Mobile number is required'],
@@ -108,6 +122,46 @@ const memberSchema = new Schema<IMember, IMemberModel>(
       type: String,
       trim: true,
       default: '',
+    },
+    gender: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    address: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    state: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    city: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    pincode: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    panNumber: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      default: '',
+    },
+    aadhaarNumber: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    termsAccepted: {
+      type: Boolean,
+      default: true,
     },
     password: {
       type: String,
@@ -281,6 +335,26 @@ const memberSchema = new Schema<IMember, IMemberModel>(
   },
   {
     timestamps: true,
+    toJSON: {
+      transform: (_doc, ret: Record<string, any>) => {
+        delete ret.password;
+        if (ret.aadhaarNumber && typeof ret.aadhaarNumber === 'string') {
+          const raw = ret.aadhaarNumber.replace(/\D/g, '');
+          ret.aadhaarNumber = raw.length >= 4 ? `•••• •••• ${raw.slice(-4)}` : '••••';
+        }
+        return ret;
+      },
+    },
+    toObject: {
+      transform: (_doc, ret: Record<string, any>) => {
+        delete ret.password;
+        if (ret.aadhaarNumber && typeof ret.aadhaarNumber === 'string') {
+          const raw = ret.aadhaarNumber.replace(/\D/g, '');
+          ret.aadhaarNumber = raw.length >= 4 ? `•••• •••• ${raw.slice(-4)}` : '••••';
+        }
+        return ret;
+      },
+    },
   }
 );
 

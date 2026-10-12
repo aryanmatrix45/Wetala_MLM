@@ -4,9 +4,10 @@ import { api } from '../services/api';
 
 interface LoginPageProps {
   onLoginSuccess: (user: any, token: string) => void;
+  onGoToPreReg?: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreReg }) => {
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Login form state
@@ -323,10 +324,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
               Don't have an account?{' '}
               <button
                 type="button"
-                onClick={() => setAuthMode('register')}
+                onClick={() => {
+                  if (onGoToPreReg) {
+                    onGoToPreReg();
+                  } else {
+                    setAuthMode('register');
+                  }
+                }}
                 style={{ color: '#38bdf8', fontWeight: 700, textDecoration: 'underline' }}
               >
-                Sign Up Free
+                Sign Up / Join with Referral
               </button>
             </div>
           </>

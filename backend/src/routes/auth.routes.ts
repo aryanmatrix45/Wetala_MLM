@@ -13,6 +13,10 @@ router.post('/login', AuthController.login);
 // Public Member Registration / Signup
 router.post('/register', AuthController.register);
 
+// Public Sponsor Lookup (Pre-registration / Referral link)
+router.get('/sponsor-lookup/:sponsorId', AuthController.sponsorLookup);
+router.get('/sponsor-lookup', AuthController.sponsorLookup);
+
 // Check if SuperAdmin exists in database
 router.get('/superadmin-status', AuthController.getSuperAdminStatus);
 

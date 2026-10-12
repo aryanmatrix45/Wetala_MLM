@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Bell, ChevronDown, LogOut, Zap, Search, ShieldCheck, AlertTriangle, X } from 'lucide-react';
+import { Menu, Bell, ChevronDown, LogOut, Zap, Search, ShieldCheck, AlertTriangle, X, User } from 'lucide-react';
 import { api } from '../services/api';
 
 interface TopNavbarProps {
@@ -367,6 +367,19 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
               </div>
 
               <div className="profile-dropdown-divider" />
+
+              <button
+                type="button"
+                className="profile-dropdown-item"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsDropdownOpen(false);
+                  onNavigate?.('profile');
+                }}
+              >
+                <User size={16} />
+                <span>My Profile & Referrals</span>
+              </button>
 
               <button
                 type="button"

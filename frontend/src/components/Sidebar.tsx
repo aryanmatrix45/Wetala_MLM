@@ -20,6 +20,7 @@ import {
   Layers,
   Landmark,
   ShoppingCart,
+  Share2,
   X
 } from 'lucide-react';
 import { api } from '../services/api';
@@ -92,7 +93,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     {
       title: 'Overview',
       items: [
-        { id: 'dashboard', label: 'Dashboard', icon: Home }
+        { id: 'dashboard', label: 'Dashboard', icon: Home },
+        { id: 'profile', label: 'Refer & Grow (Profile)', icon: Share2, badge: 'Share' }
       ]
     },
     {

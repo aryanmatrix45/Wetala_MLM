@@ -18,6 +18,9 @@ import { AdminSubcategoriesPage } from './pages/AdminSubcategoriesPage';
 import { MemberProductsPage } from './pages/MemberProductsPage';
 import { CompanyAccountPage } from './pages/CompanyAccountPage';
 import { PurchaseRequestsPage } from './pages/PurchaseRequestsPage';
+import { PreRegistrationPage } from './pages/PreRegistrationPage';
+import { FullRegistrationPage } from './pages/FullRegistrationPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { api } from './services/api';
 
 export function App() {
@@ -36,6 +39,36 @@ export function App() {
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Public routing state (for pre-registration & referral links)
+  const getInitialAuthView = () => {
+    const path = window.location.pathname;
+    if (path === '/pre-registration') return 'pre-registration';
+    if (path === '/register') return 'register';
+    return 'login';
+  };
+
+  const [authView, setAuthView] = useState<'login' | 'pre-registration' | 'register'>(getInitialAuthView);
+  const [registrationPrefill, setRegistrationPrefill] = useState<{
+    sponsorId: string;
+    sponsorName: string;
+    position: 'LEFT' | 'RIGHT';
+  } | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ref = params.get('ref') || params.get('sponsorId') || '';
+    const leg = (params.get('leg') || params.get('position') || 'LEFT').toUpperCase() as 'LEFT' | 'RIGHT';
+    if (ref) {
+      return { sponsorId: ref.toUpperCase(), sponsorName: '', position: leg === 'RIGHT' ? 'RIGHT' : 'LEFT' };
+    }
+    return null;
+  });
+
+  const navigateAuth = (view: 'login' | 'pre-registration' | 'register', urlPath?: string) => {
+    setAuthView(view);
+    if (urlPath) {
+      window.history.pushState(null, '', urlPath);
+    }
+  };
 
   // Tab switch handler with URL cleanup
   const handleTabChange = (newTab: string) => {
@@ -133,9 +166,35 @@ export function App() {
     );
   }
 
-  // If not authenticated, render Login Screen
+  // If not authenticated, render Login Screen, Pre-Registration, or Full Registration
   if (!token) {
-    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+    if (authView === 'pre-registration') {
+      return (
+        <PreRegistrationPage
+          onProceed={(data) => {
+            setRegistrationPrefill(data);
+            navigateAuth('register', '/register');
+          }}
+          onGoToLogin={() => navigateAuth('login', '/')}
+        />
+      );
+    }
+
+    if (authView === 'register') {
+      return (
+        <FullRegistrationPage
+          initialData={registrationPrefill || { sponsorId: 'ADMIN', sponsorName: 'Company Admin', position: 'LEFT' }}
+          onBackToPreReg={() => navigateAuth('pre-registration', '/pre-registration')}
+          onGoToLogin={() => navigateAuth('login', '/')}
+        />
+      );
+    }
+
+    return (
+      <LoginPage
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
   }
 
   return (
@@ -251,6 +310,14 @@ export function App() {
         {activeTab === 'wallet-payouts' && <PayoutsPage user={user} token={token} defaultSubTab="commissions" onNavigate={handleTabChange} />}
 
         {activeTab === 'withdrawals' && <PayoutsPage user={user} token={token} defaultSubTab="requests" onNavigate={handleTabChange} />}
+
+        {activeTab === 'profile' && (
+          <ProfilePage
+            user={user}
+            token={token}
+            onNavigate={handleTabChange}
+          />
+        )}
 
         {(activeTab === 'reports' || activeTab === 'cms-content' || activeTab === 'settings') && (
           <div className="page-body">

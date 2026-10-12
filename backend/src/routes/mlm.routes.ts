@@ -254,7 +254,16 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
       name,
       email,
       mobile,
+      countryCode,
       dob,
+      gender,
+      address,
+      state,
+      city,
+      pincode,
+      panNumber,
+      aadhaarNumber,
+      termsAccepted,
       password,
       confirmPassword,
       sponsorId,
@@ -316,9 +325,68 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
     }
 
     const cleanEmail = email.toLowerCase().trim();
-    const cleanMobile = mobile.replace(/[^0-9]/g, '');
+    
+    // 1. Mobile Number Validation: Must contain exactly 10 numeric digits, no non-numeric characters
+    const cleanPhone = String(mobile).trim();
+    let strippedPhone = cleanPhone;
+    if (strippedPhone.startsWith('+91')) {
+      strippedPhone = strippedPhone.slice(3).trim();
+    } else if (strippedPhone.startsWith('+')) {
+      strippedPhone = strippedPhone.replace(/^\+\d{1,4}\s*/, '').trim();
+    }
 
-    // 2. Uniqueness Checks
+    // Reject non-numeric characters
+    if (!/^\d+$/.test(strippedPhone)) {
+      res.status(HTTP_STATUS.BAD_REQUEST).json({
+        status: false,
+        message: 'Mobile number must contain digits only. Letters and special characters are not allowed.'
+      });
+      return;
+    }
+
+    // Reject invalid lengths
+    if (strippedPhone.length !== 10) {
+      res.status(HTTP_STATUS.BAD_REQUEST).json({
+        status: false,
+        message: 'Mobile number must contain exactly 10 digits.'
+      });
+      return;
+    }
+
+    const cleanMobile = strippedPhone;
+    let resolvedCountryCode = (countryCode || '+91').trim();
+    if (!/^\+\d{1,4}$/.test(resolvedCountryCode)) {
+      resolvedCountryCode = '+91';
+    }
+
+    // 2. Aadhaar Number Validation: Must contain exactly 12 numeric digits, reject letters and special characters
+    let validAadhaar = '';
+    if (aadhaarNumber && String(aadhaarNumber).trim()) {
+      const rawAadhaarInput = String(aadhaarNumber).trim();
+      const compactAadhaar = rawAadhaarInput.replace(/\s+/g, '');
+
+      // Reject non-numeric characters
+      if (!/^\d+$/.test(compactAadhaar) || /[^\d\s]/.test(rawAadhaarInput)) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Aadhaar number must contain numeric digits only. Letters and special characters are not allowed.'
+        });
+        return;
+      }
+
+      // Reject invalid length
+      if (compactAadhaar.length !== 12) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Aadhaar number must contain exactly 12 digits.'
+        });
+        return;
+      }
+
+      validAadhaar = compactAadhaar;
+    }
+
+    // 3. Uniqueness Checks
     const existingEmail = await Member.findOne({ email: cleanEmail });
     if (existingEmail) {
       res.status(HTTP_STATUS.CONFLICT).json({
@@ -329,12 +397,12 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
     }
 
     const existingMobile = await Member.findOne({
-      $or: [{ mobile: cleanMobile }, { mobile: mobile.trim() }]
+      $or: [{ mobile: cleanMobile }, { phone: cleanMobile }]
     });
     if (existingMobile) {
       res.status(HTTP_STATUS.CONFLICT).json({
         status: false,
-        message: `A member with mobile number "${mobile.trim()}" already exists. Mobile must be unique.`
+        message: `A member with mobile number "${cleanMobile}" already exists. Mobile must be unique.`
       });
       return;
     }
@@ -345,11 +413,8 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
     let finalPos: BinaryPosition = BINARY_POSITION.LEFT;
     let finalSponsorId = (sponsorId || '').trim().toUpperCase();
 
-    const requestedParentId = (parentId || placementId || '').trim().toUpperCase();
     const rawPosition = (position || '').trim().toUpperCase();
-    const isManualPlacement = Boolean(
-      requestedParentId && (rawPosition === 'LEFT' || rawPosition === 'RIGHT')
-    );
+    const targetPos: BinaryPosition = rawPosition === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
 
     if (totalCount === 0) {
       // First member in system: ROOT NODE of the MLM tree
@@ -378,26 +443,10 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
         }
       }
 
-      if (isManualPlacement) {
-        // Manual placement: explicitly provided parentId and position
-        const targetPos: BinaryPosition = rawPosition === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
-        const validation = await BinaryTreeService.validatePlacement(requestedParentId, targetPos);
-        if (!validation.isValid) {
-          res.status(HTTP_STATUS.BAD_REQUEST).json({
-            status: false,
-            message: validation.error || `Position ${targetPos} under parent ${requestedParentId} is not available.`
-          });
-          return;
-        }
-        finalParentId = requestedParentId;
-        finalPos = targetPos;
-      } else {
-        // Auto-placement: Calculate balanced level-order binary placement under the sponsor
-        const placementRoot = (finalSponsorId && finalSponsorId !== 'ADMIN') ? finalSponsorId : '';
-        const autoPlacement = await BinaryTreeService.findNextAutoPlacement(placementRoot);
-        finalParentId = autoPlacement.parentId;
-        finalPos = autoPlacement.position;
-      }
+      // Directional Extreme Leg Placement: Traverse down sponsor's chosen leg (LEFT or RIGHT) to first empty slot
+      const placement = await BinaryTreeService.findExtremeLegPlacement(finalSponsorId, targetPos);
+      finalParentId = placement.parentId;
+      finalPos = placement.position;
     }
 
     // 4. Resolve Dynamic Package from MongoDB (only if explicitly specified)
@@ -459,8 +508,18 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
       memberId: newMemberId,
       name: name.trim(),
       email: cleanEmail,
-      mobile: mobile.trim(),
+      countryCode: resolvedCountryCode,
+      mobile: cleanMobile,
+      phone: cleanMobile,
       dob: dob ? dob.trim() : '',
+      gender: gender ? String(gender).trim() : '',
+      address: address ? String(address).trim() : '',
+      state: state ? String(state).trim() : '',
+      city: city ? String(city).trim() : '',
+      pincode: pincode ? String(pincode).trim() : '',
+      panNumber: panNumber ? String(panNumber).trim().toUpperCase() : '',
+      aadhaarNumber: validAadhaar,
+      termsAccepted: termsAccepted !== false,
       password,
       sponsorId: finalSponsorId,
       parentId: finalParentId,
@@ -620,7 +679,7 @@ const handleApproveMember = async (req: AuthenticatedRequest, res: any) => {
       const placementCheck = await BinaryTreeService.validatePlacement(member.parentId, targetPos, member.memberId);
       if (!placementCheck.isValid) {
         const placementRoot = (member.sponsorId && member.sponsorId !== 'ADMIN') ? member.sponsorId : '';
-        const auto = await BinaryTreeService.findNextAutoPlacement(placementRoot);
+        const auto = await BinaryTreeService.findExtremeLegPlacement(placementRoot, targetPos);
         member.parentId = auto.parentId;
         member.binaryParentId = auto.parentId;
         member.placementId = auto.parentId;

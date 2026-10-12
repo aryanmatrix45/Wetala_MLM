@@ -294,13 +294,29 @@ export const BinaryController = {
   },
 
   /**
-   * Find available placement slot under given member (auto-calculated balanced level-order)
+   * Preview directional extreme leg placement under given sponsor
+   * GET /api/binary/preview-placement?sponsorId=...&position=LEFT|RIGHT
+   */
+  async previewPlacement(req: Request, res: Response): Promise<void> {
+    try {
+      const sponsorId = (req.query.sponsorId as string) || (req.params.sponsorId as string) || '';
+      const position = (req.query.position as string) || 'LEFT';
+      const result = await BinaryTreeService.findExtremeLegPlacement(sponsorId, position);
+      res.status(HTTP_STATUS.OK).json({ status: true, data: result });
+    } catch (error: any) {
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
+    }
+  },
+
+  /**
+   * Find available placement slot under given member using directional extreme leg placement
    * GET /api/binary/available-placement/:memberId
    */
   async findAvailablePlacement(req: Request, res: Response): Promise<void> {
     try {
       const { memberId } = req.params;
-      const result = await BinaryTreeService.findNextAutoPlacement(memberId);
+      const leg = (req.query.position as string) || 'LEFT';
+      const result = await BinaryTreeService.findExtremeLegPlacement(memberId, leg);
       res.status(HTTP_STATUS.OK).json({ status: true, data: result });
     } catch (error: any) {
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });

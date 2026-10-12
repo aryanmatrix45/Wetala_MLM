@@ -282,19 +282,17 @@ export const api = {
     return res.json();
   },
 
-  async register(data: {
-    name: string;
-    email: string;
-    phone: string;
-    password: string;
-    confirmPassword?: string;
-    sponsorId?: string;
-  }) {
+  async register(data: any) {
     const res = await fetch(`${API_BASE_URL}/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+    return res.json();
+  },
+
+  async lookupSponsor(sponsorId: string) {
+    const res = await fetch(`${API_BASE_URL}/auth/sponsor-lookup/${encodeURIComponent(sponsorId)}`);
     return res.json();
   },
 
@@ -566,6 +564,21 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ parentId, position, candidateMemberId }),
+    });
+    return res.json();
+  },
+
+  async previewPlacement(sponsorId: string, position: string, token?: string) {
+    const params = new URLSearchParams();
+    if (sponsorId) params.append('sponsorId', sponsorId);
+    if (position) params.append('position', position);
+    const headers: Record<string, string> = {};
+    const savedToken = token || localStorage.getItem('wetala_token');
+    if (savedToken) {
+      headers['Authorization'] = `Bearer ${savedToken}`;
+    }
+    const res = await fetch(`${API_BASE_URL}/binary/preview-placement?${params.toString()}`, {
+      headers,
     });
     return res.json();
   },
