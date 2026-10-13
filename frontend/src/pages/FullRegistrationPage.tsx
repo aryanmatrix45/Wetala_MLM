@@ -380,7 +380,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               1. Personal Information
             </h3>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+            <div className="fullreg-grid-3" style={{ marginBottom: '14px' }}>
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                   Full Name *
@@ -430,7 +430,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div className="fullreg-grid-2">
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                   <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
@@ -545,7 +545,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '14px' }}>
+            <div className="fullreg-grid-3-equal">
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                   State *
@@ -598,7 +598,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               3. Identity Details (KYC)
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div className="fullreg-grid-2">
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                   PAN Card Number
@@ -666,7 +666,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               4. Account Password
             </h3>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+            <div className="fullreg-grid-2">
               <div>
                 <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                   Password *

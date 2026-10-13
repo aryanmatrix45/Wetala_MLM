@@ -310,7 +310,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
               </div>
 
               {/* Email & Phone Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="auth-form-row">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   <label className="login-label">Email Address</label>
                   <div className="input-with-icon">
@@ -345,7 +345,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
               </div>
 
               {/* Sponsor ID & Preferred Leg Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+              <div className="auth-form-row auth-form-row-sponsor">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   <label className="login-label">Sponsor Member ID</label>
                   <div className="input-with-icon">
@@ -368,7 +368,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
                     value={regPosition}
                     onChange={(e) => setRegPosition(e.target.value as 'LEFT' | 'RIGHT')}
                     className="login-input"
-                    style={{ paddingLeft: '14px', cursor: 'pointer', background: '#1e293b', color: '#f8fafc' }}
+                    style={{ paddingLeft: '14px', paddingRight: '32px', cursor: 'pointer', background: '#1e293b', color: '#f8fafc' }}
                   >
                     <option value="LEFT">Left Wing</option>
                     <option value="RIGHT">Right Wing</option>
@@ -377,7 +377,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
               </div>
 
               {/* Password & Confirm Password Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div className="auth-form-row">
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
                   <label className="login-label">Password</label>
                   <div className="input-with-icon">
