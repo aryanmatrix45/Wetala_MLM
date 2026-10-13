@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User, Mail, Phone, Lock, Eye, EyeOff, MapPin, Calendar, CreditCard,
   FileText, CheckCircle2, AlertCircle, ArrowLeft,
@@ -11,6 +11,12 @@ interface FullRegistrationPageProps {
     sponsorId: string;
     sponsorName: string;
     position: 'LEFT' | 'RIGHT';
+    name?: string;
+    email?: string;
+    mobile?: string;
+    phone?: string;
+    password?: string;
+    confirmPassword?: string;
   };
   onBackToPreReg: () => void;
   onGoToLogin: () => void;
@@ -22,25 +28,39 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
   onGoToLogin
 }) => {
   const [formData, setFormData] = useState({
-    sponsorId: initialData.sponsorId,
-    sponsorName: initialData.sponsorName,
-    position: initialData.position,
-    name: '',
+    sponsorId: initialData.sponsorId || 'MEM0001',
+    sponsorName: initialData.sponsorName || 'Panchveda Sponsor',
+    position: initialData.position || 'LEFT',
+    name: initialData.name || '',
     countryCode: '+91',
-    mobile: '',
+    mobile: initialData.mobile || initialData.phone || '',
     gender: 'Male',
     dob: '',
-    email: '',
+    email: initialData.email || '',
     address: '',
     state: '',
     city: '',
     pincode: '',
     panNumber: '',
     aadhaarNumber: '',
-    password: '',
-    confirmPassword: '',
+    password: initialData.password || '',
+    confirmPassword: initialData.confirmPassword || '',
     agreeTerms: true,
   });
+
+  useEffect(() => {
+    setFormData((prev) => ({
+      ...prev,
+      sponsorId: initialData.sponsorId || prev.sponsorId,
+      sponsorName: initialData.sponsorName || prev.sponsorName,
+      position: initialData.position || prev.position,
+      name: initialData.name !== undefined ? initialData.name : prev.name,
+      mobile: initialData.mobile !== undefined ? initialData.mobile : (initialData.phone !== undefined ? initialData.phone : prev.mobile),
+      email: initialData.email !== undefined ? initialData.email : prev.email,
+      password: initialData.password !== undefined ? initialData.password : prev.password,
+      confirmPassword: initialData.confirmPassword !== undefined ? initialData.confirmPassword : prev.confirmPassword,
+    }));
+  }, [initialData]);
 
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -257,20 +277,26 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
     <div style={{
       minHeight: '100vh',
       background: 'linear-gradient(135deg, #090e1a 0%, #0f172a 50%, #1e293b 100%)',
-      padding: '36px 20px',
+      padding: '36px 16px',
       display: 'flex',
       alignItems: 'center',
-      justifyContent: 'center'
+      justifyContent: 'center',
+      overflowX: 'hidden',
+      overflowY: 'auto'
     }}>
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '24px',
-        width: '780px',
-        maxWidth: '100%',
-        padding: '36px',
-        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.45)',
-        border: '1px solid rgba(255, 255, 255, 0.1)'
-      }}>
+      <div 
+        className="fullreg-card"
+        style={{
+          background: '#ffffff',
+          borderRadius: '24px',
+          width: '780px',
+          maxWidth: '100%',
+          padding: '36px',
+          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.45)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          boxSizing: 'border-box'
+        }}
+      >
         {/* Navigation & Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
           <button
@@ -283,19 +309,28 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               background: '#f1f5f9',
               border: 'none',
               borderRadius: '8px',
-              padding: '8px 12px',
-              color: '#475569',
-              fontWeight: 600,
-              fontSize: '12.5px',
+              padding: '8px 14px',
+              color: '#334155',
+              fontWeight: 700,
+              fontSize: '13px',
               cursor: 'pointer'
             }}
           >
             <ArrowLeft size={16} />
-            <span>Change Sponsor / Leg</span>
+            <span>Back to Step 1</span>
           </button>
 
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
-            Step 2 of 2: Member Details
+          <span style={{
+            background: '#e0f2fe',
+            color: '#0369a1',
+            padding: '4px 12px',
+            borderRadius: '20px',
+            fontSize: '11.5px',
+            fontWeight: 700,
+            letterSpacing: '0.5px',
+            textTransform: 'uppercase'
+          }}>
+            Step 2 of 2: Profile & KYC
           </span>
         </div>
 

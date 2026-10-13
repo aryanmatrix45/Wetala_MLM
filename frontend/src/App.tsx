@@ -183,9 +183,12 @@ export function App() {
     if (authView === 'register') {
       return (
         <FullRegistrationPage
-          initialData={registrationPrefill || { sponsorId: 'ADMIN', sponsorName: 'Company Admin', position: 'LEFT' }}
-          onBackToPreReg={() => navigateAuth('pre-registration', '/pre-registration')}
-          onGoToLogin={() => navigateAuth('login', '/')}
+          initialData={registrationPrefill || { sponsorId: 'MEM0001', sponsorName: 'Panchveda Sponsor', position: 'LEFT' }}
+          onBackToPreReg={() => navigateAuth('login', '/')}
+          onGoToLogin={() => {
+            setRegistrationPrefill(null);
+            navigateAuth('login', '/');
+          }}
         />
       );
     }
@@ -193,6 +196,12 @@ export function App() {
     return (
       <LoginPage
         onLoginSuccess={handleLoginSuccess}
+        defaultMode={registrationPrefill ? 'register' : 'login'}
+        initialRegisterData={registrationPrefill}
+        onProceedToFullReg={(data) => {
+          setRegistrationPrefill(data);
+          navigateAuth('register', '/register');
+        }}
       />
     );
   }

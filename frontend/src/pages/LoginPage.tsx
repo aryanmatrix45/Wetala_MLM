@@ -5,10 +5,36 @@ import { api } from '../services/api';
 interface LoginPageProps {
   onLoginSuccess: (user: any, token: string) => void;
   onGoToPreReg?: () => void;
+  onProceedToFullReg?: (data: {
+    name: string;
+    email: string;
+    phone: string;
+    sponsorId: string;
+    sponsorName: string;
+    position: 'LEFT' | 'RIGHT';
+    password?: string;
+    confirmPassword?: string;
+  }) => void;
+  initialRegisterData?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    sponsorId?: string;
+    position?: 'LEFT' | 'RIGHT';
+    password?: string;
+    confirmPassword?: string;
+  } | null;
+  defaultMode?: 'login' | 'register';
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreReg }) => {
-  const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
+export const LoginPage: React.FC<LoginPageProps> = ({
+  onLoginSuccess,
+  onGoToPreReg,
+  onProceedToFullReg,
+  initialRegisterData,
+  defaultMode = 'login',
+}) => {
+  const [authMode, setAuthMode] = useState<'login' | 'register'>(defaultMode);
 
   // Login form state
   const [identifier, setIdentifier] = useState('');
@@ -16,13 +42,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
   const [showPassword, setShowPassword] = useState(false);
 
   // Register form state
-  const [regName, setRegName] = useState('');
-  const [regEmail, setRegEmail] = useState('');
-  const [regPhone, setRegPhone] = useState('');
-  const [regSponsorId, setRegSponsorId] = useState('MEM0001');
-  const [regPosition, setRegPosition] = useState<'LEFT' | 'RIGHT'>('LEFT');
-  const [regPassword, setRegPassword] = useState('');
-  const [regConfirmPassword, setRegConfirmPassword] = useState('');
+  const [regName, setRegName] = useState(initialRegisterData?.name || '');
+  const [regEmail, setRegEmail] = useState(initialRegisterData?.email || '');
+  const [regPhone, setRegPhone] = useState(initialRegisterData?.phone || '');
+  const [regSponsorId, setRegSponsorId] = useState(initialRegisterData?.sponsorId || 'MEM0001');
+  const [regPosition, setRegPosition] = useState<'LEFT' | 'RIGHT'>(initialRegisterData?.position || 'LEFT');
+  const [regPassword, setRegPassword] = useState(initialRegisterData?.password || '');
+  const [regConfirmPassword, setRegConfirmPassword] = useState(initialRegisterData?.confirmPassword || '');
   const [showRegPassword, setShowRegPassword] = useState(false);
   const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
 
@@ -59,7 +85,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
     }
   };
 
-  // Handle Signup Submission
+  // Handle Signup Submission -> Proceeds to Step 2 (Full Profile & KYC Registration)
   const handleRegisterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -75,7 +101,14 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
       return;
     }
 
-    if (!regPhone.trim()) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(regEmail.trim())) {
+      setError('Please provide a valid email format (e.g. rahul@example.com).');
+      return;
+    }
+
+    const cleanPhone = regPhone.replace(/\D/g, '');
+    if (!cleanPhone || cleanPhone.length !== 10) {
       setError('Please provide your 10-digit Phone number.');
       return;
     }
@@ -95,32 +128,67 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
       return;
     }
 
+    const cleanSponsorId = regSponsorId.trim().toUpperCase() || 'MEM0001';
+    if (cleanSponsorId === 'ADMIN') {
+      setError('ADMIN cannot be used as a Sponsor ID. Please enter a valid registered Member ID.');
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await api.register({
-        name: regName.trim(),
-        email: regEmail.trim(),
-        phone: regPhone.trim(),
-        password: regPassword,
-        confirmPassword: regConfirmPassword,
-        sponsorId: regSponsorId.trim().toUpperCase() || 'MEM0001',
-        position: regPosition,
-      });
+      // Verify sponsor exists and retrieve their registered name
+      let sponsorName = 'Panchveda Sponsor';
+      try {
+        const sponsorRes = await api.lookupSponsor(cleanSponsorId);
+        if (sponsorRes.status && sponsorRes.data?.name) {
+          sponsorName = sponsorRes.data.name;
+        } else {
+          setError(sponsorRes.message || `Sponsor ID "${cleanSponsorId}" not found. Please enter a valid registered Member ID.`);
+          setLoading(false);
+          return;
+        }
+      } catch (err: any) {
+        setError(err.message || `Failed to verify Sponsor ID "${cleanSponsorId}".`);
+        setLoading(false);
+        return;
+      }
 
-      if (res.status) {
-        setSuccessMsg(
-          `🎉 Welcome ${res.data?.name || regName}! Your Member ID is ${res.memberId}. Your account is active. You can log in immediately below.`
-        );
-        // Pre-fill login credentials with the newly registered user
-        setIdentifier(res.data?.email || regEmail.trim());
-        setPassword(regPassword);
-        // Switch to login tab smoothly
-        setAuthMode('login');
+      if (onProceedToFullReg) {
+        onProceedToFullReg({
+          name: regName.trim(),
+          email: regEmail.trim(),
+          phone: cleanPhone,
+          sponsorId: cleanSponsorId,
+          sponsorName,
+          position: regPosition,
+          password: regPassword,
+          confirmPassword: regConfirmPassword,
+        });
       } else {
-        setError(res.message || 'Registration failed. Please check your details.');
+        // Fallback: direct registration
+        const res = await api.register({
+          name: regName.trim(),
+          email: regEmail.trim(),
+          phone: cleanPhone,
+          password: regPassword,
+          confirmPassword: regConfirmPassword,
+          sponsorId: cleanSponsorId,
+          position: regPosition,
+        });
+
+        if (res.status) {
+          setSuccessMsg(
+            `🎉 Welcome ${res.data?.name || regName}! Your Member ID is ${res.memberId}. Your account is active. You can log in immediately below.`
+          );
+          setIdentifier(res.data?.email || regEmail.trim());
+          setPassword(regPassword);
+          setAuthMode('login');
+        } else {
+          setError(res.message || 'Registration failed. Please check your details.');
+        }
       }
     } catch (err: any) {
-      setError(err.message || 'Unable to connect to the registration server.');
+      setError(err.message || 'Unable to proceed to full registration.');
     } finally {
       setLoading(false);
     }
@@ -161,7 +229,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
           <p className="login-subtitle">
             {authMode === 'login' 
               ? 'Access your distributor dashboard & compensation ledger' 
-              : 'Join the network & start earning multi-tier binary commissions'}
+              : 'Step 1 of 2: Create Account Credentials'}
           </p>
         </div>
 
@@ -434,10 +502,10 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
                 style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)' }}
               >
                 {loading ? (
-                  <span>Registering Member...</span>
+                  <span>Verifying Sponsor ID...</span>
                 ) : (
                   <>
-                    <span>Create My Account</span>
+                    <span>Next: Complete Profile Details</span>
                     <ArrowRight size={18} />
                   </>
                 )}
