@@ -30,18 +30,18 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
     const cleanId = idToVerify.trim().toUpperCase();
     if (!cleanId) return;
 
-    if (cleanId === 'ADMIN') {
-      setError('ADMIN cannot be used as a Sponsor ID. Please enter a valid registered Member ID.');
-      setIsVerified(false);
-      setSponsorName(null);
-      return;
+    let targetLookupId = cleanId;
+    if (cleanId === 'ADMIN' || cleanId === 'SUPERADMIN') {
+      targetLookupId = 'MEM0001';
+      setSponsorId('MEM0001');
     }
 
     setLoading(true);
     setError(null);
     try {
-      const res = await api.lookupSponsor(cleanId);
+      const res = await api.lookupSponsor(targetLookupId);
       if (res.status && res.data) {
+        setSponsorId(res.data.memberId);
         setSponsorName(res.data.name);
         setIsVerified(true);
       } else {

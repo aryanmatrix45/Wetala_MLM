@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Share2, Copy, Check, MessageCircle, Send, ExternalLink,
   Mail, Phone, Calendar, MapPin, CreditCard,
-  FileText, Sparkles, ArrowLeft, ArrowRight
+  FileText, Sparkles, ArrowLeft, ArrowRight, ShieldCheck
 } from 'lucide-react';
+import { api } from '../services/api';
 
 interface ProfilePageProps {
   user: any;
@@ -12,7 +13,24 @@ interface ProfilePageProps {
 }
 
 export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
-  const memberId = user?.memberId || 'ADMIN';
+  const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin';
+  const [rootSponsorId, setRootSponsorId] = useState<string>('MEM0001');
+
+  // If logged in as Super Admin, dynamically fetch the Company Root Member ID
+  useEffect(() => {
+    if (isSuperAdmin) {
+      api.getRootSponsor()
+        .then((res: any) => {
+          if (res?.data?.memberId) {
+            setRootSponsorId(res.data.memberId);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isSuperAdmin]);
+
+  // For regular members: user.memberId. For Super Admin: Company Root ID (MEM0001)
+  const memberId = isSuperAdmin ? rootSponsorId : (user?.memberId || 'MEM0001');
   const baseUrl = window.location.origin;
 
   const [selectedLegLink, setSelectedLegLink] = useState<'AUTO' | 'LEFT' | 'RIGHT'>('AUTO');
@@ -99,7 +117,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
           <div>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.15)', backdropFilter: 'blur(5px)', padding: '4px 12px', borderRadius: '20px', fontSize: '12px', fontWeight: 700, marginBottom: '10px' }}>
               <Sparkles size={14} style={{ color: '#fbbf24' }} />
-              <span>REFERRAL PROGRAM</span>
+              <span>{isSuperAdmin ? 'SUPER ADMIN REFERRAL' : 'REFERRAL PROGRAM'}</span>
             </div>
             <h2 style={{ fontSize: '26px', fontWeight: 800, margin: '0 0 8px 0', letterSpacing: '-0.5px' }}>
               Refer & Grow Your Network
@@ -107,6 +125,25 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
             <p style={{ fontSize: '14px', color: '#bfdbfe', margin: 0, maxWidth: '620px', lineHeight: '1.5' }}>
               Invite new members using your personal referral link. When they register, our extreme outer-leg engine automatically places them in your binary tree downline!
             </p>
+            {isSuperAdmin && (
+              <div style={{
+                marginTop: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(255, 255, 255, 0.14)',
+                border: '1px solid rgba(255, 255, 255, 0.22)',
+                padding: '6px 14px',
+                borderRadius: '10px',
+                fontSize: '12.5px',
+                color: '#e0f2fe'
+              }}>
+                <ShieldCheck size={15} color="#67e8f9" />
+                <span>
+                  <strong>Company Mode:</strong> Your link enrolls distributors directly under Sponsor ID <strong>{memberId}</strong>.
+                </span>
+              </div>
+            )}
           </div>
 
           <div style={{
@@ -118,7 +155,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
             textAlign: 'right'
           }}>
             <span style={{ fontSize: '11px', color: '#93c5fd', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
-              Your Sponsor ID
+              {isSuperAdmin ? 'Company Sponsor ID' : 'Your Sponsor ID'}
             </span>
             <span style={{ fontSize: '20px', fontWeight: 900, color: '#ffffff', letterSpacing: '0.5px' }}>
               {memberId}
@@ -356,10 +393,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
             </div>
             <div>
               <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a', margin: '0 0 2px 0' }}>
-                {user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || 'Member'}
+                {user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || (isSuperAdmin ? 'Super Admin' : 'Member')}
               </h3>
               <span style={{ fontSize: '13px', color: '#1d72fe', fontWeight: 700 }}>
-                ID: {memberId}
+                {isSuperAdmin ? 'Platform Owner (Super Admin)' : `ID: ${memberId}`}
               </span>
             </div>
           </div>
@@ -368,36 +405,38 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '13px', color: '#64748b' }}>Account Status</span>
               <span style={{
-                background: user?.status === 'active' || user?.isActive ? '#ecfdf5' : '#fef3c7',
-                color: user?.status === 'active' || user?.isActive ? '#065f46' : '#92400e',
+                background: isSuperAdmin ? '#eff6ff' : (user?.status === 'active' || user?.isActive ? '#ecfdf5' : '#fef3c7'),
+                color: isSuperAdmin ? '#1d4ed8' : (user?.status === 'active' || user?.isActive ? '#065f46' : '#92400e'),
                 padding: '3px 10px',
                 borderRadius: '12px',
                 fontSize: '12px',
                 fontWeight: 700,
                 textTransform: 'capitalize'
               }}>
-                {user?.status || 'Active'}
+                {isSuperAdmin ? 'Super Admin' : (user?.status || 'Active')}
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '13px', color: '#64748b' }}>Current Rank</span>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                {user?.rank || 'Distributor'}
+                {isSuperAdmin ? 'Company Administrator' : (user?.rank || 'Distributor')}
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '13px', color: '#64748b' }}>Active Package</span>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                {user?.packageName || 'Basic Package'}
+                {isSuperAdmin ? 'Executive Management' : (user?.packageName || 'Basic Package')}
               </span>
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', color: '#64748b' }}>Sponsor ID</span>
+              <span style={{ fontSize: '13px', color: '#64748b' }}>
+                {isSuperAdmin ? 'Company Sponsor ID' : 'Sponsor ID'}
+              </span>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                {user?.sponsorId || 'None (Root Member)'}
+                {isSuperAdmin ? rootSponsorId : (user?.sponsorId || 'None (Root Member)')}
               </span>
             </div>
 

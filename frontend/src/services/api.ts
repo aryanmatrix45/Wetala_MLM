@@ -296,6 +296,11 @@ export const api = {
     return res.json();
   },
 
+  async getRootSponsor() {
+    const res = await fetch(`${API_BASE_URL}/auth/root-sponsor`);
+    return res.json();
+  },
+
   async getProfile(token: string) {
     const res = await fetch(`${API_BASE_URL}/auth/me`, {
       headers: { Authorization: `Bearer ${token}` },

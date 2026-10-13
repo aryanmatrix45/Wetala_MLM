@@ -225,15 +225,14 @@ export const AuthController = {
           return;
         }
 
-        if (rawSponsor === 'ADMIN') {
-          res.status(HTTP_STATUS.BAD_REQUEST).json({
-            status: false,
-            message: 'ADMIN cannot be used as a Sponsor ID. A valid registered Member ID is required.',
-          });
-          return;
+        // If sponsor is specified as ADMIN, SUPERADMIN, or COMPANY, auto-resolve to Company Root Member (MEM0001)
+        let sponsorToLookup = rawSponsor;
+        if (rawSponsor === 'ADMIN' || rawSponsor === 'SUPERADMIN' || rawSponsor === 'COMPANY') {
+          const rootMember = await Member.findOne().sort({ createdAt: 1 });
+          sponsorToLookup = rootMember ? rootMember.memberId : 'MEM0001';
         }
 
-        const sponsorExists = await Member.findOne({ memberId: rawSponsor });
+        const sponsorExists = await Member.findOne({ memberId: sponsorToLookup });
         if (!sponsorExists) {
           res.status(HTTP_STATUS.BAD_REQUEST).json({
             status: false,
@@ -242,7 +241,7 @@ export const AuthController = {
           return;
         }
 
-        resolvedSponsorId = rawSponsor;
+        resolvedSponsorId = sponsorExists.memberId;
 
         // Binary Tree Placement is DECOUPLED from registration:
         // New member is assigned preferredLeg, but parentId remains empty ('')
@@ -912,15 +911,14 @@ export const AuthController = {
         return;
       }
 
-      if (rawId === 'ADMIN') {
-        res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: false,
-          message: 'ADMIN cannot be used as a Sponsor ID. Please enter a valid registered Member ID.',
-        });
-        return;
+      // If looking up ADMIN or SUPERADMIN or COMPANY, auto-resolve to Company Root Member (MEM0001)
+      let targetId = rawId;
+      if (rawId === 'ADMIN' || rawId === 'SUPERADMIN' || rawId === 'COMPANY') {
+        const rootMember = await Member.findOne().sort({ createdAt: 1 });
+        targetId = rootMember ? rootMember.memberId : 'MEM0001';
       }
 
-      const member = await Member.findOne({ memberId: rawId }).select('memberId name rank status packageName isActive');
+      const member = await Member.findOne({ memberId: targetId }).select('memberId name rank status packageName isActive');
       if (!member) {
         res.status(HTTP_STATUS.NOT_FOUND).json({
           status: false,
@@ -938,6 +936,7 @@ export const AuthController = {
           status: member.status,
           packageName: member.packageName || 'Basic',
           isActive: member.isActive,
+          isRoot: targetId === 'MEM0001',
         },
       });
     } catch (error: any) {
@@ -945,6 +944,37 @@ export const AuthController = {
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         status: false,
         message: error.message || 'Error looking up sponsor',
+      });
+    }
+  },
+
+  /**
+   * Public Root Sponsor Lookup (For Super Admin referral center)
+   * GET /api/auth/root-sponsor
+   */
+  async getRootSponsor(_req: Request, res: Response): Promise<void> {
+    try {
+      const rootMember = await Member.findOne().sort({ createdAt: 1 }).select('memberId name rank status packageName isActive');
+      const rootId = rootMember ? rootMember.memberId : 'MEM0001';
+      const rootName = rootMember?.name || '';
+
+      res.status(HTTP_STATUS.OK).json({
+        status: true,
+        data: {
+          memberId: rootId,
+          name: rootName,
+          rank: rootMember?.rank || 'Distributor',
+          status: rootMember?.status || 'active',
+          packageName: rootMember?.packageName || '',
+          isActive: true,
+          isRoot: true,
+        },
+      });
+    } catch (error: any) {
+      console.error('[AuthController.getRootSponsor] Error:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        status: false,
+        message: error.message || 'Error fetching root sponsor',
       });
     }
   },
