@@ -11,14 +11,16 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
 
   // Login form state
-  const [identifier, setIdentifier] = useState('superadmin@wetala.com');
-  const [password, setPassword] = useState('admin123');
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
   // Register form state
   const [regName, setRegName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
+  const [regSponsorId, setRegSponsorId] = useState('MEM0001');
+  const [regPosition, setRegPosition] = useState<'LEFT' | 'RIGHT'>('LEFT');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
@@ -35,7 +37,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
     setSuccessMsg(null);
 
     if (!identifier.trim() || !password.trim()) {
-      setError('Please provide your Email, Member ID, or Phone and password.');
+      setError('Please provide your Email Address and Password.');
       return;
     }
 
@@ -101,12 +103,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
         phone: regPhone.trim(),
         password: regPassword,
         confirmPassword: regConfirmPassword,
-        sponsorId: 'ADMIN',
+        sponsorId: regSponsorId.trim().toUpperCase() || 'MEM0001',
+        position: regPosition,
       });
 
       if (res.status) {
         setSuccessMsg(
-          `🎉 Welcome ${res.data?.name || regName}! Your Member ID is ${res.memberId}. You can now log in below.`
+          `🎉 Welcome ${res.data?.name || regName}! Your Member ID is ${res.memberId}. Your account is active. You can log in immediately below.`
         );
         // Pre-fill login credentials with the newly registered user
         setIdentifier(res.data?.email || regEmail.trim());
@@ -121,17 +124,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
     } finally {
       setLoading(false);
     }
-  };
-
-  const fillCredentials = (type: 'admin' | 'member') => {
-    if (type === 'admin') {
-      setIdentifier('superadmin@wetala.com');
-      setPassword('admin123');
-    } else {
-      setIdentifier('aryan@wetala.com');
-      setPassword('Admin@123');
-    }
-    setError(null);
   };
 
   return (
@@ -220,62 +212,19 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
             ========================================================================= */}
         {authMode === 'login' ? (
           <>
-            {/* Demo Fast Fill Buttons */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gap: '10px',
-              marginBottom: '20px',
-              background: 'rgba(30, 41, 59, 0.45)',
-              padding: '6px',
-              borderRadius: '12px',
-              border: '1px solid rgba(255, 255, 255, 0.08)'
-            }}>
-              <button
-                type="button"
-                onClick={() => fillCredentials('admin')}
-                style={{
-                  padding: '7px 12px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  background: identifier.includes('superadmin') ? 'rgba(59, 130, 246, 0.25)' : 'transparent',
-                  color: identifier.includes('superadmin') ? '#38bdf8' : '#94a3b8',
-                  border: identifier.includes('superadmin') ? '1px solid rgba(56, 189, 248, 0.4)' : 'none'
-                }}
-              >
-                🛡️ SuperAdmin
-              </button>
-              <button
-                type="button"
-                onClick={() => fillCredentials('member')}
-                style={{
-                  padding: '7px 12px',
-                  borderRadius: '8px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  background: identifier.includes('rohit') ? 'rgba(16, 185, 129, 0.25)' : 'transparent',
-                  color: identifier.includes('rohit') ? '#34d399' : '#94a3b8',
-                  border: identifier.includes('rohit') ? '1px solid rgba(52, 211, 153, 0.4)' : 'none'
-                }}
-              >
-                👤 Member (MEM0001)
-              </button>
-            </div>
-
             <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="login-label">Email, Member ID, or Phone</label>
+                <label className="login-label">Email Address</label>
                 <div className="input-with-icon">
                   <Mail size={18} className="input-icon" color="#94a3b8" />
                   <input
-                    type="text"
+                    type="email"
                     required
                     value={identifier}
                     onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="e.g. rohit@wetala.com or MEM0001"
+                    placeholder="e.g. aryan@gmail.com"
                     className="login-input"
-                    autoComplete="username"
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -392,6 +341,38 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
                       autoComplete="tel"
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Sponsor ID & Preferred Leg Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <label className="login-label">Sponsor Member ID</label>
+                  <div className="input-with-icon">
+                    <User size={18} className="input-icon" color="#94a3b8" />
+                    <input
+                      type="text"
+                      required
+                      value={regSponsorId}
+                      onChange={(e) => setRegSponsorId(e.target.value.toUpperCase())}
+                      placeholder="e.g. MEM0001"
+                      className="login-input"
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                  <label className="login-label">Preferred Placement</label>
+                  <select
+                    value={regPosition}
+                    onChange={(e) => setRegPosition(e.target.value as 'LEFT' | 'RIGHT')}
+                    className="login-input"
+                    style={{ paddingLeft: '14px', cursor: 'pointer', background: '#1e293b', color: '#f8fafc' }}
+                  >
+                    <option value="LEFT">Left Wing</option>
+                    <option value="RIGHT">Right Wing</option>
+                  </select>
                 </div>
               </div>
 

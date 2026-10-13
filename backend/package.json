@@ -7,7 +7,8 @@
     "build": "tsc",
     "start": "node dist/server.js",
     "test": "tsx tests/binaryBonusSequential.test.ts",
-    "test:binary": "tsx tests/binaryBonusSequential.test.ts"
+    "test:binary": "tsx tests/binaryBonusSequential.test.ts",
+    "test:instant": "tsx tests/instantLoginDeferredPlacement.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

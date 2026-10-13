@@ -240,7 +240,6 @@ export class BinaryTreeService {
     };
 
     // Query LEFT and RIGHT children based on binary parentId + position (NOT sponsorId)
-    // Only include approved & non-pending members in the binary tree
     const [leftChild, rightChild] = await Promise.all([
       Member.findOne({
         $or: [
@@ -249,8 +248,7 @@ export class BinaryTreeService {
           { binaryParentId: member.memberId, position: BINARY_POSITION.LEFT },
           { binaryParentId: member.memberId, binaryPosition: BINARY_POSITION.LEFT },
         ],
-        status: { $ne: 'pending' },
-        approvalStatus: { $ne: 'pending' },
+        status: { $ne: 'rejected' },
       }),
       Member.findOne({
         $or: [
@@ -259,8 +257,7 @@ export class BinaryTreeService {
           { binaryParentId: member.memberId, position: BINARY_POSITION.RIGHT },
           { binaryParentId: member.memberId, binaryPosition: BINARY_POSITION.RIGHT },
         ],
-        status: { $ne: 'pending' },
-        approvalStatus: { $ne: 'pending' },
+        status: { $ne: 'rejected' },
       }),
     ]);
 
@@ -532,6 +529,88 @@ export class BinaryTreeService {
     const leg = preferredLeg || BINARY_POSITION.LEFT;
     const res = await this.findExtremeLegPlacement(startMemberId, leg);
     return { parentId: res.parentId, position: res.position };
+  }
+
+  /**
+   * Place an active member into the binary tree once they qualify (accumulate >= 100 BV).
+   * Decoupled from registration: members are only placed when their binary participation starts.
+   * Traverses down their sponsor's preferred leg (or default LEFT) to the extreme outer leaf node.
+   * If sponsor has not been placed in the tree, traverses up sponsor chain to find the nearest placed upline/root.
+   */
+  static async placeMemberInBinaryTree(
+    memberId: string,
+    legOverride?: BinaryPosition
+  ): Promise<{ parentId: string; position: BinaryPosition } | null> {
+    const cleanId = (memberId || '').toUpperCase().trim();
+    if (!cleanId) return null;
+
+    const member = await Member.findOne({ memberId: cleanId });
+    if (!member) return null;
+
+    // If already placed, return existing parent and position
+    if (member.parentId) {
+      return {
+        parentId: member.parentId,
+        position: member.position,
+      };
+    }
+
+    // Root member has no parent
+    const totalCount = await Member.countDocuments();
+    if (totalCount <= 1 || !member.sponsorId) {
+      member.parentId = '';
+      member.position = BINARY_POSITION.LEFT;
+      member.binaryParentId = '';
+      member.binaryPosition = BINARY_POSITION.LEFT;
+      member.placementId = '';
+      member.isBinaryActive = true;
+      if (!member.binaryActivatedAt) {
+        member.binaryActivatedAt = new Date();
+      }
+      await member.save();
+      return { parentId: '', position: BINARY_POSITION.LEFT };
+    }
+
+    // Determine target leg
+    const rawLeg = (legOverride || member.preferredLeg || member.position || BINARY_POSITION.LEFT).toUpperCase();
+    const targetLeg: BinaryPosition = rawLeg === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
+
+    // Find the closest sponsor who is already placed in the binary tree
+    const rootMember = await Member.findOne().sort({ createdAt: 1 });
+    const rootMemberId = rootMember ? rootMember.memberId : 'MEM0001';
+
+    let placementSponsor = await Member.findOne({ memberId: member.sponsorId });
+    const visited = new Set<string>();
+
+    while (placementSponsor && !placementSponsor.parentId && placementSponsor.memberId !== rootMemberId) {
+      if (!placementSponsor.sponsorId || visited.has(placementSponsor.memberId)) break;
+      visited.add(placementSponsor.memberId);
+      const nextSponsor = await Member.findOne({ memberId: placementSponsor.sponsorId });
+      if (!nextSponsor) break;
+      placementSponsor = nextSponsor;
+    }
+
+    const sponsorToUse = (placementSponsor && (placementSponsor.parentId || placementSponsor.memberId === rootMemberId))
+      ? placementSponsor.memberId
+      : rootMemberId;
+
+    const placement = await this.findExtremeLegPlacement(sponsorToUse, targetLeg);
+
+    member.parentId = placement.parentId;
+    member.position = placement.position;
+    member.binaryParentId = placement.parentId;
+    member.binaryPosition = placement.position;
+    member.placementId = placement.parentId;
+    member.isBinaryActive = true;
+    if (!member.binaryActivatedAt) {
+      member.binaryActivatedAt = new Date();
+    }
+    await member.save();
+
+    return {
+      parentId: placement.parentId,
+      position: placement.position,
+    };
   }
 
   /**

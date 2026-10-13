@@ -243,7 +243,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
           </div>
         )}
 
-        {/* Regular Member Approval Notice */}
+        {/* Instant Access Notice */}
         {!isAdmin && (
           <div style={{
             background: '#eff6ff',
@@ -257,9 +257,9 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
             gap: '8px',
             marginBottom: '18px'
           }}>
-            <AlertCircle size={16} style={{ flexShrink: 0 }} />
+            <Sparkles size={16} style={{ flexShrink: 0 }} />
             <span>
-              <strong>Approval Workflow:</strong> New members registered from your portal are submitted to the Super Admin panel. They will appear in your member list and will be activated in the binary tree once approved.
+              <strong>Instant Activation:</strong> Newly registered members can log in immediately with their email and password. Binary tree placement will automatically activate once they reach minimum 100 BV.
             </span>
           </div>
         )}

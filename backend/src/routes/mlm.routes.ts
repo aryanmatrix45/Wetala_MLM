@@ -219,6 +219,7 @@ router.get('/members', optionalAuthenticate, async (req: AuthenticatedRequest, r
       parentId: m.parentId || m.binaryParentId || m.placementId || '',
       placementId: m.placementId,
       position: m.position,
+      preferredLeg: m.preferredLeg || m.position,
       packageName: m.packageName,
       joinDate: m.joinDate,
       status: m.status,
@@ -449,10 +450,11 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
         return;
       }
 
-      // Directional Extreme Leg Placement: Traverse down sponsor's chosen leg (LEFT or RIGHT) to first empty slot
-      const placement = await BinaryTreeService.findExtremeLegPlacement(finalSponsorId, targetPos);
-      finalParentId = placement.parentId;
-      finalPos = placement.position;
+      // Binary Tree Placement is DECOUPLED from registration:
+      // Member is assigned preferredLeg, but parentId remains empty ('')
+      // until binary activation (>= 100 BV).
+      finalParentId = '';
+      finalPos = targetPos;
     }
 
     // 4. Resolve Dynamic Package from MongoDB (only if explicitly specified)
@@ -478,36 +480,23 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
     // 5. Generate Sequential Unique Member ID
     const newMemberId = await Member.generateNextMemberId();
 
-    // 6. Creator tracking & Approval determination
+    // 6. Creator tracking - All members are immediately active and approved for instant login!
     const reqUser = req.user;
     let addedBy = 'ADMIN';
-    let approvalStatus: 'pending' | 'approved' = 'pending';
-    let memberStatus: 'active' | 'pending' = 'pending';
-    let isActive = false;
 
     if (totalCount === 0) {
-      // The initial root member is automatically activated and approved
       addedBy = 'ADMIN';
-      approvalStatus = 'approved';
-      memberStatus = 'active';
-      isActive = true;
     } else if (reqUser && (reqUser.role === ROLES.ADMIN || reqUser.role === ROLES.SUPERADMIN)) {
       addedBy = 'ADMIN';
-      approvalStatus = 'approved';
-      memberStatus = 'active';
-      isActive = true;
     } else if (reqUser && reqUser.role === ROLES.MEMBER && reqUser.memberId) {
       addedBy = reqUser.memberId.toUpperCase().trim();
-      approvalStatus = 'pending';
-      memberStatus = 'pending';
-      isActive = false;
     } else {
-      // Direct self-registration / unauthenticated
       addedBy = finalSponsorId || 'SYSTEM';
-      approvalStatus = 'pending';
-      memberStatus = 'pending';
-      isActive = false;
     }
+
+    const approvalStatus: 'pending' | 'approved' = 'approved';
+    const memberStatus: 'active' | 'pending' = 'active';
+    const isActive = true;
 
     // 7. Create and Save Member in MongoDB (password automatically hashed by pre-save hook)
     const newMember = await Member.create({
@@ -530,6 +519,7 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
       sponsorId: finalSponsorId,
       parentId: finalParentId,
       position: finalPos,
+      preferredLeg: targetPos,
       binaryParentId: finalParentId,
       placementId: finalParentId,
       binaryPosition: finalPos,
@@ -543,7 +533,7 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
       addedBy,
       isActive,
       personalBv: 0,
-      isBinaryActive: false,
+      isBinaryActive: totalCount === 0,
       leftBv: 0,
       rightBv: 0,
       matchedPairs: 0,
@@ -551,14 +541,14 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
       walletBalance: 0
     });
 
-    if (isActive) {
-      await WalletService.getOrCreateWallet(newMember.memberId, newMember._id.toString()).catch(() => null);
-      await BVService.getOrCreateBinaryVolume(newMember.memberId, newMember._id.toString()).catch(() => null);
+    await WalletService.getOrCreateWallet(newMember.memberId, newMember._id.toString()).catch(() => null);
+    await BVService.getOrCreateBinaryVolume(newMember.memberId, newMember._id.toString()).catch(() => null);
+
+    if (finalPackageBv >= 100) {
+      await BinaryTreeService.placeMemberInBinaryTree(newMember.memberId);
     }
 
-    const successMessage = approvalStatus === 'pending'
-      ? `Member ${newMember.name} added successfully with ID: ${newMember.memberId}. The request has been forwarded to Super Admin for approval. Login will be enabled once approved, and binary tree participation requires minimum 100 BV.`
-      : `Member ${newMember.name} registered successfully with ID: ${newMember.memberId}. Account can log in. Binary income participation requires minimum 100 BV.`;
+    const successMessage = `🎉 Member ${newMember.name} registered and activated successfully with ID: ${newMember.memberId}! Direct login is enabled with email and password. Binary placement will activate once 100 BV is achieved.`;
 
     res.status(HTTP_STATUS.CREATED).json({
       success: true,

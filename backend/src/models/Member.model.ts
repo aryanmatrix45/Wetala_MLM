@@ -27,9 +27,10 @@ export interface IMember extends Document {
   // Sponsor Relationship (Unilevel / Referral Tree)
   sponsorId: string;
   
-  // Binary Tree Placement Relationship (Distinct from Sponsor)
+  // Binary Tree Placement Relationship (Distinct from Sponsor - assigned when member reaches >= 100 BV)
   parentId: string;
   position: BinaryPosition;
+  preferredLeg?: BinaryPosition;
   
   // Aliases for legacy compatibility
   binaryParentId: string;
@@ -195,6 +196,11 @@ const memberSchema = new Schema<IMember, IMemberModel>(
       enum: [BINARY_POSITION.LEFT, BINARY_POSITION.RIGHT, 'left', 'right'],
       default: BINARY_POSITION.LEFT,
       index: true,
+    },
+    preferredLeg: {
+      type: String,
+      enum: [BINARY_POSITION.LEFT, BINARY_POSITION.RIGHT, 'left', 'right'],
+      default: BINARY_POSITION.LEFT,
     },
     
     // Legacy support aliases

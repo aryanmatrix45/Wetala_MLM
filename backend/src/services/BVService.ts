@@ -60,6 +60,7 @@ export class BVService {
     // Update member's cumulative personal BV and check binary tree participation threshold (100 BV)
     const member = await Member.findOne({ memberId });
     if (member) {
+      const wasUnplaced = !member.parentId;
       member.personalBv = (member.personalBv || 0) + bvAmount;
       if (member.personalBv >= 100) {
         if (!member.isBinaryActive) {
@@ -70,6 +71,11 @@ export class BVService {
         }
       }
       await member.save();
+
+      // If member reached >= 100 BV and is not yet placed in the binary tree, place them now upon activation!
+      if (member.personalBv >= 100 && wasUnplaced && member.sponsorId) {
+        await BinaryTreeService.placeMemberInBinaryTree(member.memberId);
+      }
     }
 
     return ledger;

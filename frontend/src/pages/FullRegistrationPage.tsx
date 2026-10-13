@@ -200,7 +200,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
             Registration Successful!
           </h2>
           <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 24px 0' }}>
-            Welcome to the team, <strong>{successResult.name}</strong>! Your account has been registered with binary placement.
+            Welcome to the team, <strong>{successResult.name}</strong>! Your account is active and you can <strong>log in immediately</strong>. Your binary tree position will be activated once you reach at least 100 BV.
           </p>
 
           <div style={{
@@ -224,9 +224,9 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               </span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '13px', color: '#64748b' }}>Placement Leg:</span>
+              <span style={{ fontSize: '13px', color: '#64748b' }}>Preferred Placement:</span>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                {formData.position} Leg
+                {formData.position} Wing (Activates upon 100 BV)
               </span>
             </div>
           </div>

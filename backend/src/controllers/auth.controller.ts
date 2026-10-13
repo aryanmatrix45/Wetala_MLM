@@ -7,6 +7,7 @@ import { HTTP_STATUS, ROLES, BINARY_POSITION, BinaryPosition } from '../config/c
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 import { WalletService } from '../services/WalletService';
+import { BVService } from '../services/BVService';
 import { BinaryVolume } from '../models/BinaryVolume.model';
 
 const generateToken = (payload: { id: string; email: string; role: string; memberId?: string }): string => {
@@ -242,10 +243,11 @@ export const AuthController = {
 
         resolvedSponsorId = rawSponsor;
 
-        // Directional Extreme Leg Placement: Traverse down sponsor's chosen leg to first empty slot
-        const placement = await BinaryTreeService.findExtremeLegPlacement(resolvedSponsorId, targetPos);
-        finalParentId = placement.parentId;
-        finalPosition = placement.position;
+        // Binary Tree Placement is DECOUPLED from registration:
+        // New member is assigned preferredLeg, but parentId remains empty ('')
+        // until binary activation (>= 100 BV accumulated).
+        finalParentId = '';
+        finalPosition = targetPos;
       }
 
       // 4. Generate Next Sequential Member ID
@@ -272,6 +274,7 @@ export const AuthController = {
       const finalDailyCapping = selectedPackage ? (selectedPackage.dailyCapping || 0) : 0;
 
       // 6. Create Member record (Password hashed automatically by Member schema pre-save hook)
+      // All registrations are immediately active & approved for direct instant login!
       const newMember = await Member.create({
         memberId: newMemberId,
         name: memberName,
@@ -293,6 +296,7 @@ export const AuthController = {
         sponsorId: resolvedSponsorId,
         parentId: finalParentId,
         position: finalPosition,
+        preferredLeg: targetPos,
         binaryParentId: finalParentId,
         placementId: finalParentId,
         binaryPosition: finalPosition,
@@ -300,12 +304,12 @@ export const AuthController = {
         packageName: finalPackageName,
         packageBv: finalPackageBv,
         packageRp: finalPackageRp,
-        status: totalMemberCount === 0 ? 'active' : 'pending',
-        approvalStatus: totalMemberCount === 0 ? 'approved' : 'pending',
+        status: 'active',
+        approvalStatus: 'approved',
         addedBy: totalMemberCount === 0 ? 'ADMIN' : (resolvedSponsorId || 'ADMIN'),
-        isActive: totalMemberCount === 0,
+        isActive: true,
         personalBv: 0,
-        isBinaryActive: false,
+        isBinaryActive: totalMemberCount === 0,
         leftBv: 0,
         rightBv: 0,
         matchedPairs: 0,
@@ -315,10 +319,19 @@ export const AuthController = {
         joinDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       });
 
+      // Initialize Wallet and Binary Volume accounting for immediate dashboard usability
+      await WalletService.getOrCreateWallet(newMember.memberId, newMember._id.toString()).catch(() => null);
+      await BVService.getOrCreateBinaryVolume(newMember.memberId, newMember._id.toString()).catch(() => null);
+
+      // If a package with >= 100 BV was selected at registration, place them immediately
+      if (finalPackageBv >= 100) {
+        await BinaryTreeService.placeMemberInBinaryTree(newMember.memberId);
+      }
+
       const nameParts = newMember.name.trim().split(' ');
       const successMessage = totalMemberCount === 0
         ? `🎉 Root Member setup successful for ${newMember.name}! Member ID: ${newMember.memberId}. Account is active as the Root of the tree.`
-        : `Registration request submitted successfully for ${newMember.name}! Member ID: ${newMember.memberId}. Your account is pending Super Admin approval.`;
+        : `🎉 Registration successful for ${newMember.name}! Member ID: ${newMember.memberId}. You can log in immediately with your Email & Password. Your binary tree position will activate once you accumulate at least 100 BV.`;
 
       res.status(HTTP_STATUS.CREATED).json({
         status: true,
@@ -453,18 +466,29 @@ export const AuthController = {
    */
   async login(req: Request, res: Response): Promise<void> {
     try {
-      const { email, password } = req.body;
+      const cleanEmail = (req.body.email || req.body.identifier || '').trim().toLowerCase();
+      const password = req.body.password;
 
-      if (!email || !password) {
+      if (!cleanEmail || !password) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
           status: false,
-          message: 'Both email and password are required',
+          message: 'Both Email ID and password are required',
         });
         return;
       }
 
-      // 1. Try finding Admin first
-      const admin = await Admin.findOne({ email: email.toLowerCase().trim() }).select('+password');
+      // Strictly validate that user is signing in with an Email ID
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(cleanEmail)) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Please provide a valid Email ID (e.g. user@example.com). Login is strictly restricted to Email ID and password.',
+        });
+        return;
+      }
+
+      // 1. Try finding Admin first strictly by Email ID
+      const admin = await Admin.findOne({ email: cleanEmail }).select('+password');
 
       if (admin) {
         if (!admin.isActive) {
@@ -506,13 +530,9 @@ export const AuthController = {
         return;
       }
 
-      // 2. If not admin, check Member collection by email, memberId, or mobile
+      // 2. If not admin, check Member collection strictly by Email ID
       const member = await Member.findOne({
-        $or: [
-          { email: email.toLowerCase().trim() },
-          { memberId: email.toUpperCase().trim() },
-          { mobile: email.trim() },
-        ],
+        email: cleanEmail,
       }).select('+password');
 
       if (member) {
@@ -524,12 +544,12 @@ export const AuthController = {
           return;
         }
 
+        // Legacy check: If any existing member is still marked pending, auto-activate them now
         if (member.approvalStatus === 'pending' || member.status === 'pending') {
-          res.status(HTTP_STATUS.FORBIDDEN).json({
-            status: false,
-            message: 'Your account registration is currently pending Super Admin approval. You will be able to log in once approved.',
-          });
-          return;
+          member.approvalStatus = 'approved';
+          member.status = 'active';
+          member.isActive = true;
+          await member.save();
         }
 
         if (member.approvalStatus === 'rejected' || member.status === 'rejected') {
