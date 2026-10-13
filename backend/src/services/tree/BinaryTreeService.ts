@@ -14,6 +14,7 @@ export interface BinaryNodeDTO {
   personalBv: number;
   status: string;
   joinedAt: Date;
+  sponsorId?: string;
   parentId?: string;
   position?: BinaryPosition;
   binaryPosition?: BinaryPosition;
@@ -227,6 +228,7 @@ export class BinaryTreeService {
       personalBv: member.personalBv || 0,
       status: member.status,
       joinedAt: member.joinedAt || member.createdAt,
+      sponsorId: member.sponsorId,
       parentId: member.parentId || member.binaryParentId || undefined,
       position: resolvedPos,
       binaryPosition: resolvedPos,
@@ -459,26 +461,20 @@ export class BinaryTreeService {
 
     let cleanSponsorId = (sponsorMemberId || '').toUpperCase().trim();
 
-    // If sponsor is missing, 'ADMIN', or 'ROOT', find the root member of the company
-    let sponsor: IMember | null = null;
-    if (!cleanSponsorId || cleanSponsorId === 'ADMIN' || cleanSponsorId === 'ROOT') {
-      sponsor = await Member.findOne().sort({ createdAt: 1 });
-    } else {
-      sponsor = await Member.findOne({ memberId: cleanSponsorId });
-      // Fallback to root member if sponsor ID not found
-      if (!sponsor) {
-        sponsor = await Member.findOne().sort({ createdAt: 1 });
-      }
-    }
-
-    // Edge case: if tree is completely empty, new member will be Root
-    if (!sponsor) {
+    const totalMemberCount = await Member.countDocuments();
+    if (totalMemberCount === 0 || !cleanSponsorId) {
+      // Tree is empty; the member being placed is the Root node
       return {
         parentId: '',
-        parentName: 'Root Company',
+        parentName: 'Root',
         position: normalizedLeg,
         traversalPath: [],
       };
+    }
+
+    const sponsor: IMember | null = await Member.findOne({ memberId: cleanSponsorId });
+    if (!sponsor) {
+      throw new Error(`Sponsor ID "${cleanSponsorId}" does not exist in our system.`);
     }
 
     let currentNode = sponsor;
@@ -689,9 +685,13 @@ export class BinaryTreeService {
    * Check whether the required sponsor/member condition is satisfied on both the LEFT and RIGHT
    * sides of a member's binary tree.
    *
-   * Requirement: The member must have at least one personally sponsored active member in their
-   * LEFT binary subtree AND at least one personally sponsored active member in their RIGHT binary subtree.
-   * Note: The binary parent and sponsor are distinct relationships.
+   * Requirement:
+   * 1. The member must have at least ONE personally sponsored member anywhere in their
+   *    LEFT binary subtree (at any depth/level) who is BINARY ACTIVE (isBinaryActive: true or personalBv >= 100).
+   * 2. The member must have at least ONE personally sponsored member anywhere in their
+   *    RIGHT binary subtree (at any depth/level) who is BINARY ACTIVE (isBinaryActive: true or personalBv >= 100).
+   * 3. Note: The immediate level-1 binary children (leftChild & rightChild) do NOT need to be sponsored
+   *    by the member; they can be spillovers or sponsored by uplines.
    */
   static async checkSponsorLegEligibility(memberId: string): Promise<{
     isQualified: boolean;
@@ -699,12 +699,56 @@ export class BinaryTreeService {
     hasRightSponsor: boolean;
     leftSponsorMemberIds: string[];
     rightSponsorMemberIds: string[];
+    leftSponsorMembers: Array<{ memberId: string; name: string; personalBv: number }>;
+    rightSponsorMembers: Array<{ memberId: string; name: string; personalBv: number }>;
   }> {
     const cleanId = (memberId || '').toUpperCase().trim();
     if (!cleanId) {
-      return { isQualified: false, hasLeftSponsor: false, hasRightSponsor: false, leftSponsorMemberIds: [], rightSponsorMemberIds: [] };
+      return {
+        isQualified: false,
+        hasLeftSponsor: false,
+        hasRightSponsor: false,
+        leftSponsorMemberIds: [],
+        rightSponsorMemberIds: [],
+        leftSponsorMembers: [],
+        rightSponsorMembers: [],
+      };
     }
 
+    // 1. Fetch all direct referrals of this member who are active and BINARY ACTIVE (>= 100 Personal BV)
+    const directSponsoredMembers = await Member.find({
+      sponsorId: cleanId,
+      isActive: true,
+      status: { $nin: ['blocked', 'rejected'] },
+    }).select('memberId name personalBv isBinaryActive');
+
+    const binaryActiveDirects = directSponsoredMembers.filter(
+      (m) => Boolean(m.isBinaryActive || (m.personalBv || 0) >= 100)
+    );
+
+    if (binaryActiveDirects.length === 0) {
+      return {
+        isQualified: false,
+        hasLeftSponsor: false,
+        hasRightSponsor: false,
+        leftSponsorMemberIds: [],
+        rightSponsorMemberIds: [],
+        leftSponsorMembers: [],
+        rightSponsorMembers: [],
+      };
+    }
+
+    // Direct lookup map for quick matching
+    const activeDirectMap = new Map<string, { memberId: string; name: string; personalBv: number }>();
+    for (const d of binaryActiveDirects) {
+      activeDirectMap.set(d.memberId.toUpperCase().trim(), {
+        memberId: d.memberId,
+        name: d.name || d.memberId,
+        personalBv: d.personalBv || 0,
+      });
+    }
+
+    // 2. Identify the root's immediate LEFT and RIGHT binary children
     const [leftChild, rightChild] = await Promise.all([
       Member.findOne({
         $or: [
@@ -724,60 +768,55 @@ export class BinaryTreeService {
       }).select('memberId'),
     ]);
 
-    const findSponsoredInSubtree = async (rootChildId?: string): Promise<string[]> => {
+    // 3. Helper to find all binary-active directs present in a binary subtree via BFS
+    const findSponsoredInSubtree = async (
+      rootChildId?: string
+    ): Promise<Array<{ memberId: string; name: string; personalBv: number }>> => {
       if (!rootChildId) return [];
-      const sponsoredIds: string[] = [];
-      const queue: string[] = [rootChildId];
-      const visited = new Set<string>([rootChildId]);
+      const found: Array<{ memberId: string; name: string; personalBv: number }> = [];
+      let currentLevel = [rootChildId.toUpperCase().trim()];
+      const visited = new Set<string>(currentLevel);
 
-      while (queue.length > 0) {
-        const currentId = queue.shift()!;
-        const currentMember = await Member.findOne({ memberId: currentId }).select('memberId sponsorId isActive status');
-        if (currentMember && currentMember.isActive && currentMember.status !== 'blocked') {
-          if ((currentMember.sponsorId || '').toUpperCase().trim() === cleanId) {
-            sponsoredIds.push(currentMember.memberId);
+      while (currentLevel.length > 0) {
+        for (const id of currentLevel) {
+          if (activeDirectMap.has(id)) {
+            found.push(activeDirectMap.get(id)!);
           }
         }
 
-        const [left, right] = await Promise.all([
-          Member.findOne({
-            $or: [
-              { parentId: currentId, position: BINARY_POSITION.LEFT },
-              { parentId: currentId, binaryPosition: BINARY_POSITION.LEFT },
-              { binaryParentId: currentId, position: BINARY_POSITION.LEFT },
-              { binaryParentId: currentId, binaryPosition: BINARY_POSITION.LEFT },
-            ],
-          }).select('memberId'),
-          Member.findOne({
-            $or: [
-              { parentId: currentId, position: BINARY_POSITION.RIGHT },
-              { parentId: currentId, binaryPosition: BINARY_POSITION.RIGHT },
-              { binaryParentId: currentId, position: BINARY_POSITION.RIGHT },
-              { binaryParentId: currentId, binaryPosition: BINARY_POSITION.RIGHT },
-            ],
-          }).select('memberId'),
-        ]);
+        // Query binary children of currentLevel members
+        const nextLevelChildren = await Member.find({
+          $or: [
+            { parentId: { $in: currentLevel } },
+            { binaryParentId: { $in: currentLevel } },
+          ],
+        }).select('memberId');
 
-        if (left && !visited.has(left.memberId)) {
-          visited.add(left.memberId);
-          queue.push(left.memberId);
+        const nextLevel: string[] = [];
+        for (const child of nextLevelChildren) {
+          const childId = child.memberId.toUpperCase().trim();
+          if (!visited.has(childId)) {
+            visited.add(childId);
+            nextLevel.push(childId);
+          }
         }
-        if (right && !visited.has(right.memberId)) {
-          visited.add(right.memberId);
-          queue.push(right.memberId);
-        }
+
+        currentLevel = nextLevel;
       }
 
-      return sponsoredIds;
+      return found;
     };
 
-    const [leftSponsorMemberIds, rightSponsorMemberIds] = await Promise.all([
+    const [leftSponsorMembers, rightSponsorMembers] = await Promise.all([
       leftChild ? findSponsoredInSubtree(leftChild.memberId) : Promise.resolve([]),
       rightChild ? findSponsoredInSubtree(rightChild.memberId) : Promise.resolve([]),
     ]);
 
-    const hasLeftSponsor = leftSponsorMemberIds.length > 0;
-    const hasRightSponsor = rightSponsorMemberIds.length > 0;
+    const leftSponsorMemberIds = leftSponsorMembers.map((m) => m.memberId);
+    const rightSponsorMemberIds = rightSponsorMembers.map((m) => m.memberId);
+
+    const hasLeftSponsor = leftSponsorMembers.length > 0;
+    const hasRightSponsor = rightSponsorMembers.length > 0;
     const isQualified = hasLeftSponsor && hasRightSponsor;
 
     return {
@@ -786,6 +825,8 @@ export class BinaryTreeService {
       hasRightSponsor,
       leftSponsorMemberIds,
       rightSponsorMemberIds,
+      leftSponsorMembers,
+      rightSponsorMembers,
     };
   }
 }

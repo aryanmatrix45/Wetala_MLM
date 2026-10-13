@@ -30,6 +30,13 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
     const cleanId = idToVerify.trim().toUpperCase();
     if (!cleanId) return;
 
+    if (cleanId === 'ADMIN') {
+      setError('ADMIN cannot be used as a Sponsor ID. Please enter a valid registered Member ID.');
+      setIsVerified(false);
+      setSponsorName(null);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -158,7 +165,7 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
                 <input
                   type="text"
                   required
-                  placeholder="e.g. MEM0001 or ADMIN"
+                  placeholder="e.g. MEM0001 (Member ID)"
                   value={sponsorId}
                   onChange={(e) => {
                     setSponsorId(e.target.value.toUpperCase());

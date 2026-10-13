@@ -172,7 +172,11 @@ export const BinaryController = {
       const rules = await CompensationEngine.getActiveRules();
 
       // Automatically evaluate binary cycles according to admin rules if eligible
-      await BinaryBonusService.calculateBinaryIncomeForMember(cleanId, rules);
+      const calcResult = await BinaryBonusService.calculateBinaryIncomeForMember(cleanId, rules);
+
+      // Fetch deep sponsor leg eligibility
+      const sponsorCheck = await BinaryTreeService.checkSponsorLegEligibility(cleanId);
+      const isSelfBinaryActive = Boolean(member.isBinaryActive || (member.personalBv || 0) >= 100);
 
       // Fetch updated BinaryVolume
       const vol = await BinaryVolume.findOne({ memberId: cleanId });
@@ -262,6 +266,15 @@ export const BinaryController = {
         data: {
           memberId: cleanId,
           memberName: member.name,
+          isSelfBinaryActive,
+          personalBv: member.personalBv || 0,
+          isSponsorQualified: sponsorCheck.isQualified,
+          hasLeftSponsor: sponsorCheck.hasLeftSponsor,
+          hasRightSponsor: sponsorCheck.hasRightSponsor,
+          leftQualifyingMembers: sponsorCheck.leftSponsorMembers || [],
+          rightQualifyingMembers: sponsorCheck.rightSponsorMembers || [],
+          leftSponsorMemberIds: sponsorCheck.leftSponsorMemberIds || [],
+          rightSponsorMemberIds: sponsorCheck.rightSponsorMemberIds || [],
           leftTotalBV,
           rightTotalBV,
           leftAvailableBV,
@@ -355,7 +368,11 @@ export const BinaryController = {
         return;
       }
 
-      const vol = await BinaryVolume.findOne({ memberId: cleanId });
+      const [sponsorCheck, vol] = await Promise.all([
+        BinaryTreeService.checkSponsorLegEligibility(cleanId),
+        BinaryVolume.findOne({ memberId: cleanId }),
+      ]);
+      const isSelfBinaryActive = Boolean(member.isBinaryActive || (member.personalBv || 0) >= 100);
       const query: any = { memberId: cleanId };
       if (leg) {
         query.position = String(leg).toUpperCase();
@@ -372,6 +389,13 @@ export const BinaryController = {
         summary: {
           memberId: cleanId,
           memberName: member.name,
+          isSelfBinaryActive,
+          personalBv: member.personalBv || 0,
+          isSponsorQualified: sponsorCheck.isQualified,
+          hasLeftSponsor: sponsorCheck.hasLeftSponsor,
+          hasRightSponsor: sponsorCheck.hasRightSponsor,
+          leftQualifyingMembers: sponsorCheck.leftSponsorMembers || [],
+          rightQualifyingMembers: sponsorCheck.rightSponsorMembers || [],
           leftTotalBV: vol?.leftTotalBV || member.leftBv || 0,
           rightTotalBV: vol?.rightTotalBV || member.rightBv || 0,
           leftAvailableBV: vol?.leftAvailableBV || 0,

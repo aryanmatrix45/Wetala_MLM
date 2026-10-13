@@ -290,6 +290,109 @@ export const BinaryLedgerPage: React.FC<BinaryLedgerPageProps> = ({ user: propUs
         </div>
       )}
 
+      {/* Binary Qualification & Eligibility Status Card */}
+      {summary && (
+        <div style={{
+          background: summary.isSelfBinaryActive && summary.isSponsorQualified ? '#f0fdf4' : '#fffbeb',
+          border: `1px solid ${summary.isSelfBinaryActive && summary.isSponsorQualified ? '#bbf7d0' : '#fde68a'}`,
+          borderRadius: '12px',
+          padding: '16px 20px',
+          marginBottom: '20px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '10px',
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <ShieldCheck size={18} color={summary.isSelfBinaryActive && summary.isSponsorQualified ? '#16a34a' : '#d97706'} />
+              <span style={{ fontSize: '13.5px', fontWeight: 800, color: summary.isSelfBinaryActive && summary.isSponsorQualified ? '#15803d' : '#92400e' }}>
+                Binary Income Participation & Eligibility Status
+              </span>
+            </div>
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 800,
+              padding: '3px 10px',
+              borderRadius: '9999px',
+              background: summary.isSelfBinaryActive && summary.isSponsorQualified ? '#dcfce7' : '#fef3c7',
+              color: summary.isSelfBinaryActive && summary.isSponsorQualified ? '#15803d' : '#b45309',
+              border: `1px solid ${summary.isSelfBinaryActive && summary.isSponsorQualified ? '#86efac' : '#fcd34d'}`,
+              textTransform: 'uppercase',
+            }}>
+              {summary.isSelfBinaryActive && summary.isSponsorQualified ? '● Fully Qualified for Payouts' : '● Action Required to Earn'}
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginTop: '4px' }}>
+            {/* Condition 1: Self 100 BV */}
+            <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>1. Self Binary Active (≥ 100 BV)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                {summary.isSelfBinaryActive ? (
+                  <>
+                    <CheckCircle2 size={14} color="#16a34a" />
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#16a34a' }}>
+                      Active ({summary.personalBv || 0} Personal BV)
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle size={14} color="#d97706" />
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#d97706' }}>
+                      Needs 100 BV (Current: {summary.personalBv || 0} BV)
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Condition 2: Left Subtree Direct Sponsor */}
+            <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>2. Left Subtree Sponsor (Any Level)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                {summary.hasLeftSponsor ? (
+                  <>
+                    <CheckCircle2 size={14} color="#16a34a" />
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#16a34a' }}>
+                      {summary.leftQualifyingMembers?.[0]?.name || summary.leftQualifyingMembers?.[0]?.memberId || 'Satisfied (100+ BV)'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle size={14} color="#d97706" />
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#d97706' }}>
+                      Pending (Needs 1 direct with 100 BV in Left wing)
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* Condition 3: Right Subtree Direct Sponsor */}
+            <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>3. Right Subtree Sponsor (Any Level)</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                {summary.hasRightSponsor ? (
+                  <>
+                    <CheckCircle2 size={14} color="#16a34a" />
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#16a34a' }}>
+                      {summary.rightQualifyingMembers?.[0]?.name || summary.rightQualifyingMembers?.[0]?.memberId || 'Satisfied (100+ BV)'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle size={14} color="#d97706" />
+                    <span style={{ fontSize: '12.5px', fontWeight: 700, color: '#d97706' }}>
+                      Pending (Needs 1 direct with 100 BV in Right wing)
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 4 Summary KPI Cards */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         {/* Card 1: Left Leg Balance */}

@@ -10,6 +10,7 @@ import { CommissionLedger } from '../src/models/CommissionLedger.model';
 import { CompensationEvent } from '../src/models/CompensationEvent.model';
 import { Purchase } from '../src/models/Purchase.model';
 import { BinaryBonusService } from '../src/services/compensation/BinaryBonusService';
+import { BinaryTreeService } from '../src/services/tree/BinaryTreeService';
 import { CompensationEngine } from '../src/services/compensation/CompensationEngine';
 import { BVService } from '../src/services/BVService';
 import { BINARY_POSITION, BV_SOURCE_TYPE, PURCHASE_TYPE } from '../src/config/constants';
@@ -530,6 +531,347 @@ test('14. Verification that reserved BV cannot be consumed by an unrelated cycle
   assertEqual(result.reservedSide, 'LEFT', 'Reserved side must remain LEFT');
   assertEqual(result.leftAvailableBV, 1250, 'New Left BV must remain available and not merged with reserved');
   assertEqual(result.payoutCount, 1, 'Payout count must remain 1');
+});
+
+test('15. Multi-level subtree sponsor qualification: Level 1 children are spillovers, Level 3 downlines are sponsored by Root with 100 BV', async () => {
+  const prefix = 'TC15';
+  const rootId = `TEST_ROOT_${prefix}`;
+  const leftChildId = `TEST_L1_LEFT_${prefix}`;   // Test 12 equivalent
+  const rightChildId = `TEST_L1_RIGHT_${prefix}`; // Test 25 equivalent
+  const leftDeepId = `TEST_L3_LEFT_${prefix}`;    // Dynamic Test Member equivalent
+  const rightDeepId = `TEST_L3_RIGHT_${prefix}`;  // Test 102 equivalent
+
+  await Member.deleteMany({ memberId: { $in: [rootId, leftChildId, rightChildId, leftDeepId, rightDeepId] } });
+  await BinaryVolume.deleteMany({ memberId: { $in: [rootId, leftChildId, rightChildId, leftDeepId, rightDeepId] } });
+
+  // 1. Root Member (Self PBV = 100, Binary Active)
+  const root = await Member.create({
+    memberId: rootId,
+    name: `Root Member ${prefix}`,
+    email: `${prefix.toLowerCase()}_root_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: 'ADMIN',
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+    dailyCapping: 4000,
+  });
+
+  // 2. Level 1 Left Child: Placed under Root's LEFT, but sponsored by SOMEONE_ELSE (Spillover)
+  await Member.create({
+    memberId: leftChildId,
+    name: `Test 12 Spillover ${prefix}`,
+    email: `${prefix.toLowerCase()}_l1_left_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: 'UPLINE_SPILLOVER', // NOT rootId!
+    parentId: rootId,
+    position: BINARY_POSITION.LEFT,
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+  });
+
+  // 3. Level 1 Right Child: Placed under Root's RIGHT, but sponsored by SOMEONE_ELSE (Spillover)
+  await Member.create({
+    memberId: rightChildId,
+    name: `Test 25 Spillover ${prefix}`,
+    email: `${prefix.toLowerCase()}_l1_right_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: 'UPLINE_SPILLOVER', // NOT rootId!
+    parentId: rootId,
+    position: BINARY_POSITION.RIGHT,
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+  });
+
+  // 4. Level 3 Left Downline: Placed under Level 1 Left, and SPONSORED BY ROOT with 100 BV
+  await Member.create({
+    memberId: leftDeepId,
+    name: `Dynamic Test Member ${prefix}`,
+    email: `${prefix.toLowerCase()}_l3_left_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: rootId, // Sponsored by Root!
+    parentId: leftChildId,
+    position: BINARY_POSITION.LEFT,
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+  });
+
+  // 5. Level 3 Right Downline: Placed under Level 1 Right, and SPONSORED BY ROOT with 100 BV
+  await Member.create({
+    memberId: rightDeepId,
+    name: `Test 102 ${prefix}`,
+    email: `${prefix.toLowerCase()}_l3_right_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: rootId, // Sponsored by Root!
+    parentId: rightChildId,
+    position: BINARY_POSITION.RIGHT,
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+  });
+
+  // Volume for Root: 2,500 Left, 1,250 Right
+  const vol = await BinaryVolume.create({
+    memberId: rootId,
+    userId: root._id.toString(),
+    leftAvailableBV: 2500,
+    rightAvailableBV: 1250,
+    payoutCount: 0,
+    reservedBV: 0,
+  });
+
+  const rules = await CompensationEngine.getActiveRules();
+  const result = await BinaryBonusService.calculateBinaryIncomeForMember(rootId, rules);
+
+  assertEqual(result.isSponsorQualified, true, 'Root must be sponsor qualified via deep Level 3 downlines');
+  assertEqual(result.isSelfBinaryActive, true, 'Root must be self binary active');
+  assertEqual(result.totalGeneratedIncome, 250, 'Root must successfully earn 250 on first binary payout');
+  assertEqual(result.cyclesCount, 1, 'Should complete 1 cycle');
+  assertEqual(result.reservedBV, 2500, 'Should reserve 2,500 BV on dominant Left side');
+});
+
+test('16. Disqualification when Root personal BV < 100 (Needs 100 BV)', async () => {
+  const prefix = 'TC16';
+  const rootId = `TEST_ROOT_${prefix}`;
+  const leftChildId = `TEST_L1_LEFT_${prefix}`;
+  const rightChildId = `TEST_L1_RIGHT_${prefix}`;
+
+  await Member.deleteMany({ memberId: { $in: [rootId, leftChildId, rightChildId] } });
+  await BinaryVolume.deleteMany({ memberId: { $in: [rootId, leftChildId, rightChildId] } });
+
+  // Root with 0 PBV and isBinaryActive = false
+  const root = await Member.create({
+    memberId: rootId,
+    name: `Inactive Root ${prefix}`,
+    email: `${prefix.toLowerCase()}_root_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: 'ADMIN',
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: false,
+    personalBv: 0,
+    dailyCapping: 4000,
+  });
+
+  // Sponsored children on both sides
+  await Member.create({
+    memberId: leftChildId,
+    name: `Left Child ${prefix}`,
+    email: `${prefix.toLowerCase()}_left_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: rootId,
+    parentId: rootId,
+    position: BINARY_POSITION.LEFT,
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+  });
+
+  await Member.create({
+    memberId: rightChildId,
+    name: `Right Child ${prefix}`,
+    email: `${prefix.toLowerCase()}_right_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: rootId,
+    parentId: rootId,
+    position: BINARY_POSITION.RIGHT,
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+  });
+
+  await BinaryVolume.create({
+    memberId: rootId,
+    userId: root._id.toString(),
+    leftAvailableBV: 2500,
+    rightAvailableBV: 1250,
+    payoutCount: 0,
+    reservedBV: 0,
+  });
+
+  const rules = await CompensationEngine.getActiveRules();
+  const result = await BinaryBonusService.calculateBinaryIncomeForMember(rootId, rules);
+
+  assertEqual(result.isSelfBinaryActive, false, 'Root with 0 BV must have isSelfBinaryActive = false');
+  assertEqual(result.totalGeneratedIncome, 0, 'Inactive root cannot generate binary income');
+});
+
+test('17. Disqualification when deep sponsored downline on Right has 0 BV (Needs 100 BV)', async () => {
+  const prefix = 'TC17';
+  const rootId = `TEST_ROOT_${prefix}`;
+  const leftChildId = `TEST_L1_LEFT_${prefix}`;
+  const rightChildId = `TEST_L1_RIGHT_${prefix}`;
+  const leftDeepId = `TEST_L3_LEFT_${prefix}`;
+  const rightDeepId = `TEST_L3_RIGHT_${prefix}`;
+
+  await Member.deleteMany({ memberId: { $in: [rootId, leftChildId, rightChildId, leftDeepId, rightDeepId] } });
+  await BinaryVolume.deleteMany({ memberId: { $in: [rootId, leftChildId, rightChildId, leftDeepId, rightDeepId] } });
+
+  const root = await Member.create({
+    memberId: rootId,
+    name: `Root Member ${prefix}`,
+    email: `${prefix.toLowerCase()}_root_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: 'ADMIN',
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+    dailyCapping: 4000,
+  });
+
+  // Spillover level 1
+  await Member.create({
+    memberId: leftChildId,
+    name: `Spillover Left ${prefix}`,
+    email: `${prefix.toLowerCase()}_spill_left_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: 'UPLINE',
+    parentId: rootId,
+    position: BINARY_POSITION.LEFT,
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+  });
+
+  await Member.create({
+    memberId: rightChildId,
+    name: `Spillover Right ${prefix}`,
+    email: `${prefix.toLowerCase()}_spill_right_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: 'UPLINE',
+    parentId: rootId,
+    position: BINARY_POSITION.RIGHT,
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+  });
+
+  // Left deep sponsored has 100 BV
+  await Member.create({
+    memberId: leftDeepId,
+    name: `Left Sponsored ${prefix}`,
+    email: `${prefix.toLowerCase()}_deep_left_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: rootId,
+    parentId: leftChildId,
+    position: BINARY_POSITION.LEFT,
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: true,
+    personalBv: 100,
+  });
+
+  // Right deep sponsored has 0 BV (Needs 100 BV)
+  await Member.create({
+    memberId: rightDeepId,
+    name: `Right Sponsored Unqualified ${prefix}`,
+    email: `${prefix.toLowerCase()}_deep_right_${Date.now()}@test.com`,
+    mobile: getUniqueMobile(),
+    password: 'password123',
+    sponsorId: rootId,
+    parentId: rightChildId,
+    position: BINARY_POSITION.RIGHT,
+    role: 'member',
+    status: 'active',
+    approvalStatus: 'approved',
+    isActive: true,
+    isBinaryActive: false,
+    personalBv: 0, // Unqualified!
+  });
+
+  await BinaryVolume.create({
+    memberId: rootId,
+    userId: root._id.toString(),
+    leftAvailableBV: 2500,
+    rightAvailableBV: 1250,
+    payoutCount: 0,
+    reservedBV: 0,
+  });
+
+  const rules = await CompensationEngine.getActiveRules();
+  const result = await BinaryBonusService.calculateBinaryIncomeForMember(rootId, rules);
+
+  assertEqual(result.isSponsorQualified, false, 'Root must NOT qualify because Right sponsored member has 0 BV');
+  assertEqual(result.totalGeneratedIncome, 0, 'Cannot earn binary income without qualified sponsor on both sides');
+});
+
+test('18. Extreme leg placement rejects non-existent sponsor ID', async () => {
+  let threw = false;
+  try {
+    await BinaryTreeService.findExtremeLegPlacement('NON_EXISTENT_MEMBER_9999', BINARY_POSITION.LEFT);
+  } catch (err: any) {
+    threw = true;
+    assertEqual(err.message.includes('does not exist in our system'), true, 'Should throw descriptive error for non-existent sponsor');
+  }
+  assertEqual(threw, true, 'Must reject placement under non-existent sponsor ID');
+});
+
+test('19. Extreme leg placement succeeds under valid existing member ID', async () => {
+  const rootMember = await Member.findOne().sort({ createdAt: 1 });
+  if (!rootMember) {
+    throw new Error('No members in DB to test valid sponsor placement');
+  }
+
+  const placement = await BinaryTreeService.findExtremeLegPlacement(rootMember.memberId, BINARY_POSITION.RIGHT);
+  assertEqual(Boolean(placement.parentId), true, 'Placement must locate a parent ID under existing sponsor');
+  assertEqual(placement.position, BINARY_POSITION.RIGHT, 'Placement position must match requested leg');
+});
+
+test('20. Root member in database has NO sponsor ID (not even ADMIN)', async () => {
+  const rootMember = await Member.findOne().sort({ createdAt: 1 });
+  if (!rootMember) {
+    throw new Error('No root member found');
+  }
+  assertEqual(!rootMember.sponsorId || rootMember.sponsorId === '', true, 'Root member must have empty sponsorId, not ADMIN');
 });
 
 // ==========================================

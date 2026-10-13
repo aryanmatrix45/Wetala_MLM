@@ -397,7 +397,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span style={{ fontSize: '13px', color: '#64748b' }}>Sponsor ID</span>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                {user?.sponsorId || 'ADMIN'}
+                {user?.sponsorId || 'None (Root Member)'}
               </span>
             </div>
 

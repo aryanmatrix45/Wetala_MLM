@@ -46,7 +46,12 @@ export interface BinaryIncomeCalculationResult {
   alreadyEarnedToday: number;
   excessAmount: number;
   isSponsorQualified: boolean;
+  isSelfBinaryActive?: boolean;
   commissionLedger?: ICommissionLedger | null;
+  leftSponsorMemberIds?: string[];
+  rightSponsorMemberIds?: string[];
+  leftSponsorMembers?: Array<{ memberId: string; name: string; personalBv: number }>;
+  rightSponsorMembers?: Array<{ memberId: string; name: string; personalBv: number }>;
 }
 
 export class BinaryBonusService {
@@ -96,12 +101,31 @@ export class BinaryBonusService {
       return emptyResult;
     }
 
-    // Members can participate in binary income. Those who have not bought any package
-    // are capped at the default entry limit of ₹4,000/day via CapService.
-    // Personal BV requirement is waived or set to 0 for free/active participants.
+    // 1. SELF BINARY PARTICIPATION REQUIREMENT:
+    // A member must have at least 100 Personal BV to participate in the binary matching engine.
+    const isSelfBinaryActive = Boolean(member.isBinaryActive || (member.personalBv || 0) >= 100);
+    if (!member.isBinaryActive && (member.personalBv || 0) >= 100) {
+      member.isBinaryActive = true;
+      await member.save();
+    }
 
-    // 1. SPONSOR REQUIREMENT:
-    // Required sponsor condition must be satisfied on BOTH Left and Right sides of binary tree
+    if (!isSelfBinaryActive) {
+      const currentVol = await BinaryVolume.findOne({ memberId: cleanId });
+      return {
+        ...emptyResult,
+        leftAvailableBV: currentVol?.leftAvailableBV || 0,
+        rightAvailableBV: currentVol?.rightAvailableBV || 0,
+        reservedBV: currentVol?.reservedBV || 0,
+        reservedSide: (currentVol?.reservedSide as any) || null,
+        payoutCount: currentVol?.payoutCount || 0,
+        isSponsorQualified: false,
+        isSelfBinaryActive: false,
+      };
+    }
+
+    // 2. SPONSOR REQUIREMENT:
+    // Member must have at least 1 binary-active direct sponsor (>= 100 PBV) in their Left binary subtree
+    // AND at least 1 binary-active direct sponsor (>= 100 PBV) in their Right binary subtree (at any level/depth).
     const sponsorCheck = await BinaryTreeService.checkSponsorLegEligibility(cleanId);
     if (!sponsorCheck.isQualified) {
       // Fetch live volume just to return current balance without generating payouts
@@ -114,6 +138,11 @@ export class BinaryBonusService {
         reservedSide: (currentVol?.reservedSide as any) || null,
         payoutCount: currentVol?.payoutCount || 0,
         isSponsorQualified: false,
+        isSelfBinaryActive: true,
+        leftSponsorMemberIds: sponsorCheck.leftSponsorMemberIds,
+        rightSponsorMemberIds: sponsorCheck.rightSponsorMemberIds,
+        leftSponsorMembers: sponsorCheck.leftSponsorMembers,
+        rightSponsorMembers: sponsorCheck.rightSponsorMembers,
       };
     }
 
@@ -310,6 +339,11 @@ export class BinaryBonusService {
         reservedSide,
         payoutCount: currentPayoutCount,
         isSponsorQualified: true,
+        isSelfBinaryActive: true,
+        leftSponsorMemberIds: sponsorCheck.leftSponsorMemberIds,
+        rightSponsorMemberIds: sponsorCheck.rightSponsorMemberIds,
+        leftSponsorMembers: sponsorCheck.leftSponsorMembers,
+        rightSponsorMembers: sponsorCheck.rightSponsorMembers,
       };
     }
 
@@ -675,6 +709,11 @@ export class BinaryBonusService {
       alreadyEarnedToday,
       excessAmount,
       isSponsorQualified: true,
+      isSelfBinaryActive: true,
+      leftSponsorMemberIds: sponsorCheck.leftSponsorMemberIds,
+      rightSponsorMemberIds: sponsorCheck.rightSponsorMemberIds,
+      leftSponsorMembers: sponsorCheck.leftSponsorMembers,
+      rightSponsorMembers: sponsorCheck.rightSponsorMembers,
       commissionLedger,
     };
   }

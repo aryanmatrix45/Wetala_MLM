@@ -418,29 +418,35 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
 
     if (totalCount === 0) {
       // First member in system: ROOT NODE of the MLM tree
-      // No sponsor ID required; defaults to 'ADMIN' as root placeholder
-      finalSponsorId = finalSponsorId || 'ADMIN';
+      // Has NO sponsor ID (not even ADMIN) and NO parent ID
+      finalSponsorId = '';
       finalParentId = '';
       finalPos = BINARY_POSITION.LEFT;
     } else {
-      // All subsequent members strictly require a sponsor ID
+      // All subsequent members strictly require a valid existing member's ID as sponsor
       if (!finalSponsorId) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
           status: false,
-          message: 'Sponsor ID is required. Please provide ADMIN or an existing Member ID.'
+          message: 'Sponsor ID is mandatory. Please provide a valid existing Member ID.'
         });
         return;
       }
-      // Validate sponsor ID: can be 'ADMIN' or an existing member
-      if (finalSponsorId !== 'ADMIN') {
-        const sponsorExists = await Member.findOne({ memberId: finalSponsorId });
-        if (!sponsorExists) {
-          res.status(HTTP_STATUS.BAD_REQUEST).json({
-            status: false,
-            message: `Sponsor ID "${finalSponsorId}" does not exist. Please enter a valid Member ID or ADMIN.`
-          });
-          return;
-        }
+
+      if (finalSponsorId === 'ADMIN') {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'ADMIN cannot be used as a Sponsor ID. A valid registered Member ID is required.'
+        });
+        return;
+      }
+
+      const sponsorExists = await Member.findOne({ memberId: finalSponsorId });
+      if (!sponsorExists) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: `Sponsor ID "${finalSponsorId}" does not exist in our system. Please enter a valid Member ID.`
+        });
+        return;
       }
 
       // Directional Extreme Leg Placement: Traverse down sponsor's chosen leg (LEFT or RIGHT) to first empty slot

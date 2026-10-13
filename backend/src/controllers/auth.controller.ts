@@ -198,7 +198,7 @@ export const AuthController = {
 
       // 3. Resolve Sponsor ID and Binary Tree Placement (Distinct relationships)
       const totalMemberCount = await Member.countDocuments();
-      let resolvedSponsorId = sponsorId && sponsorId.trim() ? sponsorId.trim().toUpperCase() : 'ADMIN';
+      let resolvedSponsorId = '';
       let finalParentId = '';
       let finalPosition: BinaryPosition = BINARY_POSITION.LEFT;
 
@@ -207,21 +207,40 @@ export const AuthController = {
         rawPosition === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
 
       if (totalMemberCount === 0) {
-        resolvedSponsorId = 'ADMIN';
+        // Very first member in the system: Root Node of binary tree
+        // Has NO sponsor ID (not even ADMIN) and NO parent ID
+        resolvedSponsorId = '';
         finalParentId = '';
         finalPosition = BINARY_POSITION.LEFT;
       } else {
-        // Validate sponsor existence
-        if (resolvedSponsorId !== 'ADMIN') {
-          const sponsorExists = await Member.findOne({ memberId: resolvedSponsorId });
-          if (!sponsorExists) {
-            res.status(HTTP_STATUS.BAD_REQUEST).json({
-              status: false,
-              message: `Sponsor ID "${resolvedSponsorId}" does not exist. Please enter a valid Member ID or ADMIN.`,
-            });
-            return;
-          }
+        // All subsequent members strictly require an existing Member ID as sponsor
+        const rawSponsor = (sponsorId || '').trim().toUpperCase();
+        if (!rawSponsor) {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({
+            status: false,
+            message: 'Sponsor ID is mandatory. Please provide a valid registered Member ID.',
+          });
+          return;
         }
+
+        if (rawSponsor === 'ADMIN') {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({
+            status: false,
+            message: 'ADMIN cannot be used as a Sponsor ID. A valid registered Member ID is required.',
+          });
+          return;
+        }
+
+        const sponsorExists = await Member.findOne({ memberId: rawSponsor });
+        if (!sponsorExists) {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({
+            status: false,
+            message: `Sponsor ID "${rawSponsor}" does not exist in our system. Please enter a valid Member ID.`,
+          });
+          return;
+        }
+
+        resolvedSponsorId = rawSponsor;
 
         // Directional Extreme Leg Placement: Traverse down sponsor's chosen leg to first empty slot
         const placement = await BinaryTreeService.findExtremeLegPlacement(resolvedSponsorId, targetPos);
@@ -825,15 +844,9 @@ export const AuthController = {
       }
 
       if (rawId === 'ADMIN') {
-        const rootMember = await Member.findOne().sort({ createdAt: 1 });
-        res.status(HTTP_STATUS.OK).json({
-          status: true,
-          data: {
-            memberId: 'ADMIN',
-            name: rootMember ? `${rootMember.name} (Root Admin)` : 'Company Admin',
-            status: 'active',
-            rank: 'Company',
-          },
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'ADMIN cannot be used as a Sponsor ID. Please enter a valid registered Member ID.',
         });
         return;
       }
@@ -842,7 +855,7 @@ export const AuthController = {
       if (!member) {
         res.status(HTTP_STATUS.NOT_FOUND).json({
           status: false,
-          message: `Sponsor ID "${rawId}" does not exist. Please enter a valid Sponsor ID.`,
+          message: `Sponsor ID "${rawId}" does not exist in our system. Please enter a valid Member ID.`,
         });
         return;
       }

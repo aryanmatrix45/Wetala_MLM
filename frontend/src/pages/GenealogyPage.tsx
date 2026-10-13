@@ -371,6 +371,11 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
 
           <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{node.name}</div>
           <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>{node.memberId}</div>
+          {node.sponsorId && (
+            <div style={{ fontSize: '10px', color: '#4f46e5', fontWeight: 700, marginTop: '1px' }} title={`Direct Sponsor: ${node.sponsorId}`}>
+              Sp: {node.sponsorId}
+            </div>
+          )}
 
           {/* Left / Right BV Split */}
           <div className="node-leg-bar">

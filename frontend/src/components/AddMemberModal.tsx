@@ -238,7 +238,7 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
           }}>
             <Sparkles size={16} style={{ flexShrink: 0, color: '#059669' }} />
             <span>
-              <strong>First Member (Root Node):</strong> No members exist yet. This person will be created as the Root Member of the entire tree. Sponsor ID is optional (defaults to ADMIN).
+              <strong>First Member (Root Node):</strong> No members exist yet. This person will be created as the Root Member of the entire tree. Root node has no sponsor ID.
             </span>
           </div>
         )}
@@ -504,16 +504,24 @@ export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose,
           <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '12px' }}>
             <div>
               <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                Sponsor ID {isFirstMember ? <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>(Optional - Root Node)</span> : '*'}
-                {!isFirstMember && <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}> (e.g. ADMIN or Member ID)</span>}
+                Sponsor ID {isFirstMember ? <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 600 }}>(None - Root Node)</span> : '*'}
+                {!isFirstMember && <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 400 }}> (Existing Member ID, e.g. MEM0001)</span>}
               </label>
               <input
                 type="text"
+                disabled={isFirstMember}
                 required={!isFirstMember}
-                placeholder={isFirstMember ? "Optional (Root Member defaults to ADMIN)" : "Enter Sponsor ID (ADMIN or MEM0001)"}
-                value={formData.sponsorId}
+                placeholder={isFirstMember ? "None (Root member has no sponsor)" : "Enter existing Member ID (e.g. MEM0001)"}
+                value={isFirstMember ? "" : formData.sponsorId}
                 onChange={(e) => setFormData({ ...formData, sponsorId: e.target.value.toUpperCase() })}
-                style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '13px',
+                  background: isFirstMember ? '#f8fafc' : '#ffffff'
+                }}
               />
             </div>
 
