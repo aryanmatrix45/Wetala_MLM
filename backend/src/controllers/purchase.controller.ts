@@ -580,6 +580,20 @@ export const PurchaseController = {
   async completePurchase(req: Request, res: Response): Promise<void> {
     try {
       const { purchaseId } = req.params;
+      const purchase = await Purchase.findOne({ purchaseId });
+      if (!purchase) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({ status: false, message: `Purchase ${purchaseId} not found.` });
+        return;
+      }
+
+      if (purchase.paymentStatus !== 'PAID') {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: `Cannot complete purchase: Purchase ${purchaseId} has not been verified or marked as PAID by Admin. Please use the verify-and-pay endpoint.`,
+        });
+        return;
+      }
+
       const result = await CompensationEngine.processPurchaseCompleted(purchaseId);
 
       res.status(HTTP_STATUS.OK).json({

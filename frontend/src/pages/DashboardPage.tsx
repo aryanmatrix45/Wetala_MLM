@@ -68,7 +68,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
   const [showAllInline, setShowAllInline] = useState(false);
   const [payoutSearch, setPayoutSearch] = useState('');
   const [payoutFilterSettlement, setPayoutFilterSettlement] = useState('ALL');
-  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const isAdmin = user?.role?.toLowerCase() === 'superadmin';
   const currentMemberId = user?.memberId || 'MEM0001';
   const effectivePayouts: any[] = isAdmin 
     ? (welcomeBonus?.history || [])

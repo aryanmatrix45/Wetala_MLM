@@ -200,6 +200,13 @@ export class CompensationEngine {
       throw new Error(`Purchase ${purchaseId} not found.`);
     }
 
+    // STRICT FINANCIAL GUARD: Only purchases verified and marked as PAID can credit BV or generate commissions
+    if (purchase.paymentStatus !== 'PAID') {
+      throw new Error(
+        `Cannot credit volume or commission: Purchase ${purchaseId} is in paymentStatus '${purchase.paymentStatus}' (approvalStage: '${purchase.approvalStage}'). Volume and commissions can only be credited after Super Admin marks the purchase as PAID.`
+      );
+    }
+
     const member = await Member.findOne({ memberId: purchase.memberId });
     if (!member) {
       throw new Error(`Member ${purchase.memberId} associated with purchase not found.`);

@@ -30,15 +30,13 @@ export class CapService {
   ): Promise<CapEvaluationResult> {
     const cleanId = (memberId || '').toUpperCase().trim();
     const member = await Member.findOne({ memberId: cleanId }).select('role dailyCapping joiningPackageId');
-    const isAdmin = member && (
-      member.role === ROLES.ADMIN ||
+    const isSuperAdmin = member && (
       member.role === ROLES.SUPERADMIN ||
-      member.role?.toLowerCase() === 'admin' ||
       member.role?.toLowerCase() === 'superadmin'
     );
 
-    // If member is Admin or Super Admin, binary cap is completely disabled (uncapped)
-    if (isAdmin) {
+    // If member is Super Admin, binary cap is completely disabled (uncapped)
+    if (isSuperAdmin) {
       return {
         rawAmount: calculatedAmount,
         capAmount: 0,

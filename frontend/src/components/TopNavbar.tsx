@@ -24,7 +24,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isAdmin = user?.role === 'superadmin';
 
   const loadNotifications = () => {
     if (isAdmin) {
@@ -92,9 +92,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
     ? `ID: ${user.memberId}`
     : user?.role === 'superadmin'
       ? 'Super Admin'
-      : user?.role === 'admin'
-        ? 'Admin'
-        : 'Distributor';
+      : 'Member';
 
   return (
     <header className="top-header">

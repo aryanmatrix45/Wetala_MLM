@@ -96,7 +96,7 @@ const TIER_THEMES = [
  * Handles packageId, packageName, badge name (e.g. STARTER), and daily capping limits.
  */
 export const findUserPackage = (user: any, pkgs: PackageItem[]): PackageItem | null => {
-  if (!user || user.role === 'admin' || user.role === 'superadmin' || !pkgs || pkgs.length === 0) {
+  if (!user || user.role === 'superadmin' || !pkgs || pkgs.length === 0) {
     return null;
   }
 
@@ -147,7 +147,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
   const savedUserStr = localStorage.getItem('wetala_user');
   const user = propUser || (savedUserStr ? JSON.parse(savedUserStr) : null);
 
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isAdmin = user?.role === 'superadmin';
 
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [loading, setLoading] = useState(true);

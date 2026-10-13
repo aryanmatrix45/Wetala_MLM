@@ -3,7 +3,8 @@ import jwt from 'jsonwebtoken';
 import { Admin } from '../models/Admin.model';
 import { Member } from '../models/Member.model';
 import { Package } from '../models/Package.model';
-import { HTTP_STATUS, ROLES, BINARY_POSITION, BinaryPosition } from '../config/constants';
+import { Purchase } from '../models/Purchase.model';
+import { HTTP_STATUS, ROLES, BINARY_POSITION, BinaryPosition, PURCHASE_TYPE, PURCHASE_STATUS } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 import { WalletService } from '../services/WalletService';
@@ -267,11 +268,15 @@ export const AuthController = {
         });
       }
 
-      const finalPackageName = selectedPackage ? selectedPackage.name : null;
-      const finalPackageId = selectedPackage ? selectedPackage.packageId : null;
-      const finalPackageBv = selectedPackage ? selectedPackage.bv : 0;
-      const finalPackageRp = selectedPackage ? selectedPackage.rp : 0;
-      const finalDailyCapping = selectedPackage ? (selectedPackage.dailyCapping || 0) : 0;
+      const isRoot = totalMemberCount === 0;
+
+      // Only Root member is granted an immediate active package without payment verification.
+      // All subsequent members strictly require payment verification and admin marking as PAID.
+      const finalPackageName = (isRoot && selectedPackage) ? selectedPackage.name : null;
+      const finalPackageId = (isRoot && selectedPackage) ? selectedPackage.packageId : null;
+      const finalPackageBv = (isRoot && selectedPackage) ? selectedPackage.bv : 0;
+      const finalPackageRp = (isRoot && selectedPackage) ? selectedPackage.rp : 0;
+      const finalDailyCapping = (isRoot && selectedPackage) ? (selectedPackage.dailyCapping || 0) : 0;
 
       // 6. Create Member record (Password hashed automatically by Member schema pre-save hook)
       // All registrations are immediately active & approved for direct instant login!
@@ -304,12 +309,13 @@ export const AuthController = {
         packageName: finalPackageName,
         packageBv: finalPackageBv,
         packageRp: finalPackageRp,
+        dailyCapping: finalDailyCapping,
         status: 'active',
         approvalStatus: 'approved',
-        addedBy: totalMemberCount === 0 ? 'ADMIN' : (resolvedSponsorId || 'ADMIN'),
+        addedBy: isRoot ? 'ADMIN' : (resolvedSponsorId || 'ADMIN'),
         isActive: true,
-        personalBv: 0,
-        isBinaryActive: totalMemberCount === 0,
+        personalBv: isRoot ? (finalPackageBv || 1250) : 0,
+        isBinaryActive: isRoot,
         leftBv: 0,
         rightBv: 0,
         matchedPairs: 0,
@@ -323,8 +329,51 @@ export const AuthController = {
       await WalletService.getOrCreateWallet(newMember.memberId, newMember._id.toString()).catch(() => null);
       await BVService.getOrCreateBinaryVolume(newMember.memberId, newMember._id.toString()).catch(() => null);
 
-      // If a package with >= 100 BV was selected at registration, place them immediately
-      if (finalPackageBv >= 100) {
+      // If a package was selected during registration by a non-root member,
+      // create a PENDING Purchase order so Admin can verify payment before activating it
+      if (!isRoot && selectedPackage) {
+        const purchaseId = `PUR-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+        const tempTxnId = `REQ-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+        const authPrice = Number(selectedPackage.price);
+        const authBv = Number(selectedPackage.bv);
+
+        await Purchase.create({
+          purchaseId,
+          userId: newMember._id.toString(),
+          memberId: newMember.memberId,
+          memberName: newMember.name,
+          memberMobile: newMember.mobile,
+          memberEmail: newMember.email,
+          type: PURCHASE_TYPE.JOINING,
+          items: [
+            {
+              itemId: selectedPackage.packageId,
+              itemType: 'PACKAGE',
+              name: selectedPackage.name,
+              quantity: 1,
+              unitPrice: authPrice,
+              price: authPrice,
+              unitPriceInPaise: selectedPackage.priceInPaise || Math.round(authPrice * 100),
+              unitBV: authBv,
+              businessVolume: authBv,
+              totalPrice: authPrice,
+              totalPriceInPaise: Math.round(authPrice * 100),
+              totalBV: authBv,
+            },
+          ],
+          totalAmount: authPrice,
+          totalAmountInPaise: Math.round(authPrice * 100),
+          totalBV: authBv,
+          status: PURCHASE_STATUS.PENDING,
+          paymentStatus: 'PENDING',
+          approvalStage: 'REQUESTED',
+          transactionId: tempTxnId,
+          notes: `Joining Package (${selectedPackage.name}) requested at registration by ${newMember.name} (${newMember.memberId}). Requires Super Admin payment verification before crediting.`,
+        }).catch((err) => console.warn('[AuthController.register] Notice: Pending package request creation notice:', err));
+      }
+
+      // Root member auto-placement
+      if (isRoot) {
         await BinaryTreeService.placeMemberInBinaryTree(newMember.memberId);
       }
 

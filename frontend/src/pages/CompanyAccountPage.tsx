@@ -29,7 +29,7 @@ interface CompanyAccountPageProps {
 }
 
 export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, token }) => {
-  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const isAdmin = user?.role?.toLowerCase() === 'superadmin';
   
   const [account, setAccount] = useState<CompanyAccountData | null>(null);
   const [loading, setLoading] = useState<boolean>(true);

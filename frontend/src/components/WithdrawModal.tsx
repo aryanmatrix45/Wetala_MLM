@@ -43,7 +43,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  const isPrivileged = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const isPrivileged = user?.role?.toLowerCase() === 'superadmin';
 
   // Lifetime Personal BV Eligibility State (1,250 BV threshold)
   const [bvInfo, setBvInfo] = useState<{

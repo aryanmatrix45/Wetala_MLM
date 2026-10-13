@@ -177,7 +177,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
   const savedToken = propToken || localStorage.getItem('wetala_token') || '';
   const savedUserStr = localStorage.getItem('wetala_user');
   const user = propUser || (savedUserStr ? JSON.parse(savedUserStr) : null);
-  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  const isAdmin = user?.role === 'superadmin';
 
   // Section Mode: 'teamBonus' | 'royalty' | 'rewards' | 'simulator'
   const section = defaultSection || 'simulator';

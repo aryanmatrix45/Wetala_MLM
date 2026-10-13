@@ -486,7 +486,7 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
 
     if (totalCount === 0) {
       addedBy = 'ADMIN';
-    } else if (reqUser && (reqUser.role === ROLES.ADMIN || reqUser.role === ROLES.SUPERADMIN)) {
+    } else if (reqUser && reqUser.role === ROLES.SUPERADMIN) {
       addedBy = 'ADMIN';
     } else if (reqUser && reqUser.role === ROLES.MEMBER && reqUser.memberId) {
       addedBy = reqUser.memberId.toUpperCase().trim();
@@ -591,10 +591,10 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
 // GET all pending member requests for Super Admin
 router.get('/admin/member-requests', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    if (req.user?.role !== ROLES.ADMIN && req.user?.role !== ROLES.SUPERADMIN) {
+    if (req.user?.role !== ROLES.SUPERADMIN) {
       res.status(HTTP_STATUS.FORBIDDEN).json({
         status: false,
-        message: 'Access restricted to administrators only.'
+        message: 'Access restricted to Super Admin only.'
       });
       return;
     }
@@ -636,10 +636,10 @@ router.get('/admin/member-requests', authenticate, async (req: AuthenticatedRequ
 // Helper for approving member request
 const handleApproveMember = async (req: AuthenticatedRequest, res: any) => {
   try {
-    if (req.user?.role !== ROLES.ADMIN && req.user?.role !== ROLES.SUPERADMIN) {
+    if (req.user?.role !== ROLES.SUPERADMIN) {
       res.status(HTTP_STATUS.FORBIDDEN).json({
         status: false,
-        message: 'Access restricted to administrators only.'
+        message: 'Access restricted to Super Admin only.'
       });
       return;
     }
@@ -716,10 +716,10 @@ const handleApproveMember = async (req: AuthenticatedRequest, res: any) => {
 // Helper for rejecting member request
 const handleRejectMember = async (req: AuthenticatedRequest, res: any) => {
   try {
-    if (req.user?.role !== ROLES.ADMIN && req.user?.role !== ROLES.SUPERADMIN) {
+    if (req.user?.role !== ROLES.SUPERADMIN) {
       res.status(HTTP_STATUS.FORBIDDEN).json({
         status: false,
-        message: 'Access restricted to administrators only.'
+        message: 'Access restricted to Super Admin only.'
       });
       return;
     }

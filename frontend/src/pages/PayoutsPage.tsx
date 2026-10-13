@@ -27,7 +27,7 @@ interface PayoutsPageProps {
 }
 
 export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSubTab = 'requests', onNavigate }) => {
-  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const isAdmin = user?.role?.toLowerCase() === 'superadmin';
   const currentMemberId = user?.memberId || 'MEM0001';
 
   // Navigation tab

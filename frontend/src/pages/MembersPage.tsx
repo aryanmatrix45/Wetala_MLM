@@ -47,7 +47,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
   const [selectedStatus, setSelectedStatus] = useState('All Status');
   const [loading, setLoading] = useState(true);
 
-  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const isAdmin = user?.role?.toLowerCase() === 'superadmin';
 
   // Fetch live members from backend API scoped to user role
   useEffect(() => {

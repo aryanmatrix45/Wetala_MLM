@@ -35,7 +35,7 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, user, isOpen, onClose }) => {
-  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const isAdmin = user?.role?.toLowerCase() === 'superadmin';
   const [pendingWithdrawals, setPendingWithdrawals] = useState<number>(0);
   const [pendingMemberRequests, setPendingMemberRequests] = useState<number>(0);
   const [pendingPurchaseRequests, setPendingPurchaseRequests] = useState<number>(0);

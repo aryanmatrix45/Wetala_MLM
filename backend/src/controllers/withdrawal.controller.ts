@@ -71,7 +71,7 @@ export const WithdrawalController = {
       const lifetimePersonalBV = Math.max(member.personalBv || 0, purchaseBV);
       const MIN_WITHDRAWAL_BV = 1250;
 
-      const isPrivilegedAdmin = user.role === ROLES.ADMIN || user.role === ROLES.SUPERADMIN;
+      const isPrivilegedAdmin = user.role === ROLES.SUPERADMIN;
       if (!isPrivilegedAdmin && lifetimePersonalBV < MIN_WITHDRAWAL_BV) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
           status: false,

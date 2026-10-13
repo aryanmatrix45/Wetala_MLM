@@ -24,7 +24,7 @@ export const BinaryLedgerPage: React.FC<BinaryLedgerPageProps> = ({ user: propUs
   const savedToken = propToken || localStorage.getItem('wetala_token') || '';
   const savedUserStr = localStorage.getItem('wetala_user');
   const user = propUser || (savedUserStr ? JSON.parse(savedUserStr) : null);
-  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const isAdmin = user?.role?.toLowerCase() === 'superadmin';
   const defaultMemberId = user?.memberId || 'MEM0001';
 
   const [activeMemberId, setActiveMemberId] = useState(defaultMemberId);

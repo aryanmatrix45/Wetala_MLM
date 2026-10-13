@@ -8,7 +8,7 @@ export interface IAdmin extends Document {
   phone: string;
   email: string;
   password: string;
-  role: 'superadmin' | 'admin';
+  role: 'superadmin';
   isActive: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -52,7 +52,7 @@ const adminSchema = new Schema<IAdmin, IAdminModel>(
     },
     role: {
       type: String,
-      enum: [ROLES.SUPERADMIN, ROLES.ADMIN],
+      enum: [ROLES.SUPERADMIN],
       default: ROLES.SUPERADMIN,
     },
     isActive: {

@@ -101,7 +101,7 @@ interface PurchaseRequestsPageProps {
 }
 
 export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user, token }) => {
-  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const isAdmin = user?.role?.toLowerCase() === 'superadmin';
   const [purchases, setPurchases] = useState<PurchaseRecord[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [refreshing, setRefreshing] = useState<boolean>(false);

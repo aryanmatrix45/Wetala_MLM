@@ -33,10 +33,10 @@ export const CompanyAccountController = {
    */
   async updateAccount(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      if (req.user?.role !== ROLES.ADMIN && req.user?.role !== ROLES.SUPERADMIN) {
+      if (req.user?.role !== ROLES.SUPERADMIN) {
         res.status(HTTP_STATUS.FORBIDDEN).json({
           status: false,
-          message: 'Access denied: Only administrators can update company account details.',
+          message: 'Access denied: Only Super Admin can update company account details.',
         });
         return;
       }
@@ -97,10 +97,10 @@ export const CompanyAccountController = {
    */
   async uploadQRCode(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      if (req.user?.role !== ROLES.ADMIN && req.user?.role !== ROLES.SUPERADMIN) {
+      if (req.user?.role !== ROLES.SUPERADMIN) {
         res.status(HTTP_STATUS.FORBIDDEN).json({
           status: false,
-          message: 'Access denied: Only administrators can upload company QR codes.',
+          message: 'Access denied: Only Super Admin can upload company QR codes.',
         });
         return;
       }
@@ -155,10 +155,10 @@ export const CompanyAccountController = {
    */
   async removeQRCode(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      if (req.user?.role !== ROLES.ADMIN && req.user?.role !== ROLES.SUPERADMIN) {
+      if (req.user?.role !== ROLES.SUPERADMIN) {
         res.status(HTTP_STATUS.FORBIDDEN).json({
           status: false,
-          message: 'Access denied: Only administrators can modify company payment details.',
+          message: 'Access denied: Only Super Admin can modify company payment details.',
         });
         return;
       }

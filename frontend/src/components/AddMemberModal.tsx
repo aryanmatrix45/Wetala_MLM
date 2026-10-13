@@ -10,7 +10,7 @@ interface AddMemberModalProps {
 }
 
 export const AddMemberModal: React.FC<AddMemberModalProps> = ({ isOpen, onClose, onAddMember, user }) => {
-  const isAdmin = user?.role?.toLowerCase() === 'admin' || user?.role?.toLowerCase() === 'superadmin';
+  const isAdmin = user?.role?.toLowerCase() === 'superadmin';
   const [formData, setFormData] = useState({
     name: '',
     countryCode: '+91',
