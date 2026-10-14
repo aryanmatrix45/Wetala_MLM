@@ -8,6 +8,25 @@ import { HTTP_STATUS } from '../config/constants';
 const router = Router();
 
 /**
+ * Get Welcome Bonus Governance & Live Engine Overview for Super Admin / Admin
+ * GET /api/welcome-bonus/admin-summary
+ */
+router.get('/admin-summary', async (_req: Request, res: Response) => {
+  try {
+    const summary = await WelcomeBonusService.getAdminDashboardSummary();
+    res.json({
+      status: true,
+      data: summary,
+    });
+  } catch (error: any) {
+    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+      status: false,
+      message: error.message || 'Failed to fetch Welcome Bonus admin summary',
+    });
+  }
+});
+
+/**
  * Preview current / upcoming weekly Welcome Bonus settlement
  * GET /api/welcome-bonus/preview
  */

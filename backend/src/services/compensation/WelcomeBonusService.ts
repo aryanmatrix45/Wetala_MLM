@@ -119,19 +119,38 @@ export class WelcomeBonusService {
    */
   static async checkMemberEligibility(
     member: IMember,
-    maxMultiplier: number = 2
+    maxMultiplierParam?: number,
+    ruleConfigParam?: any
   ): Promise<MemberEligibilityResult> {
-    const qualifyingBv = member.qualifyingBv || member.packageBv || 0;
-    const welcomeBonusCap = member.welcomeBonusCap || qualifyingBv * maxMultiplier;
+    const rules = ruleConfigParam ? null : await this.getActiveRules();
+    const config = ruleConfigParam || rules?.welcomeBonus || {};
+
+    const maxMultiplier = typeof maxMultiplierParam === 'number' && maxMultiplierParam > 0
+      ? maxMultiplierParam 
+      : (typeof config.maxMultiplier === 'number' && config.maxMultiplier > 0 ? config.maxMultiplier : 2);
+    const minWingBv = typeof config.minWingBv === 'number' && config.minWingBv >= 0 ? config.minWingBv : 100;
+    const minQualifyingBv = typeof config.minQualifyingBv === 'number' && config.minQualifyingBv >= 0 ? config.minQualifyingBv : 100;
+    const requiresLeftAndRight = config.requiresLeftAndRight !== false;
+
+    // Total purchased personal BV from all packages + products
+    const qualifyingBv = Math.max(member.qualifyingBv || 0, member.personalBv || 0, member.packageBv || 0);
+    const welcomeBonusCap = qualifyingBv > 0 ? (qualifyingBv * maxMultiplier) : (member.welcomeBonusCap || 0);
     const welcomeBonusEarned = member.welcomeBonusEarned || 0;
     const remainingCap = Math.max(0, welcomeBonusCap - welcomeBonusEarned);
 
-    // Direct sponsored referrals
+    // Strictly direct sponsored referrals (sponsorId === member.memberId)
+    // Each child must be active and have purchased at least minWingBv (Package or Product)
     const directSponsored = await Member.find({
       sponsorId: member.memberId,
       status: 'active',
       isActive: true,
+      $or: [
+        { personalBv: { $gte: minWingBv } },
+        { packageBv: { $gte: minWingBv } },
+        { isBinaryActive: true },
+      ],
     });
+
     const hasDirectLeft = directSponsored.some((m) => {
       const pos = (m.binaryPosition || m.position || '').toUpperCase().trim();
       return pos === 'LEFT';
@@ -141,29 +160,9 @@ export class WelcomeBonusService {
       return pos === 'RIGHT';
     });
 
-    // Binary downline children (under parentId, binaryParentId, or placementId)
-    const binaryChildren = await Member.find({
-      $or: [
-        { parentId: member.memberId },
-        { binaryParentId: member.memberId },
-        { placementId: member.memberId },
-      ],
-      status: 'active',
-      isActive: true,
-    });
-    const hasBinaryLeft = binaryChildren.some((m) => {
-      const pos = (m.binaryPosition || m.position || '').toUpperCase().trim();
-      return pos === 'LEFT';
-    });
-    const hasBinaryRight = binaryChildren.some((m) => {
-      const pos = (m.binaryPosition || m.position || '').toUpperCase().trim();
-      return pos === 'RIGHT';
-    });
-
-    // Left Wing is valid if direct Left exists OR binary tree Left exists
-    const hasLeftWing = hasDirectLeft || hasBinaryLeft;
-    // Right Wing is valid if direct Right exists OR binary tree Right exists
-    const hasRightWing = hasDirectRight || hasBinaryRight;
+    // Strictly direct sponsorship - NO spillover or sub-tree fallback
+    const hasLeftWing = hasDirectLeft;
+    const hasRightWing = hasDirectRight;
 
     let isEligible = true;
     let ineligibleReason = '';
@@ -171,15 +170,18 @@ export class WelcomeBonusService {
     if (!member.isActive || member.status !== 'active') {
       isEligible = false;
       ineligibleReason = 'Member account is inactive';
-    } else if (!hasLeftWing) {
+    } else if (qualifyingBv < minQualifyingBv) {
       isEligible = false;
-      ineligibleReason = 'Left Wing does not have at least 1 valid member';
-    } else if (!hasRightWing) {
+      ineligibleReason = `Member requires at least ${minQualifyingBv} BV in purchases (Package or Product)`;
+    } else if (requiresLeftAndRight && !hasLeftWing) {
       isEligible = false;
-      ineligibleReason = 'Right Wing does not have at least 1 valid member';
+      ineligibleReason = `Missing directly sponsored active member (≥${minWingBv} BV) on Left Wing`;
+    } else if (requiresLeftAndRight && !hasRightWing) {
+      isEligible = false;
+      ineligibleReason = `Missing directly sponsored active member (≥${minWingBv} BV) on Right Wing`;
     } else if (remainingCap <= 0) {
       isEligible = false;
-      ineligibleReason = 'Maximum 2x Welcome Bonus cap reached';
+      ineligibleReason = `Maximum ${maxMultiplier}× Welcome Bonus cap reached`;
     }
 
     return {
@@ -239,7 +241,7 @@ export class WelcomeBonusService {
     const eligibleMembers: MemberEligibilityResult[] = [];
 
     for (const m of allMembers) {
-      const evalRes = await this.checkMemberEligibility(m, maxMultiplier);
+      const evalRes = await this.checkMemberEligibility(m, maxMultiplier, config);
       memberEvaluations.push(evalRes);
       if (evalRes.isEligible) {
         eligibleMembers.push(evalRes);
@@ -440,11 +442,21 @@ export class WelcomeBonusService {
       throw new Error(`Member ${memberId} not found`);
     }
 
-    const preview = await this.previewWeeklySettlement();
-    const eligibility = await this.checkMemberEligibility(member);
+    const rules = await this.getActiveRules();
+    const config = rules.welcomeBonus || {
+      isEnabled: true,
+      ratePercent: 4,
+      maxMultiplier: 2,
+      requiresLeftAndRight: true,
+      settlementFrequency: 'WEEKLY',
+    };
+    const maxMultiplier = config.maxMultiplier > 0 ? config.maxMultiplier : 2;
+    const ratePercent = config.ratePercent > 0 ? config.ratePercent : 4;
 
-    // Fetch history of past Welcome Bonus transactions:
-    // If admin or root (MEM0001), fetch all payouts so admin can audit all members who got paid; otherwise for specific member
+    const preview = await this.previewWeeklySettlement();
+    const eligibility = await this.checkMemberEligibility(member, maxMultiplier, config);
+
+    // Fetch history of past Welcome Bonus transactions for this member
     const isRootOrAdmin = memberId === 'MEM0001' || !memberId;
     const query = isRootOrAdmin ? {} : { memberId };
     const history = await WelcomeBonusTransaction.find(query).sort({ createdAt: -1 });
@@ -498,6 +510,15 @@ export class WelcomeBonusService {
     return {
       memberId: member.memberId,
       name: member.name,
+      activeRules: {
+        ratePercent,
+        maxMultiplier,
+        requiresLeftAndRight: config.requiresLeftAndRight !== false,
+        settlementFrequency: config.settlementFrequency || 'Weekly',
+        minWingBv: typeof config.minWingBv === 'number' ? config.minWingBv : 100,
+        minQualifyingBv: typeof config.minQualifyingBv === 'number' ? config.minQualifyingBv : 100,
+        isEnabled: config.isEnabled ?? true,
+      },
       qualifyingBusinessVolume: eligibility.qualifyingBv,
       maximumWelcomeBonus: eligibility.welcomeBonusCap,
       totalWelcomeBonusEarned: eligibility.welcomeBonusEarned,
@@ -511,6 +532,98 @@ export class WelcomeBonusService {
       status: statusDisplay,
       ineligibleReason: eligibility.ineligibleReason,
       history: mappedHistory,
+    };
+  }
+
+  /**
+   * Get Welcome Bonus Governance & Live Engine Overview for Super Admin / Admin
+   */
+  static async getAdminDashboardSummary() {
+    const rules = await this.getActiveRules();
+    const config = rules.welcomeBonus || {
+      isEnabled: true,
+      ratePercent: 4,
+      maxMultiplier: 2,
+      requiresLeftAndRight: true,
+      settlementFrequency: 'WEEKLY',
+    };
+    const maxMultiplier = config.maxMultiplier > 0 ? config.maxMultiplier : 2;
+    const ratePercent = config.ratePercent > 0 ? config.ratePercent : 4;
+
+    const preview = await this.previewWeeklySettlement();
+    const allSettlements = await WelcomeBonusSettlement.find().sort({ createdAt: -1 });
+    const totalPaidOutLifetime = allSettlements.reduce((sum, s) => sum + (s.totalAmountDistributed || 0), 0);
+    const totalSettlementsCount = allSettlements.length;
+    const lastSettlement = allSettlements.length > 0 ? allSettlements[0] : null;
+
+    // Fetch transactions across all members so Super Admin has complete audit visibility
+    const allTransactions = await WelcomeBonusTransaction.find().sort({ createdAt: -1 }).limit(100);
+    const memberIds = [...new Set(allTransactions.map((h) => h.memberId))];
+    const members = await Member.find({ memberId: { $in: memberIds } }).select('memberId name');
+    const memberNameMap = new Map(members.map((m) => [m.memberId, m.name]));
+
+    const mappedTransactions = allTransactions.map((h) => ({
+      transactionId: h.transactionId,
+      settlementId: h.settlementId,
+      memberId: h.memberId,
+      memberName: memberNameMap.get(h.memberId) || h.memberId,
+      companyGrossBusinessVolume: h.companyGrossBusinessVolume,
+      bonusRate: h.bonusRate,
+      totalBonusPool: h.totalBonusPool,
+      eligibleMemberCount: h.eligibleMemberCount,
+      equalMemberShare: h.equalMemberShare,
+      actualPayout: h.actualPayout,
+      previousWelcomeBonusEarned: h.previousWelcomeBonusEarned,
+      welcomeBonusCap: h.welcomeBonusCap,
+      date: h.createdAt ? new Date(h.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+      status: 'Credited',
+    }));
+
+    return {
+      activeRules: {
+        ratePercent,
+        maxMultiplier,
+        requiresLeftAndRight: config.requiresLeftAndRight !== false,
+        settlementFrequency: config.settlementFrequency || 'Weekly',
+        minWingBv: typeof config.minWingBv === 'number' ? config.minWingBv : 100,
+        minQualifyingBv: typeof config.minQualifyingBv === 'number' ? config.minQualifyingBv : 100,
+        isEnabled: config.isEnabled ?? true,
+      },
+      currentWeeklyCompanyGBV: preview.companyGrossBusinessVolume,
+      welcomeBonusPool: preview.totalWelcomeBonusPool,
+      eligibleMembersCount: preview.eligibleMemberCount,
+      projectedShare: preview.equalMemberShare,
+      totalPaidOutLifetime,
+      totalSettlementsCount,
+      lastSettlement: lastSettlement ? {
+        settlementId: lastSettlement.settlementId,
+        date: lastSettlement.processedAt ? new Date(lastSettlement.processedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+        totalAmountDistributed: lastSettlement.totalAmountDistributed,
+        eligibleMemberCount: lastSettlement.eligibleMemberCount,
+        companyGrossBusinessVolume: lastSettlement.companyGrossBusinessVolume,
+        bonusRate: lastSettlement.welcomeBonusRate,
+        totalPool: lastSettlement.totalWelcomeBonusPool,
+      } : null,
+      recentSettlements: allSettlements.slice(0, 10).map((s) => ({
+        settlementId: s.settlementId,
+        date: s.processedAt ? new Date(s.processedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+        companyGrossBusinessVolume: s.companyGrossBusinessVolume,
+        welcomeBonusRate: s.welcomeBonusRate,
+        totalWelcomeBonusPool: s.totalWelcomeBonusPool,
+        eligibleMemberCount: s.eligibleMemberCount,
+        equalMemberShare: s.equalMemberShare,
+        totalAmountDistributed: s.totalAmountDistributed,
+        status: s.status,
+      })),
+      eligibleMembersList: preview.projectedPayouts.map((em: any) => ({
+        memberId: em.memberId,
+        name: em.name,
+        qualifyingBv: em.qualifyingBv,
+        welcomeBonusCap: em.welcomeBonusCap,
+        welcomeBonusEarned: em.welcomeBonusEarned,
+        remainingCap: em.remainingCap,
+      })),
+      history: mappedTransactions,
     };
   }
 }

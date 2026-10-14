@@ -1281,7 +1281,9 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                       </div>
                       <div>
                         <h2 className="card-title">2. Welcome Bonus</h2>
-                        <span style={{ fontSize: '12px', color: '#64748b' }}>4% Company Weekly GBV Pool • 2× Maximum Multiplier</span>
+                        <span style={{ fontSize: '12px', color: '#64748b' }}>
+                          {rules.welcomeBonus?.ratePercent ?? 4}% Company Weekly GBV Pool • {rules.welcomeBonus?.maxMultiplier ?? 2}× Maximum Multiplier
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -1296,6 +1298,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                         {isAdmin ? (
                           <input
                             type="number"
+                            step="0.5"
                             value={rules.welcomeBonus?.ratePercent ?? 4}
                             onChange={(e) => setRules({ ...rules, welcomeBonus: { ...rules.welcomeBonus, ratePercent: parseFloat(e.target.value) || 0 } })}
                             style={{ width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
@@ -1306,7 +1309,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                           </div>
                         )}
                         <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
-                          Default: 4% applied to total Company Weekly GBV
+                          Percentage applied to total Company Weekly GBV to form the bonus pool
                         </span>
                       </div>
 
@@ -1329,7 +1332,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                           </div>
                         )}
                         <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
-                          Default: 2× lifetime cap (1,250 BV = 2,500 BV max)
+                          Lifetime cap: Member purchased BV × {rules.welcomeBonus?.maxMultiplier ?? 2}
                         </span>
                       </div>
                     </div>
@@ -1338,26 +1341,46 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                       {/* Field 3: Require Left & Right Member */}
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                          Require Left & Right Member
+                          Require Left & Right Wings
                         </label>
-                        <div style={{ padding: '9px 12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#065f46', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span>✓ Required (True)</span>
-                        </div>
-                        <span style={{ fontSize: '11px', color: '#059669', marginTop: '2px', display: 'block', fontWeight: 600 }}>
-                          Must have ≥1 valid Left wing & ≥1 valid Right wing member
+                        {isAdmin ? (
+                          <select
+                            value={rules.welcomeBonus?.requiresLeftAndRight !== false ? 'true' : 'false'}
+                            onChange={(e) => setRules({ ...rules, welcomeBonus: { ...rules.welcomeBonus, requiresLeftAndRight: e.target.value === 'true' } })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                          >
+                            <option value="true">Yes (Require 1 Left + 1 Right Wings)</option>
+                            <option value="false">No (Direct Left/Right Wings Not Required)</option>
+                          </select>
+                        ) : (
+                          <div style={{ padding: '9px 12px', background: rules.welcomeBonus?.requiresLeftAndRight !== false ? '#ecfdf5' : '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: rules.welcomeBonus?.requiresLeftAndRight !== false ? '#065f46' : '#64748b' }}>
+                            {rules.welcomeBonus?.requiresLeftAndRight !== false ? '✓ Required (True)' : '✗ Not Required (False)'}
+                          </div>
+                        )}
+                        <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
+                          {rules.welcomeBonus?.requiresLeftAndRight !== false ? 'Must have directly sponsored active members on both wings' : 'Bonus distributed to all active purchasing members'}
                         </span>
                       </div>
 
-                      {/* Field 4: Settlement Frequency */}
+                      {/* Field 4: Minimum Wing BV */}
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                          Settlement Frequency
+                          Min Wing Referral Volume (BV)
                         </label>
-                        <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                          Weekly
-                        </div>
+                        {isAdmin ? (
+                          <input
+                            type="number"
+                            value={rules.welcomeBonus?.minWingBv ?? 100}
+                            onChange={(e) => setRules({ ...rules, welcomeBonus: { ...rules.welcomeBonus, minWingBv: parseFloat(e.target.value) || 0 } })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                          />
+                        ) : (
+                          <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                            {rules.welcomeBonus?.minWingBv ?? 100} BV
+                          </div>
+                        )}
                         <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
-                          Calculated & distributed at every weekly settlement
+                          Minimum purchase BV required for each direct left/right wing referral
                         </span>
                       </div>
                     </div>

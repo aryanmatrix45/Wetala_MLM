@@ -11,11 +11,13 @@ export interface ICompensationRule extends Document {
   welcomeBonus: {
     isEnabled: boolean;
     requiresLeftAndRight: boolean;
-    ratePercent: number; // 4%
-    maxMultiplier: number; // 2x
+    ratePercent: number; // e.g. 4%
+    maxMultiplier: number; // e.g. 2x, 3x, 4x
     settlementFrequency: 'WEEKLY' | 'DAILY' | 'MONTHLY';
     limitMode?: 'ACTIVE_PACKAGE' | 'FIXED' | 'MULTIPLIER';
     fixedAmount?: number;
+    minWingBv?: number;
+    minQualifyingBv?: number;
     notes?: string;
   };
   
@@ -183,12 +185,14 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
     welcomeBonus: {
       isEnabled: { type: Boolean, default: true },
       requiresLeftAndRight: { type: Boolean, default: true },
-      ratePercent: { type: Number, default: 4 }, // 4%
-      maxMultiplier: { type: Number, default: 2 }, // 2x
+      ratePercent: { type: Number, default: 4 },
+      maxMultiplier: { type: Number, default: 2 },
       settlementFrequency: { type: String, default: 'WEEKLY' },
       limitMode: { type: String, default: 'MULTIPLIER' },
       fixedAmount: { type: Number, default: 0 },
-      notes: { type: String, default: '4% on Company Weekly GBV pool divided equally among eligible members with Left + Right complete, capped at 2x qualifying BV.' },
+      minWingBv: { type: Number, default: 100 },
+      minQualifyingBv: { type: Number, default: 100 },
+      notes: { type: String, default: 'Company Weekly GBV pool divided equally among eligible members, capped at multiplier times qualifying BV.' },
     },
     binaryBonus: {
       isEnabled: { type: Boolean, default: true },

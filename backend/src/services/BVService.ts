@@ -1,6 +1,7 @@
 import { BVLedger, IBVLedger } from '../models/BVLedger.model';
 import { BinaryVolume, IBinaryVolume } from '../models/BinaryVolume.model';
 import { Member } from '../models/Member.model';
+import { CompensationRule } from '../models/CompensationRule.model';
 import { BinaryTreeService } from './tree/BinaryTreeService';
 import { BV_SOURCE_TYPE, BVSourceType, BINARY_POSITION, BinaryPosition } from '../config/constants';
 
@@ -62,6 +63,10 @@ export class BVService {
     if (member) {
       const wasUnplaced = !member.parentId;
       member.personalBv = (member.personalBv || 0) + bvAmount;
+      member.qualifyingBv = member.personalBv;
+      const activeRule = await CompensationRule.findOne({ isActive: true }).sort({ version: -1 });
+      const mult = activeRule?.welcomeBonus?.maxMultiplier ?? 2;
+      member.welcomeBonusCap = member.personalBv * mult;
       if (member.personalBv >= 100) {
         if (!member.isBinaryActive) {
           member.isBinaryActive = true;

@@ -914,6 +914,11 @@ export const api = {
     return res.json();
   },
 
+  async getWelcomeBonusAdminSummary() {
+    const res = await fetch(`${API_BASE_URL}/welcome-bonus/admin-summary`);
+    return res.json();
+  },
+
   // Withdrawal Request System
   async submitWithdrawalRequest(data: { amount: number; note?: string; memberId?: string }, token?: string) {
     const savedToken = token || localStorage.getItem('wetala_token') || '';

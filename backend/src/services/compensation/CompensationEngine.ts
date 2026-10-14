@@ -257,20 +257,19 @@ export class CompensationEngine {
 
       // 5. Evaluate Individual Compensation Bonuses
 
-      // A. Welcome Bonus Qualifying Volume & 2x Cap Update (Standalone Weekly Settlement System)
-      if (purchase.type === PURCHASE_TYPE.JOINING) {
-        const mult = rules.welcomeBonus?.maxMultiplier || 2;
-        const qBv = bvAmount || member.packageBv || 1250;
-        await Member.updateOne(
-          { memberId: member.memberId },
-          {
-            $set: {
-              qualifyingBv: qBv,
-              welcomeBonusCap: qBv * mult,
-            },
-          }
-        );
-      }
+      // A. Welcome Bonus Qualifying Volume & 2x Cap Update (Packages + Products cumulative)
+      const freshMemberDoc = await Member.findOne({ memberId: member.memberId });
+      const totalPurchasedPersonalBv = freshMemberDoc?.personalBv || (member.personalBv + bvAmount);
+      const mult = rules.welcomeBonus?.maxMultiplier || 2;
+      await Member.updateOne(
+        { memberId: member.memberId },
+        {
+          $set: {
+            qualifyingBv: totalPurchasedPersonalBv,
+            welcomeBonusCap: totalPurchasedPersonalBv * mult,
+          },
+        }
+      );
 
       // B. Self Purchase Bonus (Repurchase Only - 8%)
       if (purchase.type === PURCHASE_TYPE.REPURCHASE || purchase.type === PURCHASE_TYPE.RETAIL) {
