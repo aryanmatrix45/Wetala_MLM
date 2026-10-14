@@ -379,7 +379,7 @@ export const AuthController = {
       const nameParts = newMember.name.trim().split(' ');
       const successMessage = totalMemberCount === 0
         ? `🎉 Root Member setup successful for ${newMember.name}! Member ID: ${newMember.memberId}. Account is active as the Root of the tree.`
-        : `🎉 Registration successful for ${newMember.name}! Member ID: ${newMember.memberId}. You can log in immediately with your Email & Password. Your binary tree position will activate once you accumulate at least 100 BV.`;
+        : `🎉 Welcome to the Panchveda Wellness Family, ${newMember.name}! Member ID: ${newMember.memberId}. You can log in immediately with your Email & Password. Your binary tree position will activate once you accumulate at least 100 BV.`;
 
       res.status(HTTP_STATUS.CREATED).json({
         status: true,

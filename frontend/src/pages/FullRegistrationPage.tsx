@@ -194,61 +194,98 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
         <div style={{
           background: '#ffffff',
           borderRadius: '24px',
-          width: '560px',
+          width: '540px',
           maxWidth: '100%',
-          padding: '40px',
+          padding: '36px 32px',
           textAlign: 'center',
           boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.45)',
           border: '1px solid rgba(255, 255, 255, 0.1)'
         }}>
-          <div style={{
-            width: '72px',
-            height: '72px',
-            borderRadius: '50%',
-            background: '#ecfdf5',
-            color: '#10b981',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 20px',
-            boxShadow: '0 10px 20px -5px rgba(16, 185, 129, 0.3)'
-          }}>
-            <CheckCircle2 size={40} />
+          {/* Logo & Green Checkmark Header */}
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
+            <img 
+              src="/logo.png" 
+              alt="Panchveda Wellness" 
+              style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }} 
+            />
+            <div style={{
+              width: '48px',
+              height: '48px',
+              borderRadius: '50%',
+              background: '#ecfdf5',
+              color: '#10b981',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 8px 16px -4px rgba(16, 185, 129, 0.3)'
+            }}>
+              <CheckCircle2 size={28} />
+            </div>
           </div>
 
-          <h2 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: '0 0 8px 0' }}>
-            Registration Successful!
+          <div style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '6px',
+            background: '#ecfdf5',
+            color: '#065f46',
+            fontSize: '12px',
+            fontWeight: 700,
+            padding: '4px 12px',
+            borderRadius: '20px',
+            marginBottom: '14px',
+            border: '1px solid #a7f3d0'
+          }}>
+            🌿 Official Panchveda Member
+          </div>
+
+          <h2 style={{ fontSize: '23px', fontWeight: 800, color: '#0f172a', margin: '0 0 10px 0', lineHeight: 1.3 }}>
+            Welcome to the Panchveda Wellness Family! 🌿
           </h2>
-          <p style={{ fontSize: '14px', color: '#64748b', margin: '0 0 24px 0' }}>
-            Welcome to the team, <strong>{successResult.name}</strong>! Your account is active and you can <strong>log in immediately</strong>. Your binary tree position will be activated once you reach at least 100 BV.
+          <p style={{ fontSize: '14px', color: '#475569', margin: '0 0 24px 0', lineHeight: 1.6 }}>
+            Congratulations, <strong style={{ color: '#0f172a' }}>{successResult.name}</strong>! We are thrilled to welcome you to our family. Your account is active and ready for <strong style={{ color: '#16a34a' }}>immediate login</strong> to begin your journey of wellness and prosperity.
           </p>
 
           <div style={{
             background: '#f8fafc',
             border: '1px solid #e2e8f0',
-            borderRadius: '14px',
+            borderRadius: '16px',
             padding: '20px',
-            marginBottom: '28px',
+            marginBottom: '20px',
             textAlign: 'left'
           }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <span style={{ fontSize: '13px', color: '#64748b' }}>Assigned Member ID:</span>
-              <span style={{ fontSize: '16px', fontWeight: 800, color: '#1d72fe', letterSpacing: '0.5px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Assigned Member ID:</span>
+              <span style={{ fontSize: '17px', fontWeight: 800, color: '#1d72fe', letterSpacing: '0.5px' }}>
                 {successResult.memberId}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px' }}>
-              <span style={{ fontSize: '13px', color: '#64748b' }}>Sponsor:</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
+              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Sponsor:</span>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
                 {formData.sponsorName} ({formData.sponsorId})
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '13px', color: '#64748b' }}>Preferred Placement:</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Placement:</span>
               <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
                 {formData.position} Wing (Activates upon 100 BV)
               </span>
             </div>
+          </div>
+
+          <div style={{
+            background: '#f0fdf4',
+            border: '1px solid #bbf7d0',
+            borderRadius: '12px',
+            padding: '12px 14px',
+            fontSize: '12px',
+            color: '#166534',
+            marginBottom: '24px',
+            textAlign: 'left',
+            lineHeight: 1.5
+          }}>
+            💡 <strong>Next Step:</strong> Sign in with your registered email and password. Once you purchase your first package or product (100 BV), your binary tree position will be officially placed!
           </div>
 
           <button
@@ -263,10 +300,11 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               fontWeight: 700,
               fontSize: '15px',
               cursor: 'pointer',
-              boxShadow: '0 10px 20px -5px rgba(29, 114, 254, 0.4)'
+              boxShadow: '0 10px 20px -5px rgba(29, 114, 254, 0.4)',
+              transition: 'transform 0.15s ease'
             }}
           >
-            Proceed to Sign In
+            Proceed to Sign In →
           </button>
         </div>
       </div>

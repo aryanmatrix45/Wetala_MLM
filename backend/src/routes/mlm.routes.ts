@@ -578,7 +578,7 @@ router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, 
       await BinaryTreeService.placeMemberInBinaryTree(newMember.memberId);
     }
 
-    const successMessage = `🎉 Member ${newMember.name} registered and activated successfully with ID: ${newMember.memberId}! Direct login is enabled with email and password. Binary placement will activate once 100 BV is achieved.`;
+    const successMessage = `🎉 Welcome to the Panchveda Wellness Family, ${newMember.name}! Member ID: ${newMember.memberId}. Direct login is enabled with email and password.`;
 
     res.status(HTTP_STATUS.CREATED).json({
       success: true,
