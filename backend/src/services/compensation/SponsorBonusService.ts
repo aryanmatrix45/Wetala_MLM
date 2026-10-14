@@ -49,6 +49,20 @@ export class SponsorBonusService {
 
       if (rawBonus <= 0) continue;
 
+      // Prevent duplicate bonus for the exact same source event
+      if (sourceEventId) {
+        const existing = await CommissionLedger.findOne({
+          sourceEventId,
+          memberId: sponsor.memberId,
+          type: COMMISSION_TYPE.SPONSOR_BINARY_BONUS,
+          isReversed: false,
+        });
+        if (existing) {
+          commissions.push(existing);
+          continue;
+        }
+      }
+
       // Dynamic Admin-Configurable Deductions (can be set to anything, even 0%)
       const deductions = DeductionUtil.calculateDeductions(rawBonus, rules, {
         tdsPercent: config.tdsPercent,

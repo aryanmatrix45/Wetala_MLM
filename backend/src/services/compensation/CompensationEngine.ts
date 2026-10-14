@@ -287,25 +287,18 @@ export class CompensationEngine {
 
       // C. Binary Matching Bonus for Ancestors whose volume changed
       for (const { ancestorMemberId } of binaryAncestors) {
-        const binComm = await BinaryBonusService.processMemberBinaryBonus(
+        const { binaryLedger, sponsorLedgers } = await BinaryBonusService.processMemberBinaryBonus(
           ancestorMemberId,
           rules,
           eventId,
           purchase.purchaseId
         );
 
-        if (binComm) {
-          commissionsGenerated.push(binComm);
-
-          // D. Sponsor Binary Bonus (20% to sponsors of members earning binary income)
-          const sponsorComms = await SponsorBonusService.processSponsorBonus(
-            ancestorMemberId,
-            binComm.grossAmount,
-            rules,
-            eventId,
-            purchase.purchaseId
-          );
-          commissionsGenerated.push(...sponsorComms);
+        if (binaryLedger) {
+          commissionsGenerated.push(binaryLedger);
+        }
+        if (sponsorLedgers && sponsorLedgers.length > 0) {
+          commissionsGenerated.push(...sponsorLedgers);
         }
 
         // E. Team Bonus Tiers for Ancestors

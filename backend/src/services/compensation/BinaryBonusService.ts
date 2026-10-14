@@ -48,6 +48,7 @@ export interface BinaryIncomeCalculationResult {
   isSponsorQualified: boolean;
   isSelfBinaryActive?: boolean;
   commissionLedger?: ICommissionLedger | null;
+  sponsorCommissions?: ICommissionLedger[];
   leftSponsorMemberIds?: string[];
   rightSponsorMemberIds?: string[];
   leftSponsorMembers?: Array<{ memberId: string; name: string; personalBv: number }>;
@@ -588,6 +589,7 @@ export class BinaryBonusService {
     }
 
     let commissionLedger: ICommissionLedger | null = null;
+    let sponsorCommissions: ICommissionLedger[] = [];
 
     // 8. If payable amount allowed by daily cap is greater than 0, create commission ledger and credit wallet
     if (payableIncome > 0) {
@@ -644,7 +646,7 @@ export class BinaryBonusService {
 
       // Trigger Sponsor Binary Bonus (20% to direct sponsor, uncapped)
       try {
-        await SponsorBonusService.processSponsorBonus(
+        sponsorCommissions = await SponsorBonusService.processSponsorBonus(
           cleanId,
           payableIncome,
           rules,
@@ -715,6 +717,7 @@ export class BinaryBonusService {
       leftSponsorMembers: sponsorCheck.leftSponsorMembers,
       rightSponsorMembers: sponsorCheck.rightSponsorMembers,
       commissionLedger,
+      sponsorCommissions,
     };
   }
 
@@ -726,7 +729,7 @@ export class BinaryBonusService {
     rules: ICompensationRule,
     sourceEventId: string,
     sourcePurchaseId?: string
-  ): Promise<ICommissionLedger | null> {
+  ): Promise<{ binaryLedger: ICommissionLedger | null; sponsorLedgers: ICommissionLedger[] }> {
     const result = await this.calculateBinaryIncomeForMember(
       memberId,
       rules,
@@ -734,6 +737,9 @@ export class BinaryBonusService {
       sourceEventId,
       sourcePurchaseId
     );
-    return result.commissionLedger || null;
+    return {
+      binaryLedger: result.commissionLedger || null,
+      sponsorLedgers: result.sponsorCommissions || [],
+    };
   }
 }
