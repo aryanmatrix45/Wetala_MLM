@@ -29,7 +29,7 @@ export const SubcategoryController = {
    */
   async adminCreateSubcategory(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { name, slug: inputSlug, categoryId, description, status = 'ACTIVE' } = req.body;
+      const { name, slug: inputSlug, categoryId, description, image, imageUrl, status = 'ACTIVE' } = req.body;
 
       const trimmedName = String(name || '').trim();
       if (!trimmedName) {
@@ -89,12 +89,15 @@ export const SubcategoryController = {
       }
 
       const subcategoryStatus: SubcategoryStatus = status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      const resolvedImage = String(imageUrl || image || '').trim();
 
       const newSubcategory = await Subcategory.create({
         name: trimmedName,
         slug: subcategorySlug,
         categoryId: parentCategory._id,
         description: String(description || '').trim(),
+        image: resolvedImage,
+        imageUrl: resolvedImage,
         status: subcategoryStatus,
         createdBy: req.user?.id || req.user?.email,
       });
@@ -242,7 +245,7 @@ export const SubcategoryController = {
   async adminUpdateSubcategory(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { name, slug: inputSlug, categoryId, description, status } = req.body;
+      const { name, slug: inputSlug, categoryId, description, image, imageUrl, status } = req.body;
 
       let subcategory = null;
       if (mongoose.Types.ObjectId.isValid(id)) {
@@ -325,6 +328,12 @@ export const SubcategoryController = {
 
       if (description !== undefined) {
         subcategory.description = String(description).trim();
+      }
+
+      if (image !== undefined || imageUrl !== undefined) {
+        const resolved = String(imageUrl !== undefined ? imageUrl : image).trim();
+        subcategory.image = resolved;
+        subcategory.imageUrl = resolved;
       }
 
       if (status !== undefined) {

@@ -1374,6 +1374,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
                     setSelectedSubcategoryId('ALL');
                   }}
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
                     padding: '6px 14px',
                     borderRadius: '20px',
                     fontSize: '12px',
@@ -1384,7 +1387,22 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
                     color: selectedCategoryId === cat._id ? '#1d4ed8' : '#64748b',
                   }}
                 >
-                  {cat.name}
+                  {(cat.imageUrl || cat.image) && (
+                    <img
+                      src={cat.imageUrl || cat.image}
+                      alt=""
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                      }}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  )}
+                  <span>{cat.name}</span>
                 </button>
               ))}
             </div>
@@ -1429,6 +1447,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
                   key={subcat._id}
                   onClick={() => setSelectedSubcategoryId(subcat._id)}
                   style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
                     padding: '4px 12px',
                     borderRadius: '16px',
                     fontSize: '11px',
@@ -1440,7 +1461,22 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
                     flexShrink: 0,
                   }}
                 >
-                  {subcat.name}
+                  {(subcat.imageUrl || subcat.image) && (
+                    <img
+                      src={subcat.imageUrl || subcat.image}
+                      alt=""
+                      style={{
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        objectFit: 'cover',
+                      }}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLElement).style.display = 'none';
+                      }}
+                    />
+                  )}
+                  <span>{subcat.name}</span>
                 </button>
               ))}
             </div>

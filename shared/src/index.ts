@@ -134,3 +134,35 @@ export interface PayoutRequest {
   requestDate: string;
   status: PayoutStatus;
 }
+
+// Category & Subcategory interfaces
+export interface Category {
+  id?: string;
+  _id?: string;
+  name: string;
+  slug: string;
+  description?: string;
+  image?: string;
+  imageUrl?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  subcategoryCount?: number;
+  productCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface Subcategory {
+  id?: string;
+  _id?: string;
+  name: string;
+  slug: string;
+  categoryId: string | Category;
+  description?: string;
+  image?: string;
+  imageUrl?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  productCount?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

@@ -201,6 +201,8 @@ export interface CategoryItem {
   name: string;
   slug: string;
   description?: string;
+  image?: string;
+  imageUrl?: string;
   status: 'ACTIVE' | 'INACTIVE';
   subcategoryCount?: number;
   productCount?: number;
@@ -214,6 +216,8 @@ export interface SubcategoryItem {
   slug: string;
   categoryId: string | CategoryItem;
   description?: string;
+  image?: string;
+  imageUrl?: string;
   status: 'ACTIVE' | 'INACTIVE';
   productCount?: number;
   createdAt?: string;

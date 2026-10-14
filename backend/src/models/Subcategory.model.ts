@@ -7,6 +7,8 @@ export interface ISubcategory extends Document {
   slug: string;
   categoryId: mongoose.Types.ObjectId;
   description?: string;
+  image?: string;
+  imageUrl?: string;
   status: SubcategoryStatus;
   createdBy?: string;
   updatedBy?: string;
@@ -34,6 +36,16 @@ const subcategorySchema = new Schema<ISubcategory>(
       index: true,
     },
     description: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    image: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    imageUrl: {
       type: String,
       default: '',
       trim: true,
@@ -69,6 +81,13 @@ subcategorySchema.pre('validate', function () {
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  // Synchronize image and imageUrl
+  if (this.image && !this.imageUrl) {
+    this.imageUrl = this.image;
+  } else if (this.imageUrl && !this.image) {
+    this.image = this.imageUrl;
   }
 });
 

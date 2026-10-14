@@ -29,7 +29,7 @@ export const CategoryController = {
    */
   async adminCreateCategory(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { name, slug: inputSlug, description, status = 'ACTIVE' } = req.body;
+      const { name, slug: inputSlug, description, image, imageUrl, status = 'ACTIVE' } = req.body;
 
       const trimmedName = String(name || '').trim();
       if (!trimmedName) {
@@ -71,11 +71,14 @@ export const CategoryController = {
       }
 
       const categoryStatus: CategoryStatus = status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
+      const resolvedImage = String(imageUrl || image || '').trim();
 
       const newCategory = await Category.create({
         name: trimmedName,
         slug: categorySlug,
         description: String(description || '').trim(),
+        image: resolvedImage,
+        imageUrl: resolvedImage,
         status: categoryStatus,
         createdBy: req.user?.id || req.user?.email,
       });
@@ -219,7 +222,7 @@ export const CategoryController = {
   async adminUpdateCategory(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const { name, slug: inputSlug, description, status } = req.body;
+      const { name, slug: inputSlug, description, image, imageUrl, status } = req.body;
 
       let category = null;
       if (mongoose.Types.ObjectId.isValid(id)) {
@@ -293,6 +296,12 @@ export const CategoryController = {
 
       if (description !== undefined) {
         category.description = String(description).trim();
+      }
+
+      if (image !== undefined || imageUrl !== undefined) {
+        const resolved = String(imageUrl !== undefined ? imageUrl : image).trim();
+        category.image = resolved;
+        category.imageUrl = resolved;
       }
 
       if (status !== undefined) {

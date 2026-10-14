@@ -14,6 +14,7 @@ import {
   X,
   Check,
   FolderTree,
+  Image as ImageIcon,
 } from 'lucide-react';
 import { api, type SubcategoryItem, type CategoryItem } from '../services/api';
 
@@ -50,12 +51,14 @@ export const AdminSubcategoriesPage: React.FC<AdminSubcategoriesPageProps> = ({
     slug: string;
     categoryId: string;
     description: string;
+    imageUrl: string;
     status: 'ACTIVE' | 'INACTIVE';
   }>({
     name: '',
     slug: '',
     categoryId: '',
     description: '',
+    imageUrl: '',
     status: 'ACTIVE',
   });
 
@@ -145,6 +148,7 @@ export const AdminSubcategoriesPage: React.FC<AdminSubcategoriesPageProps> = ({
       slug: '',
       categoryId: categoryFilter !== 'ALL' ? categoryFilter : categories[0]?._id || '',
       description: '',
+      imageUrl: '',
       status: 'ACTIVE',
     });
     setIsModalOpen(true);
@@ -158,6 +162,7 @@ export const AdminSubcategoriesPage: React.FC<AdminSubcategoriesPageProps> = ({
       slug: subcat.slug,
       categoryId: catId || '',
       description: subcat.description || '',
+      imageUrl: subcat.imageUrl || subcat.image || '',
       status: subcat.status,
     });
     setIsModalOpen(true);
@@ -176,11 +181,14 @@ export const AdminSubcategoriesPage: React.FC<AdminSubcategoriesPageProps> = ({
 
     try {
       setSubmitting(true);
+      const imgVal = formData.imageUrl.trim();
       const payload = {
         name: formData.name.trim(),
         slug: formData.slug.trim() || slugify(formData.name),
         categoryId: formData.categoryId,
         description: formData.description.trim(),
+        image: imgVal,
+        imageUrl: imgVal,
         status: formData.status,
       };
 
@@ -504,16 +512,56 @@ export const AdminSubcategoriesPage: React.FC<AdminSubcategoriesPageProps> = ({
                       onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
                       onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                     >
-                      {/* Name & Description */}
+                      {/* Name & Description with Image */}
                       <td style={{ padding: '14px' }}>
-                        <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '14px', marginBottom: '2px' }}>
-                          {subcat.name}
-                        </div>
-                        {subcat.description && (
-                          <div style={{ fontSize: '12px', color: '#64748b', maxWidth: '280px' }}>
-                            {subcat.description}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {subcat.imageUrl || subcat.image ? (
+                            <img
+                              src={subcat.imageUrl || subcat.image}
+                              alt={subcat.name}
+                              style={{
+                                width: '42px',
+                                height: '42px',
+                                borderRadius: '8px',
+                                objectFit: 'cover',
+                                border: '1px solid #e2e8f0',
+                                boxShadow: '0 1px 3px rgba(0,0,0,0.06)',
+                                flexShrink: 0,
+                                background: '#f8fafc',
+                              }}
+                              onError={(e) => {
+                                (e.currentTarget as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <div
+                              style={{
+                                width: '42px',
+                                height: '42px',
+                                borderRadius: '8px',
+                                background: '#f1f5f9',
+                                border: '1px solid #e2e8f0',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                color: '#94a3b8',
+                                flexShrink: 0,
+                              }}
+                            >
+                              <Layers size={18} />
+                            </div>
+                          )}
+                          <div>
+                            <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '14px', marginBottom: '2px' }}>
+                              {subcat.name}
+                            </div>
+                            {subcat.description && (
+                              <div style={{ fontSize: '12px', color: '#64748b', maxWidth: '280px' }}>
+                                {subcat.description}
+                              </div>
+                            )}
                           </div>
-                        )}
+                        </div>
                       </td>
 
                       {/* Parent Category Badge */}
@@ -821,6 +869,69 @@ export const AdminSubcategoriesPage: React.FC<AdminSubcategoriesPageProps> = ({
                     fontSize: '13px',
                   }}
                 />
+              </div>
+
+              {/* Image URL */}
+              <div style={{ marginBottom: '16px' }}>
+                <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  Subcategory Image URL (Optional)
+                </label>
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                  <input
+                    type="url"
+                    placeholder="https://images.unsplash.com/... or image link"
+                    value={formData.imageUrl}
+                    onChange={(e) => setFormData({ ...formData, imageUrl: e.target.value })}
+                    style={{
+                      flex: 1,
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      fontSize: '13px',
+                    }}
+                  />
+                  {formData.imageUrl ? (
+                    <div
+                      style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        overflow: 'hidden',
+                        flexShrink: 0,
+                        background: '#f8fafc',
+                      }}
+                    >
+                      <img
+                        src={formData.imageUrl}
+                        alt="Preview"
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLElement).style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ) : (
+                    <div
+                      style={{
+                        width: '42px',
+                        height: '42px',
+                        borderRadius: '8px',
+                        border: '1px dashed #cbd5e1',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#94a3b8',
+                        flexShrink: 0,
+                      }}
+                    >
+                      <ImageIcon size={18} />
+                    </div>
+                  )}
+                </div>
+                <span style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'block' }}>
+                  Paste any web image URL (Google, Unsplash, CDN).
+                </span>
               </div>
 
               {/* Status */}

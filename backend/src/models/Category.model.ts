@@ -6,6 +6,8 @@ export interface ICategory extends Document {
   name: string;
   slug: string;
   description?: string;
+  image?: string;
+  imageUrl?: string;
   status: CategoryStatus;
   createdBy?: string;
   updatedBy?: string;
@@ -29,6 +31,16 @@ const categorySchema = new Schema<ICategory>(
       lowercase: true,
     },
     description: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    image: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    imageUrl: {
       type: String,
       default: '',
       trim: true,
@@ -63,6 +75,13 @@ categorySchema.pre('validate', function () {
       .trim()
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-+|-+$/g, '');
+  }
+
+  // Synchronize image and imageUrl
+  if (this.image && !this.imageUrl) {
+    this.imageUrl = this.image;
+  } else if (this.imageUrl && !this.image) {
+    this.image = this.imageUrl;
   }
 });
 
