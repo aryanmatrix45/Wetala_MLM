@@ -4,7 +4,7 @@ import { Member } from '../models/Member.model';
 import { Package } from '../models/Package.model';
 import { CommissionLedger } from '../models/CommissionLedger.model';
 import { Purchase } from '../models/Purchase.model';
-import { HTTP_STATUS, BINARY_POSITION, BinaryPosition, ROLES } from '../config/constants';
+import { HTTP_STATUS, BINARY_POSITION, BinaryPosition, ROLES, PURCHASE_STATUS, PURCHASE_TYPE } from '../config/constants';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 import { optionalAuthenticate, authenticate, AuthenticatedRequest } from '../middlewares/auth';
 import { WalletService } from '../services/WalletService';
@@ -19,7 +19,12 @@ router.get('/dashboard/stats', async (_req, res) => {
       Member.find().sort({ createdAt: -1 }),
       Package.find(),
       CommissionLedger.find(),
-      Purchase.find(),
+      Purchase.find({
+        $or: [
+          { status: PURCHASE_STATUS.COMPLETED, paymentStatus: 'PAID' },
+          { approvalStage: 'VERIFIED_AND_PAID', paymentStatus: 'PAID' },
+        ],
+      }),
     ]);
 
     const totalMembers = members.length;
@@ -47,24 +52,51 @@ router.get('/dashboard/stats', async (_req, res) => {
       }
     });
 
-    // Calculate total price of all joined members (Total Joining Revenue)
-    // and total business volume (BV) generated across the network strictly from DB
-    let totalPackagePrice = 0;
-    let totalBusinessVolume = 0;
-    for (const m of members) {
-      const pkgKey = (m.joiningPackageId || m.packageName || '').toLowerCase().trim();
-      const price = pkgPriceMap.get(pkgKey) || 0;
-      const bv = m.packageBv || pkgBvMap.get(pkgKey) || 0;
-      totalPackagePrice += price;
-      totalBusinessVolume += bv;
-    }
+    // 1. Identify members who have an official paid JOINING purchase record
+    const paidJoiningMemberIds = new Set(
+      purchases
+        .filter(p => p.type === PURCHASE_TYPE.JOINING)
+        .map(p => p.memberId)
+    );
 
-    // Add purchases / repurchase BV strictly from DB
-    if (purchases && purchases.length > 0) {
-      for (const p of purchases) {
-        totalBusinessVolume += (p.totalBV || 0);
+    let totalJoiningPackagePrice = 0;
+    let totalJoiningBV = 0;
+
+    // A. Add paid joining purchases
+    for (const p of purchases) {
+      if (p.type === PURCHASE_TYPE.JOINING) {
+        totalJoiningPackagePrice += (p.totalAmount || 0);
+        totalJoiningBV += (p.totalBV || 0);
       }
     }
+
+    // B. Add members who have an active/paid package directly on member record
+    // but not already counted in paidJoiningMemberIds (e.g. root or direct admin assignment)
+    for (const m of members) {
+      if (paidJoiningMemberIds.has(m.memberId)) {
+        continue;
+      }
+      if (m.packageBv && m.packageBv > 0) {
+        const pkgKey = (m.joiningPackageId || m.packageName || '').toLowerCase().trim();
+        const price = pkgPriceMap.get(pkgKey) || 0;
+        totalJoiningPackagePrice += price;
+        totalJoiningBV += m.packageBv;
+      }
+    }
+
+    // 2. Add product repurchases strictly from paid purchases
+    let repurchaseTurnover = 0;
+    let repurchaseBv = 0;
+    for (const p of purchases) {
+      if (p.type !== PURCHASE_TYPE.JOINING) {
+        repurchaseTurnover += (p.totalAmount || 0);
+        repurchaseBv += (p.totalBV || 0);
+      }
+    }
+
+    const totalPackagePrice = totalJoiningPackagePrice;
+    const totalGrossValue = totalJoiningPackagePrice + repurchaseTurnover;
+    const totalBusinessVolume = totalJoiningBV + repurchaseBv;
 
     // Calculate current weekly settlement period (Mon 00:00 to Sun 23:59:59)
     const now = new Date();
@@ -74,30 +106,27 @@ router.get('/dashboard/stats', async (_req, res) => {
     weekStart.setDate(now.getDate() + diffToMonday);
     weekStart.setHours(0, 0, 0, 0);
 
-    let weeklyPackagePrice = 0;
     let weeklyGrossBusinessVolume = 0;
-    for (const m of members) {
-      const d = m.createdAt || m.joinedAt;
+    let weeklyGrossRevenue = 0;
+
+    // Paid purchases in this weekly cycle
+    for (const p of purchases) {
+      const d = p.completedAt || p.verifiedAt || p.createdAt;
       if (d && new Date(d) >= weekStart) {
-        const pkgKey = (m.joiningPackageId || m.packageName || '').toLowerCase().trim();
-        const price = pkgPriceMap.get(pkgKey) || 0;
-        const bv = m.packageBv || pkgBvMap.get(pkgKey) || 0;
-        weeklyPackagePrice += price;
-        weeklyGrossBusinessVolume += bv;
+        weeklyGrossBusinessVolume += (p.totalBV || 0);
+        weeklyGrossRevenue += (p.totalAmount || 0);
       }
     }
 
-    let repurchaseTurnover = 0;
-    let repurchaseBv = 0;
-    if (purchases && purchases.length > 0) {
-      for (const p of purchases) {
-        repurchaseTurnover += (p.totalAmount || 0);
-        repurchaseBv += (p.totalBV || 0);
-        const d = p.createdAt;
-        if (d && new Date(d) >= weekStart) {
-          weeklyGrossBusinessVolume += (p.totalBV || 0);
-          weeklyPackagePrice += (p.totalAmount || 0);
-        }
+    // Direct members activated this week without purchase record
+    for (const m of members) {
+      if (paidJoiningMemberIds.has(m.memberId)) continue;
+      const d = m.createdAt || m.joinedAt;
+      if (d && new Date(d) >= weekStart && m.packageBv && m.packageBv > 0) {
+        const pkgKey = (m.joiningPackageId || m.packageName || '').toLowerCase().trim();
+        const price = pkgPriceMap.get(pkgKey) || 0;
+        weeklyGrossBusinessVolume += m.packageBv;
+        weeklyGrossRevenue += price;
       }
     }
 
@@ -125,12 +154,13 @@ router.get('/dashboard/stats', async (_req, res) => {
     const recentMembers = members.slice(0, 5).map(m => {
       const pkgKey = (m.joiningPackageId || m.packageName || '').toLowerCase().trim();
       const price = pkgPriceMap.get(pkgKey) || 0;
-      const bv = m.packageBv || pkgBvMap.get(pkgKey) || 0;
+      const hasPaid = Boolean(m.packageBv && m.packageBv > 0) || paidJoiningMemberIds.has(m.memberId);
+      const bv = hasPaid ? (m.packageBv || pkgBvMap.get(pkgKey) || 0) : 0;
       return {
         id: m.memberId,
         name: m.name,
-        package: m.packageName || 'Package',
-        packagePrice: price,
+        package: m.packageName || (hasPaid ? 'Package' : 'Unpaid / None'),
+        packagePrice: hasPaid ? price : 0,
         bv: `${bv.toLocaleString()} BV`,
         date: m.joinDate || (m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
         status: m.status === 'active' || m.isActive ? 'Active' : 'Inactive',
@@ -143,15 +173,15 @@ router.get('/dashboard/stats', async (_req, res) => {
       totalMembers,
       newRegistrations: totalMembers,
       registrationsToday,
-      totalIncomeMonth: totalPackagePrice,
+      totalIncomeMonth: totalGrossValue,
       totalPackagePrice,
       totalJoiningRevenue: totalPackagePrice,
-      totalGrossValue: totalPackagePrice,
+      totalGrossValue,
       totalBusinessVolume,
       totalBV: totalBusinessVolume,
       weeklyGrossBusinessVolume,
-      weeklyGrossRevenue: weeklyPackagePrice,
-      weeklyGrossValue: weeklyPackagePrice,
+      weeklyGrossRevenue,
+      weeklyGrossValue: weeklyGrossRevenue,
       totalPayoutMonth: totalPayoutAmount,
       pendingPayouts: pendingPayoutAmount,
       repurchaseTurnover,

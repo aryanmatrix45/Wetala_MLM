@@ -81,29 +81,32 @@ export class WelcomeBonusService {
       return overrideGBV;
     }
 
-    // 1. Sum up all member joining package BV created in this window
-    const newMembers = await Member.find({
-      createdAt: { $gte: periodStart, $lte: periodEnd },
-    });
-    const joiningBv = newMembers.reduce((sum, m) => sum + (m.packageBv || m.qualifyingBv || 1250), 0);
-
-    // 2. Sum up all completed/confirmed purchases in this window
+    // 1. Sum up all completed & paid purchases in this window
     const purchases = await Purchase.find({
-      status: { $in: ['COMPLETED', 'CONFIRMED', 'PENDING'] },
-      createdAt: { $gte: periodStart, $lte: periodEnd },
+      status: { $in: ['COMPLETED', 'CONFIRMED'] },
+      paymentStatus: 'PAID',
+      $or: [
+        { completedAt: { $gte: periodStart, $lte: periodEnd } },
+        { createdAt: { $gte: periodStart, $lte: periodEnd } },
+      ],
     });
     const purchaseBv = purchases.reduce((sum, p) => sum + (p.totalBV || 0), 0);
 
-    let totalGBV = joiningBv + purchaseBv;
+    // 2. Sum up any member joining package BV directly set on member without a duplicate purchase record
+    const paidJoiningMemberIds = new Set(
+      purchases
+        .filter(p => p.type === 'JOINING')
+        .map(p => p.memberId)
+    );
+    const newMembers = await Member.find({
+      createdAt: { $gte: periodStart, $lte: periodEnd },
+      packageBv: { $gt: 0 },
+    });
+    const directJoiningBv = newMembers
+      .filter(m => !paidJoiningMemberIds.has(m.memberId))
+      .reduce((sum, m) => sum + (m.packageBv || 0), 0);
 
-    // Fallback: If no activity occurred this week, calculate from total system business volume
-    // or default to ₹7,200 if system is freshly initialized for testing
-    if (totalGBV === 0) {
-      const allMembers = await Member.find();
-      const allJoiningBv = allMembers.reduce((sum, m) => sum + (m.packageBv || 1250), 0);
-      totalGBV = allJoiningBv > 0 ? allJoiningBv : 7200;
-    }
-
+    const totalGBV = purchaseBv + directJoiningBv;
     return totalGBV;
   }
 
@@ -118,7 +121,7 @@ export class WelcomeBonusService {
     member: IMember,
     maxMultiplier: number = 2
   ): Promise<MemberEligibilityResult> {
-    const qualifyingBv = member.qualifyingBv || member.packageBv || 1250;
+    const qualifyingBv = member.qualifyingBv || member.packageBv || 0;
     const welcomeBonusCap = member.welcomeBonusCap || qualifyingBv * maxMultiplier;
     const welcomeBonusEarned = member.welcomeBonusEarned || 0;
     const remainingCap = Math.max(0, welcomeBonusCap - welcomeBonusEarned);
