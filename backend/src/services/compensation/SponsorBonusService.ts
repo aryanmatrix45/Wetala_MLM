@@ -4,7 +4,6 @@ import { ICompensationRule } from '../../models/CompensationRule.model';
 import { SponsorTreeService } from '../tree/SponsorTreeService';
 import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
-import { DeductionUtil } from '../../utils/deduction.util';
 import { COMMISSION_TYPE } from '../../config/constants';
 
 export class SponsorBonusService {
@@ -39,6 +38,9 @@ export class SponsorBonusService {
       const sponsor = sponsors[level];
       if (!sponsor.isActive || sponsor.status === 'blocked') continue;
 
+      // Only distributors/members with role 'member' can earn sponsor income (Super Admin / Admin cannot earn commissions)
+      if (sponsor.role && sponsor.role !== 'member') continue;
+
       // Rate can apply directly or scaled by level (default 20% = 0.20)
       const rate = config.sponsorBinaryRate;
       let rawBonus = DecimalUtil.multiplyRate(qualifyingAmountOrIncome, rate);
@@ -63,12 +65,6 @@ export class SponsorBonusService {
         }
       }
 
-      // Dynamic Admin-Configurable Deductions (can be set to anything, even 0%)
-      const deductions = DeductionUtil.calculateDeductions(rawBonus, rules, {
-        tdsPercent: config.tdsPercent,
-        adminFeePercent: config.adminFeePercent,
-      });
-
       const ledgerId = `COMM-SPO-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
       const commission = await CommissionLedger.create({
@@ -80,12 +76,12 @@ export class SponsorBonusService {
         sourcePurchaseId,
         grossAmount: rawBonus,
         grossAmountInPaise: DecimalUtil.toPaise(rawBonus),
-        tdsDeduction: deductions.tdsDeduction,
-        tdsDeductionInPaise: DecimalUtil.toPaise(deductions.tdsDeduction),
-        adminFee: deductions.adminFee,
-        adminFeeInPaise: DecimalUtil.toPaise(deductions.adminFee),
-        payableAmount: deductions.netPayable,
-        payableAmountInPaise: DecimalUtil.toPaise(deductions.netPayable),
+        tdsDeduction: 0,
+        tdsDeductionInPaise: 0,
+        adminFee: 0,
+        adminFeeInPaise: 0,
+        payableAmount: rawBonus,
+        payableAmountInPaise: DecimalUtil.toPaise(rawBonus),
         status: 'APPROVED',
         calculationDetails: {
           sourcePurchaseId,
@@ -96,16 +92,16 @@ export class SponsorBonusService {
           rateApplied: rate,
           percentageApplied: rate * 100,
           tierApplied: `Level ${level + 1} Sponsor`,
-          tdsRateApplied: deductions.tdsRate,
-          adminFeeRateApplied: deductions.adminFeeRate,
-          notes: `Sponsor Binary Bonus from ${earner.name} (${earnerMemberId}) @ ${(rate * 100).toFixed(0)}%. Net: ₹${deductions.netPayable} (TDS ${deductions.tdsRate}%, Admin ${deductions.adminFeeRate}%). Uncapped.`,
+          tdsRateApplied: 0,
+          adminFeeRateApplied: 0,
+          notes: `Sponsor Binary Bonus from ${earner.name} (${earnerMemberId}) @ ${(rate * 100).toFixed(0)}%. 100% Net Credited to Wallet (Zero Deductions). Uncapped.`,
         },
         isReversed: false,
       });
 
       await WalletService.creditCommission(
         sponsor.memberId,
-        deductions.netPayable,
+        rawBonus,
         ledgerId,
         `Sponsor Bonus (20%) from ${earner.name} (${earnerMemberId})`
       );

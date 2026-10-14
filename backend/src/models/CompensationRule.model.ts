@@ -67,8 +67,6 @@ export interface ICompensationRule extends Document {
     sponsorDepth: number; // direct = 1
     calculationBase: 'BINARY_COMMISSION' | 'BV' | 'DOWNSTREAM_PURCHASE';
     maxPayout?: number;
-    tdsPercent?: number;       // Optional override, default uses payoutDeductions.tdsPercent
-    adminFeePercent?: number;  // Optional override, default uses payoutDeductions.adminFeePercent
   };
   
   // 6. Team Performance Bonus (6 Slabs: 10:10 @ 3% max 10k, up to 25,000:25,000 @ 1% max 15L)
@@ -234,8 +232,6 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       sponsorDepth: { type: Number, default: 1 },
       calculationBase: { type: String, default: 'BINARY_COMMISSION' },
       maxPayout: Number,
-      tdsPercent: { type: Number },
-      adminFeePercent: { type: Number },
     },
     teamPerformanceBonus: {
       isEnabled: { type: Boolean, default: true },

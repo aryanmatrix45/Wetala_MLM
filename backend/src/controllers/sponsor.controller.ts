@@ -5,7 +5,6 @@ import { CommissionLedger } from '../models/CommissionLedger.model';
 import { CompensationEngine } from '../services/compensation/CompensationEngine';
 import { HTTP_STATUS, COMMISSION_TYPE } from '../config/constants';
 import { DecimalUtil } from '../utils/decimal';
-import { DeductionUtil } from '../utils/deduction.util';
 
 export const SponsorController = {
   /**
@@ -69,17 +68,6 @@ export const SponsorController = {
       const sponsorBonusConfig = rules.sponsorBinaryBonus || { isEnabled: true, sponsorBinaryRate: 0.20 };
       const appliedRatePercent = (sponsorBonusConfig.sponsorBinaryRate || 0.20) * 100;
 
-      // Deductions configuration: admin configurable, can be set to 0%
-      const deductionsConfig = rules.payoutDeductions;
-      const isDeductionsEnabled = deductionsConfig?.isEnabled ?? true;
-      const tdsPercent = isDeductionsEnabled
-        ? (sponsorBonusConfig.tdsPercent !== undefined ? sponsorBonusConfig.tdsPercent : (deductionsConfig?.tdsPercent ?? 5))
-        : 0;
-      const adminFeePercent = isDeductionsEnabled
-        ? (sponsorBonusConfig.adminFeePercent !== undefined ? sponsorBonusConfig.adminFeePercent : (deductionsConfig?.adminFeePercent ?? 5))
-        : 0;
-      const netPercent = Math.max(0, 100 - (tdsPercent + adminFeePercent));
-
       // Fetch all sponsor bonus commissions earned by this member
       const sponsorCommissions = await CommissionLedger.find({
         memberId: cleanId,
@@ -88,15 +76,11 @@ export const SponsorController = {
       }).sort({ createdAt: -1 });
 
       let totalGrossBonus = 0;
-      let totalTdsDeducted = 0;
-      let totalAdminFeeDeducted = 0;
       let totalNetCredited = 0;
 
       sponsorCommissions.forEach((comm) => {
         totalGrossBonus = DecimalUtil.add(totalGrossBonus, comm.grossAmount || 0);
-        totalTdsDeducted = DecimalUtil.add(totalTdsDeducted, comm.tdsDeduction || 0);
-        totalAdminFeeDeducted = DecimalUtil.add(totalAdminFeeDeducted, comm.adminFee || 0);
-        totalNetCredited = DecimalUtil.add(totalNetCredited, comm.payableAmount || 0);
+        totalNetCredited = DecimalUtil.add(totalNetCredited, comm.payableAmount || comm.grossAmount || 0);
       });
 
       // Fetch direct referrals sponsored by this member
@@ -160,20 +144,12 @@ export const SponsorController = {
           memberName: member.name,
           kpis: {
             totalGrossBonus,
-            totalTdsDeducted,
-            totalAdminFeeDeducted,
             totalNetCredited,
             directTeamCount: directMembers.length,
             earningDirectsCount,
             appliedRatePercent,
             isUncapped: true,
             noLegRequirement: true,
-            deductions: {
-              isEnabled: isDeductionsEnabled,
-              tdsPercent,
-              adminFeePercent,
-              netPercent,
-            },
           },
           directTeamBreakdown,
           recentPayouts: sponsorCommissions.slice(0, 10).map((c) => ({

@@ -201,8 +201,11 @@ async function runSponsorBinaryIncomeRuleTest() {
     assert(!!arianSponsorLedger, 'Arian should have received SPONSOR_BINARY_BONUS');
     const expectedSponsorGross = 500 * (rules.sponsorBinaryBonus.sponsorBinaryRate || 0.20); // 20% of ₹500 = ₹100
     assertEqual(arianSponsorLedger!.grossAmount, expectedSponsorGross, `Arian gross sponsor bonus should be 20% of ₹500 = ₹${expectedSponsorGross}`);
+    assertEqual(arianSponsorLedger!.tdsDeduction, 0, 'Sponsor bonus must have 0 TDS deduction');
+    assertEqual(arianSponsorLedger!.adminFee, 0, 'Sponsor bonus must have 0 Admin fee deduction');
+    assertEqual(arianSponsorLedger!.payableAmount, expectedSponsorGross, 'Sponsor bonus net payable must be 100% gross bonus');
     assertEqual(arianSponsorLedger!.calculationDetails?.sourceMemberId, downlineId, 'Source member must be the downline');
-    console.log(`✓ Arian received ₹${arianSponsorLedger!.grossAmount} Gross Sponsor Bonus (Net: ₹${arianSponsorLedger!.payableAmount})`);
+    console.log(`✓ Arian received ₹${arianSponsorLedger!.grossAmount} Gross Sponsor Bonus (100% Net: ₹${arianSponsorLedger!.payableAmount}, Deductions: ₹0)`);
 
     // 9. Verify Arian's Wallet & Total Payout
     console.log('\n--- Step 3: Verifying Arian Wallet & Total Payout ---');
