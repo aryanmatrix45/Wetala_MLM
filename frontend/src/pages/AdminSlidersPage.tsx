@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   Sliders,
   Plus,
-  Upload,
   Search,
   Edit3,
   Trash2,
@@ -21,6 +20,63 @@ import {
   Eye,
 } from 'lucide-react';
 import { api, getAssetUrl, type SliderItem } from '../services/api';
+
+export const SLIDER_SPECS = {
+  parent: {
+    minWidth: 2000,
+    minHeight: 400,
+    label: 'desktop slider',
+    header: 'Drag & Drop your desktop slider image here',
+    subHeader: 'or click to browse',
+    footnote: 'Minimum: 2000 x 400px | Recommended: 2000 x 400 or wider | wide landscape banner',
+  },
+  child: {
+    minWidth: 1100,
+    minHeight: 600,
+    label: 'mobile slider',
+    header: 'Drag & Drop your mobile slider image here',
+    subHeader: 'or click to browse',
+    footnote: 'Minimum: 1100 x 600px | Recommended: 1200 x 700 or wider | mobile-optimized landscape banner',
+  },
+};
+
+export const checkImageDimensions = (
+  src: string,
+  type: 'parent' | 'child'
+): Promise<{ width: number; height: number; isValid: boolean; error?: string }> => {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+      const spec = SLIDER_SPECS[type];
+
+      if (width < spec.minWidth || height < spec.minHeight) {
+        resolve({
+          width,
+          height,
+          isValid: false,
+          error: `Invalid dimensions (${width} x ${height}px). For ${spec.label}, image must be at least ${spec.minWidth} x ${spec.minHeight}px.`,
+        });
+      } else {
+        resolve({
+          width,
+          height,
+          isValid: true,
+        });
+      }
+    };
+    img.onerror = () => {
+      resolve({
+        width: 0,
+        height: 0,
+        isValid: false,
+        error: 'Unable to load image from the provided URL or file. Please check the image source.',
+      });
+    };
+    img.src = src;
+  });
+};
 
 interface AdminSlidersPageProps {
   user?: any;
@@ -64,6 +120,8 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
   const [formStatus, setFormStatus] = useState<'active' | 'inactive'>('active');
   const [formSubmitting, setFormSubmitting] = useState(false);
   const [formError, setFormError] = useState('');
+  const [dimensionNotice, setDimensionNotice] = useState<string | null>(null);
+  const [isValidatingUrl, setIsValidatingUrl] = useState(false);
 
   // Bulk Upload states
   const [bulkType, setBulkType] = useState<'parent' | 'child'>('parent');
@@ -127,6 +185,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
     setFormOrder(maxOrder + 1);
     setFormStatus('active');
     setFormError('');
+    setDimensionNotice(null);
     setIsAddModalOpen(true);
   };
 
@@ -141,27 +200,85 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
     setFormOrder(slider.order || 1);
     setFormStatus(slider.status || 'active');
     setFormError('');
+    setDimensionNotice(null);
     setIsAddModalOpen(true);
   };
 
-  // Convert File to Base64
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  // Validate and process single file
+  const processSingleFile = (file: File) => {
     if (!file.type.startsWith('image/')) {
       setFormError('Please select a valid image file (PNG, JPG, WEBP, SVG)');
       return;
     }
 
+    setFormError('');
+    setDimensionNotice(null);
+
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const result = reader.result as string;
-      setFormBase64(result);
-      setFormImageUrl(result); // sync preview
-      setFormError('');
+      const check = await checkImageDimensions(result, formType);
+      if (!check.isValid) {
+        setFormError(check.error || 'Image size is not valid.');
+        setFormBase64('');
+        setFormImageUrl('');
+        setDimensionNotice(null);
+      } else {
+        setFormBase64(result);
+        setFormImageUrl(result);
+        setFormError('');
+        setDimensionNotice(`✓ Validated ${SLIDER_SPECS[formType].label}: ${check.width} x ${check.height}px`);
+      }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processSingleFile(file);
+    }
+  };
+
+  // Validate URL explicitly
+  const validateCurrentUrl = async (url: string, type: 'parent' | 'child' = formType) => {
+    const trimmed = url.trim();
+    if (!trimmed || trimmed.startsWith('data:')) return;
+
+    setIsValidatingUrl(true);
+    setFormError('');
+    setDimensionNotice(null);
+
+    const check = await checkImageDimensions(getAssetUrl(trimmed), type);
+    setIsValidatingUrl(false);
+
+    if (!check.isValid) {
+      setFormError(check.error || 'Image size from URL is not valid.');
+      setDimensionNotice(null);
+    } else {
+      setFormError('');
+      setDimensionNotice(`✓ Validated ${SLIDER_SPECS[type].label}: ${check.width} x ${check.height}px`);
+    }
+  };
+
+  // Re-validate when device type switches in modal
+  const handleTypeChange = async (newType: 'parent' | 'child') => {
+    setFormType(newType);
+    setFormError('');
+    setDimensionNotice(null);
+
+    const checkSrc = formBase64 || formImageUrl;
+    if (checkSrc) {
+      const fullSrc = checkSrc.startsWith('data:') ? checkSrc : getAssetUrl(checkSrc);
+      const check = await checkImageDimensions(fullSrc, newType);
+      if (!check.isValid) {
+        setFormError(check.error || `Current image is not valid for ${SLIDER_SPECS[newType].label}.`);
+        setDimensionNotice(null);
+      } else {
+        setFormError('');
+        setDimensionNotice(`✓ Validated ${SLIDER_SPECS[newType].label}: ${check.width} x ${check.height}px`);
+      }
+    }
   };
 
   // Save Single Slider (Create or Update)
@@ -169,6 +286,14 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
     e.preventDefault();
     if (!formImageUrl && !formBase64) {
       setFormError('Please upload an image or provide an Image URL.');
+      return;
+    }
+
+    // Verify dimensions before saving
+    const checkSrc = formBase64 || getAssetUrl(formImageUrl);
+    const check = await checkImageDimensions(checkSrc, formType);
+    if (!check.isValid) {
+      setFormError(check.error || 'Image size does not meet the required dimensions.');
       return;
     }
 
@@ -274,12 +399,16 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
     setTimeout(() => setCopiedId(null), 2000);
   };
 
-  // Handle multiple files for bulk upload
+  // Handle multiple files for bulk upload with dimension validation
   const handleBulkFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
+    processBulkFiles(Array.from(files));
+  };
 
+  const processBulkFiles = async (files: File[]) => {
     const fileList: Array<{ name: string; base64: string }> = [];
+    const rejectedList: string[] = [];
     let processed = 0;
 
     for (let i = 0; i < files.length; i++) {
@@ -287,21 +416,36 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
       if (!f.type.startsWith('image/')) continue;
 
       const reader = new FileReader();
-      reader.onloadend = () => {
-        fileList.push({
-          name: f.name,
-          base64: reader.result as string,
-        });
+      reader.onloadend = async () => {
+        const base64 = reader.result as string;
+        const check = await checkImageDimensions(base64, bulkType);
+        if (!check.isValid) {
+          rejectedList.push(`${f.name} (${check.width}x${check.height}px)`);
+        } else {
+          fileList.push({
+            name: f.name,
+            base64,
+          });
+        }
         processed++;
         if (processed === files.length) {
-          setBulkFiles((prev) => [...prev, ...fileList]);
+          if (rejectedList.length > 0) {
+            setBulkError(
+              `Rejected ${rejectedList.length} file(s) below ${SLIDER_SPECS[bulkType].label} minimum (${SLIDER_SPECS[bulkType].minWidth}x${SLIDER_SPECS[bulkType].minHeight}px): ${rejectedList.join(', ')}`
+            );
+          } else {
+            setBulkError('');
+          }
+          if (fileList.length > 0) {
+            setBulkFiles((prev) => [...prev, ...fileList]);
+          }
         }
       };
       reader.readAsDataURL(f);
     }
   };
 
-  // Submit Bulk Upload
+  // Submit Bulk Upload with dimension validation for URLs
   const handleBulkSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setBulkSubmitting(true);
@@ -313,13 +457,28 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
         .map((u) => u.trim())
         .filter((u) => u.length > 0);
 
+      // Validate each URL dimensions
+      if (urlList.length > 0) {
+        for (let i = 0; i < urlList.length; i++) {
+          const u = urlList[i];
+          const check = await checkImageDimensions(getAssetUrl(u), bulkType);
+          if (!check.isValid) {
+            setBulkError(
+              `URL #${i + 1} (${u.substring(0, 45)}...) is invalid: ${check.error || 'Below required dimensions'}`
+            );
+            setBulkSubmitting(false);
+            return;
+          }
+        }
+      }
+
       const items: Array<{ image?: string; imageUrl?: string; base64?: string }> = [
         ...bulkFiles.map((f) => ({ base64: f.base64, image: f.base64 })),
         ...urlList.map((u) => ({ imageUrl: u, image: u })),
       ];
 
       if (items.length === 0) {
-        setBulkError('Please select at least one image file or paste at least one image URL.');
+        setBulkError('Please select at least one valid image file or paste at least one valid image URL.');
         setBulkSubmitting(false);
         return;
       }
@@ -989,7 +1148,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div
                       className={`type-radio-box ${formType === 'parent' ? 'active' : ''}`}
-                      onClick={() => setFormType('parent')}
+                      onClick={() => handleTypeChange('parent')}
                       style={{ cursor: 'pointer' }}
                     >
                       <div
@@ -1008,13 +1167,13 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       </div>
                       <div>
                         <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>Desktop (`parent`)</strong>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>16:9 ratio for desktop monitors</span>
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>2000 x 400px (5:1 wide banner)</span>
                       </div>
                     </div>
 
                     <div
                       className={`type-radio-box ${formType === 'child' ? 'active' : ''}`}
-                      onClick={() => setFormType('child')}
+                      onClick={() => handleTypeChange('child')}
                       style={{ cursor: 'pointer' }}
                     >
                       <div
@@ -1033,7 +1192,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       </div>
                       <div>
                         <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>Mobile (`child`)</strong>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>Compact ratio for smartphones</span>
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>1100 x 600px (~1.83:1 mobile ratio)</span>
                       </div>
                     </div>
                   </div>
@@ -1044,7 +1203,24 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
                     Upload Image File
                   </label>
-                  <div className="file-upload-dropzone">
+                  <div
+                    className="file-upload-dropzone"
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+                        processSingleFile(e.dataTransfer.files[0]);
+                      }
+                    }}
+                    style={{
+                      border: '2px dashed #94a3b8',
+                      borderRadius: '12px',
+                      padding: '24px 16px',
+                      background: '#f8fafc',
+                      transition: 'all 0.2s',
+                    }}
+                  >
                     <input
                       type="file"
                       accept="image/*"
@@ -1053,40 +1229,71 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       style={{ display: 'none' }}
                     />
                     <label htmlFor="single-slider-upload" style={{ cursor: 'pointer', textAlign: 'center', display: 'block' }}>
-                      <Upload size={26} color="#1d72fe" style={{ margin: '0 auto 8px' }} />
-                      <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
-                        Click to select image from your device
+                      <p style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
+                        {SLIDER_SPECS[formType].header}
                       </p>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>Supports PNG, JPG, WEBP, SVG</span>
+                      <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#2563eb', fontWeight: 600, textDecoration: 'underline' }}>
+                        {SLIDER_SPECS[formType].subHeader}
+                      </p>
+                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 500 }}>
+                        {SLIDER_SPECS[formType].footnote}
+                      </span>
                     </label>
                   </div>
                 </div>
 
                 {/* Direct Image URL Field */}
                 <div style={{ marginBottom: '18px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                    Or Direct Image URL <span style={{ color: '#64748b', fontWeight: 400 }}>(Optional if uploaded)</span>
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="https://example.com/banner.jpg or /uploads/..."
-                    value={formImageUrl}
-                    onChange={(e) => {
-                      setFormImageUrl(e.target.value);
-                      setFormBase64('');
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13px',
-                      outline: 'none',
-                    }}
-                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
+                      Or Direct Image URL <span style={{ color: '#64748b', fontWeight: 400 }}>(Optional if uploaded)</span>
+                    </label>
+                    {isValidatingUrl && (
+                      <span style={{ fontSize: '12px', color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4 }}>
+                        <RefreshCw size={12} className="spin-anim" /> Checking size...
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <input
+                      type="text"
+                      placeholder="https://example.com/banner.jpg or /uploads/..."
+                      value={formImageUrl}
+                      onChange={(e) => {
+                        setFormImageUrl(e.target.value);
+                        setFormBase64('');
+                        setDimensionNotice(null);
+                        setFormError('');
+                      }}
+                      onBlur={() => validateCurrentUrl(formImageUrl, formType)}
+                      style={{
+                        width: '100%',
+                        padding: '10px 12px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '13px',
+                        outline: 'none',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      className="btn-secondary"
+                      onClick={() => validateCurrentUrl(formImageUrl, formType)}
+                      disabled={isValidatingUrl || !formImageUrl || formImageUrl.startsWith('data:')}
+                      style={{ padding: '8px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                    >
+                      Check Size
+                    </button>
+                  </div>
                   <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '4px' }}>
-                    Paste a direct image link or external hosted banner URL.
+                    Paste a direct image link. Image size will be verified against {formType === 'parent' ? '2000 x 400px' : '1100 x 600px'}.
                   </span>
+
+                  {dimensionNotice && (
+                    <div style={{ marginTop: '8px', padding: '6px 12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px', color: '#047857', fontSize: '12px', fontWeight: 600 }}>
+                      {dimensionNotice}
+                    </div>
+                  )}
                 </div>
 
                 {/* Live Image Preview */}
@@ -1351,7 +1558,24 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                   <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
                     Select Image Files
                   </label>
-                  <div className="file-upload-dropzone">
+                  <div
+                    className="file-upload-dropzone"
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                        processBulkFiles(Array.from(e.dataTransfer.files));
+                      }
+                    }}
+                    style={{
+                      border: '2px dashed #94a3b8',
+                      borderRadius: '12px',
+                      padding: '24px 16px',
+                      background: '#f8fafc',
+                      transition: 'all 0.2s',
+                    }}
+                  >
                     <input
                       type="file"
                       accept="image/*"
@@ -1361,12 +1585,14 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       style={{ display: 'none' }}
                     />
                     <label htmlFor="bulk-files-input" style={{ cursor: 'pointer', textAlign: 'center', display: 'block' }}>
-                      <Upload size={28} color="#1d72fe" style={{ margin: '0 auto 8px' }} />
-                      <p style={{ margin: '0 0 4px 0', fontSize: '14px', fontWeight: 600, color: '#0f172a' }}>
-                        Click to select multiple images
+                      <p style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
+                        Drag & Drop your {bulkType === 'parent' ? 'desktop' : 'mobile'} slider images here
                       </p>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>
-                        {bulkFiles.length > 0 ? `${bulkFiles.length} file(s) selected` : 'Select PNG, JPG, or WEBP images'}
+                      <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#2563eb', fontWeight: 600, textDecoration: 'underline' }}>
+                        or click to browse
+                      </p>
+                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 500 }}>
+                        {SLIDER_SPECS[bulkType].footnote}
                       </span>
                     </label>
                   </div>

@@ -4,6 +4,41 @@ import { HTTP_STATUS, ROLES } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { StorageService } from '../services/storage.service';
 
+const SLIDER_BACKEND_SPECS: Record<string, { minWidth: number; minHeight: number; label: string }> = {
+  parent: { minWidth: 2000, minHeight: 400, label: 'Desktop slider' },
+  child: { minWidth: 1100, minHeight: 600, label: 'Mobile slider' },
+};
+
+function parseImageBufferDimensions(buf: Buffer): { width: number; height: number } | null {
+  // PNG: bytes 16-23
+  if (buf.length >= 24 && buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4E && buf[3] === 0x47) {
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  }
+  // JPEG: scan for SOF0/SOF2 marker
+  if (buf.length >= 8 && buf[0] === 0xFF && buf[1] === 0xD8) {
+    let i = 2;
+    while (i < buf.length - 8) {
+      if (buf[i] === 0xFF && (buf[i + 1] >= 0xC0 && buf[i + 1] <= 0xC3)) {
+        return { height: buf.readUInt16BE(i + 5), width: buf.readUInt16BE(i + 7) };
+      }
+      i++;
+    }
+  }
+  // WEBP
+  if (buf.length >= 30 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP') {
+    const type = buf.toString('ascii', 12, 16);
+    if (type === 'VP8 ') {
+      return { width: buf.readUInt16LE(26) & 0x3fff, height: buf.readUInt16LE(28) & 0x3fff };
+    } else if (type === 'VP8L') {
+      const b0 = buf[21], b1 = buf[22], b2 = buf[23], b3 = buf[24];
+      return { width: 1 + (((b1 & 0x3F) << 8) | b0), height: 1 + (((b3 & 0xF) << 10) | (b2 << 2) | ((b1 & 0xC0) >> 6)) };
+    } else if (type === 'VP8X') {
+      return { width: 1 + buf.readUIntLE(24, 3), height: 1 + buf.readUIntLE(27, 3) };
+    }
+  }
+  return null;
+}
+
 export const SliderController = {
   // ==========================================
   // MEMBER / PUBLIC APIS
@@ -122,11 +157,30 @@ export const SliderController = {
         order,
       } = req.body;
 
+      const sliderType: SliderType = type === 'child' ? 'child' : 'parent';
+      const sliderStatus: SliderStatus = status === 'inactive' ? 'inactive' : 'active';
+
       let finalImageUrl = imageUrl || image || '';
 
-      // If base64 image data is provided, save to disk
+      // If base64 image data is provided, validate dimensions and save to disk
       const rawBase64 = base64Image || (image && image.startsWith('data:') ? image : '');
       if (rawBase64) {
+        try {
+          const matches = rawBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+          const buf = matches && matches[2] ? Buffer.from(matches[2], 'base64') : Buffer.from(rawBase64, 'base64');
+          const dims = parseImageBufferDimensions(buf);
+          const spec = SLIDER_BACKEND_SPECS[sliderType];
+          if (dims && (dims.width < spec.minWidth || dims.height < spec.minHeight)) {
+            res.status(HTTP_STATUS.BAD_REQUEST).json({
+              status: false,
+              message: `Image dimensions (${dims.width}x${dims.height}px) do not meet the minimum requirement for ${spec.label} (${spec.minWidth}x${spec.minHeight}px).`,
+            });
+            return;
+          }
+        } catch (e) {
+          // Continue if dimension parse fails on custom formats
+        }
+
         const stored = await StorageService.saveImageBase64(rawBase64, title || 'slider', 'sliders');
         finalImageUrl = stored.url;
       }
@@ -138,9 +192,6 @@ export const SliderController = {
         });
         return;
       }
-
-      const sliderType: SliderType = type === 'child' ? 'child' : 'parent';
-      const sliderStatus: SliderStatus = status === 'inactive' ? 'inactive' : 'active';
 
       let targetOrder = Number(order);
       if (!targetOrder || isNaN(targetOrder) || targetOrder < 1) {
@@ -203,6 +254,17 @@ export const SliderController = {
         const rawBase64 = item.base64 || (finalImageUrl && finalImageUrl.startsWith('data:') ? finalImageUrl : '');
 
         if (rawBase64) {
+          try {
+            const matches = rawBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+            const buf = matches && matches[2] ? Buffer.from(matches[2], 'base64') : Buffer.from(rawBase64, 'base64');
+            const dims = parseImageBufferDimensions(buf);
+            const spec = SLIDER_BACKEND_SPECS[sliderType];
+            if (dims && (dims.width < spec.minWidth || dims.height < spec.minHeight)) {
+              // Skip items below minimum resolution in bulk
+              continue;
+            }
+          } catch (e) {}
+
           const stored = await StorageService.saveImageBase64(rawBase64, item.title || 'slider', 'sliders');
           finalImageUrl = stored.url;
         }

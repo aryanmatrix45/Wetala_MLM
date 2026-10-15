@@ -219,8 +219,8 @@ export function App() {
   }
 
   return (
-    <div className="app-container">
-      {/* Mobile Backdrop */}
+    <div className={`app-container ${activeTab === 'home' ? 'layout-home-immersive' : ''}`}>
+      {/* Drawer / Mobile Backdrop */}
       {isSidebarOpen && (
         <div 
           className="sidebar-backdrop" 
@@ -243,6 +243,7 @@ export function App() {
       <div className="main-wrapper">
         <TopNavbar 
           user={user} 
+          activeTab={activeTab}
           onLogout={handleLogout} 
           onNavigate={handleTabChange} 
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}

@@ -11,12 +11,13 @@ interface TopNavbarProps {
     memberId?: string;
     role?: string;
   } | null;
+  activeTab?: string;
   onToggleSidebar?: () => void;
   onLogout?: () => void;
   onNavigate?: (tab: string) => void;
 }
 
-export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onLogout, onNavigate }) => {
+export const TopNavbar: React.FC<TopNavbarProps> = ({ user, activeTab, onToggleSidebar, onLogout, onNavigate }) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [liveNotifs, setLiveNotifs] = useState<any[]>([]);
@@ -97,9 +98,47 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, onToggleSidebar, onL
   return (
     <header className="top-header">
       <div className="header-left">
-        <button onClick={onToggleSidebar} className="toggle-btn" aria-label="Toggle Navigation">
+        <button 
+          onClick={onToggleSidebar} 
+          className={`toggle-btn ${activeTab === 'home' ? 'toggle-btn-home' : ''}`}
+          aria-label="Toggle Navigation"
+          title="Open Navigation Menu"
+        >
           <Menu size={20} />
+          {activeTab === 'home' && <span className="toggle-btn-label">Menu</span>}
         </button>
+
+        {activeTab === 'home' && (
+          <div 
+            className="header-brand-home" 
+            onClick={() => onNavigate?.('home')}
+            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
+            title="Panchveda Wellness Home"
+          >
+            <img
+              src="/logo.png"
+              alt="Panchveda"
+              style={{
+                width: 34,
+                height: 34,
+                borderRadius: '50%',
+                objectFit: 'contain',
+                background: '#ffffff',
+                padding: '1.5px',
+                border: '1.5px solid rgba(234, 179, 8, 0.45)',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+              }}
+            />
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
+              <span style={{ fontWeight: 800, fontSize: '15px', color: '#0f172a', letterSpacing: '-0.02em' }}>
+                Panchveda
+              </span>
+              <span style={{ fontSize: '10px', fontWeight: 700, color: '#eab308', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                Wellness
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Global Search Bar */}
         <div className="header-search-bar">

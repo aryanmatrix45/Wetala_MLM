@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HomeSlider } from '../components/HomeSlider';
 import { api, type SliderItem } from '../services/api';
-import { RefreshCw, Sparkles, ShoppingBag, Users, Wallet } from 'lucide-react';
+import { RefreshCw, ShoppingBag, Users, Wallet } from 'lucide-react';
 
 interface MemberHomePageProps {
   user?: any;
@@ -45,11 +45,6 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({
       {/* Home Header */}
       <div className="welcome-header" style={{ marginBottom: 20 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span className="badge-tag-gold" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <Sparkles size={12} /> Member Portal
-            </span>
-          </div>
           <h1 className="page-title">Welcome Home, {user?.name || 'Distributor'}!</h1>
           <p className="page-subtitle">
             Explore Panchveda Wellness announcements, latest offers, and business opportunities.

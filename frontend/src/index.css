@@ -2704,6 +2704,95 @@ input, select, textarea {
 }
 
 /* ==========================================================================
+   Home Immersive Mode (Full-Width Home & On-Demand Drawer Sidebar)
+   ========================================================================== */
+.layout-home-immersive .main-wrapper {
+  margin-left: 0 !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0;
+  flex: 1;
+}
+
+.layout-home-immersive .sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  height: 100vh;
+  height: 100dvh;
+  width: 285px;
+  max-width: 84vw;
+  z-index: 1000;
+  transform: translateX(-100%);
+  transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: none;
+  visibility: hidden;
+}
+
+.layout-home-immersive .sidebar.sidebar-open {
+  transform: translateX(0);
+  box-shadow: 16px 0 40px rgba(0, 0, 0, 0.5);
+  visibility: visible;
+}
+
+.layout-home-immersive .sidebar-close-btn {
+  display: flex;
+}
+
+.layout-home-immersive .sidebar-backdrop {
+  display: block;
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 19, 41, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 999;
+  animation: fadeInBackdrop 0.2s ease;
+}
+
+.layout-home-immersive .page-body.member-home-page {
+  max-width: 100%;
+  width: 100%;
+  padding: 32px 48px 64px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .layout-home-immersive .page-body.member-home-page {
+    padding: 20px 16px 48px;
+  }
+}
+
+.toggle-btn-home {
+  background: rgba(37, 99, 235, 0.08);
+  color: #2563eb;
+  padding: 8px 14px;
+  gap: 8px;
+  font-weight: 600;
+  font-size: 13px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(37, 99, 235, 0.2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.toggle-btn-home:hover {
+  background: rgba(37, 99, 235, 0.16);
+  color: #1d4ed8;
+  border-color: rgba(37, 99, 235, 0.4);
+  transform: translateY(-1px);
+}
+
+.toggle-btn-label {
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: -0.01em;
+}
+
+/* ==========================================================================
    Home Slider & Member Home Styles
    ========================================================================== */
 .home-slider-container {
@@ -2711,20 +2800,33 @@ input, select, textarea {
   width: 100%;
   border-radius: 18px;
   overflow: hidden;
-  background: #0f172a;
+  background: #0b1120;
   box-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(226, 232, 240, 0.8);
 }
 
 .home-slider-wrapper {
   position: relative;
   width: 100%;
-  height: 380px;
+  aspect-ratio: 2000 / 400;
+  min-height: 260px;
+  max-height: 380px;
   overflow: hidden;
+  background: #0b1120;
+}
+
+@media (max-width: 1024px) {
+  .home-slider-wrapper {
+    aspect-ratio: 16 / 6;
+    min-height: 220px;
+    max-height: 340px;
+  }
 }
 
 @media (max-width: 768px) {
   .home-slider-wrapper {
-    height: 240px;
+    aspect-ratio: 1100 / 600;
+    min-height: 190px;
+    max-height: 300px;
   }
 }
 
@@ -2734,12 +2836,14 @@ input, select, textarea {
   width: 100%;
   height: 100%;
   transition: opacity 0.5s ease-in-out;
+  overflow: hidden;
 }
 
 .home-slider-image {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: center;
   display: block;
 }
 

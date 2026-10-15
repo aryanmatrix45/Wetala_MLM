@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { ChevronLeft, ChevronRight, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { getAssetUrl, type SliderItem } from '../services/api';
 
 interface HomeSliderProps {
@@ -123,19 +123,6 @@ export const HomeSlider: React.FC<HomeSliderProps> = ({
                 className="home-slider-image"
                 loading={index === 0 ? 'eager' : 'lazy'}
               />
-
-              {slide.title && (
-                <div className="home-slider-overlay">
-                  <div className="home-slider-caption">
-                    <h2 className="home-slider-title">{slide.title}</h2>
-                    {slide.link && (
-                      <span className="home-slider-link-btn">
-                        Learn More <ExternalLink size={14} style={{ marginLeft: 4 }} />
-                      </span>
-                    )}
-                  </div>
-                </div>
-              )}
             </div>
           );
         })}
