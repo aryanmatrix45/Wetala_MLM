@@ -21,6 +21,8 @@ import { PurchaseRequestsPage } from './pages/PurchaseRequestsPage';
 import { PreRegistrationPage } from './pages/PreRegistrationPage';
 import { FullRegistrationPage } from './pages/FullRegistrationPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { MemberHomePage } from './pages/MemberHomePage';
+import { AdminSlidersPage } from './pages/AdminSlidersPage';
 import { api } from './services/api';
 
 export function App() {
@@ -32,6 +34,15 @@ export function App() {
     const path = window.location.pathname;
     if (path.startsWith('/product/') || path.startsWith('/products/') || path === '/products') {
       return 'member-products';
+    }
+    const savedUser = localStorage.getItem('wetala_user');
+    if (savedUser) {
+      try {
+        const u = JSON.parse(savedUser);
+        if (u?.role?.toLowerCase() !== 'superadmin') {
+          return 'home';
+        }
+      } catch {}
     }
     return 'dashboard';
   };
@@ -131,7 +142,8 @@ export function App() {
   const handleLoginSuccess = (userData: any, userToken: string) => {
     setUser(userData);
     setToken(userToken);
-    setActiveTab('dashboard');
+    const isMember = userData?.role?.toLowerCase() !== 'superadmin';
+    setActiveTab(isMember ? 'home' : 'dashboard');
   };
 
   const handleLogout = () => {
@@ -237,6 +249,14 @@ export function App() {
         />
 
         {/* Tab Routing */}
+        {activeTab === 'home' && (
+          <MemberHomePage
+            user={user}
+            token={token}
+            onNavigate={handleTabChange}
+          />
+        )}
+
         {(activeTab === 'dashboard' || activeTab === 'welcome-bonus') && (
           <DashboardPage
             key={refreshKey}
@@ -290,6 +310,10 @@ export function App() {
 
         {activeTab === 'company-account' && (
           <CompanyAccountPage user={user} token={token} />
+        )}
+
+        {activeTab === 'manage-sliders' && (
+          <AdminSlidersPage user={user} token={token} />
         )}
 
         {activeTab === 'manage-categories' && (

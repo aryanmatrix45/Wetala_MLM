@@ -166,3 +166,18 @@ export interface Subcategory {
   updatedAt?: string;
 }
 
+// Home Slider Interface (Desktop 'parent' vs Mobile 'child')
+export interface Slider {
+  id?: string;
+  _id?: string;
+  image: string;
+  imageUrl?: string;
+  title?: string;
+  link?: string;
+  type: 'parent' | 'child'; // parent = desktop, child = mobile
+  status: 'active' | 'inactive';
+  order?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+

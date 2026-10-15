@@ -5,9 +5,10 @@ import path from 'path';
 const UPLOAD_ROOT = path.resolve(__dirname, '../../uploads');
 const PRODUCT_UPLOAD_DIR = path.join(UPLOAD_ROOT, 'products');
 const ACCOUNTS_UPLOAD_DIR = path.join(UPLOAD_ROOT, 'accounts');
+const SLIDER_UPLOAD_DIR = path.join(UPLOAD_ROOT, 'sliders');
 
 // Ensure upload directories exist
-for (const dir of [PRODUCT_UPLOAD_DIR, ACCOUNTS_UPLOAD_DIR]) {
+for (const dir of [PRODUCT_UPLOAD_DIR, ACCOUNTS_UPLOAD_DIR, SLIDER_UPLOAD_DIR]) {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
@@ -23,7 +24,9 @@ export interface StoredImageResult {
 
 export const StorageService = {
   getUploadDir(subfolder: string = 'products'): string {
-    return subfolder === 'accounts' ? ACCOUNTS_UPLOAD_DIR : PRODUCT_UPLOAD_DIR;
+    if (subfolder === 'accounts') return ACCOUNTS_UPLOAD_DIR;
+    if (subfolder === 'sliders') return SLIDER_UPLOAD_DIR;
+    return PRODUCT_UPLOAD_DIR;
   },
 
   /**
@@ -54,9 +57,9 @@ export const StorageService = {
     const safeHint = filenameHint
       .replace(/[^a-zA-Z0-9_-]/g, '_')
       .substring(0, 30);
-    const prefix = subfolder === 'accounts' ? 'qr' : 'prod';
+    const prefix = subfolder === 'accounts' ? 'qr' : (subfolder === 'sliders' ? 'slider' : 'prod');
     const key = `${prefix}_${Date.now()}_${Math.random().toString(36).substring(2, 8)}${ext}`;
-    const targetDir = subfolder === 'accounts' ? ACCOUNTS_UPLOAD_DIR : PRODUCT_UPLOAD_DIR;
+    const targetDir = StorageService.getUploadDir(subfolder);
     const filePath = path.join(targetDir, key);
 
     const buffer = Buffer.from(base64String, 'base64');
@@ -78,7 +81,7 @@ export const StorageService = {
     if (!key || key.includes('..') || key.includes('/') || key.includes('\\')) {
       return false;
     }
-    const targetDir = subfolder === 'accounts' ? ACCOUNTS_UPLOAD_DIR : PRODUCT_UPLOAD_DIR;
+    const targetDir = StorageService.getUploadDir(subfolder);
     const filePath = path.join(targetDir, key);
     if (fs.existsSync(filePath)) {
       try {

@@ -1267,7 +1267,216 @@ export const api = {
     }
     return resJson;
   },
+
+  // ==========================================
+  // HOME SLIDER APIS (MEMBER & ADMIN)
+  // ==========================================
+
+  async getSliders(params?: { type?: 'parent' | 'child' }): Promise<{
+    status: boolean;
+    message?: string;
+    data: {
+      all: SliderItem[];
+      desktop: SliderItem[];
+      mobile: SliderItem[];
+    };
+  }> {
+    const searchParams = new URLSearchParams();
+    if (params?.type) searchParams.append('type', params.type);
+    const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    const res = await fetch(`${API_BASE_URL}/sliders${qs}`);
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch sliders');
+    }
+    return resJson;
+  },
+
+  async adminGetSliders(
+    params?: { type?: string; status?: string; search?: string },
+    token?: string
+  ): Promise<{
+    status: boolean;
+    data: SliderItem[];
+    metrics: {
+      total: number;
+      desktop: number;
+      mobile: number;
+      active: number;
+      inactive: number;
+    };
+  }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const searchParams = new URLSearchParams();
+    if (params?.type && params.type !== 'all') searchParams.append('type', params.type);
+    if (params?.status && params.status !== 'all') searchParams.append('status', params.status);
+    if (params?.search) searchParams.append('search', params.search);
+    const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
+
+    const res = await fetch(`${API_BASE_URL}/admin/sliders${qs}`, {
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch sliders');
+    }
+    return resJson;
+  },
+
+  async adminCreateSlider(
+    payload: {
+      image?: string;
+      imageUrl?: string;
+      base64Image?: string;
+      title?: string;
+      link?: string;
+      type?: 'parent' | 'child';
+      status?: 'active' | 'inactive';
+      order?: number;
+    },
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: SliderItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/sliders`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to create slider');
+    }
+    return resJson;
+  },
+
+  async adminBulkCreateSliders(
+    payload: {
+      type: 'parent' | 'child';
+      sliders?: Array<{ image?: string; imageUrl?: string; base64?: string; title?: string; link?: string; order?: number }>;
+      images?: string[];
+    },
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: SliderItem[] }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/sliders/bulk`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to bulk upload sliders');
+    }
+    return resJson;
+  },
+
+  async adminUpdateSlider(
+    id: string,
+    payload: {
+      image?: string;
+      imageUrl?: string;
+      base64Image?: string;
+      title?: string;
+      link?: string;
+      type?: 'parent' | 'child';
+      status?: 'active' | 'inactive';
+      order?: number;
+    },
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: SliderItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/sliders/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(payload),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to update slider');
+    }
+    return resJson;
+  },
+
+  async adminUpdateSliderStatus(
+    id: string,
+    status?: 'active' | 'inactive',
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: SliderItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/sliders/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify({ status }),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to update slider status');
+    }
+    return resJson;
+  },
+
+  async adminDeleteSlider(id: string, token?: string): Promise<{ status: boolean; message: string }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/sliders/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to delete slider');
+    }
+    return resJson;
+  },
+
+  async adminReorderSliders(items: Array<{ id: string; order: number }>, token?: string): Promise<{ status: boolean; message: string }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/sliders/reorder`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify({ items }),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to reorder sliders');
+    }
+    return resJson;
+  },
 };
+
+export interface SliderItem {
+  _id?: string;
+  id?: string;
+  image: string;
+  imageUrl?: string;
+  title?: string;
+  link?: string;
+  type: 'parent' | 'child'; // parent = desktop, child = mobile
+  status: 'active' | 'inactive';
+  order?: number;
+  createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
 
 
 

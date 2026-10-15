@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Home, 
+  LayoutDashboard,
+  Sliders,
   Users, 
   GitFork, 
   Package, 
@@ -93,7 +95,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     {
       title: 'Overview',
       items: [
-        { id: 'dashboard', label: 'Dashboard', icon: Home },
+        ...(!isAdmin ? [
+          { id: 'home', label: 'Home', icon: Home }
+        ] : []),
+        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
         { id: 'profile', label: 'Refer & Grow (Profile)', icon: Share2, badge: 'Share' }
       ]
     },
@@ -139,6 +144,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       title: isAdmin ? 'Platform Administration' : 'Member Services',
       items: [
         ...(isAdmin ? [
+          {
+            id: 'manage-sliders',
+            label: 'Manage Sliders',
+            icon: Sliders,
+          },
           {
             id: 'manage-categories',
             label: 'Manage Categories',
