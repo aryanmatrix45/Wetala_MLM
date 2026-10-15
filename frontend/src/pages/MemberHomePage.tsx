@@ -159,15 +159,17 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({
       </div>
 
       {/* 1. Hero Slider Section */}
-      <div className="home-slider-section" style={{ marginBottom: 30 }}>
-        {slidersLoading ? (
-          <div className="home-slider-skeleton">
-            <div className="slider-shimmer" />
-          </div>
-        ) : (
-          <HomeSlider sliders={sliders} autoPlayInterval={5000} />
-        )}
-      </div>
+      {(slidersLoading || sliders.length > 0) && (
+        <div className="home-slider-section" style={{ marginBottom: 30 }}>
+          {slidersLoading ? (
+            <div className="home-slider-skeleton">
+              <div className="slider-shimmer" />
+            </div>
+          ) : (
+            <HomeSlider sliders={sliders} autoPlayInterval={5000} />
+          )}
+        </div>
+      )}
 
       {/* 2. Featured Products Section (Directly after Slider) */}
       <div className="home-products-section">

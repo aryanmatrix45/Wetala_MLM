@@ -5,9 +5,26 @@ import { AuthenticatedRequest } from '../middlewares/auth';
 import { StorageService } from '../services/storage.service';
 
 const SLIDER_BACKEND_SPECS: Record<string, { minWidth: number; minHeight: number; label: string }> = {
-  parent: { minWidth: 2000, minHeight: 400, label: 'Desktop slider' },
-  child: { minWidth: 1100, minHeight: 600, label: 'Mobile slider' },
+  parent: { minWidth: 1200, minHeight: 300, label: 'Desktop slider' },
+  child: { minWidth: 600, minHeight: 300, label: 'Mobile slider' },
 };
+
+function normalizeDirectImageUrl(url?: string): string {
+  if (!url) return '';
+  let trimmed = url.trim();
+  const gDriveMatch = trimmed.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]+)/i);
+  if (gDriveMatch && gDriveMatch[1]) {
+    return `https://lh3.googleusercontent.com/d/${gDriveMatch[1]}`;
+  }
+  if (trimmed.includes('dropbox.com')) {
+    trimmed = trimmed.replace(/\?dl=0$/, '?raw=1').replace(/&dl=0$/, '&raw=1');
+    if (!trimmed.includes('raw=1')) {
+      trimmed += (trimmed.includes('?') ? '&' : '?') + 'raw=1';
+    }
+    return trimmed;
+  }
+  return trimmed;
+}
 
 function parseImageBufferDimensions(buf: Buffer): { width: number; height: number } | null {
   // PNG: bytes 16-23
@@ -160,7 +177,7 @@ export const SliderController = {
       const sliderType: SliderType = type === 'child' ? 'child' : 'parent';
       const sliderStatus: SliderStatus = status === 'inactive' ? 'inactive' : 'active';
 
-      let finalImageUrl = imageUrl || image || '';
+      let finalImageUrl = normalizeDirectImageUrl(imageUrl || image || '');
 
       // If base64 image data is provided, validate dimensions and save to disk
       const rawBase64 = base64Image || (image && image.startsWith('data:') ? image : '');
@@ -250,7 +267,7 @@ export const SliderController = {
       }
 
       for (const item of rawItems) {
-        let finalImageUrl = item.imageUrl || item.image || item.url || '';
+        let finalImageUrl = normalizeDirectImageUrl(item.imageUrl || item.image || item.url || '');
         const rawBase64 = item.base64 || (finalImageUrl && finalImageUrl.startsWith('data:') ? finalImageUrl : '');
 
         if (rawBase64) {
@@ -327,7 +344,7 @@ export const SliderController = {
       }
 
       // Check if image is being updated
-      let newImageUrl = imageUrl || image;
+      let newImageUrl = normalizeDirectImageUrl(imageUrl || image);
       const rawBase64 = base64Image || (newImageUrl && newImageUrl.startsWith('data:') ? newImageUrl : '');
 
       if (rawBase64) {

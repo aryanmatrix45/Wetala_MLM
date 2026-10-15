@@ -76,15 +76,7 @@ export const HomeSlider: React.FC<HomeSliderProps> = ({
   };
 
   if (!activeSlides || activeSlides.length === 0) {
-    return (
-      <div className={`home-slider-placeholder ${className}`}>
-        <div className="home-slider-empty-card">
-          <div className="home-slider-empty-badge">Panchveda Wellness</div>
-          <h3>Welcome to Your Member Portal</h3>
-          <p>Stay tuned for exclusive announcements, special offers, and health wellness updates.</p>
-        </div>
-      </div>
-    );
+    return null;
   }
 
   const handleSlideClick = (slide: SliderItem) => {

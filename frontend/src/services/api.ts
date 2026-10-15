@@ -9,21 +9,52 @@ export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
  * Resolves static asset URLs (e.g. /uploads/products/...) relative to the backend origin
  * or returns full URLs untouched.
  */
+/**
+ * Normalizes direct image URLs from common cloud sharing services (Google Drive, Dropbox)
+ * into direct embeddable CDN image URLs.
+ */
+export const normalizeDirectImageUrl = (url?: string): string => {
+  if (!url) return '';
+  let trimmed = url.trim();
+
+  // Google Drive share/view link -> direct CDN image URL
+  const gDriveMatch = trimmed.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]+)/i);
+  if (gDriveMatch && gDriveMatch[1]) {
+    return `https://lh3.googleusercontent.com/d/${gDriveMatch[1]}`;
+  }
+
+  // Dropbox share link -> raw direct image
+  if (trimmed.includes('dropbox.com')) {
+    trimmed = trimmed.replace(/\?dl=0$/, '?raw=1').replace(/&dl=0$/, '&raw=1');
+    if (!trimmed.includes('raw=1')) {
+      trimmed += (trimmed.includes('?') ? '&' : '?') + 'raw=1';
+    }
+    return trimmed;
+  }
+
+  return trimmed;
+};
+
+/**
+ * Resolves static asset URLs (e.g. /uploads/products/...) relative to the backend origin
+ * or returns full URLs untouched, with automatic cloud link normalization.
+ */
 export const getAssetUrl = (url?: string): string => {
   if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('data:')) {
-    return url;
+  const normalized = normalizeDirectImageUrl(url);
+  if (normalized.startsWith('http://') || normalized.startsWith('https://') || normalized.startsWith('data:')) {
+    return normalized;
   }
   // If API_BASE_URL is an absolute URL (e.g. https://api.panchvedawellness.com/api), resolve against its origin
   if (API_BASE_URL.startsWith('http://') || API_BASE_URL.startsWith('https://')) {
     try {
       const u = new URL(API_BASE_URL);
-      return `${u.origin}${url.startsWith('/') ? '' : '/'}${url}`;
+      return `${u.origin}${normalized.startsWith('/') ? '' : '/'}${normalized}`;
     } catch {
-      return url;
+      return normalized;
     }
   }
-  return url;
+  return normalized;
 };
 
 export interface DashboardStats {

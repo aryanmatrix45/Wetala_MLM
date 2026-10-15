@@ -19,24 +19,24 @@ import {
   AlertCircle,
   Eye,
 } from 'lucide-react';
-import { api, getAssetUrl, type SliderItem } from '../services/api';
+import { api, getAssetUrl, normalizeDirectImageUrl, type SliderItem } from '../services/api';
 
 export const SLIDER_SPECS = {
   parent: {
-    minWidth: 2000,
-    minHeight: 400,
+    minWidth: 1200,
+    minHeight: 300,
     label: 'desktop slider',
     header: 'Drag & Drop your desktop slider image here',
     subHeader: 'or click to browse',
-    footnote: 'Minimum: 2000 x 400px | Recommended: 2000 x 400 or wider | wide landscape banner',
+    footnote: 'Minimum: 1200 x 300px | Recommended: 1600 x 480 or 2000 x 400px | wide landscape banner',
   },
   child: {
-    minWidth: 1100,
-    minHeight: 600,
+    minWidth: 600,
+    minHeight: 300,
     label: 'mobile slider',
     header: 'Drag & Drop your mobile slider image here',
     subHeader: 'or click to browse',
-    footnote: 'Minimum: 1100 x 600px | Recommended: 1200 x 700 or wider | mobile-optimized landscape banner',
+    footnote: 'Minimum: 600 x 300px | Recommended: 1100 x 600 or wider | mobile-optimized landscape banner',
   },
 };
 
@@ -244,12 +244,16 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
   const validateCurrentUrl = async (url: string, type: 'parent' | 'child' = formType) => {
     const trimmed = url.trim();
     if (!trimmed || trimmed.startsWith('data:')) return;
+    const normalized = normalizeDirectImageUrl(trimmed);
+    if (normalized !== formImageUrl) {
+      setFormImageUrl(normalized);
+    }
 
     setIsValidatingUrl(true);
     setFormError('');
     setDimensionNotice(null);
 
-    const check = await checkImageDimensions(getAssetUrl(trimmed), type);
+    const check = await checkImageDimensions(getAssetUrl(normalized), type);
     setIsValidatingUrl(false);
 
     if (!check.isValid) {
@@ -289,8 +293,10 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
       return;
     }
 
+    const normalizedUrl = normalizeDirectImageUrl(formImageUrl.trim());
+
     // Verify dimensions before saving
-    const checkSrc = formBase64 || getAssetUrl(formImageUrl);
+    const checkSrc = formBase64 || getAssetUrl(normalizedUrl);
     const check = await checkImageDimensions(checkSrc, formType);
     if (!check.isValid) {
       setFormError(check.error || 'Image size does not meet the required dimensions.');
@@ -308,7 +314,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
           {
             title: formTitle,
             link: formLink,
-            imageUrl: formImageUrl,
+            imageUrl: normalizedUrl,
             base64Image: formBase64 || undefined,
             type: formType,
             order: formOrder,
@@ -322,7 +328,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
           {
             title: formTitle,
             link: formLink,
-            imageUrl: formImageUrl,
+            imageUrl: normalizedUrl,
             base64Image: formBase64 || undefined,
             type: formType,
             order: formOrder,
@@ -454,7 +460,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
     try {
       const urlList = bulkUrls
         .split('\n')
-        .map((u) => u.trim())
+        .map((u) => normalizeDirectImageUrl(u.trim()))
         .filter((u) => u.length > 0);
 
       // Validate each URL dimensions
@@ -1257,10 +1263,12 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       type="text"
-                      placeholder="https://example.com/banner.jpg or /uploads/..."
+                      placeholder="https://example.com/banner.jpg or Google Drive / Dropbox link"
                       value={formImageUrl}
                       onChange={(e) => {
-                        setFormImageUrl(e.target.value);
+                        const val = e.target.value;
+                        const normalized = normalizeDirectImageUrl(val);
+                        setFormImageUrl(normalized);
                         setFormBase64('');
                         setDimensionNotice(null);
                         setFormError('');
@@ -1286,7 +1294,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                     </button>
                   </div>
                   <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '4px' }}>
-                    Paste a direct image link. Image size will be verified against {formType === 'parent' ? '2000 x 400px' : '1100 x 600px'}.
+                    Paste a direct image link or Google Drive link. Verified against {SLIDER_SPECS[formType].minWidth} x {SLIDER_SPECS[formType].minHeight}px.
                   </span>
 
                   {dimensionNotice && (
