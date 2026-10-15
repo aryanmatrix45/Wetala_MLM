@@ -35,6 +35,9 @@ export interface IProduct extends Document {
   stockQuantity: number; // Backward compatibility alias for stock
   status: ProductStatus;
   isActive: boolean; // Backward compatibility alias for status === 'ACTIVE'
+  isFeatured?: boolean;
+  showOnHome?: boolean;
+  homeOrder?: number;
   createdBy?: string;
   updatedBy?: string;
   createdAt: Date;
@@ -175,6 +178,18 @@ const productSchema = new Schema<IProduct>(
       type: Boolean,
       default: true,
     },
+    isFeatured: {
+      type: Boolean,
+      default: false,
+    },
+    showOnHome: {
+      type: Boolean,
+      default: false,
+    },
+    homeOrder: {
+      type: Number,
+      default: 0,
+    },
     createdBy: {
       type: String,
       trim: true,
@@ -193,6 +208,8 @@ const productSchema = new Schema<IProduct>(
 productSchema.index({ status: 1 });
 productSchema.index({ category: 1 });
 productSchema.index({ createdAt: -1 });
+productSchema.index({ showOnHome: 1, status: 1 });
+productSchema.index({ homeOrder: 1 });
 
 productSchema.pre('validate', function () {
   // Sync title and name

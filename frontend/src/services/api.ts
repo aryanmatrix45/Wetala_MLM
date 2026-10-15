@@ -249,6 +249,9 @@ export interface ProductItem {
   stockQuantity?: number;
   status: 'ACTIVE' | 'INACTIVE';
   isActive?: boolean;
+  isFeatured?: boolean;
+  showOnHome?: boolean;
+  homeOrder?: number;
   createdBy?: string;
   updatedBy?: string;
   createdAt?: string;
@@ -852,6 +855,17 @@ export const api = {
       method: 'PATCH',
       headers,
       body: JSON.stringify(status ? { status } : {}),
+    });
+    return res.json();
+  },
+
+  async adminToggleProductShowOnHome(id: string, showOnHome?: boolean, token?: string) {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${API_BASE_URL}/admin/products/${encodeURIComponent(id)}/show-on-home`, {
+      method: 'PATCH',
+      headers,
+      body: JSON.stringify(showOnHome !== undefined ? { showOnHome } : {}),
     });
     return res.json();
   },

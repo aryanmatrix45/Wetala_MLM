@@ -49,6 +49,9 @@ export const ProductController = {
         stock = 0,
         stockQuantity,
         status = 'ACTIVE',
+        showOnHome = false,
+        isFeatured = false,
+        homeOrder = 0,
       } = req.body;
 
       const productTitle = (title || name || '').trim();
@@ -240,6 +243,9 @@ export const ProductController = {
         stockQuantity: parsedStock,
         status: productStatus,
         isActive: productStatus === 'ACTIVE',
+        showOnHome: Boolean(showOnHome || isFeatured),
+        isFeatured: Boolean(isFeatured || showOnHome),
+        homeOrder: Number(homeOrder) || 0,
         createdBy: req.user?.id || req.user?.email,
       });
 
@@ -276,6 +282,7 @@ export const ProductController = {
         categoryId,
         subcategoryId,
         category,
+        showOnHome,
         sort = 'createdAt:desc',
       } = req.query;
 
@@ -323,6 +330,11 @@ export const ProductController = {
           const subcat = await Subcategory.findOne({ slug: String(subcategoryId) });
           if (subcat) query.subcategoryId = subcat._id;
         }
+      }
+
+      // ShowOnHome filtering: 'true' | 'false'
+      if (showOnHome !== undefined && showOnHome !== 'ALL' && showOnHome !== '') {
+        query.showOnHome = String(showOnHome) === 'true';
       }
 
       // Parse sort field
@@ -432,6 +444,9 @@ export const ProductController = {
         stock,
         stockQuantity,
         status,
+        showOnHome,
+        isFeatured,
+        homeOrder,
       } = req.body;
 
       let product = null;
@@ -678,6 +693,21 @@ export const ProductController = {
         product.isActive = nextStatus === 'ACTIVE';
       }
 
+      // Show on Home / Featured / Home Order
+      if (showOnHome !== undefined) {
+        const val = Boolean(showOnHome);
+        product.showOnHome = val;
+        product.isFeatured = val;
+      } else if (isFeatured !== undefined) {
+        const val = Boolean(isFeatured);
+        product.showOnHome = val;
+        product.isFeatured = val;
+      }
+
+      if (homeOrder !== undefined) {
+        product.homeOrder = Number(homeOrder) || 0;
+      }
+
       product.updatedBy = req.user?.id || req.user?.email;
       await product.save();
 
@@ -808,6 +838,58 @@ export const ProductController = {
   },
 
   /**
+   * SuperAdmin: Toggle product showOnHome showcase
+   * PATCH /api/admin/products/:id/show-on-home
+   */
+  async adminToggleShowOnHome(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const { showOnHome } = req.body;
+
+      let product = null;
+      if (mongoose.Types.ObjectId.isValid(id)) {
+        product = await Product.findById(id);
+      }
+      if (!product) {
+        product = await Product.findOne({
+          $or: [{ productId: id }, { slug: id }],
+        });
+      }
+
+      if (!product) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({
+          status: false,
+          message: `Product '${id}' not found.`,
+        });
+        return;
+      }
+
+      const nextVal = showOnHome !== undefined ? Boolean(showOnHome) : !product.showOnHome;
+      product.showOnHome = nextVal;
+      product.isFeatured = nextVal;
+      product.updatedBy = req.user?.id || req.user?.email;
+      await product.save();
+
+      res.status(HTTP_STATUS.OK).json({
+        status: true,
+        message: nextVal ? `"${product.title}" is now featured on the homepage.` : `"${product.title}" removed from homepage showcase.`,
+        data: {
+          id: product._id,
+          productId: product.productId,
+          showOnHome: product.showOnHome,
+          isFeatured: product.isFeatured,
+        },
+      });
+    } catch (error: any) {
+      console.error('[ProductController] adminToggleShowOnHome error:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        status: false,
+        message: error.message || 'Failed to update homepage showcase status.',
+      });
+    }
+  },
+
+  /**
    * SuperAdmin: Upload product image
    * POST /api/admin/products/upload-image
    */
@@ -862,7 +944,8 @@ export const ProductController = {
         categoryId,
         subcategoryId,
         category,
-        sort = 'createdAt:desc',
+        showOnHome,
+        sort,
       } = req.query;
 
       const pageNum = Math.max(1, parseInt(String(page), 10) || 1);
@@ -871,6 +954,11 @@ export const ProductController = {
 
       // STRICT MEMBER RULE: Only ACTIVE products visible
       const query: any = { status: 'ACTIVE' };
+
+      const isShowOnHomeReq = String(showOnHome) === 'true';
+      if (isShowOnHomeReq) {
+        query.showOnHome = true;
+      }
 
       const searchTerm = String(search || q || '').trim();
       if (searchTerm) {
@@ -904,12 +992,22 @@ export const ProductController = {
         }
       }
 
-      const sortParts = String(sort).split(':');
-      const sortField = sortParts[0] || 'createdAt';
-      const sortOrder = sortParts[1] === 'asc' ? 1 : -1;
-      const sortObj: any = { [sortField]: sortOrder };
+      let sortObj: any;
+      if (sort) {
+        const sortParts = String(sort).split(':');
+        const sortField = sortParts[0] || 'createdAt';
+        const sortOrder = sortParts[1] === 'asc' ? 1 : -1;
+        sortObj = { [sortField]: sortOrder };
+      } else if (isShowOnHomeReq) {
+        sortObj = { homeOrder: 1, createdAt: -1 };
+      } else {
+        sortObj = { createdAt: -1 };
+      }
 
-      const [products, total] = await Promise.all([
+      let products: any[] = [];
+      let total = 0;
+
+      const initialResult = await Promise.all([
         Product.find(query)
           .populate('categoryId', 'name slug')
           .populate('subcategoryId', 'name slug')
@@ -918,6 +1016,24 @@ export const ProductController = {
           .limit(limitNum),
         Product.countDocuments(query),
       ]);
+      products = initialResult[0];
+      total = initialResult[1];
+
+      // Graceful fallback: If no products are explicitly flagged for home showcase yet,
+      // load the latest active products so the member homepage displays items right away
+      if (total === 0 && isShowOnHomeReq) {
+        const fallbackQuery: Record<string, any> = { status: 'ACTIVE' };
+        const fallbackResult = await Promise.all([
+          Product.find(fallbackQuery)
+            .populate('categoryId', 'name slug')
+            .populate('subcategoryId', 'name slug')
+            .sort({ createdAt: -1 })
+            .limit(limitNum),
+          Product.countDocuments(fallbackQuery),
+        ]);
+        products = fallbackResult[0];
+        total = fallbackResult[1];
+      }
 
       res.status(HTTP_STATUS.OK).json({
         status: true,

@@ -81,6 +81,8 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
     businessVolume: number | string;
     stock: number | string;
     status: 'ACTIVE' | 'INACTIVE';
+    showOnHome: boolean;
+    homeOrder: number | string;
     images: ProductImage[];
   }>({
     title: '',
@@ -96,6 +98,8 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
     businessVolume: '',
     stock: 100,
     status: 'ACTIVE',
+    showOnHome: false,
+    homeOrder: 0,
     images: [],
   });
 
@@ -258,6 +262,8 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
       businessVolume: '',
       stock: 50,
       status: 'ACTIVE',
+      showOnHome: false,
+      homeOrder: 0,
       images: [],
     });
     setSelectedProduct(null);
@@ -290,6 +296,8 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
       businessVolume: prod.businessVolume !== undefined ? prod.businessVolume : (prod.bv !== undefined ? prod.bv : ''),
       stock: prod.stock !== undefined ? prod.stock : (prod.stockQuantity !== undefined ? prod.stockQuantity : 0),
       status: prod.status || (prod.isActive ? 'ACTIVE' : 'INACTIVE'),
+      showOnHome: Boolean(prod.showOnHome || prod.isFeatured),
+      homeOrder: prod.homeOrder !== undefined ? prod.homeOrder : 0,
       images: Array.isArray(prod.images) ? [...prod.images] : [],
     });
 
@@ -337,6 +345,28 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
       }
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.message || 'Failed to toggle status.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Toggle Show on Home Showcase
+  const handleToggleShowOnHome = async (prod: ProductItem) => {
+    try {
+      setSubmitting(true);
+      const nextVal = !prod.showOnHome;
+      const res = await api.adminToggleProductShowOnHome(prod.productId || (prod as any)._id, nextVal, savedToken);
+      if (res.status) {
+        setFeedback({
+          type: 'success',
+          message: res.message || `Product "${prod.title}" homepage showcase updated.`,
+        });
+        await loadProducts(pagination.page);
+      } else {
+        setFeedback({ type: 'error', message: res.message || 'Showcase toggle failed.' });
+      }
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.message || 'Failed to toggle homepage showcase.' });
     } finally {
       setSubmitting(false);
     }
@@ -548,6 +578,8 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
         businessVolume: Number(formData.businessVolume),
         stock: Number(formData.stock || 0),
         status: formData.status,
+        showOnHome: formData.showOnHome,
+        homeOrder: Number(formData.homeOrder) || 0,
         images: formData.images,
       };
 
@@ -846,20 +878,21 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                   <th style={{ padding: '12px 10px' }}>Price</th>
                   <th style={{ padding: '12px 10px' }}>Stock</th>
                   <th style={{ padding: '12px 10px' }}>Status</th>
+                  <th style={{ padding: '12px 10px', textAlign: 'center' }}>Home Showcase</th>
                   <th style={{ padding: '12px 10px', textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && products.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
+                    <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
                       <div style={{ width: '24px', height: '24px', border: '2px solid #cbd5e1', borderTopColor: '#1d72fe', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
                       Loading products...
                     </td>
                   </tr>
                 ) : products.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ padding: '48px', textAlign: 'center', color: '#64748b' }}>
+                    <td colSpan={9} style={{ padding: '48px', textAlign: 'center', color: '#64748b' }}>
                       <Package size={40} style={{ color: '#cbd5e1', margin: '0 auto 12px' }} />
                       <p style={{ fontWeight: 600, fontSize: '15px', color: '#334155', marginBottom: '4px' }}>No products found</p>
                       <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '16px' }}>Try adjusting your search criteria or add your first product.</p>
@@ -1027,6 +1060,33 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                             />
                             {effectiveStatus}
                           </span>
+                        </td>
+
+                        {/* Home Showcase Toggle */}
+                        <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleShowOnHome(prod)}
+                            disabled={submitting}
+                            title={prod.showOnHome ? "Featured on Member Home - Click to remove" : "Click to feature on Member Home"}
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              padding: '4px 10px',
+                              borderRadius: '20px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              cursor: 'pointer',
+                              border: prod.showOnHome ? '1px solid #fde68a' : '1px solid #e2e8f0',
+                              transition: 'all 0.15s ease',
+                              background: prod.showOnHome ? '#fef3c7' : '#f8fafc',
+                              color: prod.showOnHome ? '#b45309' : '#64748b',
+                            }}
+                          >
+                            <Star size={13} fill={prod.showOnHome ? '#f59e0b' : 'none'} color={prod.showOnHome ? '#f59e0b' : '#94a3b8'} />
+                            <span>{prod.showOnHome ? 'On Home' : 'Standard'}</span>
+                          </button>
                         </td>
 
                         {/* Actions */}
@@ -1799,6 +1859,88 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                     Only ACTIVE products are shown in member portal and purchasable.
                   </span>
                 </div>
+              </div>
+
+              {/* Card 6: Homepage Showcase Placement */}
+              <div className="dashboard-card" style={{ padding: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Star size={18} color="#f59e0b" fill={formData.showOnHome ? '#f59e0b' : 'none'} />
+                  <span>Homepage Showcase</span>
+                </h3>
+                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
+                  Choose whether this product appears on the member home screen directly below the main slider banner.
+                </p>
+
+                {/* Showcase Switch / Buttons */}
+                <div style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, showOnHome: true })}
+                      style={{
+                        padding: '10px',
+                        borderRadius: '6px',
+                        border: formData.showOnHome ? '2px solid #f59e0b' : '1px solid #cbd5e1',
+                        background: formData.showOnHome ? '#fffbeb' : '#fff',
+                        color: formData.showOnHome ? '#b45309' : '#64748b',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <Star size={14} fill={formData.showOnHome ? '#f59e0b' : 'none'} />
+                      <span>Show on Home</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, showOnHome: false })}
+                      style={{
+                        padding: '10px',
+                        borderRadius: '6px',
+                        border: !formData.showOnHome ? '2px solid #94a3b8' : '1px solid #cbd5e1',
+                        background: !formData.showOnHome ? '#f1f5f9' : '#fff',
+                        color: !formData.showOnHome ? '#334155' : '#64748b',
+                        fontWeight: 700,
+                        fontSize: '12px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span>Store Only</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Display Priority Order */}
+                {formData.showOnHome && (
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                      Showcase Priority / Sort Order (Lower numbers appear first)
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      step="1"
+                      placeholder="e.g. 1"
+                      value={formData.homeOrder}
+                      onChange={(e) => setFormData({ ...formData, homeOrder: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '9px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #cbd5e1',
+                        fontSize: '13px',
+                      }}
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Form Action Buttons */}

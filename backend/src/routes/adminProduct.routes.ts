@@ -28,4 +28,7 @@ router.delete('/:id', ProductController.adminDeleteProduct);
 // Activate/Deactivate product
 router.patch('/:id/status', ProductController.adminUpdateProductStatus);
 
+// Toggle Show on Home showcase
+router.patch('/:id/show-on-home', ProductController.adminToggleShowOnHome);
+
 export default router;
