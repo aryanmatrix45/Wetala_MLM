@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { HomeSlider } from '../components/HomeSlider';
+import { SocialMediaSection } from '../components/SocialMediaSection';
 import { api, type SliderItem, type ProductItem } from '../services/api';
 import {
   RefreshCw,
@@ -171,7 +172,10 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({
         </div>
       )}
 
-      {/* 2. Featured Products Section (Directly after Slider) */}
+      {/* 1.5 Official Social Media Connect Section */}
+      <SocialMediaSection key={refreshing ? 'refreshing' : 'normal'} />
+
+      {/* 2. Featured Products Section (Directly after Slider & Social Connect) */}
       <div className="home-products-section">
         <div className="home-section-head">
           <div className="home-section-title-wrap">

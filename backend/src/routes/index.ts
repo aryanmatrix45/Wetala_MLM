@@ -19,8 +19,16 @@ import withdrawalRoutes from './withdrawal.routes';
 import companyAccountRoutes from './companyAccount.routes';
 import sliderRoutes from './slider.routes';
 import adminSliderRoutes from './adminSlider.routes';
+import socialMediaRoutes from './socialMedia.routes';
+import adminSocialMediaRoutes from './adminSocialMedia.routes';
 
 const router = Router();
+
+// Social Media Links (Members / Public)
+router.use('/social-links', socialMediaRoutes);
+
+// Social Media Management (SuperAdmin)
+router.use('/admin/social-links', adminSocialMediaRoutes);
 
 // Home Sliders (Members / Public)
 router.use('/sliders', sliderRoutes);

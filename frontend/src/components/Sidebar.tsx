@@ -150,6 +150,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
             icon: Sliders,
           },
           {
+            id: 'manage-social-links',
+            label: 'Social Media Links',
+            icon: Share2,
+          },
+          {
             id: 'manage-categories',
             label: 'Manage Categories',
             icon: FolderTree,

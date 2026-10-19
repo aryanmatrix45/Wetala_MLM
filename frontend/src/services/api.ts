@@ -1505,6 +1505,129 @@ export const api = {
     }
     return resJson;
   },
+
+  // ==========================================
+  // SOCIAL MEDIA APIS (MEMBER & ADMIN)
+  // ==========================================
+  async getSocialLinks(): Promise<{ status: boolean; data: SocialLinkItem[] }> {
+    const res = await fetch(`${API_BASE_URL}/social-links`);
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch social media links');
+    }
+    return resJson;
+  },
+
+  async adminGetSocialLinks(token?: string): Promise<{ status: boolean; data: SocialLinkItem[] }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/social-links`, {
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch social links');
+    }
+    return resJson;
+  },
+
+  async adminBulkUpdateSocialLinks(
+    links: Array<Partial<SocialLinkItem>>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: SocialLinkItem[] }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/social-links/bulk`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify({ links }),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to update social links');
+    }
+    return resJson;
+  },
+
+  async adminCreateSocialLink(
+    data: Partial<SocialLinkItem>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: SocialLinkItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/social-links`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to create social link');
+    }
+    return resJson;
+  },
+
+  async adminUpdateSocialLink(
+    id: string,
+    data: Partial<SocialLinkItem>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: SocialLinkItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/social-links/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to update social link');
+    }
+    return resJson;
+  },
+
+  async adminToggleSocialLinkStatus(
+    id: string,
+    isActive: boolean,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: SocialLinkItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/social-links/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify({ isActive }),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to toggle social link status');
+    }
+    return resJson;
+  },
+
+  async adminDeleteSocialLink(id: string, token?: string): Promise<{ status: boolean; message: string }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/social-links/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to delete social link');
+    }
+    return resJson;
+  },
 };
 
 export interface SliderItem {
@@ -1518,6 +1641,32 @@ export interface SliderItem {
   status: 'active' | 'inactive';
   order?: number;
   createdBy?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export type SocialPlatformType =
+  | 'youtube'
+  | 'instagram'
+  | 'twitter'
+  | 'facebook'
+  | 'whatsapp'
+  | 'telegram'
+  | 'linkedin'
+  | 'website'
+  | 'custom';
+
+export interface SocialLinkItem {
+  _id: string;
+  id?: string;
+  platform: SocialPlatformType;
+  title: string;
+  subtitle?: string;
+  url: string;
+  icon?: string;
+  isActive: boolean;
+  order: number;
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
