@@ -12,6 +12,31 @@ interface ProfilePageProps {
   onNavigate?: (tab: string) => void;
 }
 
+type ReferralLeg = 'AUTO' | 'LEFT' | 'RIGHT';
+
+// Referral link for a placement leg (AUTO lets the prospect choose their leg)
+const getReferralUrl = (memberId: string, leg: ReferralLeg) => {
+  let url = `${window.location.origin}/pre-registration?ref=${encodeURIComponent(memberId)}`;
+  if (leg !== 'AUTO') url += `&leg=${leg}`;
+  return url;
+};
+
+const linkActionBtn: React.CSSProperties = {
+  border: 'none',
+  borderRadius: '8px',
+  padding: '8px 12px',
+  fontSize: '12.5px',
+  fontWeight: 700,
+  cursor: 'pointer',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  gap: '6px',
+  textDecoration: 'none',
+  whiteSpace: 'nowrap',
+  transition: 'all 0.15s ease',
+};
+
 export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
   const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin';
   const [rootSponsorId, setRootSponsorId] = useState<string>('MEM0001');
@@ -31,50 +56,64 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
 
   // For regular members: user.memberId. For Super Admin: Company Root ID (MEM0001)
   const memberId = isSuperAdmin ? rootSponsorId : (user?.memberId || 'MEM0001');
-  const baseUrl = window.location.origin;
 
-  const [selectedLegLink, setSelectedLegLink] = useState<'AUTO' | 'LEFT' | 'RIGHT'>('AUTO');
-  const [copied, setCopied] = useState(false);
+  const [copiedLeg, setCopiedLeg] = useState<ReferralLeg | null>(null);
 
-  // Generate dynamic referral link based on selected leg
-  const getReferralUrl = () => {
-    let url = `${baseUrl}/pre-registration?ref=${encodeURIComponent(memberId)}`;
-    if (selectedLegLink === 'LEFT') url += '&leg=LEFT';
-    if (selectedLegLink === 'RIGHT') url += '&leg=RIGHT';
-    return url;
+  const referralLinks: Array<{
+    leg: ReferralLeg;
+    title: string;
+    description: string;
+    url: string;
+  }> = [
+    {
+      leg: 'AUTO',
+      title: 'Default Link',
+      description: 'New member chooses their own leg',
+      url: getReferralUrl(memberId, 'AUTO'),
+    },
+    {
+      leg: 'LEFT',
+      title: 'Left Leg Link',
+      description: 'Places new members in your LEFT leg',
+      url: getReferralUrl(memberId, 'LEFT'),
+    },
+    {
+      leg: 'RIGHT',
+      title: 'Right Leg Link',
+      description: 'Places new members in your RIGHT leg',
+      url: getReferralUrl(memberId, 'RIGHT'),
+    },
+  ];
+
+  const handleCopyLink = (leg: ReferralLeg, url: string) => {
+    navigator.clipboard.writeText(url);
+    setCopiedLeg(leg);
+    setTimeout(() => setCopiedLeg((current) => (current === leg ? null : current)), 2500);
   };
 
-  const currentLink = getReferralUrl();
-
-  const handleCopyLink = () => {
-    navigator.clipboard.writeText(currentLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2500);
-  };
-
-  const handleShareWhatsApp = () => {
-    const text = `Join my team on Panchveda Wellness! Register here: ${currentLink}`;
+  const handleShareWhatsApp = (url: string) => {
+    const text = `Join my team on Panchveda Wellness! Register here: ${url}`;
     window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const handleShareTelegram = () => {
+  const handleShareTelegram = (url: string) => {
     const text = `Join my team on Panchveda Wellness!`;
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(currentLink)}&text=${encodeURIComponent(text)}`, '_blank');
+    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
   };
 
-  const handleNativeShare = async () => {
+  const handleNativeShare = async (leg: ReferralLeg, url: string) => {
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'Join Panchveda Wellness',
           text: `Join my team using Sponsor ID ${memberId}`,
-          url: currentLink,
+          url,
         });
       } catch {
-        handleCopyLink();
+        handleCopyLink(leg, url);
       }
     } else {
-      handleCopyLink();
+      handleCopyLink(leg, url);
     }
   };
 
@@ -163,206 +202,129 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
           </div>
         </div>
 
-        {/* Leg Target Selector Tabs */}
-        <div style={{ marginBottom: '14px' }}>
-          <span style={{ fontSize: '12px', color: '#bfdbfe', fontWeight: 600, display: 'block', marginBottom: '8px' }}>
-            Choose Target Placement Leg for Link:
-          </span>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              onClick={() => setSelectedLegLink('AUTO')}
-              style={{
-                padding: '7px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: selectedLegLink === 'AUTO' ? '#ffffff' : 'rgba(255, 255, 255, 0.15)',
-                color: selectedLegLink === 'AUTO' ? '#1e3a8a' : '#ffffff',
-                fontWeight: 700,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              Default (Prospect Selects Leg)
-            </button>
+        {/* Referral links: one row per placement leg */}
+        <span style={{ fontSize: '12px', color: '#bfdbfe', fontWeight: 600, display: 'block', marginBottom: '10px' }}>
+          Your Referral Links
+        </span>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {referralLinks.map((link) => {
+            const isCopied = copiedLeg === link.leg;
+            const LegIcon = link.leg === 'LEFT' ? ArrowLeft : link.leg === 'RIGHT' ? ArrowRight : Share2;
 
-            <button
-              type="button"
-              onClick={() => setSelectedLegLink('LEFT')}
-              style={{
-                padding: '7px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: selectedLegLink === 'LEFT' ? '#ffffff' : 'rgba(255, 255, 255, 0.15)',
-                color: selectedLegLink === 'LEFT' ? '#1e3a8a' : '#ffffff',
-                fontWeight: 700,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <ArrowLeft size={14} />
-              <span>Direct LEFT Leg Link</span>
-            </button>
+            return (
+              <div
+                key={link.leg}
+                style={{
+                  background: 'rgba(0, 0, 0, 0.22)',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  borderRadius: '14px',
+                  padding: '14px 16px',
+                }}
+              >
+                {/* Row header */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '10px' }}>
+                  <span
+                    style={{
+                      width: '30px',
+                      height: '30px',
+                      borderRadius: '8px',
+                      background: 'rgba(255, 255, 255, 0.16)',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexShrink: 0,
+                    }}
+                    aria-hidden="true"
+                  >
+                    <LegIcon size={15} />
+                  </span>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '14px', fontWeight: 800, color: '#ffffff' }}>{link.title}</div>
+                    <div style={{ fontSize: '12px', color: '#bfdbfe' }}>{link.description}</div>
+                  </div>
+                </div>
 
-            <button
-              type="button"
-              onClick={() => setSelectedLegLink('RIGHT')}
-              style={{
-                padding: '7px 14px',
-                borderRadius: '8px',
-                border: 'none',
-                background: selectedLegLink === 'RIGHT' ? '#ffffff' : 'rgba(255, 255, 255, 0.15)',
-                color: selectedLegLink === 'RIGHT' ? '#1e3a8a' : '#ffffff',
-                fontWeight: 700,
-                fontSize: '12.5px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <span>Direct RIGHT Leg Link</span>
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        </div>
+                {/* URL + actions */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      flex: '1 1 280px',
+                      minWidth: 0,
+                      fontSize: '13px',
+                      color: '#e2e8f0',
+                      fontFamily: 'monospace',
+                      wordBreak: 'break-all',
+                      background: 'rgba(0, 0, 0, 0.2)',
+                      borderRadius: '8px',
+                      padding: '9px 12px',
+                    }}
+                  >
+                    {link.url}
+                  </span>
 
-        {/* Unique Referral Link Box */}
-        <div style={{
-          background: 'rgba(0, 0, 0, 0.25)',
-          borderRadius: '12px',
-          padding: '8px 12px 8px 18px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          marginBottom: '20px',
-          flexWrap: 'wrap',
-          gap: '10px'
-        }}>
-          <span style={{
-            fontSize: '13.5px',
-            color: '#e2e8f0',
-            fontFamily: 'monospace',
-            wordBreak: 'break-all',
-            flex: 1
-          }}>
-            {currentLink}
-          </span>
+                  <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleCopyLink(link.leg, link.url)}
+                      style={{
+                        ...linkActionBtn,
+                        background: isCopied ? '#10b981' : '#ffffff',
+                        color: isCopied ? '#ffffff' : '#1e3a8a',
+                        minWidth: '96px',
+                      }}
+                      aria-label={`Copy ${link.title}`}
+                    >
+                      {isCopied ? <Check size={15} /> : <Copy size={15} />}
+                      <span>{isCopied ? 'Copied!' : 'Copy'}</span>
+                    </button>
 
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button
-              onClick={handleCopyLink}
-              style={{
-                background: copied ? '#10b981' : '#ffffff',
-                color: copied ? '#ffffff' : '#1e3a8a',
-                border: 'none',
-                borderRadius: '8px',
-                padding: '9px 16px',
-                fontWeight: 700,
-                fontSize: '13px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)'
-              }}
-            >
-              {copied ? <Check size={16} /> : <Copy size={16} />}
-              <span>{copied ? 'Copied!' : 'Copy Link'}</span>
-            </button>
+                    <a
+                      href={link.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{ ...linkActionBtn, background: 'rgba(255, 255, 255, 0.15)', color: '#ffffff' }}
+                      title={`Open ${link.title}`}
+                      aria-label={`Open ${link.title}`}
+                    >
+                      <ExternalLink size={15} />
+                    </a>
 
-            <a
-              href={currentLink}
-              target="_blank"
-              rel="noreferrer"
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                color: '#ffffff',
-                borderRadius: '8px',
-                padding: '9px 12px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                textDecoration: 'none'
-              }}
-              title="Open pre-registration link"
-            >
-              <ExternalLink size={16} />
-            </a>
-          </div>
-        </div>
+                    <button
+                      type="button"
+                      onClick={() => handleShareWhatsApp(link.url)}
+                      style={{ ...linkActionBtn, background: '#25d366', color: '#ffffff' }}
+                      title="Share on WhatsApp"
+                      aria-label={`Share ${link.title} on WhatsApp`}
+                    >
+                      <MessageCircle size={15} />
+                      <span>WhatsApp</span>
+                    </button>
 
-        {/* Share buttons row */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12px', color: '#bfdbfe', fontWeight: 600 }}>Quick Share:</span>
-          
-          <button
-            onClick={handleShareWhatsApp}
-            style={{
-              background: '#25d366',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '7px 14px',
-              fontSize: '12.5px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <MessageCircle size={15} />
-            <span>WhatsApp</span>
-          </button>
+                    <button
+                      type="button"
+                      onClick={() => handleShareTelegram(link.url)}
+                      style={{ ...linkActionBtn, background: '#229ed9', color: '#ffffff' }}
+                      title="Share on Telegram"
+                      aria-label={`Share ${link.title} on Telegram`}
+                    >
+                      <Send size={15} />
+                      <span>Telegram</span>
+                    </button>
 
-          <button
-            onClick={handleShareTelegram}
-            style={{
-              background: '#229ed9',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '7px 14px',
-              fontSize: '12.5px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <Send size={15} />
-            <span>Telegram</span>
-          </button>
-
-          <button
-            onClick={handleNativeShare}
-            style={{
-              background: 'rgba(255, 255, 255, 0.2)',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '7px 14px',
-              fontSize: '12.5px',
-              fontWeight: 700,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <Share2 size={15} />
-            <span>Share More</span>
-          </button>
+                    <button
+                      type="button"
+                      onClick={() => handleNativeShare(link.leg, link.url)}
+                      style={{ ...linkActionBtn, background: 'rgba(255, 255, 255, 0.2)', color: '#ffffff' }}
+                      title="More sharing options"
+                      aria-label={`More ways to share ${link.title}`}
+                    >
+                      <Share2 size={15} />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
