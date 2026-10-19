@@ -27,12 +27,16 @@ import { AdminSocialMediaPage } from './pages/AdminSocialMediaPage';
 import { AdminAboutPage } from './pages/AdminAboutPage';
 import { AdminVideosPage } from './pages/AdminVideosPage';
 import { AdminFooterPage } from './pages/AdminFooterPage';
+import { MobileBottomNav } from './components/MobileBottomNav';
+import { useNotifications } from './hooks/useNotifications';
 import { api } from './services/api';
 
 export function App() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
+  // Polled once here and shared by the top header (desktop) and bottom nav (mobile)
+  const { notifications, unreadCount, isAdmin: isAdminUser } = useNotifications(token ? user : null);
 
   const getInitialTab = () => {
     const path = window.location.pathname;
@@ -262,6 +266,8 @@ export function App() {
           onLogout={handleLogout} 
           onNavigate={handleTabChange} 
           onToggleSidebar={() => setIsSidebarOpen((prev) => !prev)}
+          notifications={notifications}
+          unreadCount={unreadCount}
         />
 
         {/* Tab Routing */}
@@ -406,6 +412,15 @@ export function App() {
           </div>
         )}
       </div>
+
+      {/* Mobile bottom navigation (hidden on desktop) */}
+      <MobileBottomNav
+        activeTab={activeTab}
+        onNavigate={handleTabChange}
+        notifications={notifications}
+        unreadCount={unreadCount}
+        isAdmin={isAdminUser}
+      />
 
       {/* Add Member Modal */}
       <AddMemberModal

@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Menu, Bell, ChevronDown, LogOut, Zap, Search, ShieldCheck, AlertTriangle, X, User } from 'lucide-react';
 import { api } from '../services/api';
+import { NotificationList } from './NotificationList';
+import { isCappingNotification } from '../hooks/useNotifications';
 
 interface TopNavbarProps {
   user?: {
@@ -15,45 +17,26 @@ interface TopNavbarProps {
   onToggleSidebar?: () => void;
   onLogout?: () => void;
   onNavigate?: (tab: string) => void;
+  /** Latest notifications, polled once in App (shared with the mobile bottom nav) */
+  notifications?: any[];
+  unreadCount?: number;
 }
 
-export const TopNavbar: React.FC<TopNavbarProps> = ({ user, activeTab, onToggleSidebar, onLogout, onNavigate }) => {
+export const TopNavbar: React.FC<TopNavbarProps> = ({
+  user,
+  activeTab,
+  onToggleSidebar,
+  onLogout,
+  onNavigate,
+  notifications: liveNotifs = [],
+  unreadCount = 0,
+}) => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
-  const [liveNotifs, setLiveNotifs] = useState<any[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   const profileDropdownRef = useRef<HTMLDivElement>(null);
   const notifDropdownRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = user?.role === 'superadmin';
-
-  const loadNotifications = () => {
-    if (isAdmin) {
-      api.getAdminNotifications()
-        .then((res: any) => {
-          if (res?.status && res?.data) {
-            setLiveNotifs(res.data.slice(0, 5));
-            setUnreadCount(res.unreadCount || 0);
-          }
-        })
-        .catch(() => {});
-    } else if (user?.memberId) {
-      api.getMemberNotifications(user.memberId)
-        .then((res: any) => {
-          if (res?.status && res?.data) {
-            setLiveNotifs(res.data.slice(0, 5));
-            setUnreadCount(res.unreadCount || 0);
-          }
-        })
-        .catch(() => {});
-    }
-  };
-
-  useEffect(() => {
-    loadNotifications();
-    const interval = setInterval(loadNotifications, 15000);
-    return () => clearInterval(interval);
-  }, [user?.memberId, user?.role]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -187,11 +170,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, activeTab, onToggleS
 
         {/* Capping Exceeded Alert Pill in Topbar */}
         {(() => {
-          const capNotif = liveNotifs.find((n: any) => 
-            n.title?.toLowerCase().includes('capping') || 
-            n.message?.toLowerCase().includes('capping') ||
-            n.metadata?.action === 'UPGRADE_PACKAGE'
-          );
+          const capNotif = liveNotifs.find(isCappingNotification);
           if (!capNotif || !onNavigate) return null;
           return (
             <button 
@@ -219,13 +198,13 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, activeTab, onToggleS
               }}
             >
               <AlertTriangle size={14} color="#dc2626" />
-              <span>Capping Exceeded • Upgrade Package</span>
+              <span className="capping-alert-text">Capping Exceeded • Upgrade Package</span>
             </button>
           );
         })()}
 
         {/* Notification Bell */}
-        <div style={{ position: 'relative' }} ref={notifDropdownRef}>
+        <div className="header-notif-wrap" style={{ position: 'relative' }} ref={notifDropdownRef}>
           <button 
             className="notification-badge-btn" 
             aria-label="Notifications"
@@ -270,69 +249,11 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({ user, activeTab, onToggleS
                   <X size={14} />
                 </button>
               </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '340px', overflowY: 'auto' }}>
-                {liveNotifs.length > 0 ? (
-                  liveNotifs.map((n, i) => {
-                    const isCapping = n.title?.toLowerCase().includes('capping') || 
-                      n.message?.toLowerCase().includes('capping') || 
-                      n.metadata?.action === 'UPGRADE_PACKAGE';
-
-                    return (
-                      <div 
-                        key={n._id || i} 
-                        onClick={() => {
-                          setIsNotifOpen(false);
-                          if (n._id || n.notificationId) {
-                            api.markNotificationRead(n._id || n.notificationId).catch(() => {});
-                          }
-                          if (isCapping) {
-                            onNavigate?.('packages');
-                          } else {
-                            onNavigate?.('withdrawals');
-                          }
-                        }}
-                        style={{ 
-                          padding: '10px 12px', 
-                          background: isCapping 
-                            ? (n.isRead ? '#fffbeb' : '#fef2f2') 
-                            : (n.isRead ? '#f8fafc' : '#eff6ff'), 
-                          border: `1.5px solid ${isCapping 
-                            ? (n.isRead ? '#fde68a' : '#fca5a5') 
-                            : (n.isRead ? '#e2e8f0' : '#bfdbfe')}`,
-                          borderRadius: '8px', 
-                          fontSize: '12px',
-                          cursor: 'pointer' 
-                        }}
-                      >
-                        <div style={{ fontWeight: 700, color: isCapping ? '#b91c1c' : '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                            {isCapping && <span>⚠️</span>}
-                            <span>{n.title}</span>
-                          </span>
-                          {isCapping ? (
-                            <span style={{ fontSize: '10px', fontWeight: 800, background: '#fee2e2', color: '#dc2626', padding: '1px 6px', borderRadius: '4px' }}>
-                              UPGRADE
-                            </span>
-                          ) : n.amount ? (
-                            <span style={{ color: '#059669' }}>₹{n.amount.toLocaleString()}</span>
-                          ) : null}
-                        </div>
-                        <div style={{ color: '#475569', fontSize: '11px', marginTop: '3px', lineHeight: '1.4' }}>{n.message}</div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>
-                          <span>{n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-                          {isCapping && (
-                            <span style={{ color: '#dc2626', fontWeight: 700 }}>Upgrade Package →</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })
-                ) : (
-                  <div style={{ textAlign: 'center', padding: '16px 0', color: '#94a3b8', fontSize: '12px' }}>
-                    No recent notifications
-                  </div>
-                )}
-              </div>
+              <NotificationList
+                notifications={liveNotifs}
+                onNavigate={onNavigate}
+                onItemClick={() => setIsNotifOpen(false)}
+              />
 
               <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
                 <button

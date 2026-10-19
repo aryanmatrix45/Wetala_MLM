@@ -116,9 +116,11 @@ const PLATFORM_CONFIG: Record<string, PlatformVisual> = {
 
 interface SocialMediaSectionProps {
   className?: string;
+  /** Show a message instead of hiding the section when no links are configured */
+  showEmptyState?: boolean;
 }
 
-export const SocialMediaSection: React.FC<SocialMediaSectionProps> = ({ className = '' }) => {
+export const SocialMediaSection: React.FC<SocialMediaSectionProps> = ({ className = '', showEmptyState = false }) => {
   const [links, setLinks] = useState<SocialLinkItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
@@ -147,7 +149,9 @@ export const SocialMediaSection: React.FC<SocialMediaSectionProps> = ({ classNam
 
   // Do not display if finished loading and no active links exist
   if (!loading && links.length === 0) {
-    return null;
+    return showEmptyState ? (
+      <p className="social-links-empty">No social media channels have been added yet.</p>
+    ) : null;
   }
 
   return (
