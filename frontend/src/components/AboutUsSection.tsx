@@ -47,20 +47,14 @@ export const AboutUsSection: React.FC<AboutUsSectionProps> = ({ className = '' }
   }
 
   return (
-    <div
-      className={`about-us-showcase-section ${className}`}
-      style={{
-        marginBottom: 36,
-        marginTop: 10,
-      }}
-    >
+    <section className={`home-section about-us-showcase-section ${className}`} aria-label="About us">
       <style>{`
         .about-card-container {
           background: #ffffff;
-          border-radius: 20px;
+          border-radius: 16px;
           border: 1px solid #e2e8f0;
-          padding: 36px 40px;
-          box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+          padding: 32px 36px;
+          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
           position: relative;
           overflow: hidden;
         }
@@ -79,7 +73,7 @@ export const AboutUsSection: React.FC<AboutUsSectionProps> = ({ className = '' }
         .about-image-col {
           order: 2; /* Right on Desktop */
           display: flex;
-          justifyContent: center;
+          justify-content: center;
           width: 100%;
         }
 
@@ -119,7 +113,7 @@ export const AboutUsSection: React.FC<AboutUsSectionProps> = ({ className = '' }
         }
 
         .about-title {
-          font-size: 26px;
+          font-size: 24px;
           font-weight: 800;
           color: #0f172a;
           line-height: 1.3;
@@ -365,7 +359,7 @@ export const AboutUsSection: React.FC<AboutUsSectionProps> = ({ className = '' }
             </div>
           );
         })}
-    </div>
+    </section>
   );
 };
 

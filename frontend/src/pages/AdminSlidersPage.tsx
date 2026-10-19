@@ -21,22 +21,23 @@ import {
 } from 'lucide-react';
 import { api, getAssetUrl, normalizeDirectImageUrl, type SliderItem } from '../services/api';
 
+// Exact banner resolutions the member home slider is designed around (keep in sync with backend SLIDER_BACKEND_SPECS)
 export const SLIDER_SPECS = {
   parent: {
-    minWidth: 1200,
-    minHeight: 300,
+    width: 1920,
+    height: 480,
     label: 'desktop slider',
     header: 'Drag & Drop your desktop slider image here',
     subHeader: 'or click to browse',
-    footnote: 'Minimum: 1200 x 300px | Recommended: 1600 x 480 or 2000 x 400px | wide landscape banner',
+    footnote: 'Required size: exactly 1920 x 480px (4:1 landscape banner)',
   },
   child: {
-    minWidth: 600,
-    minHeight: 300,
+    width: 1080,
+    height: 540,
     label: 'mobile slider',
     header: 'Drag & Drop your mobile slider image here',
     subHeader: 'or click to browse',
-    footnote: 'Minimum: 600 x 300px | Recommended: 1100 x 600 or wider | mobile-optimized landscape banner',
+    footnote: 'Required size: exactly 1080 x 540px (2:1 landscape banner)',
   },
 };
 
@@ -51,12 +52,12 @@ export const checkImageDimensions = (
       const height = img.naturalHeight || img.height;
       const spec = SLIDER_SPECS[type];
 
-      if (width < spec.minWidth || height < spec.minHeight) {
+      if (width !== spec.width || height !== spec.height) {
         resolve({
           width,
           height,
           isValid: false,
-          error: `Invalid dimensions (${width} x ${height}px). For ${spec.label}, image must be at least ${spec.minWidth} x ${spec.minHeight}px.`,
+          error: `Invalid dimensions (${width} x ${height}px). For ${spec.label}, image must be exactly ${spec.width} x ${spec.height}px.`,
         });
       } else {
         resolve({
@@ -437,7 +438,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
         if (processed === files.length) {
           if (rejectedList.length > 0) {
             setBulkError(
-              `Rejected ${rejectedList.length} file(s) below ${SLIDER_SPECS[bulkType].label} minimum (${SLIDER_SPECS[bulkType].minWidth}x${SLIDER_SPECS[bulkType].minHeight}px): ${rejectedList.join(', ')}`
+              `Rejected ${rejectedList.length} file(s) not matching the required ${SLIDER_SPECS[bulkType].label} size (exactly ${SLIDER_SPECS[bulkType].width}x${SLIDER_SPECS[bulkType].height}px): ${rejectedList.join(', ')}`
             );
           } else {
             setBulkError('');
@@ -470,7 +471,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
           const check = await checkImageDimensions(getAssetUrl(u), bulkType);
           if (!check.isValid) {
             setBulkError(
-              `URL #${i + 1} (${u.substring(0, 45)}...) is invalid: ${check.error || 'Below required dimensions'}`
+              `URL #${i + 1} (${u.substring(0, 45)}...) is invalid: ${check.error || 'Does not match the required dimensions'}`
             );
             setBulkSubmitting(false);
             return;
@@ -1173,7 +1174,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       </div>
                       <div>
                         <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>Desktop (`parent`)</strong>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>2000 x 400px (5:1 wide banner)</span>
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>Exactly 1920 x 480px (4:1 banner)</span>
                       </div>
                     </div>
 
@@ -1198,7 +1199,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       </div>
                       <div>
                         <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>Mobile (`child`)</strong>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>1100 x 600px (~1.83:1 mobile ratio)</span>
+                        <span style={{ fontSize: '11px', color: '#64748b' }}>Exactly 1080 x 540px (2:1 banner)</span>
                       </div>
                     </div>
                   </div>
@@ -1294,7 +1295,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                     </button>
                   </div>
                   <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '4px' }}>
-                    Paste a direct image link or Google Drive link. Verified against {SLIDER_SPECS[formType].minWidth} x {SLIDER_SPECS[formType].minHeight}px.
+                    Paste a direct image link or Google Drive link. Must be exactly {SLIDER_SPECS[formType].width} x {SLIDER_SPECS[formType].height}px.
                   </span>
 
                   {dimensionNotice && (

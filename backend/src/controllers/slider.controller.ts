@@ -4,9 +4,10 @@ import { HTTP_STATUS, ROLES } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { StorageService } from '../services/storage.service';
 
-const SLIDER_BACKEND_SPECS: Record<string, { minWidth: number; minHeight: number; label: string }> = {
-  parent: { minWidth: 1200, minHeight: 300, label: 'Desktop slider' },
-  child: { minWidth: 600, minHeight: 300, label: 'Mobile slider' },
+// Exact banner resolutions the member home slider is designed around (keep in sync with frontend SLIDER_SPECS)
+const SLIDER_BACKEND_SPECS: Record<string, { width: number; height: number; label: string }> = {
+  parent: { width: 1920, height: 480, label: 'Desktop slider' },
+  child: { width: 1080, height: 540, label: 'Mobile slider' },
 };
 
 function normalizeDirectImageUrl(url?: string): string {
@@ -52,6 +53,25 @@ function parseImageBufferDimensions(buf: Buffer): { width: number; height: numbe
     } else if (type === 'VP8X') {
       return { width: 1 + buf.readUIntLE(24, 3), height: 1 + buf.readUIntLE(27, 3) };
     }
+  }
+  return null;
+}
+
+/**
+ * Returns an error message when a base64 image does not match the exact slider resolution,
+ * or null when it matches (or its dimensions cannot be parsed).
+ */
+function getSliderDimensionError(rawBase64: string, type: string): string | null {
+  try {
+    const matches = rawBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+    const buf = matches && matches[2] ? Buffer.from(matches[2], 'base64') : Buffer.from(rawBase64, 'base64');
+    const dims = parseImageBufferDimensions(buf);
+    const spec = SLIDER_BACKEND_SPECS[type] || SLIDER_BACKEND_SPECS.parent;
+    if (dims && (dims.width !== spec.width || dims.height !== spec.height)) {
+      return `Image dimensions (${dims.width}x${dims.height}px) are not allowed. ${spec.label} images must be exactly ${spec.width}x${spec.height}px.`;
+    }
+  } catch (e) {
+    // Continue if dimension parse fails on custom formats
   }
   return null;
 }
@@ -182,20 +202,10 @@ export const SliderController = {
       // If base64 image data is provided, validate dimensions and save to disk
       const rawBase64 = base64Image || (image && image.startsWith('data:') ? image : '');
       if (rawBase64) {
-        try {
-          const matches = rawBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-          const buf = matches && matches[2] ? Buffer.from(matches[2], 'base64') : Buffer.from(rawBase64, 'base64');
-          const dims = parseImageBufferDimensions(buf);
-          const spec = SLIDER_BACKEND_SPECS[sliderType];
-          if (dims && (dims.width < spec.minWidth || dims.height < spec.minHeight)) {
-            res.status(HTTP_STATUS.BAD_REQUEST).json({
-              status: false,
-              message: `Image dimensions (${dims.width}x${dims.height}px) do not meet the minimum requirement for ${spec.label} (${spec.minWidth}x${spec.minHeight}px).`,
-            });
-            return;
-          }
-        } catch (e) {
-          // Continue if dimension parse fails on custom formats
+        const dimensionError = getSliderDimensionError(rawBase64, sliderType);
+        if (dimensionError) {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: dimensionError });
+          return;
         }
 
         const stored = await StorageService.saveImageBase64(rawBase64, title || 'slider', 'sliders');
@@ -271,16 +281,10 @@ export const SliderController = {
         const rawBase64 = item.base64 || (finalImageUrl && finalImageUrl.startsWith('data:') ? finalImageUrl : '');
 
         if (rawBase64) {
-          try {
-            const matches = rawBase64.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-            const buf = matches && matches[2] ? Buffer.from(matches[2], 'base64') : Buffer.from(rawBase64, 'base64');
-            const dims = parseImageBufferDimensions(buf);
-            const spec = SLIDER_BACKEND_SPECS[sliderType];
-            if (dims && (dims.width < spec.minWidth || dims.height < spec.minHeight)) {
-              // Skip items below minimum resolution in bulk
-              continue;
-            }
-          } catch (e) {}
+          // Skip items that are not the exact required resolution in bulk
+          if (getSliderDimensionError(rawBase64, sliderType)) {
+            continue;
+          }
 
           const stored = await StorageService.saveImageBase64(rawBase64, item.title || 'slider', 'sliders');
           finalImageUrl = stored.url;
@@ -348,6 +352,12 @@ export const SliderController = {
       const rawBase64 = base64Image || (newImageUrl && newImageUrl.startsWith('data:') ? newImageUrl : '');
 
       if (rawBase64) {
+        const targetType = type === 'child' || type === 'parent' ? type : slider.type;
+        const dimensionError = getSliderDimensionError(rawBase64, targetType);
+        if (dimensionError) {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: dimensionError });
+          return;
+        }
         const stored = await StorageService.saveImageBase64(rawBase64, title || 'slider', 'sliders');
         newImageUrl = stored.url;
       }

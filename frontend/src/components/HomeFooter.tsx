@@ -159,10 +159,17 @@ export const HomeFooter: React.FC = () => {
         }
 
         .treandora-footer-container {
-          max-width: 1440px;
+          max-width: 1192px;
           width: 100%;
           margin: 0 auto;
           box-sizing: border-box;
+        }
+
+        /* Match the home page content width on large screens */
+        @media (min-width: 1536px) {
+          .treandora-footer-container {
+            max-width: 1224px;
+          }
         }
 
         .treandora-footer-grid {

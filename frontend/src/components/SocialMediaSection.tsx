@@ -9,6 +9,7 @@ import {
   Share2,
 } from 'lucide-react';
 import { api, type SocialLinkItem } from '../services/api';
+import { HomeSectionHeader } from './HomeSectionHeader';
 
 // Crisp custom SVG icons for X (formerly Twitter), WhatsApp, and Telegram
 const TwitterXIcon = ({ size = 20 }: { size?: number }) => (
@@ -120,7 +121,6 @@ interface SocialMediaSectionProps {
 export const SocialMediaSection: React.FC<SocialMediaSectionProps> = ({ className = '' }) => {
   const [links, setLinks] = useState<SocialLinkItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [hoveredId, setHoveredId] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -151,131 +151,36 @@ export const SocialMediaSection: React.FC<SocialMediaSectionProps> = ({ classNam
   }
 
   return (
-    <div
-      className={`social-media-connect-section ${className}`}
-      style={{
-        marginBottom: 32,
-        marginTop: 4,
-      }}
+    <section
+      className={`home-section social-media-connect-section ${className}`}
+      aria-labelledby="home-social-title"
     >
-      {/* Section Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          marginBottom: 16,
-          paddingLeft: 4,
-          paddingRight: 4,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 8,
-              background: 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)',
-              color: '#16a34a',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 6px rgba(22, 163, 74, 0.15)',
-            }}
-          >
-            <Share2 size={16} />
-          </div>
-          <div>
-            <h3
-              style={{
-                margin: 0,
-                fontSize: 16,
-                fontWeight: 700,
-                color: '#1e293b',
-                letterSpacing: '-0.01em',
-              }}
-            >
-              Connect With Us
-            </h3>
-            <p
-              style={{
-                margin: 0,
-                fontSize: 12,
-                color: '#64748b',
-                fontWeight: 500,
-              }}
-            >
-              Follow our official social media channels for tutorials, live sessions & news
-            </p>
-          </div>
-        </div>
+      <HomeSectionHeader
+        id="home-social-title"
+        icon={<Share2 size={18} />}
+        tone="green"
+        title="Connect With Us"
+        subtitle="Follow our official channels for tutorials, live sessions and news."
+        action={
+          <span className="home-section-meta is-success">
+            <span className="home-chip-dot" aria-hidden="true" />
+            Official verified links
+          </span>
+        }
+      />
 
-        <div
-          style={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: '#059669',
-            background: 'rgba(16, 185, 129, 0.08)',
-            padding: '4px 10px',
-            borderRadius: 20,
-            border: '1px solid rgba(16, 185, 129, 0.2)',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 6,
-          }}
-        >
-          <span
-            style={{
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              backgroundColor: '#10b981',
-              boxShadow: '0 0 6px #10b981',
-            }}
-          />
-          Official Verified Links
-        </div>
-      </div>
-
-      {/* Loading Skeletons */}
-      {loading && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))',
-            gap: 14,
-          }}
-        >
+      {loading ? (
+        <div className="social-links-grid" aria-hidden="true">
           {[1, 2, 3, 4].map((n) => (
-            <div
-              key={n}
-              style={{
-                height: 64,
-                borderRadius: 14,
-                background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
-                backgroundSize: '200% 100%',
-                animation: 'shimmer 1.5s infinite',
-                border: '1px solid #e2e8f0',
-              }}
-            />
+            <div key={n} className="social-link-card is-skeleton">
+              <div className="home-skeleton-block" />
+            </div>
           ))}
         </div>
-      )}
-
-      {/* Active Social Media Badges Grid */}
-      {!loading && (
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-            gap: 14,
-          }}
-        >
+      ) : (
+        <div className="social-links-grid">
           {links.map((item) => {
             const visual = PLATFORM_CONFIG[item.platform] || PLATFORM_CONFIG.custom;
-            const isHovered = hoveredId === item._id;
 
             return (
               <a
@@ -283,110 +188,35 @@ export const SocialMediaSection: React.FC<SocialMediaSectionProps> = ({ classNam
                 href={item.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                onMouseEnter={() => setHoveredId(item._id)}
-                onMouseLeave={() => setHoveredId(null)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                  padding: '12px 16px',
-                  borderRadius: 14,
-                  background: '#ffffff',
-                  border: `1.5px solid ${isHovered ? visual.borderHover : '#e2e8f0'}`,
-                  textDecoration: 'none',
-                  color: 'inherit',
-                  transition: 'all 0.22s cubic-bezier(0.16, 1, 0.3, 1)',
-                  transform: isHovered ? 'translateY(-3px)' : 'translateY(0)',
-                  boxShadow: isHovered
-                    ? `0 10px 20px -5px ${visual.hoverGlow}, 0 4px 6px -2px rgba(0, 0, 0, 0.05)`
-                    : '0 2px 5px rgba(0, 0, 0, 0.03)',
-                  cursor: 'pointer',
-                  position: 'relative',
-                  overflow: 'hidden',
-                }}
+                className="social-link-card"
+                style={
+                  {
+                    '--brand-glow': visual.hoverGlow,
+                    '--brand-border': visual.borderHover,
+                  } as React.CSSProperties
+                }
               >
-                {/* Subtle Brand Background Tint on Hover */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: visual.hoverGlow,
-                    opacity: isHovered ? 0.08 : 0,
-                    transition: 'opacity 0.22s ease',
-                    pointerEvents: 'none',
-                  }}
-                />
-
-                {/* Brand Icon Circle */}
-                <div
-                  style={{
-                    width: 44,
-                    height: 44,
-                    minWidth: 44,
-                    borderRadius: 12,
-                    background: visual.badgeBg,
-                    color: visual.badgeColor,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    boxShadow: `0 4px 10px ${visual.hoverGlow}`,
-                    transition: 'transform 0.22s ease',
-                    transform: isHovered ? 'scale(1.06)' : 'scale(1)',
-                  }}
+                <span
+                  className="social-link-icon"
+                  style={{ background: visual.badgeBg, color: visual.badgeColor }}
+                  aria-hidden="true"
                 >
                   {visual.icon}
-                </div>
+                </span>
 
-                {/* Content Text */}
-                <div style={{ flex: 1, minWidth: 0, zIndex: 1 }}>
-                  <div
-                    style={{
-                      fontSize: 14,
-                      fontWeight: 700,
-                      color: '#0f172a',
-                      lineHeight: 1.25,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {item.title || visual.name}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 500,
-                      color: '#64748b',
-                      marginTop: 3,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {item.subtitle || 'Click to visit'}
-                  </div>
-                </div>
+                <span className="social-link-text">
+                  <span className="social-link-title">{item.title || visual.name}</span>
+                  <span className="social-link-sub">{item.subtitle || 'Click to visit'}</span>
+                </span>
 
-                {/* External Link Arrow */}
-                <div
-                  style={{
-                    color: isHovered ? '#0f172a' : '#94a3b8',
-                    transition: 'all 0.2s ease',
-                    transform: isHovered ? 'translate(2px, -2px)' : 'translate(0, 0)',
-                    zIndex: 1,
-                  }}
-                >
-                  <ExternalLink size={15} />
-                </div>
+                <ExternalLink size={15} className="social-link-arrow" aria-hidden="true" />
+                <span className="sr-only">(opens in a new tab)</span>
               </a>
             );
           })}
         </div>
       )}
-    </div>
+    </section>
   );
 };
 
