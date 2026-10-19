@@ -21,8 +21,16 @@ import sliderRoutes from './slider.routes';
 import adminSliderRoutes from './adminSlider.routes';
 import socialMediaRoutes from './socialMedia.routes';
 import adminSocialMediaRoutes from './adminSocialMedia.routes';
+import aboutSectionRoutes from './aboutSection.routes';
+import adminAboutSectionRoutes from './adminAboutSection.routes';
 
 const router = Router();
+
+// About Us Section (Members / Public)
+router.use('/about-sections', aboutSectionRoutes);
+
+// About Us Section Management (SuperAdmin)
+router.use('/admin/about-sections', adminAboutSectionRoutes);
 
 // Social Media Links (Members / Public)
 router.use('/social-links', socialMediaRoutes);

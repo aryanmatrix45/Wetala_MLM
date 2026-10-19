@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HomeSlider } from '../components/HomeSlider';
 import { SocialMediaSection } from '../components/SocialMediaSection';
 import { ShopByCategorySection } from '../components/ShopByCategorySection';
+import { AboutUsSection } from '../components/AboutUsSection';
 import { api, type SliderItem, type ProductItem } from '../services/api';
 import {
   RefreshCw,
@@ -392,6 +393,9 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({
           </div>
         )}
       </div>
+
+      {/* 2.5 About Us Story & Mission Section (After Products) */}
+      <AboutUsSection key={refreshing ? 'refreshing' : 'normal'} />
 
       {/* 3. Quick Launch Navigation Cards */}
       <div className="home-quick-actions-grid" style={{ marginBottom: 24 }}>

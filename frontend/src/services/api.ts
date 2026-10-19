@@ -1628,6 +1628,109 @@ export const api = {
     }
     return resJson;
   },
+
+  // ==========================================
+  // ABOUT US SECTION APIS (MEMBER & ADMIN)
+  // ==========================================
+  async getAboutSections(): Promise<{ status: boolean; data: AboutSectionItem[] }> {
+    const res = await fetch(`${API_BASE_URL}/about-sections`);
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch about sections');
+    }
+    return resJson;
+  },
+
+  async adminGetAboutSections(token?: string): Promise<{ status: boolean; data: AboutSectionItem[] }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/about-sections`, {
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch about sections');
+    }
+    return resJson;
+  },
+
+  async adminCreateAboutSection(
+    data: Partial<AboutSectionItem>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: AboutSectionItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/about-sections`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to create about section');
+    }
+    return resJson;
+  },
+
+  async adminUpdateAboutSection(
+    id: string,
+    data: Partial<AboutSectionItem>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: AboutSectionItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/about-sections/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to update about section');
+    }
+    return resJson;
+  },
+
+  async adminToggleAboutSectionStatus(
+    id: string,
+    status?: string,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: AboutSectionItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/about-sections/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify({ status }),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to toggle status');
+    }
+    return resJson;
+  },
+
+  async adminDeleteAboutSection(id: string, token?: string): Promise<{ status: boolean; message: string }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/about-sections/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to delete about section');
+    }
+    return resJson;
+  },
 };
 
 export interface SliderItem {
@@ -1670,6 +1773,36 @@ export interface SocialLinkItem {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface AboutSectionItem {
+  _id: string;
+  id?: string;
+  title: string;
+  subtitle?: string;
+  description: string;
+  imageUrl?: string;
+  status: 'ACTIVE' | 'INACTIVE';
+  order: number;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+// Helper to normalize Google Drive view links to direct high-res render URLs
+export function normalizeGoogleDriveUrl(url?: string): string {
+  if (!url) return '';
+  const trimmed = url.trim();
+  const match = trimmed.match(
+    /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]+)/i
+  );
+  if (match && match[1]) {
+    return `https://lh3.googleusercontent.com/d/${match[1]}`;
+  }
+  if (trimmed.includes('dropbox.com')) {
+    return trimmed.replace(/\?dl=0$/, '?raw=1').replace(/&dl=0$/, '&raw=1');
+  }
+  return trimmed;
 }
 
 

@@ -23,6 +23,7 @@ import {
   Landmark,
   ShoppingCart,
   Share2,
+  Info,
   X
 } from 'lucide-react';
 import { api } from '../services/api';
@@ -153,6 +154,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
             id: 'manage-social-links',
             label: 'Social Media Links',
             icon: Share2,
+          },
+          {
+            id: 'manage-about',
+            label: 'About Us Section',
+            icon: Info,
           },
           {
             id: 'manage-categories',

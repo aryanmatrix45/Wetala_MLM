@@ -24,6 +24,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { MemberHomePage } from './pages/MemberHomePage';
 import { AdminSlidersPage } from './pages/AdminSlidersPage';
 import { AdminSocialMediaPage } from './pages/AdminSocialMediaPage';
+import { AdminAboutPage } from './pages/AdminAboutPage';
 import { api } from './services/api';
 
 export function App() {
@@ -331,6 +332,10 @@ export function App() {
 
         {activeTab === 'manage-social-links' && (
           <AdminSocialMediaPage user={user} token={token} />
+        )}
+
+        {activeTab === 'manage-about' && (
+          <AdminAboutPage user={user} token={token} />
         )}
 
         {activeTab === 'manage-categories' && (
