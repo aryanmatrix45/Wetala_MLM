@@ -101,3 +101,39 @@ export function sanitizeHtml(html: string): string {
 
   return sanitized.trim();
 }
+
+// An escaped HTML tag such as "&lt;h2&gt;" or "&lt;/p&gt;" or "&lt;a href=...&gt;"
+const ESCAPED_TAG_PATTERN = /&lt;\/?[a-z][a-z0-9]*(?:\s|\/|&gt;)/i;
+
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&amp;/g, '&'); // last, so "&amp;lt;" becomes "&lt;" and not "<"
+}
+
+/**
+ * Recovers HTML that was pasted as source code into CKEditor's visual mode.
+ * CKEditor stores such a paste as text, e.g. "<p>&lt;h2&gt;Title&lt;/h2&gt;</p>", which then
+ * displays the tags literally. When escaped tags are present, the editor's paragraph/line-break
+ * wrappers are unwrapped and the entities decoded back into real markup.
+ * Content without escaped tags is returned unchanged.
+ */
+export function decodeEscapedHtml(html: string): string {
+  if (!html || typeof html !== 'string' || !ESCAPED_TAG_PATTERN.test(html)) return html;
+
+  const unwrapped = html
+    .replace(/<p[^>]*>/gi, '')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<br\s*\/?>/gi, '\n');
+
+  return decodeHtmlEntities(unwrapped).trim();
+}
+
+/** Decode pasted-as-text HTML (if any), then sanitize. Use for all rich-text descriptions. */
+export function normalizeRichHtml(html: string): string {
+  return sanitizeHtml(decodeEscapedHtml(html));
+}

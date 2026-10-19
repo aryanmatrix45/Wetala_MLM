@@ -23,6 +23,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { api, type ProductItem, type CategoryItem, type SubcategoryItem, getAssetUrl, retryWithImageFallback } from '../services/api';
+import { htmlToPlainText } from '../utils/text';
 
 interface MemberProductsPageProps {
   user?: any;
@@ -848,7 +849,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 {/* Short description */}
                 {viewProduct.shortDescription && (
                   <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.6', marginBottom: '24px' }}>
-                    {viewProduct.shortDescription}
+                    {htmlToPlainText(viewProduct.shortDescription)}
                   </p>
                 )}
 
@@ -1859,7 +1860,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                           overflow: 'hidden',
                         }}
                       >
-                        {prod.shortDescription || 'High-quality health and wellness product.'}
+                        {htmlToPlainText(prod.shortDescription) || 'High-quality health and wellness product.'}
                       </p>
 
                       {/* Price & BV Info Row */}

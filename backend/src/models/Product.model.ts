@@ -1,4 +1,5 @@
 import mongoose, { Document, Schema } from 'mongoose';
+import { normalizeRichHtml } from '../utils/sanitizeHtml';
 
 export interface IProductImage {
   url: string;
@@ -201,6 +202,15 @@ const productSchema = new Schema<IProduct>(
   },
   {
     timestamps: true,
+    toJSON: {
+      // Descriptions saved before the editor fix may hold HTML pasted as escaped text; serve it as markup
+      transform(_doc, ret: any) {
+        if (typeof ret.description === 'string' && ret.description) {
+          ret.description = normalizeRichHtml(ret.description);
+        }
+        return ret;
+      },
+    },
   }
 );
 

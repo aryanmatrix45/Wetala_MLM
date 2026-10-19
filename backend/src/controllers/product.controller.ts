@@ -5,7 +5,7 @@ import { Category } from '../models/Category.model';
 import { Subcategory } from '../models/Subcategory.model';
 import { HTTP_STATUS } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
-import { sanitizeHtml } from '../utils/sanitizeHtml';
+import { normalizeRichHtml } from '../utils/sanitizeHtml';
 import { StorageService } from '../services/storage.service';
 
 function slugify(text: string): string {
@@ -200,7 +200,7 @@ export const ProductController = {
       const productStatus: ProductStatus = status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE';
 
       // Sanitize rich-text CKEditor HTML
-      const sanitizedDescription = description ? sanitizeHtml(description) : '';
+      const sanitizedDescription = description ? normalizeRichHtml(description) : '';
 
       // Validate & normalize images
       const validatedImages: IProductImage[] = Array.isArray(images)
@@ -662,7 +662,7 @@ export const ProductController = {
         product.shortDescription = String(shortDescription).trim();
       }
       if (description !== undefined) {
-        product.description = sanitizeHtml(String(description));
+        product.description = normalizeRichHtml(String(description));
       }
 
       // Brand

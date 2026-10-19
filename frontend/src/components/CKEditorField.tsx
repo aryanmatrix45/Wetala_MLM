@@ -8,6 +8,12 @@ interface CKEditorFieldProps {
   minHeight?: string;
 }
 
+// Text that is HTML source code (e.g. copied from a code editor), not prose
+const looksLikeHtmlSource = (text: string): boolean => {
+  const trimmed = text.trim();
+  return trimmed.startsWith('<') && /<\/?[a-z][a-z0-9]*[\s>/]/i.test(trimmed) && /<\/[a-z][a-z0-9]*\s*>|\/>/i.test(trimmed);
+};
+
 declare global {
   interface Window {
     ClassicEditor?: any;
@@ -24,6 +30,8 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
   const editorInstanceRef = useRef<any | null>(null);
   const [isEditorReady, setIsEditorReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // 'html' shows the raw source in a textarea; the editor stays mounted but hidden
+  const [mode, setMode] = useState<'visual' | 'html'>('visual');
 
   // Load CKEditor 5 Classic from official CDN if not already loaded
   useEffect(() => {
@@ -68,6 +76,18 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
           if (value) {
             editor.setData(value);
           }
+
+          // Pasting HTML source code inserts it as formatted content instead of literal text
+          editor.editing.view.document.on(
+            'clipboardInput',
+            (_evt: any, data: any) => {
+              const text = data.dataTransfer?.getData('text/plain') || '';
+              if (looksLikeHtmlSource(text)) {
+                data.content = editor.data.htmlProcessor.toView(text);
+              }
+            },
+            { priority: 'high' }
+          );
 
           // Listen to changes
           editor.model.document.on('change:data', () => {
@@ -122,15 +142,37 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
     };
   }, []);
 
-  // Synchronize incoming value changes if updated externally
+  // Synchronize incoming value changes if updated externally (skipped while editing raw HTML,
+  // otherwise CKEditor would rewrite the markup on every keystroke)
   useEffect(() => {
+    if (mode === 'html') return;
     if (editorInstanceRef.current && isEditorReady) {
       const currentData = editorInstanceRef.current.getData();
       if (value !== currentData && value !== undefined) {
         editorInstanceRef.current.setData(value || '');
       }
     }
-  }, [value, isEditorReady]);
+  }, [value, isEditorReady, mode]);
+
+  const modeBtn = (target: 'visual' | 'html', label: string) => (
+    <button
+      type="button"
+      onClick={() => setMode(target)}
+      aria-pressed={mode === target}
+      style={{
+        padding: '3px 10px',
+        borderRadius: '6px',
+        border: '1px solid ' + (mode === target ? '#2563eb' : '#cbd5e1'),
+        background: mode === target ? '#2563eb' : '#ffffff',
+        color: mode === target ? '#ffffff' : '#334155',
+        fontSize: '11px',
+        fontWeight: 700,
+        cursor: 'pointer',
+      }}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div className="ckeditor-wrapper" style={{ width: '100%', position: 'relative' }}>
@@ -154,9 +196,17 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
           <span style={{ fontWeight: 600, color: '#334155' }}>CKEditor 5 Classic</span>
           <span>• Rich Text Description</span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <HelpCircle size={12} />
-          <span>Supports Headings, Lists, Tables & Links</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+            <HelpCircle size={12} />
+            <span>Paste HTML directly, or switch to HTML to edit the source</span>
+          </span>
+          {!loadError && (
+            <span style={{ display: 'inline-flex', gap: '4px' }} role="group" aria-label="Editor mode">
+              {modeBtn('visual', 'Visual')}
+              {modeBtn('html', 'HTML')}
+            </span>
+          )}
         </div>
       </div>
 
@@ -164,12 +214,36 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
       <div
         ref={editorContainerRef}
         style={{
-          display: loadError ? 'none' : 'block',
+          display: loadError || mode === 'html' ? 'none' : 'block',
           border: '1px solid #e2e8f0',
           borderRadius: '0 0 8px 8px',
           overflow: 'hidden',
         }}
       />
+
+      {/* Raw HTML source editor */}
+      {mode === 'html' && !loadError && (
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={'<h2>Heading</h2>\n<p>Your description…</p>'}
+          spellCheck={false}
+          aria-label="HTML source"
+          style={{
+            display: 'block',
+            width: '100%',
+            boxSizing: 'border-box',
+            padding: '12px',
+            border: '1px solid #e2e8f0',
+            borderRadius: '0 0 8px 8px',
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+            fontSize: '13px',
+            lineHeight: 1.55,
+            minHeight,
+            resize: 'vertical',
+          }}
+        />
+      )}
 
       {/* Fallback Textarea if script fails to load from CDN */}
       {loadError && (

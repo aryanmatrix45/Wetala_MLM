@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { api, type ProductItem, type ProductImage, type CategoryItem, type SubcategoryItem, getAssetUrl, retryWithImageFallback } from '../services/api';
 import { CKEditorField } from '../components/CKEditorField';
+import { htmlToPlainText } from '../utils/text';
 
 interface AdminProductsPageProps {
   user?: any;
@@ -2104,7 +2105,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
               </h2>
 
               <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
-                {selectedProduct.shortDescription || 'No short description provided.'}
+                {htmlToPlainText(selectedProduct.shortDescription) || 'No short description provided.'}
               </p>
 
               {/* Key Specs Card */}
