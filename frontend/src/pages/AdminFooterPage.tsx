@@ -56,10 +56,6 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
   const [customerCareLinks, setCustomerCareLinks] = useState<FooterLinkItem[]>([]);
 
   const [contactTitle, setContactTitle] = useState('');
-  const [operatingAddressTitle, setOperatingAddressTitle] = useState('');
-  const [operatingAddress, setOperatingAddress] = useState('');
-  const [corporateAddressTitle, setCorporateAddressTitle] = useState('');
-  const [corporateAddress, setCorporateAddress] = useState('');
 
   const [emailTitle, setEmailTitle] = useState('');
   const [emailsText, setEmailsText] = useState('');
@@ -112,10 +108,6 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
     setCustomerCareLinks(cfg.customerCareLinks || []);
 
     setContactTitle(cfg.contactTitle || '');
-    setOperatingAddressTitle(cfg.operatingAddressTitle || '');
-    setOperatingAddress(cfg.operatingAddress || '');
-    setCorporateAddressTitle(cfg.corporateAddressTitle || '');
-    setCorporateAddress(cfg.corporateAddress || '');
 
     setEmailTitle(cfg.emailTitle || '');
     setEmailsText((cfg.emails || []).join(', '));
@@ -162,10 +154,6 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
         customerCareTitle,
         customerCareLinks,
         contactTitle,
-        operatingAddressTitle,
-        operatingAddress,
-        corporateAddressTitle,
-        corporateAddress,
         emailTitle,
         emails: parsedEmails,
         phoneTitle,
@@ -489,7 +477,7 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
           onClick={() => setActiveTab('contact')}
         >
           <Phone size={16} />
-          <span>Contact & Addresses</span>
+          <span>Contact Details</span>
         </button>
 
         <button
@@ -924,55 +912,7 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
       {/* TAB 4: Contact & Office Details */}
       {activeTab === 'contact' && (
         <div className="footer-form-card">
-          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700 }}>Column 4: Contact Us & Office Locations</h3>
-
-          {/* Operating Address */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }}>
-            <div className="footer-field-group">
-              <label className="footer-field-label">Operating Address Header</label>
-              <input
-                type="text"
-                className="footer-field-input"
-                value={operatingAddressTitle}
-                onChange={(e) => setOperatingAddressTitle(e.target.value)}
-                placeholder="Operating Office Address :"
-              />
-            </div>
-            <div className="footer-field-group">
-              <label className="footer-field-label">Operating Office Address Details</label>
-              <textarea
-                className="footer-field-textarea"
-                rows={2}
-                value={operatingAddress}
-                onChange={(e) => setOperatingAddress(e.target.value)}
-                placeholder="Full operating office address with pincode and state..."
-              />
-            </div>
-          </div>
-
-          {/* Corporate Address */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 16, marginBottom: 16 }}>
-            <div className="footer-field-group">
-              <label className="footer-field-label">Corporate Address Header</label>
-              <input
-                type="text"
-                className="footer-field-input"
-                value={corporateAddressTitle}
-                onChange={(e) => setCorporateAddressTitle(e.target.value)}
-                placeholder="Corporate Office Address :"
-              />
-            </div>
-            <div className="footer-field-group">
-              <label className="footer-field-label">Corporate Office Address Details</label>
-              <textarea
-                className="footer-field-textarea"
-                rows={2}
-                value={corporateAddress}
-                onChange={(e) => setCorporateAddress(e.target.value)}
-                placeholder="e.g. Coming soon... or registered corporate address"
-              />
-            </div>
-          </div>
+          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700 }}>Column 4: Contact Us Details</h3>
 
           {/* Emails & Phones */}
           <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: 16, marginBottom: 16 }}>

@@ -25,10 +25,6 @@ export interface IFooterConfig extends Document {
 
   // Contact Information Column
   contactTitle: string;
-  operatingAddressTitle: string;
-  operatingAddress: string;
-  corporateAddressTitle?: string;
-  corporateAddress?: string;
   emailTitle: string;
   emails: string[];
   phoneTitle: string;
@@ -165,26 +161,6 @@ const footerConfigSchema = new Schema<IFooterConfig, IFooterConfigModel>(
       default: 'Contact Us',
       trim: true,
     },
-    operatingAddressTitle: {
-      type: String,
-      default: 'Operating Office Address :',
-      trim: true,
-    },
-    operatingAddress: {
-      type: String,
-      default: 'F-9, Shivan Complex, Opp. Bajaj Showroom, Approach Road, Prantij - 383205, Gujarat, India',
-      trim: true,
-    },
-    corporateAddressTitle: {
-      type: String,
-      default: 'Corporate Office Address :',
-      trim: true,
-    },
-    corporateAddress: {
-      type: String,
-      default: 'Coming soon...',
-      trim: true,
-    },
     emailTitle: {
       type: String,
       default: 'Email:',
@@ -254,7 +230,27 @@ footerConfigSchema.pre('validate', function () {
 // Singleton helper: get or create default configuration
 footerConfigSchema.statics.getOrCreateDefault = async function (): Promise<IFooterConfig> {
   let config = await this.findOne({ configId: 'DEFAULT_FOOTER_CONFIG' });
-  if (!config) {
+  if (config) {
+    // Proactively clean up deprecated address fields from MongoDB document
+    if (
+      (config as any).operatingAddressTitle !== undefined ||
+      (config as any).operatingAddress !== undefined ||
+      (config as any).corporateAddressTitle !== undefined ||
+      (config as any).corporateAddress !== undefined
+    ) {
+      await this.updateOne(
+        { configId: 'DEFAULT_FOOTER_CONFIG' },
+        {
+          $unset: {
+            operatingAddressTitle: 1,
+            operatingAddress: 1,
+            corporateAddressTitle: 1,
+            corporateAddress: 1,
+          },
+        }
+      );
+    }
+  } else {
     config = await this.create({
       configId: 'DEFAULT_FOOTER_CONFIG',
       brandName: 'Treandora',
@@ -266,10 +262,6 @@ footerConfigSchema.statics.getOrCreateDefault = async function (): Promise<IFoot
       helpTitle: 'Help',
       customerCareTitle: 'Customer Care',
       contactTitle: 'Contact Us',
-      operatingAddressTitle: 'Operating Office Address :',
-      operatingAddress: 'F-9, Shivan Complex, Opp. Bajaj Showroom, Approach Road, Prantij - 383205, Gujarat, India',
-      corporateAddressTitle: 'Corporate Office Address :',
-      corporateAddress: 'Coming soon...',
       emailTitle: 'Email:',
       emails: ['support@treandora.com', 'treandoramarketing@gmail.com'],
       phoneTitle: 'Phone:',

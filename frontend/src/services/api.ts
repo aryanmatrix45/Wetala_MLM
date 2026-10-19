@@ -2092,10 +2092,6 @@ export interface FooterConfig {
   customerCareLinks?: FooterLinkItem[];
 
   contactTitle?: string;
-  operatingAddressTitle?: string;
-  operatingAddress?: string;
-  corporateAddressTitle?: string;
-  corporateAddress?: string;
   emailTitle?: string;
   emails?: string[];
   phoneTitle?: string;

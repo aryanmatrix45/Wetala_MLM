@@ -64,10 +64,6 @@ export const FooterController = {
         customerCareTitle,
         customerCareLinks,
         contactTitle,
-        operatingAddressTitle,
-        operatingAddress,
-        corporateAddressTitle,
-        corporateAddress,
         emailTitle,
         emails,
         phoneTitle,
@@ -109,10 +105,6 @@ export const FooterController = {
       }
 
       if (contactTitle !== undefined) config.contactTitle = String(contactTitle).trim();
-      if (operatingAddressTitle !== undefined) config.operatingAddressTitle = String(operatingAddressTitle).trim();
-      if (operatingAddress !== undefined) config.operatingAddress = String(operatingAddress).trim();
-      if (corporateAddressTitle !== undefined) config.corporateAddressTitle = String(corporateAddressTitle).trim();
-      if (corporateAddress !== undefined) config.corporateAddress = String(corporateAddress).trim();
 
       if (emailTitle !== undefined) config.emailTitle = String(emailTitle).trim();
       if (Array.isArray(emails)) {

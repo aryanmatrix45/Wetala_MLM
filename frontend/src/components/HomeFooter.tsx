@@ -119,8 +119,6 @@ export const HomeFooter: React.FC = () => {
   const aboutText = config.aboutText;
   const helpLinks = (config.helpLinks || []).filter((l) => l.isActive);
   const customerCareLinks = (config.customerCareLinks || []).filter((l) => l.isActive);
-  const operatingAddress = config.operatingAddress;
-  const corporateAddress = config.corporateAddress;
   const emails = config.emails || [];
   const phones = config.phoneNumbers || [];
   const businessHoursWeekdays = config.businessHoursWeekdays;
@@ -447,26 +445,6 @@ export const HomeFooter: React.FC = () => {
           <div className="footer-col-contact">
             {config.contactTitle ? (
               <h4 className="footer-col-title">{config.contactTitle}</h4>
-            ) : null}
-
-            {/* Operating Office Address */}
-            {operatingAddress ? (
-              <div className="footer-contact-block">
-                {config.operatingAddressTitle ? (
-                  <span className="footer-contact-label">{config.operatingAddressTitle}</span>
-                ) : null}
-                <span className="footer-contact-text">{operatingAddress}</span>
-              </div>
-            ) : null}
-
-            {/* Corporate Office Address */}
-            {corporateAddress ? (
-              <div className="footer-contact-block">
-                {config.corporateAddressTitle ? (
-                  <span className="footer-contact-label">{config.corporateAddressTitle}</span>
-                ) : null}
-                <span className="footer-contact-text">{corporateAddress}</span>
-              </div>
             ) : null}
 
             {/* Emails */}
