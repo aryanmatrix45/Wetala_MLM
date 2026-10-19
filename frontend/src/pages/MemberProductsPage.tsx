@@ -30,6 +30,8 @@ interface MemberProductsPageProps {
   onNavigate?: (tab: string, params?: { categoryId?: string; subcategoryId?: string }) => void;
   initialCategoryId?: string;
   initialSubcategoryId?: string;
+  /** Called when a visitor who is not signed in tries to check out */
+  onRequireLogin?: () => void;
 }
 
 interface CartItem {
@@ -42,6 +44,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
   onNavigate,
   initialCategoryId,
   initialSubcategoryId,
+  onRequireLogin,
 }) => {
   const savedUserStr = localStorage.getItem('wetala_user');
   const user = propUser || (savedUserStr ? JSON.parse(savedUserStr) : null);
@@ -332,7 +335,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
   const handleCheckout = async () => {
     if (cart.length === 0) return;
     if (!user || !user.memberId) {
-      alert('You must be logged in as an active member to checkout.');
+      if (onRequireLogin) {
+        setIsReviewModalOpen(false);
+        onRequireLogin();
+      } else {
+        alert('You must be logged in as an active member to checkout.');
+      }
       return;
     }
 
@@ -2123,6 +2131,11 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 <button
                   onClick={() => {
                     setIsCartOpen(false);
+                    // Visitors sign in first; the cart is kept in localStorage across login
+                    if (!user?.memberId && onRequireLogin) {
+                      onRequireLogin();
+                      return;
+                    }
                     setIsReviewModalOpen(true);
                   }}
                   disabled={checkoutLoading || cart.length === 0}

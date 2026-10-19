@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Home, ShoppingBag, Bell, Share2, X } from 'lucide-react';
+import { Home, ShoppingBag, Bell, Share2, X, LogIn, UserPlus } from 'lucide-react';
 import { NotificationList } from './NotificationList';
 import { SocialMediaSection } from './SocialMediaSection';
 
@@ -11,6 +11,10 @@ interface MobileBottomNavProps {
   notifications: any[];
   unreadCount: number;
   isAdmin?: boolean;
+  /** Visitor is not signed in: notifications sheet invites them to log in instead */
+  isGuest?: boolean;
+  onLogin?: () => void;
+  onSignUp?: () => void;
 }
 
 /**
@@ -24,6 +28,9 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   notifications,
   unreadCount,
   isAdmin = false,
+  isGuest = false,
+  onLogin,
+  onSignUp,
 }) => {
   const [openSheet, setOpenSheet] = useState<SheetKind | null>(null);
 
@@ -110,9 +117,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 </h2>
                 <p className="bottom-sheet-subtitle">
                   {openSheet === 'notifications'
-                    ? unreadCount > 0
-                      ? `${unreadCount} new`
-                      : 'You are up to date'
+                    ? isGuest
+                      ? 'Sign in to see updates about your account'
+                      : unreadCount > 0
+                        ? `${unreadCount} new`
+                        : 'You are up to date'
                     : 'Follow our official channels for tutorials, live sessions and news'}
                 </p>
               </div>
@@ -122,7 +131,38 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </header>
 
             <div className="bottom-sheet-body">
-              {openSheet === 'notifications' ? (
+              {openSheet === 'notifications' && isGuest ? (
+                <div className="bottom-sheet-guest">
+                  <span className="bottom-sheet-guest-icon" aria-hidden="true">
+                    <Bell size={22} />
+                  </span>
+                  <p>Log in to see payout updates, purchase approvals and account alerts.</p>
+                  <div className="bottom-sheet-guest-actions">
+                    <button
+                      type="button"
+                      className="public-auth-btn is-login"
+                      onClick={() => {
+                        closeSheet();
+                        onLogin?.();
+                      }}
+                    >
+                      <LogIn size={16} aria-hidden="true" />
+                      <span>Login</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="public-auth-btn is-signup"
+                      onClick={() => {
+                        closeSheet();
+                        onSignUp?.();
+                      }}
+                    >
+                      <UserPlus size={16} aria-hidden="true" />
+                      <span>Sign Up</span>
+                    </button>
+                  </div>
+                </div>
+              ) : openSheet === 'notifications' ? (
                 <>
                   <NotificationList
                     notifications={notifications}

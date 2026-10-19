@@ -28,8 +28,11 @@ import { AdminAboutPage } from './pages/AdminAboutPage';
 import { AdminVideosPage } from './pages/AdminVideosPage';
 import { AdminFooterPage } from './pages/AdminFooterPage';
 import { MobileBottomNav } from './components/MobileBottomNav';
+import { PublicTopNavbar } from './components/PublicTopNavbar';
 import { useNotifications } from './hooks/useNotifications';
 import { api } from './services/api';
+
+type AuthView = 'public' | 'login' | 'pre-registration' | 'register';
 
 export function App() {
   const [token, setToken] = useState<string | null>(null);
@@ -51,23 +54,30 @@ export function App() {
           return 'home';
         }
       } catch {}
+      return 'dashboard';
     }
-    return 'dashboard';
+    return 'home';
   };
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // Public routing state (for pre-registration & referral links)
-  const getInitialAuthView = () => {
+  // Public routing state: 'public' is the open website; login & registration have their own paths
+  const getAuthViewFromPath = (): AuthView => {
     const path = window.location.pathname;
     if (path === '/pre-registration') return 'pre-registration';
     if (path === '/register') return 'register';
-    return 'login';
+    if (path === '/login') return 'login';
+    // Legacy referral links on "/" (e.g. /?ref=MEM0001) still open the sign-up form
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('ref') || params.get('sponsorId')) return 'login';
+    return 'public';
   };
 
-  const [authView, setAuthView] = useState<'login' | 'pre-registration' | 'register'>(getInitialAuthView);
+  const [authView, setAuthView] = useState<AuthView>(getAuthViewFromPath);
+  // Tab to open after a visitor signs in (e.g. back to Products after starting checkout)
+  const [postLoginTab, setPostLoginTab] = useState<string | null>(null);
   const [registrationPrefill, setRegistrationPrefill] = useState<{
     sponsorId: string;
     sponsorName: string;
@@ -87,7 +97,7 @@ export function App() {
     subcategoryId?: string;
   } | null>(null);
 
-  const navigateAuth = (view: 'login' | 'pre-registration' | 'register', urlPath?: string) => {
+  const navigateAuth = (view: AuthView, urlPath?: string) => {
     setAuthView(view);
     if (urlPath) {
       window.history.pushState(null, '', urlPath);
@@ -118,6 +128,7 @@ export function App() {
       if (path.startsWith('/product/') || path.startsWith('/products/')) {
         setActiveTab('member-products');
       }
+      setAuthView(getAuthViewFromPath());
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -161,8 +172,13 @@ export function App() {
   const handleLoginSuccess = (userData: any, userToken: string) => {
     setUser(userData);
     setToken(userToken);
-    const isMember = userData?.role?.toLowerCase() !== 'superadmin';
-    setActiveTab(isMember ? 'home' : 'dashboard');
+    // Signed-in users land on their dashboard, unless they were mid-checkout
+    setActiveTab(postLoginTab || 'dashboard');
+    setPostLoginTab(null);
+    setAuthView('public');
+    if (['/login', '/pre-registration', '/register'].includes(window.location.pathname)) {
+      window.history.replaceState(null, '', '/');
+    }
   };
 
   const handleLogout = () => {
@@ -170,6 +186,51 @@ export function App() {
     localStorage.removeItem('wetala_user');
     setToken(null);
     setUser(null);
+    // Back to the public website
+    setActiveTab('home');
+    setAuthView('public');
+    if (window.location.pathname !== '/') {
+      window.history.pushState(null, '', '/');
+    }
+  };
+
+  const openLogin = () => navigateAuth('login', '/login');
+  const openSignUp = () => navigateAuth('pre-registration', '/pre-registration');
+  const goToPublicHome = () => {
+    setPostLoginTab(null);
+    setActiveTab('home');
+    navigateAuth('public', '/');
+  };
+
+  // Visitors can only open public sections; anything else asks them to sign in
+  const PUBLIC_TABS = ['home', 'member-products'];
+  const handleGuestNavigate = (tab: string, params?: { categoryId?: string; subcategoryId?: string }) => {
+    if (PUBLIC_TABS.includes(tab)) {
+      handleTabChange(tab, params);
+    } else {
+      setPostLoginTab(tab);
+      openLogin();
+    }
+  };
+
+  const handleRequireLoginForCheckout = () => {
+    setPostLoginTab('member-products');
+    openLogin();
+  };
+
+  // Desktop "Social Media" link: open Home and scroll to the social section once it has rendered
+  const handleShowSocial = () => {
+    handleTabChange('home');
+    let attempts = 0;
+    const tryScroll = () => {
+      const section = document.querySelector('.member-home-page .social-media-connect-section');
+      if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else if (attempts++ < 30) {
+        setTimeout(tryScroll, 100);
+      }
+    };
+    setTimeout(tryScroll, 50);
   };
 
   const [refreshKey, setRefreshKey] = useState(0);
@@ -197,43 +258,98 @@ export function App() {
     );
   }
 
-  // If not authenticated, render Login Screen, Pre-Registration, or Full Registration
+  // Not signed in: the public website, or the login / registration screens
   if (!token) {
+    if (authView === 'public') {
+      const guestTab = activeTab === 'member-products' ? 'member-products' : 'home';
+      return (
+        <div className="app-container layout-home-immersive is-public">
+          <div className="main-wrapper">
+            <PublicTopNavbar
+              activeTab={guestTab}
+              onNavigate={handleGuestNavigate}
+              onShowSocial={handleShowSocial}
+              onLogin={openLogin}
+              onSignUp={openSignUp}
+            />
+
+            {guestTab === 'home' ? (
+              <MemberHomePage user={null} token={null} onNavigate={handleGuestNavigate} />
+            ) : (
+              <MemberProductsPage
+                user={null}
+                token={null}
+                initialCategoryId={categoryNav?.categoryId}
+                initialSubcategoryId={categoryNav?.subcategoryId}
+                onNavigate={handleGuestNavigate}
+                onRequireLogin={handleRequireLoginForCheckout}
+              />
+            )}
+          </div>
+
+          <MobileBottomNav
+            activeTab={guestTab}
+            onNavigate={handleGuestNavigate}
+            notifications={[]}
+            unreadCount={0}
+            isGuest
+            onLogin={openLogin}
+            onSignUp={openSignUp}
+          />
+        </div>
+      );
+    }
+
+    const backToHome = (
+      <button type="button" className="auth-back-home" onClick={goToPublicHome}>
+        ← Back to Home
+      </button>
+    );
+
     if (authView === 'pre-registration') {
       return (
-        <PreRegistrationPage
-          onProceed={(data) => {
-            setRegistrationPrefill(data);
-            navigateAuth('register', '/register');
-          }}
-          onGoToLogin={() => navigateAuth('login', '/')}
-        />
+        <>
+          {backToHome}
+          <PreRegistrationPage
+            onProceed={(data) => {
+              setRegistrationPrefill(data);
+              navigateAuth('register', '/register');
+            }}
+            onGoToLogin={openLogin}
+          />
+        </>
       );
     }
 
     if (authView === 'register') {
       return (
-        <FullRegistrationPage
-          initialData={registrationPrefill || { sponsorId: 'MEM0001', sponsorName: 'Panchveda Sponsor', position: 'LEFT' }}
-          onBackToPreReg={() => navigateAuth('login', '/')}
-          onGoToLogin={() => {
-            setRegistrationPrefill(null);
-            navigateAuth('login', '/');
-          }}
-        />
+        <>
+          {backToHome}
+          <FullRegistrationPage
+            initialData={registrationPrefill || { sponsorId: 'MEM0001', sponsorName: 'Panchveda Sponsor', position: 'LEFT' }}
+            onBackToPreReg={() => navigateAuth('pre-registration', '/pre-registration')}
+            onGoToLogin={() => {
+              setRegistrationPrefill(null);
+              openLogin();
+            }}
+          />
+        </>
       );
     }
 
     return (
-      <LoginPage
-        onLoginSuccess={handleLoginSuccess}
-        defaultMode={registrationPrefill ? 'register' : 'login'}
-        initialRegisterData={registrationPrefill}
-        onProceedToFullReg={(data) => {
-          setRegistrationPrefill(data);
-          navigateAuth('register', '/register');
-        }}
-      />
+      <>
+        {backToHome}
+        <LoginPage
+          onLoginSuccess={handleLoginSuccess}
+          defaultMode={registrationPrefill ? 'register' : 'login'}
+          initialRegisterData={registrationPrefill}
+          onProceedToFullReg={(data) => {
+            setRegistrationPrefill(data);
+            navigateAuth('register', '/register');
+          }}
+        />
+      </>
     );
   }
 
