@@ -4,6 +4,7 @@ import { SocialMediaSection } from '../components/SocialMediaSection';
 import { ShopByCategorySection } from '../components/ShopByCategorySection';
 import { HomeVideoSection } from '../components/HomeVideoSection';
 import { AboutUsSection } from '../components/AboutUsSection';
+import { HomeFooter } from '../components/HomeFooter';
 import { api, type SliderItem, type ProductItem } from '../services/api';
 import {
   RefreshCw,
@@ -138,8 +139,9 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({
   };
 
   return (
-    <div className="page-body member-home-page">
-      {/* Home Header */}
+    <div className="home-layout-wrapper" style={{ width: '100%', minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+      <div className="page-body member-home-page" style={{ paddingBottom: 32 }}>
+        {/* Home Header */}
       <div className="welcome-header" style={{ marginBottom: 20 }}>
         <div>
           <h1 className="page-title">Welcome Home, {user?.name || 'Distributor'}!</h1>
@@ -482,6 +484,10 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({
           </button>
         </div>
       )}
+      </div>
+
+      {/* 4. Official Full-Width Footer Section (Covers 100% of the screen) */}
+      <HomeFooter />
     </div>
   );
 };

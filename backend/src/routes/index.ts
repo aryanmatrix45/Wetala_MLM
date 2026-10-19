@@ -25,8 +25,16 @@ import aboutSectionRoutes from './aboutSection.routes';
 import adminAboutSectionRoutes from './adminAboutSection.routes';
 import homeVideoRoutes from './homeVideo.routes';
 import adminHomeVideoRoutes from './adminHomeVideo.routes';
+import footerRoutes from './footer.routes';
+import adminFooterRoutes from './adminFooter.routes';
 
 const router = Router();
+
+// Footer & Company Information (Members / Public)
+router.use('/footer', footerRoutes);
+
+// Footer & Company Information Management (SuperAdmin)
+router.use('/admin/footer', adminFooterRoutes);
 
 // Video Showcase Section (Members / Public)
 router.use('/home-videos', homeVideoRoutes);

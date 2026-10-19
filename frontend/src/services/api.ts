@@ -1860,6 +1860,67 @@ export const api = {
     }
     return resJson;
   },
+
+  // ==========================================
+  // FOOTER & COMPANY INFORMATION APIS
+  // ==========================================
+  async getFooterConfig(): Promise<{ status: boolean; data: FooterConfig }> {
+    const res = await fetch(`${API_BASE_URL}/footer`);
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch footer configuration');
+    }
+    return resJson;
+  },
+
+  async adminGetFooterConfig(token?: string): Promise<{ status: boolean; data: FooterConfig }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/footer`, {
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch footer configuration');
+    }
+    return resJson;
+  },
+
+  async adminUpdateFooterConfig(
+    data: Partial<FooterConfig>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: FooterConfig }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/footer`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to update footer configuration');
+    }
+    return resJson;
+  },
+
+  async adminResetFooterConfig(token?: string): Promise<{ status: boolean; message: string; data: FooterConfig }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/footer/reset`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to reset footer configuration');
+    }
+    return resJson;
+  },
 };
 
 export interface SliderItem {
@@ -1964,6 +2025,51 @@ export function normalizeGoogleDriveUrl(url?: string): string {
     return trimmed.replace(/\?dl=0$/, '?raw=1').replace(/&dl=0$/, '&raw=1');
   }
   return trimmed;
+}
+
+export interface FooterLinkItem {
+  _id?: string;
+  id?: string;
+  label: string;
+  url: string;
+  openInNewTab: boolean;
+  isActive: boolean;
+  order: number;
+}
+
+export interface FooterConfig {
+  _id?: string;
+  configId: string;
+  brandName?: string;
+  brandTrademark?: string;
+  tagline?: string;
+  logoUrl?: string;
+  aboutText?: string;
+
+  helpTitle?: string;
+  helpLinks?: FooterLinkItem[];
+  customerCareTitle?: string;
+  customerCareLinks?: FooterLinkItem[];
+
+  contactTitle?: string;
+  operatingAddressTitle?: string;
+  operatingAddress?: string;
+  corporateAddressTitle?: string;
+  corporateAddress?: string;
+  emailTitle?: string;
+  emails?: string[];
+  phoneTitle?: string;
+  phoneNumbers?: string[];
+  businessHoursTitle?: string;
+  businessHoursWeekdays?: string;
+  businessHoursWeekend?: string;
+
+  showSocialLinks?: boolean;
+  copyrightText?: string;
+  disclaimerText?: string;
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 
