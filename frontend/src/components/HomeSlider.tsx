@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { getAssetUrl, type SliderItem } from '../services/api';
+import { getAssetUrl, retryWithImageFallback, type SliderItem } from '../services/api';
 
 interface HomeSliderProps {
   sliders: SliderItem[];
@@ -114,6 +114,10 @@ export const HomeSlider: React.FC<HomeSliderProps> = ({
                 alt={slide.title || `Slide ${index + 1}`}
                 className="home-slider-image"
                 loading={index === 0 ? 'eager' : 'lazy'}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  retryWithImageFallback(e.currentTarget);
+                }}
               />
             </div>
           );

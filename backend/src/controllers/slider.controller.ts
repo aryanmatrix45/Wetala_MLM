@@ -15,7 +15,7 @@ function normalizeDirectImageUrl(url?: string): string {
   let trimmed = url.trim();
   const gDriveMatch = trimmed.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]+)/i);
   if (gDriveMatch && gDriveMatch[1]) {
-    return `https://lh3.googleusercontent.com/d/${gDriveMatch[1]}`;
+    return `https://lh3.googleusercontent.com/d/${gDriveMatch[1]}=s0`;
   }
   if (trimmed.includes('dropbox.com')) {
     trimmed = trimmed.replace(/\?dl=0$/, '?raw=1').replace(/&dl=0$/, '&raw=1');

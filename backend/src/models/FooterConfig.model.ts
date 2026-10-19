@@ -61,7 +61,7 @@ export function normalizeDirectImageUrl(url?: string): string {
     /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]+)/i
   );
   if (gDriveMatch && gDriveMatch[1]) {
-    return `https://lh3.googleusercontent.com/d/${gDriveMatch[1]}`;
+    return `https://lh3.googleusercontent.com/d/${gDriveMatch[1]}=s0`;
   }
 
   // Dropbox

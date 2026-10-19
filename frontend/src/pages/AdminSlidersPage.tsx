@@ -19,7 +19,15 @@ import {
   AlertCircle,
   Eye,
 } from 'lucide-react';
-import { api, getAssetUrl, normalizeDirectImageUrl, type SliderItem } from '../services/api';
+import {
+  api,
+  getAssetUrl,
+  getGoogleDriveFileId,
+  getImageFallbackUrl,
+  normalizeDirectImageUrl,
+  retryWithImageFallback,
+  type SliderItem,
+} from '../services/api';
 
 // Exact banner resolutions the member home slider is designed around (keep in sync with backend SLIDER_BACKEND_SPECS)
 export const SLIDER_SPECS = {
@@ -44,15 +52,35 @@ export const SLIDER_SPECS = {
 export const checkImageDimensions = (
   src: string,
   type: 'parent' | 'child'
-): Promise<{ width: number; height: number; isValid: boolean; error?: string }> => {
+): Promise<{ width: number; height: number; isValid: boolean; error?: string; note?: string }> => {
   return new Promise((resolve) => {
     const img = new Image();
+    // Google-hosted images can refuse requests that carry a referrer
+    img.referrerPolicy = 'no-referrer';
+    const fallbackSrc = getImageFallbackUrl(src);
+    let triedFallback = false;
     img.onload = () => {
       const width = img.naturalWidth || img.width;
       const height = img.naturalHeight || img.height;
       const spec = SLIDER_SPECS[type];
+      const isExact = width === spec.width && height === spec.height;
+      // Google Drive may serve a downscaled copy of the original file. Since the slider box
+      // uses the same ratio, accept a Drive image whose shape matches the required size exactly.
+      const isDriveScaledMatch =
+        Boolean(getGoogleDriveFileId(src)) &&
+        width > 0 &&
+        height > 0 &&
+        width <= spec.width &&
+        Math.abs(width / height - spec.width / spec.height) < 0.01;
 
-      if (width !== spec.width || height !== spec.height) {
+      if (isDriveScaledMatch && !isExact) {
+        resolve({
+          width,
+          height,
+          isValid: true,
+          note: `Google Drive served a resized copy (${width} x ${height}px); shape matches ${spec.width} x ${spec.height}px`,
+        });
+      } else if (!isExact) {
         resolve({
           width,
           height,
@@ -68,15 +96,81 @@ export const checkImageDimensions = (
       }
     };
     img.onerror = () => {
+      if (fallbackSrc && !triedFallback) {
+        triedFallback = true;
+        img.src = fallbackSrc;
+        return;
+      }
       resolve({
         width: 0,
         height: 0,
         isValid: false,
-        error: 'Unable to load image from the provided URL or file. Please check the image source.',
+        error: getGoogleDriveFileId(src)
+          ? 'Unable to load this Google Drive image. In Google Drive, open Share → General access → set it to "Anyone with the link", then try again.'
+          : 'Unable to load image from the provided URL or file. Please check the image source.',
       });
     };
     img.src = src;
   });
+};
+
+/**
+ * Live preview for the slider form. Resets whenever the source changes, retries Google Drive
+ * images via the fallback URL, and explains the failure instead of showing an empty box.
+ */
+const SliderFormPreview: React.FC<{ src: string }> = ({ src }) => {
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+
+  useEffect(() => {
+    setStatus('loading');
+  }, [src]);
+
+  const isDrive = Boolean(getGoogleDriveFileId(src));
+
+  return (
+    <div
+      style={{
+        position: 'relative',
+        borderRadius: '10px',
+        overflow: 'hidden',
+        height: '180px',
+        background: '#0f172a',
+        border: '1px solid #cbd5e1',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
+      {status !== 'error' && (
+        <img
+          key={src}
+          src={src}
+          alt="Preview"
+          referrerPolicy="no-referrer"
+          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+          onLoad={() => setStatus('loaded')}
+          onError={(e) => {
+            if (!retryWithImageFallback(e.currentTarget)) setStatus('error');
+          }}
+        />
+      )}
+      {status === 'loading' && (
+        <span
+          style={{ position: 'absolute', color: '#94a3b8', fontSize: '12px', display: 'flex', alignItems: 'center', gap: 6 }}
+        >
+          <RefreshCw size={13} className="spin-anim" /> Loading preview…
+        </span>
+      )}
+      {status === 'error' && (
+        <div style={{ padding: '16px 20px', textAlign: 'center', color: '#e2e8f0', fontSize: '12.5px', lineHeight: 1.5 }}>
+          <strong style={{ display: 'block', color: '#fca5a5', marginBottom: 4 }}>Preview could not be loaded</strong>
+          {isDrive
+            ? 'Make sure the Google Drive file is shared as "Anyone with the link" (Share → General access).'
+            : 'Check that the link points directly to an image file (.jpg, .png, .webp).'}
+        </div>
+      )}
+    </div>
+  );
 };
 
 interface AdminSlidersPageProps {
@@ -228,7 +322,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
         setFormBase64(result);
         setFormImageUrl(result);
         setFormError('');
-        setDimensionNotice(`✓ Validated ${SLIDER_SPECS[formType].label}: ${check.width} x ${check.height}px`);
+        setDimensionNotice(check.note ? `✓ Validated ${SLIDER_SPECS[formType].label}: ${check.note}` : `✓ Validated ${SLIDER_SPECS[formType].label}: ${check.width} x ${check.height}px`);
       }
     };
     reader.readAsDataURL(file);
@@ -246,9 +340,6 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
     const trimmed = url.trim();
     if (!trimmed || trimmed.startsWith('data:')) return;
     const normalized = normalizeDirectImageUrl(trimmed);
-    if (normalized !== formImageUrl) {
-      setFormImageUrl(normalized);
-    }
 
     setIsValidatingUrl(true);
     setFormError('');
@@ -262,7 +353,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
       setDimensionNotice(null);
     } else {
       setFormError('');
-      setDimensionNotice(`✓ Validated ${SLIDER_SPECS[type].label}: ${check.width} x ${check.height}px`);
+      setDimensionNotice(check.note ? `✓ Validated ${SLIDER_SPECS[type].label}: ${check.note}` : `✓ Validated ${SLIDER_SPECS[type].label}: ${check.width} x ${check.height}px`);
     }
   };
 
@@ -281,7 +372,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
         setDimensionNotice(null);
       } else {
         setFormError('');
-        setDimensionNotice(`✓ Validated ${SLIDER_SPECS[newType].label}: ${check.width} x ${check.height}px`);
+        setDimensionNotice(check.note ? `✓ Validated ${SLIDER_SPECS[newType].label}: ${check.note}` : `✓ Validated ${SLIDER_SPECS[newType].label}: ${check.width} x ${check.height}px`);
       }
     }
   };
@@ -873,8 +964,12 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       src={imgSrc}
                       alt={slider.title || 'Slider preview'}
                       className="admin-slider-card-img"
-                      onError={(e: any) => {
-                        e.target.src = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80';
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        const placeholder = 'https://images.unsplash.com/photo-1579783900882-c0d3dad7b119?w=800&q=80';
+                        if (!retryWithImageFallback(e.currentTarget) && e.currentTarget.src !== placeholder) {
+                          e.currentTarget.src = placeholder;
+                        }
                       }}
                     />
 
@@ -1267,9 +1362,8 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       placeholder="https://example.com/banner.jpg or Google Drive / Dropbox link"
                       value={formImageUrl}
                       onChange={(e) => {
-                        const val = e.target.value;
-                        const normalized = normalizeDirectImageUrl(val);
-                        setFormImageUrl(normalized);
+                        // Keep the pasted link visible; it is normalized when previewing, checking and saving
+                        setFormImageUrl(e.target.value);
                         setFormBase64('');
                         setDimensionNotice(null);
                         setFormError('');
@@ -1311,25 +1405,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                     <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
                       Image Preview
                     </label>
-                    <div
-                      style={{
-                        position: 'relative',
-                        borderRadius: '10px',
-                        overflow: 'hidden',
-                        height: '180px',
-                        background: '#0f172a',
-                        border: '1px solid #cbd5e1',
-                      }}
-                    >
-                      <img
-                        src={getAssetUrl(formImageUrl)}
-                        alt="Preview"
-                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-                        onError={(e: any) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                    </div>
+                    <SliderFormPreview src={getAssetUrl(formImageUrl.trim())} />
                   </div>
                 )}
 
@@ -1718,6 +1794,10 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
             <img
               src={previewModalImage}
               alt="Enlarged preview"
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                retryWithImageFallback(e.currentTarget);
+              }}
               style={{
                 width: '100%',
                 maxHeight: '85vh',

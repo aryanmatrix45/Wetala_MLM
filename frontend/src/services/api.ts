@@ -20,7 +20,13 @@ export const normalizeDirectImageUrl = (url?: string): string => {
   // Google Drive share/view link -> direct CDN image URL
   const gDriveMatch = trimmed.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]+)/i);
   if (gDriveMatch && gDriveMatch[1]) {
-    return `https://lh3.googleusercontent.com/d/${gDriveMatch[1]}`;
+    return `https://lh3.googleusercontent.com/d/${gDriveMatch[1]}=s0`;
+  }
+
+  // Bare lh3 Drive link (e.g. saved earlier) -> request the original size, not Google's default downscale
+  const lh3Match = trimmed.match(/^https:\/\/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)$/i);
+  if (lh3Match) {
+    return `https://lh3.googleusercontent.com/d/${lh3Match[1]}=s0`;
   }
 
   // Dropbox share link -> raw direct image
@@ -33,6 +39,40 @@ export const normalizeDirectImageUrl = (url?: string): string => {
   }
 
   return trimmed;
+};
+
+/**
+ * Extracts the Google Drive file id from a Drive share link or an lh3 direct link.
+ */
+export const getGoogleDriveFileId = (url?: string): string | null => {
+  if (!url) return null;
+  const match =
+    url.match(/drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]+)/i) ||
+    url.match(/lh3\.googleusercontent\.com\/d\/([a-zA-Z0-9_-]+)/i);
+  return match ? match[1] : null;
+};
+
+/**
+ * Alternate source for a Google Drive image when the lh3 link fails to load
+ * (Drive's thumbnail endpoint serves publicly shared images up to the requested width).
+ */
+export const getImageFallbackUrl = (url?: string): string | null => {
+  const id = getGoogleDriveFileId(url);
+  return id ? `https://drive.google.com/thumbnail?id=${id}&sz=w4000` : null;
+};
+
+/**
+ * <img> onError handler: retries a failed Google Drive image once via the fallback URL.
+ * Returns true when a retry was started.
+ */
+export const retryWithImageFallback = (img: HTMLImageElement): boolean => {
+  const fallback = getImageFallbackUrl(img.src);
+  if (fallback && img.dataset.fallbackTried !== 'true') {
+    img.dataset.fallbackTried = 'true';
+    img.src = fallback;
+    return true;
+  }
+  return false;
 };
 
 /**
@@ -2019,7 +2059,7 @@ export function normalizeGoogleDriveUrl(url?: string): string {
     /drive\.google\.com\/(?:file\/d\/|open\?id=|uc\?.*id=)([a-zA-Z0-9_-]+)/i
   );
   if (match && match[1]) {
-    return `https://lh3.googleusercontent.com/d/${match[1]}`;
+    return `https://lh3.googleusercontent.com/d/${match[1]}=s0`;
   }
   if (trimmed.includes('dropbox.com')) {
     return trimmed.replace(/\?dl=0$/, '?raw=1').replace(/&dl=0$/, '&raw=1');

@@ -10,6 +10,7 @@ import {
   api,
   type AboutSectionItem,
   normalizeGoogleDriveUrl,
+  retryWithImageFallback,
 } from '../services/api';
 
 interface AboutUsSectionProps {
@@ -321,8 +322,11 @@ export const AboutUsSection: React.FC<AboutUsSectionProps> = ({ className = '' }
                       <img
                         src={directImg}
                         alt={section.title}
+                        referrerPolicy="no-referrer"
                         onError={(e) => {
-                          (e.currentTarget as HTMLElement).style.display = 'none';
+                          if (!retryWithImageFallback(e.currentTarget)) {
+                            e.currentTarget.style.display = 'none';
+                          }
                         }}
                       />
 
