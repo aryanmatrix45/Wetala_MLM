@@ -25,7 +25,7 @@ import {
   Sparkles,
   Check,
 } from 'lucide-react';
-import { api, type ProductItem, type ProductImage, type CategoryItem, type SubcategoryItem } from '../services/api';
+import { api, type ProductItem, type ProductImage, type CategoryItem, type SubcategoryItem, getAssetUrl, retryWithImageFallback } from '../services/api';
 import { CKEditorField } from '../components/CKEditorField';
 
 interface AdminProductsPageProps {
@@ -934,10 +934,12 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                           >
                             {primaryImg?.url ? (
                               <img
-                                src={primaryImg.url}
+                                src={getAssetUrl(primaryImg.url)}
+                                referrerPolicy="no-referrer"
                                 alt={primaryImg.alt || prod.title}
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                                 onError={(e) => {
+                                  if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                                   (e.currentTarget as any).src = 'https://placehold.co/100x100?text=No+Img';
                                 }}
                               />
@@ -1573,10 +1575,12 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                         {/* Image Preview */}
                         <div style={{ height: '130px', background: '#f8fafc', overflow: 'hidden' }}>
                           <img
-                            src={img.url}
+                            src={getAssetUrl(img.url)}
+                            referrerPolicy="no-referrer"
                             alt={img.alt || `Product Image ${idx + 1}`}
                             style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                             onError={(e) => {
+                              if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                               (e.currentTarget as any).src = 'https://placehold.co/200x150?text=Preview';
                             }}
                           />
@@ -2021,9 +2025,13 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                   >
                     {primary?.url ? (
                       <img
-                        src={primary.url}
+                        src={getAssetUrl(primary.url)}
+                        referrerPolicy="no-referrer"
                         alt={primary.alt || selectedProduct.title}
                         style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        onError={(e) => {
+                          retryWithImageFallback(e.currentTarget);
+                        }}
                       />
                     ) : (
                       <ImageIcon size={48} color="#cbd5e1" />
@@ -2047,7 +2055,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                         flexShrink: 0,
                       }}
                     >
-                      <img src={img.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      <img src={getAssetUrl(img.url)} referrerPolicy="no-referrer" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { retryWithImageFallback(e.currentTarget); }} />
                     </div>
                   ))}
                 </div>

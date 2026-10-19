@@ -6,7 +6,7 @@ import { HomeVideoSection } from '../components/HomeVideoSection';
 import { AboutUsSection } from '../components/AboutUsSection';
 import { HomeFooter } from '../components/HomeFooter';
 import { HomeSectionHeader } from '../components/HomeSectionHeader';
-import { api, type SliderItem, type ProductItem } from '../services/api';
+import { api, type SliderItem, type ProductItem, getAssetUrl, retryWithImageFallback } from '../services/api';
 import {
   ShoppingBag,
   Sparkles,
@@ -229,11 +229,13 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({ onNavigate }) =>
                     <div className="home-product-thumb-container">
                       {primaryImg?.url ? (
                         <img
-                          src={primaryImg.url}
+                          src={getAssetUrl(primaryImg.url)}
+                          referrerPolicy="no-referrer"
                           alt={primaryImg.alt || title}
                           className="home-product-thumb-img"
                           loading="lazy"
                           onError={(e) => {
+                            if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                             (e.currentTarget as any).src =
                               'https://placehold.co/400x320/f1f5f9/64748b?text=Panchveda+Wellness';
                           }}

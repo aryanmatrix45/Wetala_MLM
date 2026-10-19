@@ -15,7 +15,7 @@ import {
   Check,
   Image as ImageIcon,
 } from 'lucide-react';
-import { api, type CategoryItem } from '../services/api';
+import { api, type CategoryItem, getAssetUrl, retryWithImageFallback } from '../services/api';
 
 interface AdminCategoriesPageProps {
   user?: any;
@@ -468,7 +468,8 @@ export const AdminCategoriesPage: React.FC<AdminCategoriesPageProps> = ({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           {cat.imageUrl || cat.image ? (
                             <img
-                              src={cat.imageUrl || cat.image}
+                              src={getAssetUrl(cat.imageUrl || cat.image)}
+                              referrerPolicy="no-referrer"
                               alt={cat.name}
                               style={{
                                 width: '42px',
@@ -481,6 +482,7 @@ export const AdminCategoriesPage: React.FC<AdminCategoriesPageProps> = ({
                                 background: '#f8fafc',
                               }}
                               onError={(e) => {
+                                if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                                 (e.currentTarget as HTMLElement).style.display = 'none';
                               }}
                             />
@@ -829,10 +831,13 @@ export const AdminCategoriesPage: React.FC<AdminCategoriesPageProps> = ({
                       }}
                     >
                       <img
-                        src={formData.imageUrl}
+                        key={formData.imageUrl}
+                        src={getAssetUrl(formData.imageUrl)}
+                        referrerPolicy="no-referrer"
                         alt="Preview"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => {
+                          if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                           (e.currentTarget as HTMLElement).style.display = 'none';
                         }}
                       />

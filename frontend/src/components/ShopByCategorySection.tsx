@@ -7,7 +7,7 @@ import {
   Package,
   Layers,
 } from 'lucide-react';
-import { api, type CategoryItem } from '../services/api';
+import { api, type CategoryItem, getAssetUrl, retryWithImageFallback } from '../services/api';
 import { HomeSectionHeader } from './HomeSectionHeader';
 
 interface ShopByCategorySectionProps {
@@ -100,10 +100,12 @@ export const ShopByCategorySection: React.FC<ShopByCategorySectionProps> = ({
                   <span className={`category-card-media ${catImg ? '' : 'is-fallback'}`}>
                     {catImg ? (
                       <img
-                        src={catImg}
+                        src={getAssetUrl(catImg)}
+                        referrerPolicy="no-referrer"
                         alt=""
                         loading="lazy"
                         onError={(e) => {
+                          if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                           // Hide broken images, leaving the tinted media box
                           (e.currentTarget as HTMLElement).style.display = 'none';
                         }}

@@ -16,7 +16,7 @@ import {
   FolderTree,
   Image as ImageIcon,
 } from 'lucide-react';
-import { api, type SubcategoryItem, type CategoryItem } from '../services/api';
+import { api, type SubcategoryItem, type CategoryItem, getAssetUrl, retryWithImageFallback } from '../services/api';
 
 interface AdminSubcategoriesPageProps {
   user?: any;
@@ -517,7 +517,8 @@ export const AdminSubcategoriesPage: React.FC<AdminSubcategoriesPageProps> = ({
                         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                           {subcat.imageUrl || subcat.image ? (
                             <img
-                              src={subcat.imageUrl || subcat.image}
+                              src={getAssetUrl(subcat.imageUrl || subcat.image)}
+                              referrerPolicy="no-referrer"
                               alt={subcat.name}
                               style={{
                                 width: '42px',
@@ -530,6 +531,7 @@ export const AdminSubcategoriesPage: React.FC<AdminSubcategoriesPageProps> = ({
                                 background: '#f8fafc',
                               }}
                               onError={(e) => {
+                                if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                                 (e.currentTarget as HTMLElement).style.display = 'none';
                               }}
                             />
@@ -903,10 +905,13 @@ export const AdminSubcategoriesPage: React.FC<AdminSubcategoriesPageProps> = ({
                       }}
                     >
                       <img
-                        src={formData.imageUrl}
+                        key={formData.imageUrl}
+                        src={getAssetUrl(formData.imageUrl)}
+                        referrerPolicy="no-referrer"
                         alt="Preview"
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         onError={(e) => {
+                          if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                           (e.currentTarget as HTMLElement).style.display = 'none';
                         }}
                       />

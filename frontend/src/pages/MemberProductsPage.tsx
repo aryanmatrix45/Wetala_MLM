@@ -22,7 +22,7 @@ import {
   Info,
   Clock,
 } from 'lucide-react';
-import { api, type ProductItem, type CategoryItem, type SubcategoryItem } from '../services/api';
+import { api, type ProductItem, type CategoryItem, type SubcategoryItem, getAssetUrl, retryWithImageFallback } from '../services/api';
 
 interface MemberProductsPageProps {
   user?: any;
@@ -648,10 +648,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 >
                   {viewProduct.images && viewProduct.images.length > 0 ? (
                     <img
-                      src={viewProduct.images[activeImageIdx]?.url || viewProduct.images[0]?.url}
+                      src={getAssetUrl(viewProduct.images[activeImageIdx]?.url || viewProduct.images[0]?.url)}
+                      referrerPolicy="no-referrer"
                       alt={viewProduct.images[activeImageIdx]?.alt || viewProduct.title}
                       style={{ width: '100%', height: '100%', objectFit: 'contain' }}
                       onError={(e) => {
+                        if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                         (e.currentTarget as any).src = 'https://placehold.co/500x500?text=Product';
                       }}
                     />
@@ -733,9 +735,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         }}
                       >
                         <img
-                          src={img.url}
+                          src={getAssetUrl(img.url)}
+                          referrerPolicy="no-referrer"
                           alt={img.alt || ''}
                           style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }}
+                          onError={(e) => {
+                            retryWithImageFallback(e.currentTarget);
+                          }}
                         />
                       </button>
                     ))}
@@ -1201,7 +1207,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         onClick={() => handleOpenProduct(relProd)}
                       >
                         {relImg?.url ? (
-                          <img src={relImg.url} alt={relProd.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          <img src={getAssetUrl(relImg.url)} referrerPolicy="no-referrer" alt={relProd.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { retryWithImageFallback(e.currentTarget); }} />
                         ) : (
                           <ImageIcon size={36} color="#cbd5e1" />
                         )}
@@ -1412,7 +1418,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 >
                   {(cat.imageUrl || cat.image) && (
                     <img
-                      src={cat.imageUrl || cat.image}
+                      src={getAssetUrl(cat.imageUrl || cat.image)}
+                      referrerPolicy="no-referrer"
                       alt=""
                       style={{
                         width: '18px',
@@ -1421,6 +1428,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         objectFit: 'cover',
                       }}
                       onError={(e) => {
+                        if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                         (e.currentTarget as HTMLElement).style.display = 'none';
                       }}
                     />
@@ -1598,10 +1606,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         >
                           {subImg ? (
                             <img
-                              src={subImg}
+                              src={getAssetUrl(subImg)}
+                              referrerPolicy="no-referrer"
                               alt={subcat.name}
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               onError={(e) => {
+                                if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                                 (e.currentTarget as HTMLElement).style.display = 'none';
                               }}
                             />
@@ -1744,10 +1754,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     >
                       {primaryImg?.url ? (
                         <img
-                          src={primaryImg.url}
+                          src={getAssetUrl(primaryImg.url)}
+                          referrerPolicy="no-referrer"
                           alt={primaryImg.alt || prod.title}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                           onError={(e) => {
+                            if (retryWithImageFallback(e.currentTarget as HTMLImageElement)) return;
                             (e.currentTarget as any).src = 'https://placehold.co/300x200?text=Product';
                           }}
                         />
@@ -2021,9 +2033,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         >
                           {primaryImg?.url ? (
                             <img
-                              src={primaryImg.url}
+                              src={getAssetUrl(primaryImg.url)}
+                              referrerPolicy="no-referrer"
                               alt=""
                               style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                retryWithImageFallback(e.currentTarget);
+                              }}
                             />
                           ) : (
                             <ImageIcon size={24} color="#cbd5e1" style={{ margin: '18px auto' }} />
@@ -2314,7 +2330,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                           }}
                         >
                           {primaryImg?.url ? (
-                            <img src={primaryImg.url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            <img src={getAssetUrl(primaryImg.url)} referrerPolicy="no-referrer" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { retryWithImageFallback(e.currentTarget); }} />
                           ) : (
                             <ImageIcon size={18} color="#cbd5e1" style={{ margin: '12px auto' }} />
                           )}
