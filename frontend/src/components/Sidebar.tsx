@@ -24,6 +24,7 @@ import {
   ShoppingCart,
   Share2,
   Info,
+  Video,
   X
 } from 'lucide-react';
 import { api } from '../services/api';
@@ -159,6 +160,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
             id: 'manage-about',
             label: 'About Us Section',
             icon: Info,
+          },
+          {
+            id: 'manage-videos',
+            label: 'Video Showcase',
+            icon: Video,
           },
           {
             id: 'manage-categories',

@@ -2751,16 +2751,47 @@ input, select, textarea {
   animation: fadeInBackdrop 0.2s ease;
 }
 
-.layout-home-immersive .page-body.member-home-page {
-  max-width: 100%;
-  width: 100%;
-  padding: 32px 48px 64px;
+.layout-home-immersive .top-header {
+  padding: 0 max(20px, calc((100% - 1240px) / 2 + 24px));
+}
+
+.layout-home-immersive .page-body.member-home-page,
+.page-body.member-home-page {
+  max-width: 1240px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+  padding: 28px 24px 64px;
   box-sizing: border-box;
 }
 
+@media (min-width: 1536px) {
+  .layout-home-immersive .top-header {
+    padding: 0 max(24px, calc((100% - 1280px) / 2 + 28px));
+  }
+  .layout-home-immersive .page-body.member-home-page,
+  .page-body.member-home-page {
+    max-width: 1280px !important;
+    padding: 32px 28px 72px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .layout-home-immersive .top-header {
+    padding: 0 20px;
+  }
+  .layout-home-immersive .page-body.member-home-page,
+  .page-body.member-home-page {
+    padding: 24px 18px 56px;
+  }
+}
+
 @media (max-width: 768px) {
-  .layout-home-immersive .page-body.member-home-page {
-    padding: 20px 16px 48px;
+  .layout-home-immersive .top-header {
+    padding: 0 16px;
+  }
+  .layout-home-immersive .page-body.member-home-page,
+  .page-body.member-home-page {
+    padding: 16px 12px 48px;
   }
 }
 

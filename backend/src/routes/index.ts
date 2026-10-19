@@ -23,8 +23,16 @@ import socialMediaRoutes from './socialMedia.routes';
 import adminSocialMediaRoutes from './adminSocialMedia.routes';
 import aboutSectionRoutes from './aboutSection.routes';
 import adminAboutSectionRoutes from './adminAboutSection.routes';
+import homeVideoRoutes from './homeVideo.routes';
+import adminHomeVideoRoutes from './adminHomeVideo.routes';
 
 const router = Router();
+
+// Video Showcase Section (Members / Public)
+router.use('/home-videos', homeVideoRoutes);
+
+// Video Showcase Management (SuperAdmin)
+router.use('/admin/home-videos', adminHomeVideoRoutes);
 
 // About Us Section (Members / Public)
 router.use('/about-sections', aboutSectionRoutes);

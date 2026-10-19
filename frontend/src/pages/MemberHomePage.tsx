@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HomeSlider } from '../components/HomeSlider';
 import { SocialMediaSection } from '../components/SocialMediaSection';
 import { ShopByCategorySection } from '../components/ShopByCategorySection';
+import { HomeVideoSection } from '../components/HomeVideoSection';
 import { AboutUsSection } from '../components/AboutUsSection';
 import { api, type SliderItem, type ProductItem } from '../services/api';
 import {
@@ -185,6 +186,9 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({
           }
         }}
       />
+
+      {/* 1.9 Video Showcase Section (Before Products Section) */}
+      <HomeVideoSection key={refreshing ? 'refreshing-video' : 'normal-video'} />
 
       {/* 2. Featured Products Section (Directly after Slider, Social Connect & Shop by Category) */}
       <div className="home-products-section">

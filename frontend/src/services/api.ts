@@ -1731,6 +1731,135 @@ export const api = {
     }
     return resJson;
   },
+
+  // ==========================================
+  // HOME VIDEO SHOWCASE APIS (MEMBER & ADMIN)
+  // ==========================================
+  async getHomeVideos(): Promise<{
+    status: boolean;
+    data: { settings: HomeVideoSettings; videos: HomeVideoItem[] };
+  }> {
+    const res = await fetch(`${API_BASE_URL}/home-videos`);
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch home videos');
+    }
+    return resJson;
+  },
+
+  async adminGetHomeVideos(token?: string): Promise<{
+    status: boolean;
+    data: { settings: HomeVideoSettings; videos: HomeVideoItem[] };
+  }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-videos`, {
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch videos');
+    }
+    return resJson;
+  },
+
+  async adminUpdateHomeVideoSettings(
+    settings: Partial<HomeVideoSettings>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: HomeVideoSettings }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-videos/settings`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(settings),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to update video section settings');
+    }
+    return resJson;
+  },
+
+  async adminCreateHomeVideo(
+    data: Partial<HomeVideoItem>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: HomeVideoItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-videos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to add video');
+    }
+    return resJson;
+  },
+
+  async adminUpdateHomeVideo(
+    id: string,
+    data: Partial<HomeVideoItem>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: HomeVideoItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-videos/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify(data),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to update video');
+    }
+    return resJson;
+  },
+
+  async adminToggleHomeVideoStatus(
+    id: string,
+    status?: string,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: HomeVideoItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-videos/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: JSON.stringify({ status }),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to toggle video status');
+    }
+    return resJson;
+  },
+
+  async adminDeleteHomeVideo(id: string, token?: string): Promise<{ status: boolean; message: string }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-videos/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${savedToken}`,
+      },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to delete video');
+    }
+    return resJson;
+  },
 };
 
 export interface SliderItem {
@@ -1787,6 +1916,38 @@ export interface AboutSectionItem {
   updatedBy?: string;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface HomeVideoItem {
+  _id: string;
+  id?: string;
+  title: string;
+  youtubeUrl: string;
+  videoId: string;
+  description?: string;
+  order: number;
+  status: 'ACTIVE' | 'INACTIVE';
+  updatedBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface HomeVideoSettings {
+  settingsKey?: string;
+  headerTitle: string;
+  headerSubtitle?: string;
+  isActive: boolean;
+  updatedBy?: string;
+}
+
+// Extract 11-char YouTube ID from any standard link
+export function extractYouTubeId(url?: string): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  const match = trimmed.match(
+    /(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=|shorts\/))([\w-]{11})/i
+  );
+  return match ? match[1] : null;
 }
 
 // Helper to normalize Google Drive view links to direct high-res render URLs

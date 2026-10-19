@@ -25,6 +25,7 @@ import { MemberHomePage } from './pages/MemberHomePage';
 import { AdminSlidersPage } from './pages/AdminSlidersPage';
 import { AdminSocialMediaPage } from './pages/AdminSocialMediaPage';
 import { AdminAboutPage } from './pages/AdminAboutPage';
+import { AdminVideosPage } from './pages/AdminVideosPage';
 import { api } from './services/api';
 
 export function App() {
@@ -336,6 +337,10 @@ export function App() {
 
         {activeTab === 'manage-about' && (
           <AdminAboutPage user={user} token={token} />
+        )}
+
+        {activeTab === 'manage-videos' && (
+          <AdminVideosPage user={user} token={token} />
         )}
 
         {activeTab === 'manage-categories' && (
