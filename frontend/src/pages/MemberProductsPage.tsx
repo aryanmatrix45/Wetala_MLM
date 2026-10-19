@@ -27,7 +27,9 @@ import { api, type ProductItem, type CategoryItem, type SubcategoryItem } from '
 interface MemberProductsPageProps {
   user?: any;
   token?: string | null;
-  onNavigate?: (tab: string) => void;
+  onNavigate?: (tab: string, params?: { categoryId?: string; subcategoryId?: string }) => void;
+  initialCategoryId?: string;
+  initialSubcategoryId?: string;
 }
 
 interface CartItem {
@@ -35,15 +37,20 @@ interface CartItem {
   quantity: number;
 }
 
-export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: propUser, onNavigate }) => {
+export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
+  user: propUser,
+  onNavigate,
+  initialCategoryId,
+  initialSubcategoryId,
+}) => {
   const savedUserStr = localStorage.getItem('wetala_user');
   const user = propUser || (savedUserStr ? JSON.parse(savedUserStr) : null);
 
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategoryId, setSelectedCategoryId] = useState('ALL');
-  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('ALL');
+  const [selectedCategoryId, setSelectedCategoryId] = useState(initialCategoryId || 'ALL');
+  const [selectedSubcategoryId, setSelectedSubcategoryId] = useState(initialSubcategoryId || 'ALL');
   const [categoriesList, setCategoriesList] = useState<CategoryItem[]>([]);
   const [subcategoriesList, setSubcategoriesList] = useState<SubcategoryItem[]>([]);
 
@@ -106,6 +113,14 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
       setSubcategoriesList([]);
     }
   }, [selectedCategoryId]);
+
+  // Synchronize when initial category navigation props change from home page
+  useEffect(() => {
+    if (initialCategoryId) {
+      setSelectedCategoryId(initialCategoryId);
+      setSelectedSubcategoryId(initialSubcategoryId || 'ALL');
+    }
+  }, [initialCategoryId, initialSubcategoryId]);
 
   // Load Active Products from API
   const loadProducts = async () => {
@@ -1408,79 +1423,254 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({ user: pr
             </div>
           </div>
 
-          {/* Subcategory Pills */}
-          {selectedCategoryId !== 'ALL' && subcategoriesList.length > 0 && (
+          {/* Visual Subcategories Showcase (When a Category is Selected) */}
+          {selectedCategoryId !== 'ALL' && (
             <div
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                marginBottom: '20px',
-                padding: '10px 16px',
                 background: '#f8fafc',
-                borderRadius: '10px',
-                border: '1px solid #e2e8f0',
-                overflowX: 'auto',
+                borderRadius: '16px',
+                border: '1.5px solid #e2e8f0',
+                padding: '20px',
+                marginBottom: '26px',
               }}
             >
-              <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginRight: '4px', flexShrink: 0 }}>
-                Subcategories:
-              </span>
-              <button
-                onClick={() => setSelectedSubcategoryId('ALL')}
+              {/* Category Breadcrumbs & Title */}
+              <div
                 style={{
-                  padding: '4px 12px',
-                  borderRadius: '16px',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  border: selectedSubcategoryId === 'ALL' ? '1px solid #0284c7' : '1px solid #cbd5e1',
-                  background: selectedSubcategoryId === 'ALL' ? '#e0f2fe' : '#fff',
-                  color: selectedSubcategoryId === 'ALL' ? '#0369a1' : '#64748b',
-                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                  marginBottom: '16px',
+                  paddingBottom: '14px',
+                  borderBottom: '1px solid #e2e8f0',
                 }}
               >
-                All
-              </button>
-              {subcategoriesList.map((subcat) => (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '13px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedCategoryId('ALL');
+                      setSelectedSubcategoryId('ALL');
+                    }}
+                    style={{
+                      background: 'transparent',
+                      border: 'none',
+                      color: '#2563eb',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                  >
+                    All Categories
+                  </button>
+                  <ChevronRight size={14} color="#94a3b8" />
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                    {categoriesList.find((c) => c._id === selectedCategoryId)?.name || 'Selected Category'}
+                  </span>
+                  {selectedSubcategoryId !== 'ALL' && (
+                    <>
+                      <ChevronRight size={14} color="#94a3b8" />
+                      <span style={{ fontWeight: 700, color: '#0284c7' }}>
+                        {subcategoriesList.find((s) => s._id === selectedSubcategoryId)?.name}
+                      </span>
+                    </>
+                  )}
+                </div>
+
                 <button
-                  key={subcat._id}
-                  onClick={() => setSelectedSubcategoryId(subcat._id)}
+                  type="button"
+                  onClick={() => {
+                    setSelectedCategoryId('ALL');
+                    setSelectedSubcategoryId('ALL');
+                  }}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
-                    gap: '5px',
-                    padding: '4px 12px',
-                    borderRadius: '16px',
-                    fontSize: '11px',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#475569',
+                    fontSize: '12px',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    border: selectedSubcategoryId === subcat._id ? '1px solid #0284c7' : '1px solid #cbd5e1',
-                    background: selectedSubcategoryId === subcat._id ? '#e0f2fe' : '#fff',
-                    color: selectedSubcategoryId === subcat._id ? '#0369a1' : '#64748b',
-                    flexShrink: 0,
                   }}
                 >
-                  {(subcat.imageUrl || subcat.image) && (
-                    <img
-                      src={subcat.imageUrl || subcat.image}
-                      alt=""
-                      style={{
-                        width: '16px',
-                        height: '16px',
-                        borderRadius: '50%',
-                        objectFit: 'cover',
-                      }}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLElement).style.display = 'none';
-                      }}
-                    />
-                  )}
-                  <span>{subcat.name}</span>
+                  <ArrowLeft size={13} />
+                  <span>View All Categories</span>
                 </button>
-              ))}
+              </div>
+
+              {/* Subcategories Grid */}
+              <div style={{ marginBottom: '8px' }}>
+                <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.04em' }}>
+                  Choose a Subcategory:
+                </div>
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))',
+                    gap: '12px',
+                  }}
+                >
+                  {/* Card for "All in Category" */}
+                  <div
+                    onClick={() => setSelectedSubcategoryId('ALL')}
+                    style={{
+                      background: selectedSubcategoryId === 'ALL' ? '#eff6ff' : '#ffffff',
+                      border: selectedSubcategoryId === 'ALL' ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      borderRadius: '12px',
+                      padding: '12px',
+                      textAlign: 'center',
+                      cursor: 'pointer',
+                      transition: 'all 0.18s ease',
+                      boxShadow: selectedSubcategoryId === 'ALL' ? '0 4px 12px rgba(37, 99, 235, 0.15)' : 'none',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '10px',
+                        background: selectedSubcategoryId === 'ALL' ? '#2563eb' : '#f1f5f9',
+                        color: selectedSubcategoryId === 'ALL' ? '#ffffff' : '#475569',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 8px',
+                      }}
+                    >
+                      <Sparkles size={18} />
+                    </div>
+                    <div style={{ fontSize: '12px', fontWeight: 700, color: selectedSubcategoryId === 'ALL' ? '#1d4ed8' : '#0f172a' }}>
+                      All Products
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                      Entire Category
+                    </div>
+                  </div>
+
+                  {/* Cards for each Subcategory */}
+                  {subcategoriesList.map((subcat) => {
+                    const isSelected = selectedSubcategoryId === subcat._id;
+                    const subImg = subcat.imageUrl || subcat.image;
+
+                    return (
+                      <div
+                        key={subcat._id}
+                        onClick={() => setSelectedSubcategoryId(subcat._id)}
+                        style={{
+                          background: isSelected ? '#eff6ff' : '#ffffff',
+                          border: isSelected ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                          borderRadius: '12px',
+                          padding: '12px',
+                          textAlign: 'center',
+                          cursor: 'pointer',
+                          transition: 'all 0.18s ease',
+                          boxShadow: isSelected ? '0 4px 12px rgba(37, 99, 235, 0.15)' : 'none',
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '40px',
+                            height: '40px',
+                            borderRadius: '10px',
+                            background: '#f8fafc',
+                            overflow: 'hidden',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            margin: '0 auto 8px',
+                            border: '1px solid #e2e8f0',
+                          }}
+                        >
+                          {subImg ? (
+                            <img
+                              src={subImg}
+                              alt={subcat.name}
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              onError={(e) => {
+                                (e.currentTarget as HTMLElement).style.display = 'none';
+                              }}
+                            />
+                          ) : (
+                            <Package size={18} color="#2563eb" />
+                          )}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: '12px',
+                            fontWeight: 700,
+                            color: isSelected ? '#1d4ed8' : '#0f172a',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                          }}
+                        >
+                          {subcat.name}
+                        </div>
+                        <div style={{ fontSize: '10px', color: isSelected ? '#2563eb' : '#64748b', marginTop: '2px' }}>
+                          {isSelected ? '✓ Selected' : 'View Products'}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
+
+          {/* Active Category & Subcategory Filter Status Bar */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '12px',
+              marginBottom: '16px',
+            }}
+          >
+            <div>
+              <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                {selectedSubcategoryId !== 'ALL'
+                  ? `${subcategoriesList.find((s) => s._id === selectedSubcategoryId)?.name || 'Subcategory'} Products`
+                  : selectedCategoryId !== 'ALL'
+                  ? `All ${categoriesList.find((c) => c._id === selectedCategoryId)?.name || 'Category'} Products`
+                  : 'All Available Products'}
+              </h3>
+              <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
+                Showing {products.length} {products.length === 1 ? 'product' : 'products'} available for purchase
+              </p>
+            </div>
+
+            {(selectedCategoryId !== 'ALL' || selectedSubcategoryId !== 'ALL' || searchQuery) && (
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCategoryId('ALL');
+                  setSelectedSubcategoryId('ALL');
+                  setSearchQuery('');
+                }}
+                style={{
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  color: '#2563eb',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  padding: '5px 12px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                }}
+              >
+                Clear Filters
+              </button>
+            )}
+          </div>
 
           {/* Products Grid */}
           {loading ? (

@@ -75,6 +75,11 @@ export function App() {
     return null;
   });
 
+  const [categoryNav, setCategoryNav] = useState<{
+    categoryId?: string;
+    subcategoryId?: string;
+  } | null>(null);
+
   const navigateAuth = (view: 'login' | 'pre-registration' | 'register', urlPath?: string) => {
     setAuthView(view);
     if (urlPath) {
@@ -82,12 +87,18 @@ export function App() {
     }
   };
 
-  // Tab switch handler with URL cleanup
-  const handleTabChange = (newTab: string) => {
+  // Tab switch handler with URL cleanup and category params support
+  const handleTabChange = (
+    newTab: string,
+    params?: { categoryId?: string; subcategoryId?: string }
+  ) => {
     if (newTab !== 'member-products') {
       if (window.location.pathname.startsWith('/product/') || window.location.pathname.startsWith('/products/')) {
         window.history.pushState(null, '', '/');
       }
+      setCategoryNav(null);
+    } else if (params) {
+      setCategoryNav(params);
     }
     setActiveTab(newTab);
     setIsSidebarOpen(false);
@@ -335,7 +346,13 @@ export function App() {
         )}
 
         {activeTab === 'member-products' && (
-          <MemberProductsPage user={user} token={token} onNavigate={(tab) => setActiveTab(tab)} />
+          <MemberProductsPage
+            user={user}
+            token={token}
+            initialCategoryId={categoryNav?.categoryId}
+            initialSubcategoryId={categoryNav?.subcategoryId}
+            onNavigate={handleTabChange}
+          />
         )}
 
         {activeTab === 'income-settings' && <IncomeSettingsPage user={user} token={token} defaultSection="simulator" />}

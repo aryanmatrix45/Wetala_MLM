@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HomeSlider } from '../components/HomeSlider';
 import { SocialMediaSection } from '../components/SocialMediaSection';
+import { ShopByCategorySection } from '../components/ShopByCategorySection';
 import { api, type SliderItem, type ProductItem } from '../services/api';
 import {
   RefreshCw,
@@ -18,7 +19,7 @@ import {
 interface MemberHomePageProps {
   user?: any;
   token?: string | null;
-  onNavigate?: (tab: string) => void;
+  onNavigate?: (tab: string, params?: { categoryId?: string; subcategoryId?: string }) => void;
 }
 
 export const MemberHomePage: React.FC<MemberHomePageProps> = ({
@@ -175,7 +176,16 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({
       {/* 1.5 Official Social Media Connect Section */}
       <SocialMediaSection key={refreshing ? 'refreshing' : 'normal'} />
 
-      {/* 2. Featured Products Section (Directly after Slider & Social Connect) */}
+      {/* 1.8 Shop by Category Section (with 2-column mobile view & view-more toggle) */}
+      <ShopByCategorySection
+        onSelectCategory={(category) => {
+          if (onNavigate && category._id) {
+            onNavigate('member-products', { categoryId: category._id });
+          }
+        }}
+      />
+
+      {/* 2. Featured Products Section (Directly after Slider, Social Connect & Shop by Category) */}
       <div className="home-products-section">
         <div className="home-section-head">
           <div className="home-section-title-wrap">
