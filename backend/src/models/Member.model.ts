@@ -94,6 +94,14 @@ export interface IMember extends Document {
   binaryActivatedAt?: Date;
   // How binary participation was first unlocked: earned personal BV, or BV Wallet balance
   activationSource?: '' | 'PERSONAL_BV' | 'BV_WALLET';
+  // The 100 BV locked at binary activation: taken from personal BV first, then the BV Wallet.
+  // Wallet BV is debited and fed into the upline legs once; personal BV is already in the tree.
+  activationLockedBV?: number;
+  activationLockFromPersonalBV?: number;
+  activationLockFromWalletBV?: number;
+  activationLockTransactionId?: string;
+  activationLockedAt?: Date;
+  activationBvDistributed?: boolean;
   matchedPairs: number;
   totalIncome: number;
   walletBalance: number;
@@ -398,6 +406,12 @@ const memberSchema = new Schema<IMember, IMemberModel>(
       enum: ['', 'PERSONAL_BV', 'BV_WALLET'],
       default: '',
     },
+    activationLockedBV: { type: Number, default: 0, min: 0 },
+    activationLockFromPersonalBV: { type: Number, default: 0, min: 0 },
+    activationLockFromWalletBV: { type: Number, default: 0, min: 0 },
+    activationLockTransactionId: { type: String, trim: true },
+    activationLockedAt: { type: Date },
+    activationBvDistributed: { type: Boolean, default: false },
     matchedPairs: {
       type: Number,
       default: 0,
@@ -477,7 +491,7 @@ memberSchema.pre('save', async function () {
   this.binaryPosition = normalizedPos;
 
   // Minimum 100 Business Volume (BV) required to participate in Binary Income Tree.
-  // Members activated through their BV Wallet balance stay active (see BVWalletService).
+  // Members whose activation BV was locked (see BVWalletService.activateFromWalletIfEligible) stay active.
   if ((this.personalBv || 0) >= 100) {
     if (!this.isBinaryActive) {
       this.isBinaryActive = true;
@@ -486,7 +500,8 @@ memberSchema.pre('save', async function () {
       }
     }
     if (!this.activationSource) this.activationSource = 'PERSONAL_BV';
-  } else if (this.activationSource === 'BV_WALLET') {
+  } else if (this.activationSource === 'BV_WALLET' || (this.activationLockedBV || 0) > 0) {
+    // Activation is permanent once BV has been locked for it
     this.isBinaryActive = true;
   } else {
     this.isBinaryActive = false;

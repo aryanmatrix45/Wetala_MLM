@@ -11,6 +11,8 @@ import { BVWalletError, BVWalletService } from './BVWalletService';
  *
  *   Total BV = personal BV (earned from approved orders, paid in cash or BV)
  *            + BV Wallet balance (spendable: transfers received, welcome bonus, refunds, minus spending)
+ *            - the part of the 100 BV binary activation lock taken from personal BV
+ *              (the wallet part has already left the wallet balance)
  *
  * Team (left/right) volume is reported separately and never added, so a purchase is not counted
  * again for every upline member.
@@ -21,7 +23,8 @@ export class BVSummaryService {
     // Catch up members whose wallet balance already qualifies (e.g. BV received before activation existed)
     await BVWalletService.activateFromWalletIfEligible(memberId);
     const member = await Member.findOne({ memberId }).select(
-      'memberId name personalBv isBinaryActive activationSource welcomeBonusEarned welcomeBonusCap'
+      'memberId name personalBv isBinaryActive activationSource welcomeBonusEarned welcomeBonusCap ' +
+        'activationLockedBV activationLockFromPersonalBV activationLockFromWalletBV activationLockedAt'
     );
     if (!member) throw new BVWalletError('Member not found.', HTTP_STATUS.NOT_FOUND);
 
@@ -47,7 +50,8 @@ export class BVSummaryService {
       ]),
     ]);
     const walletBV = wallet?.availableBV || 0;
-    const totalBV = personalBV + walletBV;
+    const lockedFromPersonal = member.activationLockFromPersonalBV || 0;
+    const totalBV = Math.max(0, personalBV + walletBV - lockedFromPersonal);
 
     return {
       memberId,
@@ -81,6 +85,11 @@ export class BVSummaryService {
         isActive: Boolean(member.isBinaryActive),
         activationSource: member.activationSource || '',
         activationBV: BV_WALLET.ACTIVATION_BV,
+        // BV locked for binary activation: used once in binary income, never spendable
+        lockedBV: member.activationLockedBV || 0,
+        lockedFromPersonal,
+        lockedFromWallet: member.activationLockFromWalletBV || 0,
+        lockedAt: member.activationLockedAt || null,
       },
     };
   }

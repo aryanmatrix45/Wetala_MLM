@@ -8,6 +8,8 @@ import { Member, IMember } from '../models/Member.model';
 import { Purchase, IPurchase } from '../models/Purchase.model';
 import { AuditService } from './AuditService';
 import { BinaryTreeService } from './tree/BinaryTreeService';
+import { BVService } from './BVService';
+import { BVLedger } from '../models/BVLedger.model';
 import {
   HTTP_STATUS,
   BV_WALLET,
@@ -17,6 +19,7 @@ import {
   BV_TXN_STATUS,
   BV_LEDGER_ENTRY,
   BVLedgerEntryType,
+  BV_SOURCE_TYPE,
 } from '../config/constants';
 
 /**
@@ -35,9 +38,10 @@ import {
  *  - PURCHASE: a member pays for an order with its own BV value (e.g. a 1,250 BV package costs
  *    1,250 BV; rupee prices are never converted); the order then waits for Super Admin approval
  *  - PURCHASE_REFUND: the BV comes back if that order is rejected or refunded
+ *  - BINARY_ACTIVATION: up to 100 BV locked once at binary activation and fed into the upline legs
  *
- * Wallet BV itself is not earned volume: it never changes Member.personalBv, BinaryVolume or BVLedger.
- * Earned BV comes from the order once the Super Admin approves it. A wallet balance can, however,
+ * Wallet BV itself is not earned volume: it never changes Member.personalBv. Earned BV comes from
+ * the order once the Super Admin approves it. A wallet balance can, however,
  * unlock binary participation (personal BV + wallet balance >= BV_WALLET.ACTIVATION_BV).
  */
 
@@ -173,7 +177,7 @@ export class BVWalletService {
     entryType: BVLedgerEntryType,
     txn: IBVTransaction,
     delta: number,
-    totals: Partial<Record<'totalGenerated' | 'totalReceived' | 'totalSent' | 'totalWelcomeBonus' | 'totalSpent', number>> = {},
+    totals: Partial<Record<'totalGenerated' | 'totalReceived' | 'totalSent' | 'totalWelcomeBonus' | 'totalSpent' | 'totalActivationLocked', number>> = {},
     options: { requireNotFrozen?: boolean } = {}
   ): Promise<IBVWallet | null> {
     const filter: Record<string, unknown> = { ownerId };
@@ -765,43 +769,132 @@ export class BVWalletService {
   // ---------------------------------------------------------------------------
 
   /**
-   * Activates binary participation (and places the member in the tree if needed) once personal BV
-   * plus BV Wallet balance reaches BV_WALLET.ACTIVATION_BV. Activation is permanent and does not
-   * consume the BV. Best effort: called after wallet credits commit, never fails the caller.
+   * Binary activation and the 100 BV lock.
+   *
+   * Once a member's personal BV plus BV Wallet balance reaches BV_WALLET.ACTIVATION_BV (100), binary
+   * participation is activated and 100 BV is locked for it, exactly once:
+   *  - taken from personal BV first (BV from approved orders, already credited to the upline legs);
+   *  - any shortfall is debited from the BV Wallet and credited to every upline leg as ACTIVATION
+   *    volume, so it is used in binary matching like any other team BV.
+   * The locked BV is deducted from the member's Total BV and can never be transferred or spent.
+   * Activation is permanent. Best effort: called after BV changes commit, never fails the caller.
    */
   static async activateFromWalletIfEligible(memberId: string): Promise<boolean> {
     try {
       const id = memberId.toUpperCase();
       const member = await Member.findOne({ memberId: id });
-      if (!member || member.isBinaryActive) return false;
+      if (!member) return false;
+
+      // Already locked: only finish feeding the wallet part into the tree if an earlier attempt stopped
+      if ((member.activationLockedBV || 0) >= BV_WALLET.ACTIVATION_BV) {
+        if (!member.activationBvDistributed && (member.activationLockFromWalletBV || 0) > 0) {
+          await this.distributeActivationBV(id);
+        }
+        return false;
+      }
 
       const wallet = await BVWallet.findOne({ ownerId: id });
-      const total = (member.personalBv || 0) + (wallet?.availableBV || 0);
-      if (total < BV_WALLET.ACTIVATION_BV) return false;
+      const walletBV = wallet && !wallet.isFrozen ? wallet.availableBV : 0;
+      const personalBV = member.personalBv || 0;
+      if (personalBV + walletBV < BV_WALLET.ACTIVATION_BV) return false;
 
-      const activated = await Member.updateOne(
-        { memberId: id, isBinaryActive: { $ne: true } },
-        { $set: { isBinaryActive: true, activationSource: 'BV_WALLET', binaryActivatedAt: member.binaryActivatedAt || new Date() } }
-      );
-      if (!activated.modifiedCount) return false;
+      const fromPersonal = Math.min(personalBV, BV_WALLET.ACTIVATION_BV);
+      const fromWallet = BV_WALLET.ACTIVATION_BV - fromPersonal;
+      const transactionId = fromWallet > 0 ? newTransactionId() : undefined;
 
-      if (!member.parentId && member.sponsorId) {
-        await BinaryTreeService.placeMemberInBinaryTree(id);
+      const locked = await runInTransaction(async (session) => {
+        const claim = await Member.updateOne(
+          { memberId: id, $or: [{ activationLockedBV: { $exists: false } }, { activationLockedBV: { $lt: BV_WALLET.ACTIVATION_BV } }] },
+          {
+            $set: {
+              isBinaryActive: true,
+              binaryActivatedAt: member.binaryActivatedAt || new Date(),
+              activationSource: member.activationSource || (fromWallet > 0 ? 'BV_WALLET' : 'PERSONAL_BV'),
+              activationLockedBV: BV_WALLET.ACTIVATION_BV,
+              activationLockFromPersonalBV: fromPersonal,
+              activationLockFromWalletBV: fromWallet,
+              activationLockTransactionId: transactionId,
+              activationLockedAt: new Date(),
+              activationBvDistributed: fromWallet === 0,
+            },
+          },
+          { session }
+        );
+        if (!claim.modifiedCount) return false;
+        if (fromWallet === 0) return true;
+
+        const [txn] = await BVTransaction.create(
+          [
+            {
+              transactionId,
+              type: BV_TXN_TYPE.BINARY_ACTIVATION,
+              status: BV_TXN_STATUS.COMPLETED,
+              senderType: BV_OWNER_TYPE.MEMBER,
+              senderId: id,
+              senderName: member.name,
+              recipientType: BV_OWNER_TYPE.SYSTEM,
+              recipientId: BV_WALLET.SYSTEM_OWNER_ID,
+              recipientName: 'Binary activation',
+              amount: fromWallet,
+              title: 'Binary activation lock',
+              note: `${formatBV(fromWallet)} locked from the BV Wallet to activate binary income${fromPersonal > 0 ? ` (plus ${formatBV(fromPersonal)} of personal BV)` : ''}.`,
+              initiatedBy: { role: 'system', email: 'SYSTEM' },
+            },
+          ],
+          { session }
+        );
+        const debited = await this.moveBalance(session, id, BV_LEDGER_ENTRY.DEBIT_OUT, txn, -fromWallet, { totalActivationLocked: fromWallet }, { requireNotFrozen: true });
+        if (!debited) throw await this.insufficientBalanceError(id, fromWallet);
+        await this.notify(session, {
+          type: 'BV_BINARY_ACTIVATION',
+          title: 'Binary Income Activated',
+          message: `${formatBV(BV_WALLET.ACTIVATION_BV)} is locked to activate your binary income. ${formatBV(fromWallet)} was taken from your BV Wallet and added to your upline team volume.`,
+          recipientId: id,
+          txn,
+        });
+        return true;
+      });
+      if (!locked) return false;
+
+      // The lock is committed; placement and feeding the tree are retried on the next check if they fail
+      try {
+        if (!member.parentId && member.sponsorId) {
+          await BinaryTreeService.placeMemberInBinaryTree(id);
+        }
+        if (fromWallet > 0) await this.distributeActivationBV(id);
+      } catch (error) {
+        console.error(`[BVWalletService] Activation BV for ${id} is locked but not yet in the binary tree:`, error);
       }
 
       await safeAudit({
-        action: 'BINARY_ACTIVATED_FROM_BV_WALLET',
+        action: 'BINARY_ACTIVATION_BV_LOCKED',
         entity: 'BV_WALLET',
         entityId: walletIdFor(id),
         performedBy: 'SYSTEM',
         performedByRole: 'system',
-        newValues: { memberId: id, personalBv: member.personalBv || 0, walletBV: wallet?.availableBV || 0 },
+        newValues: { memberId: id, lockedBV: BV_WALLET.ACTIVATION_BV, fromPersonal, fromWallet, transactionId },
       });
       return true;
     } catch (error) {
-      console.error(`[BVWalletService] Wallet activation check failed for ${memberId}:`, error);
+      console.error(`[BVWalletService] Binary activation lock failed for ${memberId}:`, error);
       return false;
     }
+  }
+
+  /** Credits the wallet part of the activation lock to the upline legs, once. */
+  private static async distributeActivationBV(memberId: string): Promise<void> {
+    const member = await Member.findOne({ memberId });
+    const amount = member?.activationLockFromWalletBV || 0;
+    const reference = member?.activationLockTransactionId;
+    if (!member || amount <= 0 || !reference || member.activationBvDistributed) return;
+    // Needs a tree position to have uplines; retried on the next activation check
+    if (!member.parentId) return;
+
+    const alreadyCredited = await BVLedger.exists({ referenceId: reference, sourceType: BV_SOURCE_TYPE.ACTIVATION });
+    if (!alreadyCredited) {
+      await BVService.distributeVolumeToAncestors(memberId, amount, BV_SOURCE_TYPE.ACTIVATION, reference);
+    }
+    await Member.updateOne({ memberId }, { $set: { activationBvDistributed: true } });
   }
 
   // ---------------------------------------------------------------------------
@@ -847,8 +940,10 @@ export class BVWalletService {
   }
 
   static async getWalletSummary(owner: BVOwner) {
-    const wallet = await this.ensureWallet(owner);
+    await this.ensureWallet(owner);
+    // Activation may lock BV out of the wallet, so read the balance after it
     if (owner.ownerType === BV_OWNER_TYPE.MEMBER) await this.activateFromWalletIfEligible(owner.ownerId);
+    const wallet = await this.ensureWallet(owner);
     return {
       walletId: wallet.walletId,
       ownerType: wallet.ownerType,
@@ -859,6 +954,7 @@ export class BVWalletService {
       totalSent: wallet.totalSent,
       totalWelcomeBonus: wallet.totalWelcomeBonus || 0,
       totalSpent: wallet.totalSpent || 0,
+      totalActivationLocked: wallet.totalActivationLocked || 0,
       isFrozen: wallet.isFrozen,
       frozenReason: wallet.frozenReason,
       limits: {
@@ -1046,7 +1142,15 @@ export class BVWalletService {
     const flows = await BVTransaction.aggregate([
       {
         $match: {
-          type: { $in: [BV_TXN_TYPE.GENERATION, BV_TXN_TYPE.WELCOME_BONUS, BV_TXN_TYPE.PURCHASE, BV_TXN_TYPE.PURCHASE_REFUND] },
+          type: {
+            $in: [
+              BV_TXN_TYPE.GENERATION,
+              BV_TXN_TYPE.WELCOME_BONUS,
+              BV_TXN_TYPE.PURCHASE,
+              BV_TXN_TYPE.PURCHASE_REFUND,
+              BV_TXN_TYPE.BINARY_ACTIVATION,
+            ],
+          },
         },
       },
       { $group: { _id: '$type', total: { $sum: '$amount' } } },
@@ -1056,14 +1160,15 @@ export class BVWalletService {
     const totalWelcomeBonus = flow(BV_TXN_TYPE.WELCOME_BONUS);
     const totalSpentOnOrders = flow(BV_TXN_TYPE.PURCHASE);
     const totalRefunded = flow(BV_TXN_TYPE.PURCHASE_REFUND);
-    const expectedInWallets = totalGenerated + totalWelcomeBonus + totalRefunded - totalSpentOnOrders;
+    const totalActivationLocked = flow(BV_TXN_TYPE.BINARY_ACTIVATION);
+    const expectedInWallets = totalGenerated + totalWelcomeBonus + totalRefunded - totalSpentOnOrders - totalActivationLocked;
 
     const wallets = await BVWallet.find().select('walletId ownerId availableBV sequence').lean();
     const totalInWallets = wallets.reduce((sum, w) => sum + w.availableBV, 0);
     if (expectedInWallets !== totalInWallets) {
       issues.push(
         `Wallets hold ${totalInWallets} BV but records give ${expectedInWallets} BV ` +
-          `(generated ${totalGenerated} + welcome bonus ${totalWelcomeBonus} + refunds ${totalRefunded} - spent ${totalSpentOnOrders}).`
+          `(generated ${totalGenerated} + welcome bonus ${totalWelcomeBonus} + refunds ${totalRefunded} - spent ${totalSpentOnOrders} - locked for binary activation ${totalActivationLocked}).`
       );
     }
 
@@ -1096,6 +1201,7 @@ export class BVWalletService {
       totalWelcomeBonus,
       totalSpentOnOrders,
       totalRefunded,
+      totalActivationLocked,
       totalInWallets,
       walletsChecked: wallets.length,
       issues: issues.slice(0, 50),

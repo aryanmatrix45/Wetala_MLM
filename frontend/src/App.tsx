@@ -10,6 +10,7 @@ import { IncomeSettingsPage } from './pages/IncomeSettingsPage';
 import { PayoutsPage } from './pages/PayoutsPage';
 import { SponsorIncomePage } from './pages/SponsorIncomePage';
 import { BinaryLedgerPage } from './pages/BinaryLedgerPage';
+import { BinaryLeaderboardPage } from './pages/BinaryLeaderboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { AdminProductsPage } from './pages/AdminProductsPage';
 import { AdminCategoriesPage } from './pages/AdminCategoriesPage';
@@ -385,6 +386,10 @@ export function App() {
 
         {activeTab === 'binary-ledger' && (
           <BinaryLedgerPage user={user} token={token} />
+        )}
+
+        {activeTab === 'binary-leaderboard' && (
+          <BinaryLeaderboardPage user={user} token={token} />
         )}
 
         {activeTab === 'members' && (

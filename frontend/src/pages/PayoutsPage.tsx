@@ -919,7 +919,7 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
               Platform Commission Ledger Records
             </h3>
             <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
-              Historical commission payout generation with automatic 5% TDS and 5% Admin fee deductions.
+              Commission payouts. No TDS or admin fee is deducted; older entries may still show past deductions.
             </p>
           </div>
 
@@ -930,8 +930,8 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
                   <th>Ledger ID</th>
                   <th>Member</th>
                   <th>Gross Commission</th>
-                  <th>TDS (5%)</th>
-                  <th>Admin Fee (5%)</th>
+                  <th>TDS</th>
+                  <th>Admin Fee</th>
                   <th>Net Payable</th>
                   <th>Date</th>
                   <th>Status</th>

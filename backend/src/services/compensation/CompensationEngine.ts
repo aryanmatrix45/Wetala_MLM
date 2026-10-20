@@ -6,8 +6,7 @@ import { CommissionLedger, ICommissionLedger } from '../../models/CommissionLedg
 import { BVService } from '../BVService';
 import { WalletService } from '../WalletService';
 import { WelcomeBonusService } from './WelcomeBonusService';
-import { BinaryBonusService } from './BinaryBonusService';
-import { SponsorBonusService } from './SponsorBonusService';
+import { BVWalletService } from '../BVWalletService';
 import { SelfPurchaseBonusService } from './SelfPurchaseBonusService';
 import { TeamBonusService } from './TeamBonusService';
 import { TeamPerformanceService } from './TeamPerformanceService';
@@ -163,10 +162,10 @@ export class CompensationEngine {
           calculationBase: 'MRP',
         },
         payoutDeductions: {
-          isEnabled: true,
-          tdsPercent: 5,
-          adminFeePercent: 5,
-          notes: 'Standard deductions: TDS (can be 0-100%) and Admin fee (can be 0-100%). Net credited to wallet.',
+          isEnabled: false,
+          tdsPercent: 0,
+          adminFeePercent: 0,
+          notes: 'No TDS or admin fee: the full income amount is credited to the wallet.',
         },
       });
     }
@@ -255,6 +254,9 @@ export class CompensationEngine {
         purchase.purchaseId
       );
 
+      // Binary activation: lock 100 BV the first time personal BV + BV Wallet reaches it
+      await BVWalletService.activateFromWalletIfEligible(member.memberId);
+
       // 5. Evaluate Individual Compensation Bonuses
 
       // A. Welcome Bonus Qualifying Volume & 2x Cap Update (Packages + Products cumulative)
@@ -285,22 +287,10 @@ export class CompensationEngine {
         if (selfComm) commissionsGenerated.push(selfComm);
       }
 
-      // C. Binary Matching Bonus for Ancestors whose volume changed
+      // C. Binary matching income is not paid here: the order's BV now waits on each ancestor's
+      //    leg and is matched and paid by the daily binary settlement once the IST day ends.
+      //    (The sponsor binary bonus is switched off for now.)
       for (const { ancestorMemberId } of binaryAncestors) {
-        const { binaryLedger, sponsorLedgers } = await BinaryBonusService.processMemberBinaryBonus(
-          ancestorMemberId,
-          rules,
-          eventId,
-          purchase.purchaseId
-        );
-
-        if (binaryLedger) {
-          commissionsGenerated.push(binaryLedger);
-        }
-        if (sponsorLedgers && sponsorLedgers.length > 0) {
-          commissionsGenerated.push(...sponsorLedgers);
-        }
-
         // E. Team Bonus Tiers for Ancestors
         const teamComm = await TeamBonusService.processTeamBonus(
           ancestorMemberId,

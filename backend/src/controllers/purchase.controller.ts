@@ -497,7 +497,8 @@ export const PurchaseController = {
           member.joiningPackageId = pkg.packageId;
           member.packageBv = pkg.bv;
           member.packageRp = pkg.rp;
-          member.dailyCapping = pkg.dailyCapping;
+          // The binary daily cap follows the biggest package bought; a smaller package never lowers it
+          member.dailyCapping = Math.max(member.dailyCapping || 0, pkg.dailyCapping || 0);
         } else {
           member.packageName = packageItem.name;
           member.joiningPackageId = packageItem.itemId;

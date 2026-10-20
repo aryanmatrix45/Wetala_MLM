@@ -2,7 +2,6 @@ import { Request, Response } from 'express';
 import { CompensationRule } from '../models/CompensationRule.model';
 import { CommissionLedger } from '../models/CommissionLedger.model';
 import { AuditService } from '../services/AuditService';
-import { CapService } from '../services/compensation/CapService';
 import { DecimalUtil } from '../utils/decimal';
 import { HTTP_STATUS } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';

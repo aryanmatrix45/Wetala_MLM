@@ -4,8 +4,9 @@ import { BV_OWNER_TYPE, BVOwnerType } from '../config/constants';
 /**
  * Transferable BV credit balance for the Super Admin or a member.
  *
- * Deliberately separate from Member.personalBv / BinaryVolume / BVLedger: wallet BV is not
- * backed by a sale, so it never feeds binary matching, activation or commissions.
+ * Deliberately separate from Member.personalBv / BinaryVolume / BVLedger. Wallet BV reaches the
+ * binary tree in two ways only: when it pays for an order (the order's BV is credited on approval),
+ * or when part of it is locked at binary activation (totalActivationLocked).
  * Balances are only ever changed by BVWalletService through guarded $inc updates.
  */
 export interface IBVWallet extends Document {
@@ -18,6 +19,7 @@ export interface IBVWallet extends Document {
   totalSent: number;
   totalWelcomeBonus: number;
   totalSpent: number; // BV paid for orders, net of refunds
+  totalActivationLocked: number; // BV locked at binary activation and fed into the binary tree
   sequence: number; // incremented on every balance change; mirrored on each ledger entry
   isFrozen: boolean;
   frozenReason: string;
@@ -43,6 +45,7 @@ const bvWalletSchema = new Schema<IBVWallet>(
     totalSent: { type: Number, default: 0 },
     totalWelcomeBonus: { type: Number, default: 0 },
     totalSpent: { type: Number, default: 0 },
+    totalActivationLocked: { type: Number, default: 0 },
     sequence: { type: Number, default: 0 },
     isFrozen: { type: Boolean, default: false },
     frozenReason: { type: String, trim: true, default: '' },

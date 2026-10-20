@@ -1,5 +1,12 @@
 import mongoose, { Document, Schema } from 'mongoose';
-import { BV_SOURCE_TYPE, BVSourceType, BINARY_POSITION, BinaryPosition } from '../config/constants';
+import {
+  BV_SOURCE_TYPE,
+  BVSourceType,
+  BINARY_POSITION,
+  BinaryPosition,
+  BV_SETTLEMENT_STATUS,
+  BVSettlementStatus,
+} from '../config/constants';
 
 export interface IBVLedger extends Document {
   ledgerId: string;
@@ -20,7 +27,13 @@ export interface IBVLedger extends Document {
   sourceMemberId?: string; // Member who generated the BV
   reservedBV?: number; // BV reserved for subsequent payouts
   payoutSequence?: number; // Payout cycle/sequence reference (1, 2, 3...)
-  
+
+  // Team (leg) BV rows only: the IST business day they belong to, and whether the daily
+  // binary settlement has taken them into a closing yet
+  businessDate?: string;
+  settlementStatus?: BVSettlementStatus;
+  settledInDate?: string;
+
   description: string;
   isImmutable: boolean;
   createdAt: Date;
@@ -55,6 +68,7 @@ const bvLedgerSchema = new Schema<IBVLedger>(
         BV_SOURCE_TYPE.MATCHED,
         BV_SOURCE_TYPE.FLUSHED,
         BV_SOURCE_TYPE.REVERSAL,
+        BV_SOURCE_TYPE.ACTIVATION,
       ],
       required: true,
       index: true,
@@ -110,6 +124,16 @@ const bvLedgerSchema = new Schema<IBVLedger>(
     payoutSequence: {
       type: Number,
     },
+    businessDate: {
+      type: String,
+    },
+    settlementStatus: {
+      type: String,
+      enum: Object.values(BV_SETTLEMENT_STATUS),
+    },
+    settledInDate: {
+      type: String,
+    },
     description: {
       type: String,
       required: true,
@@ -128,6 +152,10 @@ const bvLedgerSchema = new Schema<IBVLedger>(
 // Compound index for member volume history
 bvLedgerSchema.index({ memberId: 1, createdAt: -1 });
 bvLedgerSchema.index({ referenceId: 1, sourceType: 1 });
+bvLedgerSchema.index(
+  { settlementStatus: 1, businessDate: 1, memberId: 1 },
+  { partialFilterExpression: { settlementStatus: BV_SETTLEMENT_STATUS.PENDING } }
+);
 
 export const BVLedger = mongoose.model<IBVLedger>('BVLedger', bvLedgerSchema);
 export default BVLedger;

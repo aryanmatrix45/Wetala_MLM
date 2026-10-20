@@ -55,6 +55,7 @@ const TYPE_LABEL: Record<BVTransactionItem['type'], string> = {
   WELCOME_BONUS: 'Welcome bonus',
   PURCHASE: 'Order payment',
   PURCHASE_REFUND: 'Order refund',
+  BINARY_ACTIVATION: 'Binary activation',
 };
 const formatDateTime = (value?: string) =>
   value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
@@ -302,6 +303,16 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
             />
             <KpiCard tone="gold" icon={<Gift size={24} />} label="Welcome bonus" value={formatBV(wallet?.totalWelcomeBonus)} valueColor="#d97706" sub="Credited weekly as BV" />
             <KpiCard tone="purple" icon={<ShoppingCart size={24} />} label="Spent on orders" value={formatBV(wallet?.totalSpent)} valueColor="#7c3aed" sub="Products & packages paid with BV" />
+            {(wallet?.totalActivationLocked || 0) > 0 && (
+              <KpiCard
+                tone="gold"
+                icon={<Layers size={24} />}
+                label="Locked for binary"
+                value={formatBV(wallet?.totalActivationLocked)}
+                valueColor="#b45309"
+                sub="Used once in binary income; cannot be sent or spent"
+              />
+            )}
           </>
         )}
       </div>
@@ -711,6 +722,7 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
           <option value="WELCOME_BONUS">Welcome bonus</option>
           <option value="PURCHASE">Order payment</option>
           <option value="PURCHASE_REFUND">Order refund</option>
+          <option value="BINARY_ACTIVATION">Binary activation</option>
         </select>
         {scope === 'mine' && (
           <select value={direction} onChange={(e) => setDirection(e.target.value)} style={selectStyle} aria-label="Direction">

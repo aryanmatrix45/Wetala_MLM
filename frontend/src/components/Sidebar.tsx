@@ -130,8 +130,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       title: 'Finance & Compensation',
       items: [
         { id: 'welcome-bonus', label: 'Welcome Bonus', icon: Gift, badge: isAdmin ? '4% Pool' : 'BV' },
-        { id: 'sponsor-income', label: 'Sponsor Binary Income', icon: Users, badge: '20%' },
-        { id: 'binary-ledger', label: 'Binary BV Ledger', icon: BarChart3, badge: 'BV Carry' },
+        // Sponsor binary income is switched off for now (page kept for when it returns)
+        { id: 'binary-ledger', label: 'Binary Income', icon: BarChart3, badge: 'Daily' },
+        { id: 'binary-leaderboard', label: 'Binary Leaderboard', icon: Trophy },
         { 
           id: 'withdrawals', 
           label: isAdmin ? 'Withdrawal Requests' : 'My Withdrawals', 
@@ -306,12 +307,12 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
         <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           {isAdmin ? (
             <>
-              <span style={{ color: '#10b981', fontWeight: 700 }}>Uncapped Policy</span>
+              <span style={{ color: '#64748b', fontWeight: 700 }}>Admin account · earns no income</span>
               <span>v2.4.0</span>
             </>
           ) : (
             <>
-              <span>Daily Cap: {user?.packageName && user?.dailyCapping ? `₹${user.dailyCapping.toLocaleString()}` : 'No Active Plan'}</span>
+              <span>Daily Cap: ₹{(user?.dailyCapping && user.dailyCapping > 0 ? user.dailyCapping : 4000).toLocaleString()}</span>
               <span>v2.4.0</span>
             </>
           )}

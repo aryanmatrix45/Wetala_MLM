@@ -4,7 +4,16 @@ import { Member } from '../models/Member.model';
 import { CompensationRule } from '../models/CompensationRule.model';
 import { Purchase, IPurchase } from '../models/Purchase.model';
 import { BinaryTreeService } from './tree/BinaryTreeService';
-import { BV_SOURCE_TYPE, BVSourceType, BINARY_POSITION, BinaryPosition } from '../config/constants';
+import { BusinessDate } from '../utils/businessDate';
+import {
+  BV_SOURCE_TYPE,
+  BVSourceType,
+  BINARY_POSITION,
+  BinaryPosition,
+  BV_SETTLEMENT_STATUS,
+} from '../config/constants';
+
+const newLedgerId = () => `BV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
 export class BVService {
   /**
@@ -13,19 +22,31 @@ export class BVService {
   static async getOrCreateBinaryVolume(memberId: string, userId: string): Promise<IBinaryVolume> {
     let vol = await BinaryVolume.findOne({ memberId });
     if (!vol) {
-      vol = await BinaryVolume.create({
-        memberId,
-        userId,
-        leftTotalBV: 0,
-        rightTotalBV: 0,
-        matchedTotalBV: 0,
-        leftAvailableBV: 0,
-        rightAvailableBV: 0,
-        leftCarryForwardBV: 0,
-        rightCarryForwardBV: 0,
-      });
+      try {
+        vol = await BinaryVolume.create({
+          memberId,
+          userId,
+          leftTotalBV: 0,
+          rightTotalBV: 0,
+          matchedTotalBV: 0,
+          leftAvailableBV: 0,
+          rightAvailableBV: 0,
+          leftCarryForwardBV: 0,
+          rightCarryForwardBV: 0,
+        });
+      } catch (error: any) {
+        // Another request created it first
+        if (error?.code !== 11000) throw error;
+        vol = (await BinaryVolume.findOne({ memberId }))!;
+      }
     }
     return vol;
+  }
+
+  /** Opening balance for the member's own (personal, no leg) BV ledger rows */
+  private static async lastPersonalClosing(memberId: string): Promise<number> {
+    const lastEntry = await BVLedger.findOne({ memberId, position: null }).sort({ createdAt: -1 });
+    return lastEntry ? lastEntry.closingBV : 0;
   }
 
   /**
@@ -39,12 +60,11 @@ export class BVService {
     referenceId: string,
     description: string
   ): Promise<IBVLedger> {
-    const lastEntry = await BVLedger.findOne({ memberId }).sort({ createdAt: -1 });
-    const openingBV = lastEntry ? lastEntry.closingBV : 0;
+    const openingBV = await this.lastPersonalClosing(memberId);
     const closingBV = openingBV + bvAmount;
 
     const ledger = await BVLedger.create({
-      ledgerId: `BV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+      ledgerId: newLedgerId(),
       userId,
       memberId,
       sourceType,
@@ -88,9 +108,12 @@ export class BVService {
   }
 
   /**
-   * Distribute purchase volume UP the binary tree to all ancestors.
-   * For each ancestor, determines whether the volume is on their LEFT or RIGHT leg,
-   * updates BinaryVolume available volumes, and logs an immutable BVLedger entry.
+   * Distribute volume UP the binary tree to all ancestors.
+   *
+   * Each ancestor gets a PENDING BVLedger row on the leg the volume arrived on, stamped with
+   * today's IST business date. Nothing is matched here: the daily binary settlement takes all
+   * PENDING rows of the day into that member's closing. Lifetime leg totals are updated at once
+   * with an atomic $inc so concurrent orders cannot lose volume.
    */
   static async distributeVolumeToAncestors(
     purchaserMemberId: string,
@@ -102,49 +125,45 @@ export class BVService {
 
     const ancestors = await BinaryTreeService.getBinaryAncestors(purchaserMemberId);
     const updatedAncestors: Array<{ ancestorMemberId: string; leg: BinaryPosition }> = [];
+    const businessDate = BusinessDate.today();
 
     for (const { memberId: ancestorId, leg } of ancestors) {
       const ancestorMember = await Member.findOne({ memberId: ancestorId });
       if (!ancestorMember) continue;
 
-      const vol = await this.getOrCreateBinaryVolume(ancestorMember.memberId, ancestorMember._id.toString());
-
+      await this.getOrCreateBinaryVolume(ancestorMember.memberId, ancestorMember._id.toString());
       const isLeft = leg === BINARY_POSITION.LEFT;
-      if (isLeft) {
-        vol.leftTotalBV += bvAmount;
-        vol.leftAvailableBV += bvAmount;
-        vol.leftCarryForwardBV = vol.leftAvailableBV;
-      } else {
-        vol.rightTotalBV += bvAmount;
-        vol.rightAvailableBV += bvAmount;
-        vol.rightCarryForwardBV = vol.rightAvailableBV;
-      }
-      await vol.save();
+      const vol = await BinaryVolume.findOneAndUpdate(
+        { memberId: ancestorMember.memberId },
+        { $inc: isLeft ? { leftTotalBV: bvAmount } : { rightTotalBV: bvAmount } },
+        { returnDocument: 'after' }
+      );
+      if (!vol) continue;
 
       // Sync high-level Member cache
-      ancestorMember.leftBv = vol.leftTotalBV;
-      ancestorMember.rightBv = vol.rightTotalBV;
-      await ancestorMember.save();
+      await Member.updateOne(
+        { memberId: ancestorMember.memberId },
+        { $set: { leftBv: vol.leftTotalBV, rightBv: vol.rightTotalBV } }
+      );
 
-      // Record immutable BVLedger entry for ancestor
-      const lastEntry = await BVLedger.findOne({ memberId: ancestorMember.memberId }).sort({ createdAt: -1 });
-      const openingBV = lastEntry ? lastEntry.closingBV : 0;
-      const closingBV = openingBV + bvAmount;
-
+      // Opening / closing on a team row are the leg's lifetime total before and after this credit
+      const closingBV = isLeft ? vol.leftTotalBV : vol.rightTotalBV;
       await BVLedger.create({
-        ledgerId: `BV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+        ledgerId: newLedgerId(),
         userId: ancestorMember._id.toString(),
         memberId: ancestorMember.memberId,
         sourceMemberId: purchaserMemberId,
         sourceType,
         referenceId,
         position: leg,
-        openingBV,
+        openingBV: closingBV - bvAmount,
         earnedBV: bvAmount,
         consumedBV: 0,
-        carriedForwardBV: isLeft ? vol.leftAvailableBV : vol.rightAvailableBV,
+        carriedForwardBV: 0,
         flushedBV: 0,
         closingBV,
+        businessDate,
+        settlementStatus: BV_SETTLEMENT_STATUS.PENDING,
         description: `Team BV credited from ${purchaserMemberId} on ${leg} leg (${sourceType})`,
         isImmutable: true,
       });
@@ -159,7 +178,8 @@ export class BVService {
    * Takes back the earned BV of a refunded order: the member's personal BV and the volume added to
    * every upline leg. Uses the order's own BVLedger credits as the record of what was given, so it
    * only reverses what was actually credited. Runs once per order (Purchase.bvVolumeReversed).
-   * Volume already consumed by binary matching cannot be un-matched; only unmatched volume is removed.
+   * Upline reversals are PENDING rows that the next daily settlement subtracts from that leg's
+   * unmatched BV; volume already used by an earlier day's matching cannot be un-matched.
    */
   static async reversePurchaseVolume(purchase: IPurchase): Promise<{ personalBvReversed: number; uplineEntriesReversed: number }> {
     const result = { personalBvReversed: 0, uplineEntriesReversed: 0 };
@@ -172,6 +192,7 @@ export class BVService {
     const creditTypes = [BV_SOURCE_TYPE.JOINING_PACKAGE, BV_SOURCE_TYPE.REPURCHASE, BV_SOURCE_TYPE.RETAIL];
     const credits = await BVLedger.find({ referenceId: purchase.purchaseId, sourceType: { $in: creditTypes } });
     const description = `Reversal of refunded order ${purchase.purchaseId}`;
+    const businessDate = BusinessDate.today();
 
     for (const credit of credits) {
       const bv = credit.earnedBV || 0;
@@ -179,56 +200,68 @@ export class BVService {
       const member = await Member.findOne({ memberId: credit.memberId });
       if (!member) continue;
 
-      const lastEntry = await BVLedger.findOne({ memberId: member.memberId }).sort({ createdAt: -1 });
-      const openingBV = lastEntry ? lastEntry.closingBV : 0;
-      let carriedForwardBV = 0;
-
       if (!credit.position) {
         // The buyer's own personal BV
+        const openingBV = await this.lastPersonalClosing(member.memberId);
         member.personalBv = Math.max(0, (member.personalBv || 0) - bv);
         member.qualifyingBv = member.personalBv;
         const activeRule = await CompensationRule.findOne({ isActive: true }).sort({ version: -1 });
         member.welcomeBonusCap = member.personalBv * (activeRule?.welcomeBonus?.maxMultiplier ?? 2);
         await member.save();
         result.personalBvReversed += bv;
-      } else {
-        // Upline leg volume
-        const vol = await BinaryVolume.findOne({ memberId: member.memberId });
-        if (vol) {
-          if (credit.position === BINARY_POSITION.LEFT) {
-            vol.leftTotalBV = Math.max(0, vol.leftTotalBV - bv);
-            vol.leftAvailableBV = Math.max(0, vol.leftAvailableBV - bv);
-            vol.leftCarryForwardBV = vol.leftAvailableBV;
-            carriedForwardBV = vol.leftAvailableBV;
-          } else {
-            vol.rightTotalBV = Math.max(0, vol.rightTotalBV - bv);
-            vol.rightAvailableBV = Math.max(0, vol.rightAvailableBV - bv);
-            vol.rightCarryForwardBV = vol.rightAvailableBV;
-            carriedForwardBV = vol.rightAvailableBV;
-          }
-          await vol.save();
-          await Member.updateOne({ memberId: member.memberId }, { $set: { leftBv: vol.leftTotalBV, rightBv: vol.rightTotalBV } });
-        }
-        result.uplineEntriesReversed++;
+
+        await BVLedger.create({
+          ledgerId: newLedgerId(),
+          userId: member._id.toString(),
+          memberId: member.memberId,
+          sourceMemberId: credit.sourceMemberId,
+          sourceType: BV_SOURCE_TYPE.REVERSAL,
+          referenceId: purchase.purchaseId,
+          openingBV,
+          earnedBV: 0,
+          consumedBV: bv,
+          carriedForwardBV: 0,
+          flushedBV: 0,
+          closingBV: Math.max(0, openingBV - bv),
+          description,
+          isImmutable: true,
+        });
+        continue;
       }
 
+      // Upline leg volume
+      const isLeft = credit.position === BINARY_POSITION.LEFT;
+      const field = isLeft ? 'leftTotalBV' : 'rightTotalBV';
+      const vol = (await BinaryVolume.findOneAndUpdate(
+        { memberId: member.memberId },
+        [{ $set: { [field]: { $max: [0, { $subtract: [`$${field}`, bv] }] } } }],
+        { returnDocument: 'after', updatePipeline: true } as any
+      )) as IBinaryVolume | null;
+      if (vol) {
+        await Member.updateOne({ memberId: member.memberId }, { $set: { leftBv: vol.leftTotalBV, rightBv: vol.rightTotalBV } });
+      }
+      const closingBV = vol ? (isLeft ? vol.leftTotalBV : vol.rightTotalBV) : 0;
+
       await BVLedger.create({
-        ledgerId: `BV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+        ledgerId: newLedgerId(),
         userId: member._id.toString(),
         memberId: member.memberId,
         sourceMemberId: credit.sourceMemberId,
         sourceType: BV_SOURCE_TYPE.REVERSAL,
         referenceId: purchase.purchaseId,
         position: credit.position,
-        openingBV,
+        openingBV: closingBV + bv,
         earnedBV: 0,
         consumedBV: bv,
-        carriedForwardBV,
+        carriedForwardBV: 0,
         flushedBV: 0,
-        closingBV: Math.max(0, openingBV - bv),
+        closingBV,
+        businessDate,
+        settlementStatus: BV_SETTLEMENT_STATUS.PENDING,
         description,
         isImmutable: true,
       });
+      result.uplineEntriesReversed++;
     }
 
     return result;

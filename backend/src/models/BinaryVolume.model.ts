@@ -9,16 +9,14 @@ export interface IBinaryVolume extends Document {
   rightTotalBV: number;
   matchedTotalBV: number;
   
-  // Current Active / Unmatched Available Volumes for Binary Matching
+  // Carry forward after the last daily closing: unmatched BV available for the next day's matching.
+  // New team BV waits as PENDING BVLedger rows until the daily settlement takes it in.
   leftAvailableBV: number;
   rightAvailableBV: number;
-  
-  // Last cycle carried forward
+
+  // Same values as leftAvailableBV / rightAvailableBV (kept for older readers)
   leftCarryForwardBV: number;
   rightCarryForwardBV: number;
-  
-  // Consumed downline member IDs in binary cycles (never reused)
-  consumedBinaryMemberIds: string[];
 
   // Sequential Payout Lifecycle Tracking
   payoutCount: number; // 0: no payout yet, 1: first payout done, 2: second payout done, >=2: regular 1250:1250
@@ -29,6 +27,7 @@ export interface IBinaryVolume extends Document {
   consumedTotalBV: number;
 
   lastMatchedAt?: Date;
+  lastSettledDate?: string; // IST business date of the last daily closing
   updatedAt: Date;
 }
 
@@ -80,10 +79,6 @@ const binaryVolumeSchema = new Schema<IBinaryVolume>(
       default: 0,
       min: 0,
     },
-    consumedBinaryMemberIds: {
-      type: [String],
-      default: [],
-    },
     payoutCount: {
       type: Number,
       default: 0,
@@ -112,6 +107,9 @@ const binaryVolumeSchema = new Schema<IBinaryVolume>(
     },
     lastMatchedAt: {
       type: Date,
+    },
+    lastSettledDate: {
+      type: String,
     },
   },
   {

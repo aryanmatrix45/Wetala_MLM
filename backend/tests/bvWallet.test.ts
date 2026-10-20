@@ -126,7 +126,9 @@ async function runTests() {
       'Transfer completes immediately; admin left with 8,000 BV', r.data);
     assert(r.data.data.pin === undefined, 'No PIN is issued');
     let w = await wallet(A.token);
-    assert(w.availableBV === 2000 && w.totalReceived === 2000, 'Member credited 2,000 BV immediately', w);
+    // Reaching 100 BV activates binary income and locks 100 BV out of the wallet (once)
+    assert(w.availableBV === 1900 && w.totalReceived === 2000 && w.totalActivationLocked === 100,
+      'Member credited 2,000 BV immediately; 100 BV locked for binary activation', w);
     assert(w.lockedBV === undefined, 'No on-hold balance exists', w);
 
     const notif = await AdminNotification.findOne({ referenceId: t1, recipientId: 'TBV001' }).lean();
@@ -170,9 +172,9 @@ async function runTests() {
     assert(!/KYC/.test(r.data.message || ''), 'Sender without approved KYC is not blocked by KYC', r.data);
 
     r = await send(A.token, { recipientId: 'TBV002', amount: 500 });
-    assert(r.status === 201 && r.data.data.availableBV === 1500, 'Member sends 500 BV to member instantly', r.data);
+    assert(r.status === 201 && r.data.data.availableBV === 1400, 'Member sends 500 BV to member instantly', r.data);
     w = await wallet(B.token);
-    assert(w.availableBV === 500, 'Recipient member credited immediately', w);
+    assert(w.availableBV === 400 && w.totalActivationLocked === 100, 'Recipient member credited immediately (100 BV locked at activation)', w);
 
     r = await send(B.token, { recipientId: 'ADMIN', amount: 200, title: 'Return' });
     assert(r.status === 201 && r.data.data.transaction.recipient.name === 'Super Admin', 'Member sends BV to Super Admin', r.data);
@@ -184,9 +186,9 @@ async function runTests() {
     console.log('\n--- Repeat warning & duplicates ---');
     r = await send(A.token, { recipientId: 'TBV002', amount: 500 });
     assert(r.status === 409 && r.data.possibleDuplicate === true, 'Same amount to same recipient within 2 minutes needs confirmation', r.data);
-    assert((await wallet(A.token)).availableBV === 1500, 'Unconfirmed repeat does not move BV');
+    assert((await wallet(A.token)).availableBV === 1400, 'Unconfirmed repeat does not move BV');
     r = await send(A.token, { recipientId: 'TBV002', amount: 500, confirmRepeat: true });
-    assert(r.status === 201 && r.data.data.availableBV === 1000, 'Confirmed repeat goes through', r.data);
+    assert(r.status === 201 && r.data.data.availableBV === 900, 'Confirmed repeat goes through', r.data);
 
     const sameKey = key();
     const dupResults = await Promise.all(
@@ -195,7 +197,7 @@ async function runTests() {
     assert(dupResults.filter((x) => x.status === 201).length === 1 && dupResults.every((x) => x.data.status === true),
       'Same request key sends exactly once', dupResults.map((x) => x.status));
     assert((await BVTransaction.countDocuments({ requestKey: sameKey })) === 1, 'Only one transaction stored for a repeated key');
-    assert((await wallet(A.token)).availableBV === 990, 'Balance debited once for a repeated key');
+    assert((await wallet(A.token)).availableBV === 890, 'Balance debited once for a repeated key');
 
     console.log('\n--- Concurrency ---');
     const balance = (await wallet(A.token)).availableBV;
@@ -280,7 +282,9 @@ async function runTests() {
     r = await call('GET', '/api/bv-wallet/admin/overview', undefined, adminToken);
     assert(r.status === 200 && r.data.data.reconciliation.ok === true, 'Reconciliation passes after all scenarios', r.data.data?.reconciliation);
     const all = await BVWallet.find().lean();
-    assert(all.reduce((s, x) => s + x.availableBV, 0) === 10000 && r.data.data.totalGenerated === 10000, 'All 10,000 BV is accounted for across wallets');
+    const lockedAtActivation = r.data.data.reconciliation.totalActivationLocked;
+    assert(all.reduce((s, x) => s + x.availableBV, 0) + lockedAtActivation === 10000 && r.data.data.totalGenerated === 10000,
+      'All 10,000 BV is accounted for across wallets and activation locks', { lockedAtActivation });
     const [memberA, memberB] = await Promise.all([Member.findOne({ memberId: 'TBV001' }), Member.findOne({ memberId: 'TBV002' })]);
     assert(memberA?.personalBv === 0 && memberB?.personalBv === 0, 'Wallet BV does not change earned personal BV');
     assert(memberA?.isBinaryActive === true && memberA?.activationSource === 'BV_WALLET', 'Holding wallet BV activates binary participation');

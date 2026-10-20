@@ -300,10 +300,11 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       calculationBase: { type: String, default: 'MRP' },
     },
     payoutDeductions: {
-      isEnabled: { type: Boolean, default: true },
-      tdsPercent: { type: Number, default: 5 },       // Standard 5% TDS, can be 0%
-      adminFeePercent: { type: Number, default: 5 },  // Standard 5% Admin fee, can be 0%
-      notes: { type: String, default: 'Standard deductions: TDS (0-100%) and Admin fee (0-100%). Net credited to wallet.' },
+      // No TDS or admin fee is deducted from any income (DeductionUtil always returns 0)
+      isEnabled: { type: Boolean, default: false },
+      tdsPercent: { type: Number, default: 0 },
+      adminFeePercent: { type: Number, default: 0 },
+      notes: { type: String, default: 'No TDS or admin fee: the full income amount is credited to the wallet.' },
     },
   },
   {

@@ -65,6 +65,7 @@ export const BV_SOURCE_TYPE = {
   MATCHED: 'MATCHED',
   FLUSHED: 'FLUSHED',
   REVERSAL: 'REVERSAL',
+  ACTIVATION: 'ACTIVATION', // the 100 BV locked from a member's account at binary activation
 } as const;
 
 export type BVSourceType = typeof BV_SOURCE_TYPE[keyof typeof BV_SOURCE_TYPE];
@@ -111,7 +112,8 @@ export const BV_WALLET = {
   ADMIN_DISPLAY_NAME: 'Super Admin',
   // Counterparty for BV that enters or leaves wallets through the system (welcome bonus, order payments)
   SYSTEM_OWNER_ID: 'SYSTEM',
-  // Personal BV + BV Wallet balance needed to activate binary tree participation
+  // Personal BV + BV Wallet balance needed to activate binary tree participation. This much BV is
+  // locked at activation (personal BV first, then wallet) and fed into the binary tree exactly once.
   ACTIVATION_BV: 100,
   MAX_GENERATE_BV: Number(process.env.BV_MAX_GENERATE) || 10_000_000,
   MAX_ADMIN_TRANSFER_BV: Number(process.env.BV_MAX_ADMIN_TRANSFER) || 10_000_000,
@@ -137,6 +139,7 @@ export const BV_TXN_TYPE = {
   WELCOME_BONUS: 'WELCOME_BONUS', // weekly welcome bonus share credited as BV
   PURCHASE: 'PURCHASE', // BV spent on a product / package order
   PURCHASE_REFUND: 'PURCHASE_REFUND', // BV returned when a BV-paid order is rejected or refunded
+  BINARY_ACTIVATION: 'BINARY_ACTIVATION', // wallet BV locked at binary activation and fed into the tree
 } as const;
 
 export type BVTxnType = typeof BV_TXN_TYPE[keyof typeof BV_TXN_TYPE];
@@ -155,3 +158,27 @@ export const BV_LEDGER_ENTRY = {
 } as const;
 
 export type BVLedgerEntryType = typeof BV_LEDGER_ENTRY[keyof typeof BV_LEDGER_ENTRY];
+
+// ---------------------------------------------------------------------------
+// Binary income: daily matching and settlement
+// ---------------------------------------------------------------------------
+
+export const BINARY_SETTLEMENT = {
+  // Business days follow India Standard Time (UTC+05:30, no daylight saving)
+  TIMEZONE_OFFSET_MINUTES: 330,
+  // Daily cap when the member has not bought a package with its own cap
+  DEFAULT_DAILY_CAP: 4000,
+  // The scheduler settles the previous day this long after IST midnight
+  RUN_DELAY_MS: 5 * 60 * 1000,
+  // A RUNNING settlement with no heartbeat for this long is treated as crashed and can be taken over
+  STALE_RUN_MS: 15 * 60 * 1000,
+  // How many missed days the scheduler settles on startup
+  MAX_CATCH_UP_DAYS: 31,
+} as const;
+
+export const BV_SETTLEMENT_STATUS = {
+  PENDING: 'PENDING', // team BV not yet included in a daily binary closing
+  SETTLED: 'SETTLED',
+} as const;
+
+export type BVSettlementStatus = typeof BV_SETTLEMENT_STATUS[keyof typeof BV_SETTLEMENT_STATUS];

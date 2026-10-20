@@ -124,10 +124,14 @@ async function runTests() {
     m!.name = 'Member BVP00002';
     await m!.save();
     assert((await Member.findOne({ memberId: 'BVP00002' }))?.isBinaryActive === true, 'Wallet activation survives later profile saves');
+    assert(m?.activationLockedBV === 100 && m?.activationLockFromWalletBV === 100 && (await bvWallet(LEFT.token)).availableBV === 4900,
+      'Activation locks 100 BV out of the wallet: 5,000 → 4,900', { locked: m?.activationLockedBV });
+    assert((await leftVolume()) === 100, 'The locked 100 BV is credited once to the upline left leg', await leftVolume());
 
     r = await call('POST', '/api/bv-wallet/transfers', { recipientId: 'BVP00004', amount: 150, title: 'Starter', requestKey: key(), operatorName: 'Ravi' }, adminToken);
     m = await Member.findOne({ memberId: 'BVP00004' });
     assert(r.status === 201 && m?.isBinaryActive === true && !!m?.parentId, 'Unplaced member is activated and placed in the binary tree', { parentId: m?.parentId });
+    assert((await leftVolume()) === 200, "Newbie's locked 100 BV also reaches the root's left leg", await leftVolume());
 
     console.log('\n--- Pay for a package with BV (waits for approval, D2) ---');
     const pkgKey = key();
@@ -135,11 +139,11 @@ async function runTests() {
     const pkgOrder = r.data.data?.purchase;
     assert(r.status === 200 && pkgOrder?.paymentMethod === 'BV_WALLET' && pkgOrder?.bvAmount === 1250 && pkgOrder?.approvalStage === 'PAYMENT_SUBMITTED',
       'Package (₹3,000 / 1,250 BV) is paid with its own 1,250 BV and waits for Super Admin', pkgOrder);
-    assert((await bvWallet(LEFT.token)).availableBV === 3750, 'BV deducted at checkout: 5,000 → 3,750');
+    assert((await bvWallet(LEFT.token)).availableBV === 3650, 'BV deducted at checkout: 4,900 → 3,650');
     assert((await Member.findOne({ memberId: 'BVP00002' }))?.personalBv === 0, 'No earned BV before approval');
 
     r = await call('POST', '/api/packages/buy', { packageId: 'PKG-BVP1', paymentMethod: 'BV_WALLET', requestKey: pkgKey }, LEFT.token);
-    assert((await Purchase.countDocuments({ memberId: 'BVP00002' })) === 1 && (await bvWallet(LEFT.token)).availableBV === 3750,
+    assert((await Purchase.countDocuments({ memberId: 'BVP00002' })) === 1 && (await bvWallet(LEFT.token)).availableBV === 3650,
       'Repeating the request does not charge again', r.data);
 
     r = await call('POST', `/api/purchases/${pkgOrder.purchaseId}/verify-and-pay`, {}, LEFT.token);
@@ -147,34 +151,34 @@ async function runTests() {
     r = await call('POST', `/api/purchases/${pkgOrder.purchaseId}/verify-and-pay`, {}, adminToken);
     m = await Member.findOne({ memberId: 'BVP00002' });
     assert(r.status === 200 && m?.personalBv === 1250 && m?.packageName === 'Test Package', 'Approval credits 1,250 personal BV and the package', { bv: m?.personalBv });
-    assert((await leftVolume()) === 1250, 'Upline left leg receives 1,250 BV');
+    assert((await leftVolume()) === 1450, 'Upline left leg receives 1,250 BV (on top of 200 activation BV)');
     r = await call('POST', `/api/purchases/${pkgOrder.purchaseId}/reject`, { reason: 'late' }, adminToken);
     assert(r.status === 400, 'An approved order cannot be rejected', r.data);
 
     console.log('\n--- Product orders: insufficient BV, reject, refund ---');
     const productItem = (quantity: number) => [{ itemType: 'PRODUCT', productId: product._id.toString(), quantity }];
     r = await call('POST', '/api/purchases/request', { items: productItem(7), paymentMethod: 'BV_WALLET', requestKey: key() }, LEFT.token);
-    assert(r.status === 400 && /Insufficient/.test(r.data.message), 'Order above the BV balance (4,200 > 3,750) is refused', r.data);
+    assert(r.status === 400 && /Insufficient/.test(r.data.message), 'Order above the BV balance (4,200 > 3,650) is refused', r.data);
     assert((await Purchase.countDocuments({ memberId: 'BVP00002' })) === 1, 'No order is created when BV is insufficient');
 
     r = await call('POST', '/api/purchases/request', { items: productItem(1), paymentMethod: 'BV_WALLET', requestKey: key() }, LEFT.token);
     const rejectOrder = r.data.data;
-    assert(r.status === 201 && rejectOrder.bvAmount === 600 && (await bvWallet(LEFT.token)).availableBV === 3150,
+    assert(r.status === 201 && rejectOrder.bvAmount === 600 && (await bvWallet(LEFT.token)).availableBV === 3050,
       'Product (₹1,500 / 600 BV) is paid with its own 600 BV', r.data);
     r = await call('POST', `/api/purchases/${rejectOrder.purchaseId}/reject`, { reason: 'Out of stock' }, adminToken);
     assert(r.status === 200 && /600 BV returned/.test(r.data.message), 'Rejection returns the BV', r.data);
-    assert((await bvWallet(LEFT.token)).availableBV === 3750, 'Wallet back to 3,750 BV');
+    assert((await bvWallet(LEFT.token)).availableBV === 3650, 'Wallet back to 3,650 BV');
     r = await call('POST', `/api/purchases/${rejectOrder.purchaseId}/reject`, { reason: 'again' }, adminToken);
     assert(r.status === 409, 'Rejecting twice is refused (no double refund)', r.data);
     r = await call('POST', `/api/purchases/${rejectOrder.purchaseId}/verify-and-pay`, {}, adminToken);
     assert(r.status === 400, 'A rejected order cannot be approved afterwards', r.data);
-    assert((await bvWallet(LEFT.token)).availableBV === 3750, 'Balance unchanged by the refused actions');
+    assert((await bvWallet(LEFT.token)).availableBV === 3650, 'Balance unchanged by the refused actions');
 
     r = await call('POST', '/api/purchases/request', { items: productItem(1), paymentMethod: 'BV_WALLET', requestKey: key() }, LEFT.token);
     const refundOrder = r.data.data;
     r = await call('POST', `/api/purchases/${refundOrder.purchaseId}/verify-and-pay`, {}, adminToken);
     m = await Member.findOne({ memberId: 'BVP00002' });
-    assert(r.status === 200 && m?.personalBv === 1850 && (await leftVolume()) === 1850, 'Approved product adds 600 personal and upline BV', { bv: m?.personalBv });
+    assert(r.status === 200 && m?.personalBv === 1850 && (await leftVolume()) === 2050, 'Approved product adds 600 personal and upline BV', { bv: m?.personalBv });
     assert((await Product.findById(product._id))?.stock === 9, 'Stock reduced once on approval');
     r = await call('POST', `/api/purchases/${refundOrder.purchaseId}/verify-and-pay`, {}, adminToken);
     assert((await Product.findById(product._id))?.stock === 9, 'Approving again does not reduce stock twice', r.data);
@@ -182,8 +186,8 @@ async function runTests() {
     r = await call('POST', `/api/purchases/${refundOrder.purchaseId}/refund`, { reason: 'Damaged' }, adminToken);
     m = await Member.findOne({ memberId: 'BVP00002' });
     assert(r.status === 200 && r.data.data.bvRefunded === 600 && r.data.data.personalBvReversed === 600, 'Refund returns 600 wallet BV and takes back 600 earned BV', r.data);
-    assert(m?.personalBv === 1250 && (await leftVolume()) === 1250, 'Personal and upline BV reversed', { bv: m?.personalBv });
-    assert((await bvWallet(LEFT.token)).availableBV === 3150 + 600, 'Wallet credited with the refunded BV');
+    assert(m?.personalBv === 1250 && (await leftVolume()) === 1450, 'Personal and upline BV reversed', { bv: m?.personalBv });
+    assert((await bvWallet(LEFT.token)).availableBV === 3050 + 600, 'Wallet credited with the refunded BV');
     r = await call('POST', `/api/purchases/${refundOrder.purchaseId}/refund`, { reason: 'again' }, adminToken);
     assert(r.status === 409, 'Refunding twice is refused', r.data);
 
@@ -222,20 +226,28 @@ async function runTests() {
     const s = r.data.data;
     assert(r.status === 200 && s.personal.total === 1250 && s.personal.package === 1250 && s.personal.purchases === 600 && s.personal.refunds === -600,
       'Personal BV breakdown: package 1,250, products 600, refunds −600', s?.personal);
-    assert(s.wallet.available === 3750 && s.wallet.spentOnOrders === 1250 && s.totalBV === 5000, 'Total BV = 1,250 personal + 3,750 wallet', s);
-    assert(s.binary.isActive === true && s.team.left === 0, 'Summary shows binary status and team BV separately', s.binary);
+    assert(s.wallet.available === 3650 && s.wallet.spentOnOrders === 1250 && s.totalBV === 4900, 'Total BV = 1,250 personal + 3,650 wallet', s);
+    assert(s.binary.isActive === true && s.binary.lockedBV === 100 && s.binary.lockedFromWallet === 100 && s.team.left === 100,
+      "Summary shows binary status, the activation lock, and team BV (newbie's 100) separately", s);
     r = await call('GET', '/api/bv-summary/me', undefined, ROOT.token);
-    assert(r.data.data.wallet.welcomeBonus === 400 && r.data.data.team.left === 1250 && r.data.data.personal.other === 1250,
+    assert(r.data.data.wallet.welcomeBonus === 400 && r.data.data.team.left === 1450 && r.data.data.personal.other === 1250 &&
+      r.data.data.binary.lockedFromPersonal === 100 && r.data.data.totalBV === 1250 + 400 - 100,
       'Welcome bonus BV and team BV appear for the upline; opening BV shown as "other"', r.data.data);
     r = await call('GET', '/api/bv-summary/BVP00001', undefined, LEFT.token);
     assert(r.status === 403, "Members cannot read another member's summary", r.status);
 
-    // A member who already holds wallet BV but was never activated (BV received before activation existed)
-    await Member.updateOne({ memberId: 'BVP00004' }, { $set: { isBinaryActive: false, activationSource: '' } });
+    // A member activated before the lock existed (no BV locked yet) who holds enough wallet BV
+    r = await call('POST', '/api/bv-wallet/transfers', { recipientId: 'BVP00004', amount: 100, title: 'Top up', requestKey: key(), operatorName: 'Ravi' }, adminToken);
+    await Member.updateOne(
+      { memberId: 'BVP00004' },
+      { $set: { activationLockedBV: 0, activationLockFromPersonalBV: 0, activationLockFromWalletBV: 0, activationBvDistributed: false } }
+    );
     const NEWBIE_TOKEN = NEWBIE.token;
     r = await call('GET', '/api/bv-summary/me', undefined, NEWBIE_TOKEN);
-    assert(r.status === 200 && r.data.data.binary.isActive === true && r.data.data.totalBV === 150,
-      'Loading the dashboard summary activates a member whose wallet already qualifies', r.data.data?.binary);
+    assert(r.status === 200 && r.data.data.binary.isActive === true && r.data.data.binary.lockedBV === 100 && r.data.data.totalBV === 50,
+      'Loading the dashboard summary locks 100 BV for a member activated before the lock existed (150 → 50)', r.data.data);
+    r = await call('GET', '/api/bv-summary/me', undefined, NEWBIE_TOKEN);
+    assert(r.data.data.totalBV === 50, 'The lock is taken only once', r.data.data.totalBV);
 
     console.log('\n--- Balance check ---');
     const rec = await BVWalletService.reconcile();

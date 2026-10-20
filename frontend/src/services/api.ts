@@ -132,12 +132,21 @@ export interface BVSummary {
   };
   team: { left: number; right: number };
   welcomeBonus: { earned: number; cap: number };
-  binary: { isActive: boolean; activationSource: '' | 'PERSONAL_BV' | 'BV_WALLET'; activationBV: number };
+  binary: {
+    isActive: boolean;
+    activationSource: '' | 'PERSONAL_BV' | 'BV_WALLET';
+    activationBV: number;
+    // BV locked once for binary activation (taken from personal BV first, then the BV Wallet)
+    lockedBV: number;
+    lockedFromPersonal: number;
+    lockedFromWallet: number;
+    lockedAt: string | null;
+  };
 }
 
 export interface BVTransactionItem {
   transactionId: string;
-  type: 'GENERATION' | 'TRANSFER' | 'REVERSAL' | 'WELCOME_BONUS' | 'PURCHASE' | 'PURCHASE_REFUND';
+  type: 'GENERATION' | 'TRANSFER' | 'REVERSAL' | 'WELCOME_BONUS' | 'PURCHASE' | 'PURCHASE_REFUND' | 'BINARY_ACTIVATION';
   status: BVTransactionStatus;
   direction?: 'GENERATED' | 'SENT' | 'RECEIVED';
   amount: number;
@@ -165,6 +174,7 @@ export interface BVWalletSummary {
   totalSent: number;
   totalWelcomeBonus: number;
   totalSpent: number;
+  totalActivationLocked?: number;
   isFrozen: boolean;
   frozenReason: string;
   limits: { maxTransferBV: number; maxGenerateBV: number; activationBV: number };
@@ -750,6 +760,40 @@ export const api = {
       body: JSON.stringify({ date }),
     });
     return res.json();
+  },
+
+  // Binary income: live estimate for today, daily history, leaderboard, settlements (Super Admin)
+  async binaryGet(path: string, query?: Record<string, string | number | boolean | undefined>, token?: string) {
+    const searchParams = new URLSearchParams();
+    Object.entries(query || {}).forEach(([k, v]) => {
+      if (v !== undefined && v !== '') searchParams.append(k, String(v));
+    });
+    const headers: Record<string, string> = {};
+    const savedToken = token || localStorage.getItem('wetala_token');
+    if (savedToken) headers['Authorization'] = `Bearer ${savedToken}`;
+    const qs = searchParams.toString();
+    const res = await fetch(`${API_BASE_URL}/binary/${path}${qs ? `?${qs}` : ''}`, { headers });
+    return res.json();
+  },
+
+  async getBinaryToday(memberId: string, token?: string) {
+    return this.binaryGet(`today/${memberId}`, undefined, token);
+  },
+
+  async getBinaryDaily(memberId: string, params?: { page?: number; limit?: number; from?: string; to?: string }, token?: string) {
+    return this.binaryGet(`daily/${memberId}`, params, token);
+  },
+
+  async getBinaryLeaderboard(params?: { period?: 'day' | 'week' | 'month'; date?: string; limit?: number }, token?: string) {
+    return this.binaryGet('leaderboard', params, token);
+  },
+
+  async getBinarySettlements(params?: { page?: number; limit?: number }, token?: string) {
+    return this.binaryGet('settlements', params, token);
+  },
+
+  async getBinarySettlement(date: string, params?: { page?: number; limit?: number; search?: string; earnersOnly?: boolean }, token?: string) {
+    return this.binaryGet(`settlements/${date}`, params, token);
   },
 
   async validatePlacement(parentId: string, position: string, candidateMemberId?: string) {

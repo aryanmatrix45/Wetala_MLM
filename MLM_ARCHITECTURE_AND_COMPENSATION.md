@@ -79,7 +79,7 @@ The system is built on a modular, enterprise-grade architecture:
    - Guarantees strict idempotency via `eventId` (e.g. `EVENT-PURCHASE-123`).
 
 8. **`CommissionLedger` (`commissionledgers` collection)**:
-   - Immutable records with `type`, `grossAmount`, `tdsDeduction` (5%), `adminFee` (5%), `payableAmount`, and detailed calculation metadata.
+   - Immutable records with `type`, `grossAmount`, `tdsDeduction` (always 0), `adminFee` (always 0), `payableAmount`, and detailed calculation metadata.
 
 9. **`Wallet` & `WalletTransaction`**:
    - `availableBalance`, `pendingBalance`, `totalEarned`, `withdrawnAmount`.
@@ -99,7 +99,9 @@ The system is built on a modular, enterprise-grade architecture:
 ### Binary Tree & Placement
 - `GET /api/binary/tree?root=MEM0001&depth=4`: Visual binary tree hierarchy.
 - `POST /api/binary/validate-placement`: Placement validation (prevents duplicate legs, self-placement, or circular downline assignment).
-- `GET /api/binary/volume/:memberId`: Live left/right total and unmatched available BV.
+- `GET /api/binary/volume/:memberId`: Left/right totals, carry forward and today's live estimate (login required).
+- `GET /api/binary/today/:memberId`, `GET /api/binary/daily/:memberId`, `GET /api/binary/leaderboard`: Binary income views.
+- `POST /api/binary/settle-daily`: Super Admin settles or retries a finished IST day.
 - `GET /api/binary/available-placement/:memberId?leg=LEFT`: Automatic spillover placement finder.
 
 ### Sponsor Tree (Unilevel)
@@ -133,14 +135,14 @@ The system is built on a modular, enterprise-grade architecture:
 ## 4. Compensation Formulas
 
 ### 4.1 Binary Matching Bonus
-$$\text{matchedBV} = \min(\text{leftAvailableBV}, \text{rightAvailableBV})$$
-$$\text{rawCommission} = \text{matchedBV} \times \text{binaryRate} \quad (\text{default standard rate } = 20\%)$$
-$$\text{dailyRemainingCap} = \max(0, \text{dailyBinaryPayoutCap} - \text{alreadyEarnedToday})$$
-$$\text{payableBinaryCommission} = \min(\text{rawCommission}, \text{dailyRemainingCap})$$
-$$\text{excessCommission} = \text{rawCommission} - \text{payableBinaryCommission} \quad (\text{policy: FLUSH, HOLD, or CARRY\_FORWARD})$$
+Settled once per IST day by `DailyBinarySettlementService`; full rules in `BINARY_INCOME_EXPLANATION.md`.
+- Matches: 1st payout 2500 : 1250 (2500 kept), 2nd payout kept 2500 + 1250 new, then 1250 : 1250 each.
+$$\text{earned} = \text{matches} \times 250$$
+$$\text{credited} = \min(\text{earned}, \text{dailyCap}) \quad (\text{package cap, else } 4000)$$
+$$\text{flushed} = \text{earned} - \text{credited} \quad (\text{lost; its BV is still used})$$
 
 ### 4.2 Sponsor Binary Income
-$$\text{sponsorBonus} = \text{downlineBinaryCommission} \times \text{sponsorBinaryRate} \quad (20\%)$$
+Switched off for now.
 
 ### 4.3 Self Purchase Bonus (Repurchase Only)
 $$\text{selfPurchaseBonus} = \text{qualifyingBase} \times 8\% \quad (\text{base: BV or Purchase Value})$$
@@ -208,7 +210,7 @@ $$\text{selfPurchaseBonus} = \text{qualifyingBase} \times 8\% \quad (\text{base:
      │
 4. Apply Daily Capping (CapService) -> Payable vs. Excess
      │
-5. Deductions: 5% TDS + 5% Admin Fee
+5. Deductions: none (no TDS or admin fee on any income)
      │
 6. Write to CommissionLedger (Immutable entry with full calculation breakdown)
      │

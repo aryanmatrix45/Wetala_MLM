@@ -492,9 +492,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 </div>
                 <div style={{ fontSize: '12px', color: binaryActive ? '#059669' : '#b45309', fontWeight: 700, marginTop: '4px' }}>
                   {binaryActive
-                    ? bvSummary?.binary.activationSource === 'BV_WALLET'
-                      ? `Activated with BV Wallet (${statusBV.toLocaleString()} BV)`
-                      : `Tree Qualified: ${statusBV.toLocaleString()} BV`
+                    ? bvSummary?.binary.lockedBV
+                      ? `${bvSummary.binary.lockedBV} BV locked for binary activation`
+                      : bvSummary?.binary.activationSource === 'BV_WALLET'
+                        ? `Activated with BV Wallet (${statusBV.toLocaleString()} BV)`
+                        : `Tree Qualified: ${statusBV.toLocaleString()} BV`
                     : `Tree Inactive: ${statusBV}/100 BV`}
                 </div>
               </div>
@@ -531,6 +533,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                       <span>incl. welcome bonus</span>
                       <span>{bvSummary.wallet.welcomeBonus.toLocaleString('en-IN')}</span>
                     </div>
+                    {bvSummary.binary.lockedBV > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', color: '#b45309' }}>
+                        <span>Locked for binary activation (used once)</span>
+                        <strong>−{bvSummary.binary.lockedBV.toLocaleString('en-IN')}</strong>
+                      </div>
+                    )}
                     {bvSummary.wallet.pendingOrderBV > 0 && (
                       <div style={{ color: '#b45309', fontWeight: 600 }}>
                         {bvSummary.wallet.pendingOrderBV.toLocaleString('en-IN')} BV paid on {bvSummary.wallet.pendingOrders} order(s) awaiting approval
@@ -647,7 +655,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               className="secondary-btn" 
               style={{ fontSize: '12px', padding: '6px 14px' }}
             >
-              <BarChart3 size={14} /> View BV Ledger
+              <BarChart3 size={14} /> View Binary Income
             </button>
             <button 
               onClick={() => onNavigate('income-settings')} 
@@ -671,8 +679,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           const matchedCycles = binaryData?.matchedCycles ?? 0;
           const carryLeftBV = binaryData?.carryLeftBV ?? 0;
           const carryRightBV = binaryData?.carryRightBV ?? 0;
-          const unusedLeftCount = binaryData?.unusedLeftCount ?? 0;
-          const unusedRightCount = binaryData?.unusedRightCount ?? 0;
           const reservedBV = binaryData?.reservedBV ?? 0;
           const reservedSide = binaryData?.reservedSide ?? null;
 
@@ -725,9 +731,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                         </span>
                       )}
                       {carryLeftBV > 0 ? (
-                        <span>Carry Left: <strong style={{ color: '#2563eb' }}>{carryLeftBV.toLocaleString()} BV</strong> ({unusedLeftCount} Unused)</span>
+                        <span>Unmatched Left: <strong style={{ color: '#2563eb' }}>{carryLeftBV.toLocaleString()} BV</strong>{carryRightBV > 0 ? <> · Right: <strong style={{ color: '#059669' }}>{carryRightBV.toLocaleString()} BV</strong></> : null}</span>
                       ) : carryRightBV > 0 ? (
-                        <span>Carry Right: <strong style={{ color: '#059669' }}>{carryRightBV.toLocaleString()} BV</strong> ({unusedRightCount} Unused)</span>
+                        <span>Unmatched Right: <strong style={{ color: '#059669' }}>{carryRightBV.toLocaleString()} BV</strong></span>
                       ) : (
                         <span>Balanced: <strong style={{ color: '#64748b' }}>0 BV Carry</strong></span>
                       )}
@@ -739,7 +745,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               {/* Dynamic Daily Binary Income Box */}
               <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Daily Binary Income (₹{ratePerCycle}/cycle)</div>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Today's Binary Income (₹{ratePerCycle}/match, paid after midnight)</div>
                   {binaryLoading ? (
                     <SkeletonText width="60px" height="14px" />
                   ) : (
@@ -752,7 +758,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                   ₹ {binaryLoading ? <SkeletonText width="80px" height="26px" /> : earnedToday.toLocaleString()}
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#059669', fontWeight: 600 }}>
-                  <span>Earned Today: <strong>₹ {binaryLoading ? '...' : earnedToday.toLocaleString()}</strong></span>
+                  <span>Estimated today: <strong>₹ {binaryLoading ? '...' : earnedToday.toLocaleString()}</strong></span>
                   <span style={{ color: '#64748b' }}>All-Time: <strong>₹ {binaryLoading ? '...' : totalBinaryIncome.toLocaleString()}</strong></span>
                 </div>
               </div>
@@ -806,6 +812,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                       <span>Earned Today: <strong style={{ color: '#0f172a' }}>₹ {binaryLoading ? '...' : earnedToday.toLocaleString()}</strong></span>
                       <span>Cap: <strong style={{ color: '#0f172a' }}>₹ {binaryLoading ? '...' : dailyCap.toLocaleString()}</strong></span>
                     </div>
+                    {!binaryLoading && binaryData?.today && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px', fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                        <span>
+                          New today: L <strong style={{ color: '#2563eb' }}>{(binaryData.today.newLeftBV || 0).toLocaleString('en-IN')}</strong> · R{' '}
+                          <strong style={{ color: '#059669' }}>{(binaryData.today.newRightBV || 0).toLocaleString('en-IN')}</strong> BV
+                        </span>
+                        <span>
+                          Flushed today:{' '}
+                          <strong style={{ color: binaryData.today.flushedAmount > 0 ? '#dc2626' : '#0f172a' }}>
+                            ₹ {(binaryData.today.flushedAmount || 0).toLocaleString('en-IN')}
+                          </strong>
+                        </span>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
