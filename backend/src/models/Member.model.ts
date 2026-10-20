@@ -5,6 +5,30 @@ import { ROLES, BINARY_POSITION, BinaryPosition } from '../config/constants';
 export type MemberStatus = 'active' | 'inactive' | 'blocked' | 'pending' | 'rejected';
 export type MemberApprovalStatus = 'pending' | 'approved' | 'rejected';
 
+export const KYC_STATUSES = ['not_submitted', 'pending', 'approved', 'rejected'] as const;
+export type KycStatus = (typeof KYC_STATUSES)[number];
+
+// KYC document image fields. Each holds either a private upload reference (see StorageService)
+// or a Google Drive share link supplied by the member.
+export const KYC_IMAGE_FIELDS = ['upiQrImage', 'aadhaarImage', 'panImage', 'profilePhoto'] as const;
+export type KycImageField = (typeof KYC_IMAGE_FIELDS)[number];
+
+export interface IMemberKyc {
+  status: KycStatus;
+  accountHolderName: string;
+  bankAccountNumber: string;
+  ifscCode: string;
+  upiId: string;
+  upiQrImage: string;
+  aadhaarImage: string;
+  panImage: string;
+  profilePhoto: string;
+  submittedAt?: Date;
+  reviewedAt?: Date;
+  reviewedBy?: string;
+  rejectionReason?: string;
+}
+
 export interface IMember extends Document {
   memberId: string;
   name: string;
@@ -23,6 +47,14 @@ export interface IMember extends Document {
   termsAccepted?: boolean;
   password?: string;
   role: string;
+
+  // Nominee (optional, captured at registration)
+  nomineeName?: string;
+  nomineePhone?: string;
+  nomineeAge?: number | null;
+
+  // KYC details (PAN / Aadhaar numbers live in panNumber / aadhaarNumber above)
+  kyc: IMemberKyc;
   
   // Sponsor Relationship (Unilevel / Referral Tree)
   sponsorId: string;
@@ -78,6 +110,20 @@ export interface IMember extends Document {
 export interface IMemberModel extends Model<IMember> {
   generateNextMemberId(): Promise<string>;
 }
+
+// Applied whenever a member document is serialized: never leak the password hash, full Aadhaar
+// number, bank details or KYC document references. KYC data is served only by the KYC API.
+const sanitizeMemberOutput = (ret: Record<string, any>) => {
+  delete ret.password;
+  if (ret.aadhaarNumber && typeof ret.aadhaarNumber === 'string') {
+    const raw = ret.aadhaarNumber.replace(/\D/g, '');
+    ret.aadhaarNumber = raw.length >= 4 ? `•••• •••• ${raw.slice(-4)}` : '••••';
+  }
+  if (ret.kyc) {
+    ret.kyc = { status: ret.kyc.status || 'not_submitted' };
+  }
+  return ret;
+};
 
 const memberSchema = new Schema<IMember, IMemberModel>(
   {
@@ -163,6 +209,37 @@ const memberSchema = new Schema<IMember, IMemberModel>(
     termsAccepted: {
       type: Boolean,
       default: true,
+    },
+    nomineeName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    nomineePhone: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    nomineeAge: {
+      type: Number,
+      min: 0,
+      max: 120,
+      default: null,
+    },
+    kyc: {
+      status: { type: String, enum: KYC_STATUSES, default: 'not_submitted', index: true },
+      accountHolderName: { type: String, trim: true, default: '' },
+      bankAccountNumber: { type: String, trim: true, default: '' },
+      ifscCode: { type: String, trim: true, uppercase: true, default: '' },
+      upiId: { type: String, trim: true, default: '' },
+      upiQrImage: { type: String, trim: true, default: '' },
+      aadhaarImage: { type: String, trim: true, default: '' },
+      panImage: { type: String, trim: true, default: '' },
+      profilePhoto: { type: String, trim: true, default: '' },
+      submittedAt: { type: Date },
+      reviewedAt: { type: Date },
+      reviewedBy: { type: String, trim: true },
+      rejectionReason: { type: String, trim: true, default: '' },
     },
     password: {
       type: String,
@@ -342,24 +419,10 @@ const memberSchema = new Schema<IMember, IMemberModel>(
   {
     timestamps: true,
     toJSON: {
-      transform: (_doc, ret: Record<string, any>) => {
-        delete ret.password;
-        if (ret.aadhaarNumber && typeof ret.aadhaarNumber === 'string') {
-          const raw = ret.aadhaarNumber.replace(/\D/g, '');
-          ret.aadhaarNumber = raw.length >= 4 ? `•••• •••• ${raw.slice(-4)}` : '••••';
-        }
-        return ret;
-      },
+      transform: (_doc, ret: Record<string, any>) => sanitizeMemberOutput(ret),
     },
     toObject: {
-      transform: (_doc, ret: Record<string, any>) => {
-        delete ret.password;
-        if (ret.aadhaarNumber && typeof ret.aadhaarNumber === 'string') {
-          const raw = ret.aadhaarNumber.replace(/\D/g, '');
-          ret.aadhaarNumber = raw.length >= 4 ? `•••• •••• ${raw.slice(-4)}` : '••••';
-        }
-        return ret;
-      },
+      transform: (_doc, ret: Record<string, any>) => sanitizeMemberOutput(ret),
     },
   }
 );

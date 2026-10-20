@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  User, Mail, Phone, Lock, Eye, EyeOff, MapPin, Calendar, CreditCard,
-  FileText, CheckCircle2, AlertCircle, ArrowLeft,
-  CheckSquare, Square
+  User, UserRound, Mail, Phone, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft,
+  ArrowRight, CheckSquare, Square, Users
 } from 'lucide-react';
 import { api } from '../services/api';
 
@@ -22,6 +21,44 @@ interface FullRegistrationPageProps {
   onGoToLogin: () => void;
 }
 
+const lockedLabelStyle: React.CSSProperties = {
+  fontSize: '12px',
+  fontWeight: 700,
+  color: '#1e40af',
+  display: 'block',
+  marginBottom: '6px',
+};
+
+const lockedIconStyle: React.CSSProperties = {
+  position: 'absolute',
+  left: '12px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  color: '#3b82f6',
+};
+
+const lockBadgeStyle: React.CSSProperties = {
+  position: 'absolute',
+  right: '12px',
+  top: '50%',
+  transform: 'translateY(-50%)',
+  color: '#94a3b8',
+};
+
+const lockedInputStyle: React.CSSProperties = {
+  width: '100%',
+  padding: '10px 34px 10px 38px',
+  borderRadius: '8px',
+  border: '1px solid #bfdbfe',
+  background: '#f8fafc',
+  color: '#1e3a8a',
+  fontSize: '13.5px',
+  fontWeight: 800,
+  letterSpacing: '0.5px',
+  outline: 'none',
+  cursor: 'not-allowed',
+};
+
 export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
   initialData,
   onBackToPreReg,
@@ -34,17 +71,12 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
     name: initialData.name || '',
     countryCode: '+91',
     mobile: initialData.mobile || initialData.phone || '',
-    gender: 'Male',
-    dob: '',
     email: initialData.email || '',
-    address: '',
-    state: '',
-    city: '',
-    pincode: '',
-    panNumber: '',
-    aadhaarNumber: '',
     password: initialData.password || '',
     confirmPassword: initialData.confirmPassword || '',
+    nomineeName: '',
+    nomineePhone: '',
+    nomineeAge: '',
     agreeTerms: true,
   });
 
@@ -99,31 +131,18 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
     }
 
     if (!formData.email.trim()) {
-      setError('Please provide a valid Email Address.');
+      setError('Please provide your Email Address.');
       return;
     }
 
-    if (!formData.address.trim()) {
-      setError('Please provide your complete Residential Address.');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email.trim())) {
+      setError('Please provide a valid Email Address (e.g. rahul@example.com).');
       return;
     }
 
-    if (!formData.state.trim() || !formData.city.trim() || !formData.pincode.trim()) {
-      setError('Please provide State, City, and 6-digit Pin Code.');
+    if (!formData.password) {
+      setError('Please set a Password.');
       return;
-    }
-
-    // Aadhaar Validation: If provided, must be strictly 12 numeric digits
-    if (formData.aadhaarNumber && formData.aadhaarNumber.trim()) {
-      const cleanAadhaar = formData.aadhaarNumber.trim().replace(/\s+/g, '');
-      if (!/^\d+$/.test(cleanAadhaar) || /[^\d\s]/.test(formData.aadhaarNumber)) {
-        setError('Aadhaar Number must contain digits only. Letters and special characters are not allowed.');
-        return;
-      }
-      if (cleanAadhaar.length !== 12) {
-        setError('Aadhaar Number must contain exactly 12 digits.');
-        return;
-      }
     }
 
     if (formData.password.length < 6) {
@@ -131,8 +150,30 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
       return;
     }
 
+    if (!formData.confirmPassword) {
+      setError('Please confirm your Password.');
+      return;
+    }
+
     if (formData.password !== formData.confirmPassword) {
       setError('Password and Confirm Password do not match.');
+      return;
+    }
+
+    // Nominee details are optional, but must be valid when provided
+    const nomineeName = formData.nomineeName.trim();
+    if (nomineeName && !/^[A-Za-z][A-Za-z .'-]{1,99}$/.test(nomineeName)) {
+      setError('Nominee Name may contain letters, spaces, dots, hyphens and apostrophes only.');
+      return;
+    }
+
+    if (formData.nomineePhone && formData.nomineePhone.length !== 10) {
+      setError('Nominee Phone Number must contain exactly 10 digits.');
+      return;
+    }
+
+    if (formData.nomineeAge && (Number(formData.nomineeAge) < 1 || Number(formData.nomineeAge) > 120)) {
+      setError('Nominee Age must be between 1 and 120.');
       return;
     }
 
@@ -148,18 +189,13 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
         countryCode: formData.countryCode,
         mobile: cleanMobile,
         email: formData.email.trim().toLowerCase(),
-        gender: formData.gender,
-        dob: formData.dob ? formData.dob.trim() : undefined,
-        address: formData.address.trim(),
-        state: formData.state.trim(),
-        city: formData.city.trim(),
-        pincode: formData.pincode.trim(),
-        panNumber: formData.panNumber ? formData.panNumber.trim().toUpperCase() : undefined,
-        aadhaarNumber: formData.aadhaarNumber ? formData.aadhaarNumber.trim().replace(/\s+/g, '') : undefined,
         password: formData.password,
         confirmPassword: formData.confirmPassword,
         sponsorId: formData.sponsorId,
         position: formData.position,
+        nomineeName: nomineeName || undefined,
+        nomineePhone: formData.nomineePhone || undefined,
+        nomineeAge: formData.nomineeAge ? Number(formData.nomineeAge) : undefined,
         termsAccepted: formData.agreeTerms,
       };
 
@@ -285,7 +321,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
             textAlign: 'left',
             lineHeight: 1.5
           }}>
-            💡 <strong>Next Step:</strong> Sign in with your registered email and password. Once you purchase your first package or product (100 BV), your binary tree position will be officially placed!
+            💡 <strong>Next Step:</strong> Sign in with your registered email and password, then open <strong>My Profile → Complete Your KYC</strong> to add your bank, payment and identity details. Once you purchase your first package or product (100 BV), your binary tree position will be officially placed!
           </div>
 
           <button
@@ -368,7 +404,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
             letterSpacing: '0.5px',
             textTransform: 'uppercase'
           }}>
-            Step 2 of 2: Profile & KYC
+            Step 2 of 2: Account Details
           </span>
         </div>
 
@@ -377,50 +413,62 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
             New Member Registration
           </h1>
           <p style={{ fontSize: '13.5px', color: '#64748b', margin: 0 }}>
-            Fill in your personal, address, and login credentials to register.
+            Fill in your details and set a password. KYC documents can be added from your Profile after you sign in.
           </p>
         </div>
 
-        {/* Sponsor & Leg Summary Card (Locked) */}
+        {/* Sponsor & Position: set by the referral link, never editable here */}
         <div style={{
           background: '#eff6ff',
           border: '1px solid #bfdbfe',
           borderRadius: '14px',
           padding: '14px 18px',
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '12px',
           marginBottom: '24px'
         }}>
-          <div>
-            <span style={{ fontSize: '11px', color: '#1e40af', fontWeight: 700, textTransform: 'uppercase' }}>
-              Sponsor Details
-            </span>
-            <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#1e3a8a' }}>
-              {formData.sponsorName}
-            </div>
-            <span style={{ fontSize: '12px', color: '#3b82f6', fontWeight: 600 }}>
-              ID: {formData.sponsorId}
-            </span>
-          </div>
-
-          <div>
-            <span style={{ fontSize: '11px', color: '#1e40af', fontWeight: 700, textTransform: 'uppercase' }}>
-              Binary Placement
-            </span>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-              <span style={{
-                background: '#1d72fe',
-                color: '#fff',
-                padding: '4px 12px',
-                borderRadius: '8px',
-                fontSize: '12.5px',
-                fontWeight: 800
-              }}>
-                {formData.position} Leg
+          <div className="fullreg-grid-2">
+            <div>
+              <label htmlFor="reg-sponsor-id" style={lockedLabelStyle}>
+                Sponsor ID
+              </label>
+              <div style={{ position: 'relative' }}>
+                <Users size={16} style={lockedIconStyle} />
+                <input
+                  id="reg-sponsor-id"
+                  type="text"
+                  value={formData.sponsorId}
+                  readOnly
+                  aria-readonly="true"
+                  tabIndex={-1}
+                  style={lockedInputStyle}
+                />
+                <Lock size={14} aria-hidden="true" style={lockBadgeStyle} />
+              </div>
+              <span style={{ fontSize: '11.5px', color: '#3b82f6', fontWeight: 600, display: 'block', marginTop: '4px' }}>
+                {formData.sponsorName}
               </span>
-              <span style={{ fontSize: '11.5px', color: '#64748b' }}>
-                (Extreme Outer Spillover)
+            </div>
+
+            <div>
+              <label htmlFor="reg-position" style={lockedLabelStyle}>
+                Position
+              </label>
+              <div style={{ position: 'relative' }}>
+                {formData.position === 'RIGHT'
+                  ? <ArrowRight size={16} style={lockedIconStyle} />
+                  : <ArrowLeft size={16} style={lockedIconStyle} />}
+                <input
+                  id="reg-position"
+                  type="text"
+                  value={`${formData.position} Leg`}
+                  readOnly
+                  aria-readonly="true"
+                  tabIndex={-1}
+                  style={lockedInputStyle}
+                />
+                <Lock size={14} aria-hidden="true" style={lockBadgeStyle} />
+              </div>
+              <span style={{ fontSize: '11.5px', color: '#64748b', display: 'block', marginTop: '4px' }}>
+                Set by your referral link
               </span>
             </div>
           </div>
@@ -453,53 +501,22 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               1. Personal Information
             </h3>
             
-            <div className="fullreg-grid-3" style={{ marginBottom: '14px' }}>
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Full Name *
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    type="text"
-                    required
-                    placeholder="Enter full name (e.g. Ramesh Sharma)"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Gender *
-                </label>
-                <select
-                  value={formData.gender}
-                  onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', background: '#fff' }}
-                >
-                  <option value="Male">Male</option>
-                  <option value="Female">Female</option>
-                  <option value="Other">Other</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Date of Birth (Optional)
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Calendar size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    type="text"
-                    placeholder="dd/mm/yyyy"
-                    value={formData.dob}
-                    onChange={(e) => setFormData({ ...formData, dob: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                  />
-                </div>
+            <div style={{ marginBottom: '14px' }}>
+              <label htmlFor="reg-name" style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                Full Name *
+              </label>
+              <div style={{ position: 'relative' }}>
+                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <input
+                  id="reg-name"
+                  type="text"
+                  required
+                  autoComplete="name"
+                  placeholder="Enter full name (e.g. Ramesh Sharma)"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
+                />
               </div>
             </div>
 
@@ -595,148 +612,10 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
 
           <div style={{ borderTop: '1px solid #f1f5f9' }} />
 
-          {/* Section 2: Address Details */}
+          {/* Section 2: Login Password */}
           <div>
             <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#1e293b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              2. Residential Address
-            </h3>
-
-            <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                Complete Address *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <MapPin size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input
-                  type="text"
-                  required
-                  placeholder="House No, Street, Landmark, Area"
-                  value={formData.address}
-                  onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-            </div>
-
-            <div className="fullreg-grid-3-equal">
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  State *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Maharashtra"
-                  value={formData.state}
-                  onChange={(e) => setFormData({ ...formData, state: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  City *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Mumbai"
-                  value={formData.city}
-                  onChange={(e) => setFormData({ ...formData, city: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Pin Code *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="6-digit PIN"
-                  value={formData.pincode}
-                  onChange={(e) => setFormData({ ...formData, pincode: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid #f1f5f9' }} />
-
-          {/* Section 3: Identity & KYC Details */}
-          <div>
-            <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#1e293b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              3. Identity Details (KYC)
-            </h3>
-
-            <div className="fullreg-grid-2">
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  PAN Card Number
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <CreditCard size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    type="text"
-                    placeholder="e.g. ABCDE1234F"
-                    value={formData.panNumber}
-                    onChange={(e) => setFormData({ ...formData, panNumber: e.target.value.toUpperCase() })}
-                    style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
-                    Aadhaar Number (12 Digits)
-                  </label>
-                  {formData.aadhaarNumber && (
-                    <span style={{ fontSize: '11px', color: formData.aadhaarNumber.length === 12 ? '#10b981' : '#f59e0b', fontWeight: 600 }}>
-                      {formData.aadhaarNumber.length}/12 digits
-                    </span>
-                  )}
-                </div>
-                <div style={{ position: 'relative' }}>
-                  <FileText size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    type="text"
-                    maxLength={12}
-                    placeholder="12-digit Aadhaar number"
-                    value={formData.aadhaarNumber}
-                    onChange={(e) => {
-                      // Strictly reject letters and special characters on typing
-                      const digits = e.target.value.replace(/\D/g, '').slice(0, 12);
-                      setFormData({ ...formData, aadhaarNumber: digits });
-                    }}
-                    style={{
-                      width: '100%',
-                      padding: '10px 14px 10px 38px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13px',
-                      outline: 'none',
-                      letterSpacing: '1px'
-                    }}
-                  />
-                </div>
-                {formData.aadhaarNumber && formData.aadhaarNumber.length > 0 && formData.aadhaarNumber.length < 12 && (
-                  <span style={{ fontSize: '11px', color: '#f59e0b', display: 'block', marginTop: '4px', fontWeight: 500 }}>
-                    Must be exactly 12 digits ({12 - formData.aadhaarNumber.length} more needed)
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid #f1f5f9' }} />
-
-          {/* Section 4: Login Password */}
-          <div>
-            <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#1e293b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              4. Account Password
+              2. Account Password
             </h3>
 
             <div className="fullreg-grid-2">
@@ -790,6 +669,74 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
             </div>
           </div>
 
+          <div style={{ borderTop: '1px solid #f1f5f9' }} />
+
+          {/* Section 3: Nominee (optional) */}
+          <div>
+            <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#1e293b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              3. Nominee Details{' '}
+              <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#64748b', textTransform: 'none', letterSpacing: 0 }}>(Optional)</span>
+            </h3>
+            <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 12px 0' }}>
+              The person who will receive your benefits in case of an unforeseen event.
+            </p>
+
+            <div className="fullreg-grid-3">
+              <div>
+                <label htmlFor="reg-nominee-name" style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                  Nominee Name
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <UserRound size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input
+                    id="reg-nominee-name"
+                    type="text"
+                    maxLength={100}
+                    placeholder="Nominee's full name"
+                    value={formData.nomineeName}
+                    onChange={(e) => setFormData({ ...formData, nomineeName: e.target.value })}
+                    style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="reg-nominee-phone" style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                  Nominee Phone Number
+                </label>
+                <div style={{ position: 'relative' }}>
+                  <Phone size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                  <input
+                    id="reg-nominee-phone"
+                    type="tel"
+                    inputMode="numeric"
+                    maxLength={10}
+                    placeholder="10 digit mobile"
+                    value={formData.nomineePhone}
+                    onChange={(e) => setFormData({ ...formData, nomineePhone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                    style={{ width: '100%', padding: '10px 14px 10px 36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', letterSpacing: '0.5px' }}
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="reg-nominee-age" style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                  Nominee Age
+                </label>
+                <input
+                  id="reg-nominee-age"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={3}
+                  placeholder="e.g. 45"
+                  value={formData.nomineeAge}
+                  onChange={(e) => setFormData({ ...formData, nomineeAge: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Terms & Conditions Checkbox */}
           <div style={{
             display: 'flex',
@@ -809,7 +756,7 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
               {formData.agreeTerms ? <CheckSquare size={19} /> : <Square size={19} />}
             </button>
             <label style={{ fontSize: '12.5px', color: '#334155', cursor: 'pointer', lineHeight: '1.4' }}>
-              I agree to the <strong>Terms & Conditions</strong>, Privacy Policy, and MLM Code of Ethics. I confirm that all the personal and KYC details provided above are true and accurate.
+              I agree to the <strong>Terms & Conditions</strong>, Privacy Policy, and MLM Code of Ethics. I confirm that the details provided above are true and accurate.
             </label>
           </div>
 

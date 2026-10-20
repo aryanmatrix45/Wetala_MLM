@@ -67,28 +67,21 @@ export function App() {
     if (path === '/pre-registration') return 'pre-registration';
     if (path === '/register') return 'register';
     if (path === '/login') return 'login';
-    // Legacy referral links on "/" (e.g. /?ref=MEM0001) still open the sign-up form
+    // Legacy referral links on "/" (e.g. /?ref=MEM0001) still open the referral sign-up flow
     const params = new URLSearchParams(window.location.search);
-    if (params.get('ref') || params.get('sponsorId')) return 'login';
+    if (params.get('ref') || params.get('sponsorId')) return 'pre-registration';
     return 'public';
   };
 
   const [authView, setAuthView] = useState<AuthView>(getAuthViewFromPath);
   // Tab to open after a visitor signs in (e.g. back to Products after starting checkout)
   const [postLoginTab, setPostLoginTab] = useState<string | null>(null);
+  // Sponsor & position confirmed on the pre-registration step; required to open the registration form
   const [registrationPrefill, setRegistrationPrefill] = useState<{
     sponsorId: string;
     sponsorName: string;
     position: 'LEFT' | 'RIGHT';
-  } | null>(() => {
-    const params = new URLSearchParams(window.location.search);
-    const ref = params.get('ref') || params.get('sponsorId') || '';
-    const leg = (params.get('leg') || params.get('position') || 'LEFT').toUpperCase() as 'LEFT' | 'RIGHT';
-    if (ref) {
-      return { sponsorId: ref.toUpperCase(), sponsorName: '', position: leg === 'RIGHT' ? 'RIGHT' : 'LEFT' };
-    }
-    return null;
-  });
+  } | null>(null);
 
   const [categoryNav, setCategoryNav] = useState<{
     categoryId?: string;
@@ -295,7 +288,24 @@ export function App() {
       </button>
     );
 
-    if (authView === 'pre-registration') {
+    if (authView === 'register' && registrationPrefill) {
+      return (
+        <>
+          {backToHome}
+          <FullRegistrationPage
+            initialData={registrationPrefill}
+            onBackToPreReg={() => navigateAuth('pre-registration', '/pre-registration')}
+            onGoToLogin={() => {
+              setRegistrationPrefill(null);
+              openLogin();
+            }}
+          />
+        </>
+      );
+    }
+
+    // Opening /register directly (without a confirmed sponsor) falls back to the referral step
+    if (authView === 'pre-registration' || authView === 'register') {
       return (
         <>
           {backToHome}
@@ -310,34 +320,10 @@ export function App() {
       );
     }
 
-    if (authView === 'register') {
-      return (
-        <>
-          {backToHome}
-          <FullRegistrationPage
-            initialData={registrationPrefill || { sponsorId: 'MEM0001', sponsorName: 'Panchveda Sponsor', position: 'LEFT' }}
-            onBackToPreReg={() => navigateAuth('pre-registration', '/pre-registration')}
-            onGoToLogin={() => {
-              setRegistrationPrefill(null);
-              openLogin();
-            }}
-          />
-        </>
-      );
-    }
-
     return (
       <>
         {backToHome}
-        <LoginPage
-          onLoginSuccess={handleLoginSuccess}
-          defaultMode={registrationPrefill ? 'register' : 'login'}
-          initialRegisterData={registrationPrefill}
-          onProceedToFullReg={(data) => {
-            setRegistrationPrefill(data);
-            navigateAuth('register', '/register');
-          }}
-        />
+        <LoginPage onLoginSuccess={handleLoginSuccess} onGoToPreReg={openSignUp} />
       </>
     );
   }
@@ -493,6 +479,10 @@ export function App() {
             user={user}
             token={token}
             onNavigate={handleTabChange}
+            onUserUpdate={(updated) => {
+              setUser(updated);
+              localStorage.setItem('wetala_user', JSON.stringify(updated));
+            }}
           />
         )}
 

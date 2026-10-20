@@ -27,4 +27,7 @@ router.get('/me', authenticate, AuthController.getProfile);
 // Update SuperAdmin profile information
 router.put('/profile', authenticate, AuthController.updateProfile);
 
+// Member: update own nominee details (email & phone are not editable)
+router.patch('/profile/nominee', authenticate, AuthController.updateNominee);
+
 export default router;

@@ -16,11 +16,40 @@ const generateToken = (payload: { id: string; email: string; role: string; membe
   return jwt.sign(payload, secret, { expiresIn: '7d' });
 };
 
+/**
+ * Validates the optional nominee fields (shared by registration and the member profile).
+ * Empty values are allowed and clear the field.
+ */
+const parseNominee = (
+  body: any
+): { nomineeName: string; nomineePhone: string; nomineeAge: number | null } | { error: string } => {
+  const nomineeName = String(body?.nomineeName ?? '').trim().replace(/\s+/g, ' ');
+  const nomineePhone = String(body?.nomineePhone ?? '').trim();
+  const rawAge = String(body?.nomineeAge ?? '').trim();
+
+  if (nomineeName && !/^[A-Za-z][A-Za-z .'-]{1,99}$/.test(nomineeName)) {
+    return { error: 'Nominee Name may contain letters, spaces, dots, hyphens and apostrophes only.' };
+  }
+  if (nomineePhone && !/^\d{10}$/.test(nomineePhone)) {
+    return { error: 'Nominee Phone Number must contain exactly 10 digits.' };
+  }
+  let nomineeAge: number | null = null;
+  if (rawAge) {
+    nomineeAge = Number(rawAge);
+    if (!/^\d{1,3}$/.test(rawAge) || nomineeAge < 1 || nomineeAge > 120) {
+      return { error: 'Nominee Age must be a whole number between 1 and 120.' };
+    }
+  }
+  return { nomineeName, nomineePhone, nomineeAge };
+};
+
 export const AuthController = {
   /**
    * Public Member Registration / Signup
    * Route: POST /api/auth/register
-   * Body: { name, email, phone / mobile, password, confirmPassword, sponsorId }
+   * Body: { name, email, phone / mobile, password, confirmPassword, sponsorId, position,
+   *         nomineeName?, nomineePhone?, nomineeAge? }
+   * KYC (bank, PAN, Aadhaar, documents) is collected separately after login via /api/kyc/me.
    */
   async register(req: Request, res: Response): Promise<void> {
     try {
@@ -37,14 +66,6 @@ export const AuthController = {
         parentId,
         placementId,
         position,
-        dob,
-        gender,
-        address,
-        state,
-        city,
-        pincode,
-        panNumber,
-        aadhaarNumber,
         termsAccepted,
         packageId,
         packageName,
@@ -122,31 +143,11 @@ export const AuthController = {
         resolvedCountryCode = '+91';
       }
 
-      // 2. Aadhaar Number Validation: Must contain exactly 12 numeric digits, reject letters and special characters
-      let validAadhaar = '';
-      if (aadhaarNumber && String(aadhaarNumber).trim()) {
-        const rawAadhaarInput = String(aadhaarNumber).trim();
-        const compactAadhaar = rawAadhaarInput.replace(/\s+/g, '');
-
-        // Reject non-numeric characters
-        if (!/^\d+$/.test(compactAadhaar) || /[^\d\s]/.test(rawAadhaarInput)) {
-          res.status(HTTP_STATUS.BAD_REQUEST).json({
-            status: false,
-            message: 'Aadhaar number must contain numeric digits only. Letters and special characters are not allowed.',
-          });
-          return;
-        }
-
-        // Reject invalid length
-        if (compactAadhaar.length !== 12) {
-          res.status(HTTP_STATUS.BAD_REQUEST).json({
-            status: false,
-            message: 'Aadhaar number must contain exactly 12 digits.',
-          });
-          return;
-        }
-
-        validAadhaar = compactAadhaar;
+      // 2. Optional nominee details
+      const nominee = parseNominee(req.body);
+      if ('error' in nominee) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: nominee.error });
+        return;
       }
 
       if (!password) {
@@ -165,7 +166,15 @@ export const AuthController = {
         return;
       }
 
-      if (confirmPassword && password !== confirmPassword) {
+      if (!confirmPassword) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Confirm Password is required',
+        });
+        return;
+      }
+
+      if (password !== confirmPassword) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
           status: false,
           message: 'Password and Confirm Password do not match',
@@ -286,14 +295,9 @@ export const AuthController = {
         countryCode: resolvedCountryCode,
         mobile: validMobile,
         phone: validMobile,
-        dob: dob ? String(dob).trim() : '',
-        gender: gender ? String(gender).trim() : '',
-        address: address ? String(address).trim() : '',
-        state: state ? String(state).trim() : '',
-        city: city ? String(city).trim() : '',
-        pincode: pincode ? String(pincode).trim() : '',
-        panNumber: panNumber ? String(panNumber).trim().toUpperCase() : '',
-        aadhaarNumber: validAadhaar,
+        nomineeName: nominee.nomineeName,
+        nomineePhone: nominee.nomineePhone,
+        nomineeAge: nominee.nomineeAge,
         termsAccepted: termsAccepted !== false,
         password,
         role: ROLES.MEMBER,
@@ -754,6 +758,12 @@ export const AuthController = {
                   ? `•••• •••• ${member.aadhaarNumber.replace(/\D/g, '').slice(-4)}`
                   : '••••')
               : '',
+            nomineeName: member.nomineeName || '',
+            nomineePhone: member.nomineePhone || '',
+            nomineeAge: member.nomineeAge ?? null,
+            kycStatus: member.kyc?.status || 'not_submitted',
+            rank: member.rank,
+            joinDate: member.joinDate,
             createdAt: member.createdAt,
           },
         });
@@ -895,6 +905,56 @@ export const AuthController = {
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
         status: false,
         message: error.message || 'Internal server error updating profile',
+      });
+    }
+  },
+
+  /**
+   * Member: update own nominee details. Only the nominee fields are accepted; email, phone and
+   * every other profile field stay unchanged.
+   * Route: PATCH /api/auth/profile/nominee
+   * Body: { nomineeName, nomineePhone, nomineeAge } (empty values clear a field)
+   */
+  async updateNominee(req: AuthenticatedRequest, res: Response): Promise<void> {
+    try {
+      if (req.user?.role !== ROLES.MEMBER) {
+        res.status(HTTP_STATUS.FORBIDDEN).json({
+          status: false,
+          message: 'Nominee details are available to member accounts only.',
+        });
+        return;
+      }
+
+      const nominee = parseNominee(req.body);
+      if ('error' in nominee) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: nominee.error });
+        return;
+      }
+
+      const member = await Member.findByIdAndUpdate(
+        req.user.id,
+        { $set: nominee },
+        { new: true, runValidators: true }
+      );
+      if (!member) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({ status: false, message: 'Member not found' });
+        return;
+      }
+
+      res.status(HTTP_STATUS.OK).json({
+        status: true,
+        message: 'Nominee details updated successfully.',
+        data: {
+          nomineeName: member.nomineeName || '',
+          nomineePhone: member.nomineePhone || '',
+          nomineeAge: member.nomineeAge ?? null,
+        },
+      });
+    } catch (error: any) {
+      console.error('[AuthController.updateNominee] Error:', error);
+      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+        status: false,
+        message: 'Failed to update nominee details.',
       });
     }
   },

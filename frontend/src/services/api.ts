@@ -386,6 +386,54 @@ export const api = {
     return res.json();
   },
 
+  // Member: update own nominee details (email & phone are not editable)
+  async updateNominee(
+    data: { nomineeName: string; nomineePhone: string; nomineeAge: number | null },
+    token: string
+  ): Promise<{ status: boolean; message?: string; data?: { nomineeName: string; nomineePhone: string; nomineeAge: number | null } }> {
+    const res = await fetch(`${API_BASE_URL}/auth/profile/nominee`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(data),
+    });
+    return res.json();
+  },
+
+  // Member KYC
+  async getMyKyc(token: string): Promise<{ status: boolean; message?: string; data?: KycDetails }> {
+    const res = await fetch(`${API_BASE_URL}/kyc/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.json();
+  },
+
+  async submitMyKyc(
+    payload: KycSubmitPayload,
+    token: string
+  ): Promise<{ status: boolean; message?: string; errors?: Record<string, string>; data?: KycDetails }> {
+    const res = await fetch(`${API_BASE_URL}/kyc/me`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    if (res.status === 413) {
+      return { status: false, message: 'The selected images are too large to upload together. Please use smaller images.' };
+    }
+    return res.json();
+  },
+
+  /**
+   * Private KYC documents need the auth header, so they are fetched as a blob and shown via an
+   * object URL. The caller must revoke the returned URL when done.
+   */
+  async getKycFileObjectUrl(fileKey: string, token: string): Promise<string> {
+    const res = await fetch(`${API_BASE_URL}/kyc/files/${encodeURIComponent(fileKey)}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!res.ok) throw new Error('Document could not be loaded.');
+    return URL.createObjectURL(await res.blob());
+  },
+
   async updateProfile(
     data: {
       firstName?: string;
@@ -2047,6 +2095,46 @@ export function normalizeGoogleDriveUrl(url?: string): string {
     return trimmed.replace(/\?dl=0$/, '?raw=1').replace(/&dl=0$/, '&raw=1');
   }
   return trimmed;
+}
+
+export type KycStatus = 'not_submitted' | 'pending' | 'approved' | 'rejected';
+export type KycImageField = 'upiQrImage' | 'aadhaarImage' | 'panImage' | 'profilePhoto';
+
+export type KycDocument =
+  | { source: 'upload'; fileKey: string }
+  | { source: 'drive'; url: string; originalUrl: string };
+
+export interface KycDetails {
+  memberId: string;
+  status: KycStatus;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  rejectionReason: string;
+  accountHolderName: string;
+  ifscCode: string;
+  upiId: string;
+  panNumber: string;
+  address: string;
+  state: string;
+  pincode: string;
+  hasBankAccountNumber: boolean;
+  hasAadhaarNumber: boolean;
+  bankAccountNumberMasked: string;
+  aadhaarNumberMasked: string;
+  documents: Record<KycImageField, KycDocument | null>;
+}
+
+export interface KycSubmitPayload {
+  accountHolderName: string;
+  bankAccountNumber?: string;
+  ifscCode: string;
+  upiId: string;
+  aadhaarNumber?: string;
+  panNumber: string;
+  address: string;
+  state: string;
+  pincode: string;
+  documents: Partial<Record<KycImageField, { upload: string } | { driveLink: string }>>;
 }
 
 export interface FooterLinkItem {

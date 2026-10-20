@@ -1,66 +1,25 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, User, Phone, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
 import { api } from '../services/api';
 
 interface LoginPageProps {
   onLoginSuccess: (user: any, token: string) => void;
-  onGoToPreReg?: () => void;
-  onProceedToFullReg?: (data: {
-    name: string;
-    email: string;
-    phone: string;
-    sponsorId: string;
-    sponsorName: string;
-    position: 'LEFT' | 'RIGHT';
-    password?: string;
-    confirmPassword?: string;
-  }) => void;
-  initialRegisterData?: {
-    name?: string;
-    email?: string;
-    phone?: string;
-    sponsorId?: string;
-    position?: 'LEFT' | 'RIGHT';
-    password?: string;
-    confirmPassword?: string;
-  } | null;
-  defaultMode?: 'login' | 'register';
+  onGoToPreReg: () => void;
 }
 
-export const LoginPage: React.FC<LoginPageProps> = ({
-  onLoginSuccess,
-  onGoToPreReg,
-  onProceedToFullReg,
-  initialRegisterData,
-  defaultMode = 'login',
-}) => {
-  const [authMode, setAuthMode] = useState<'login' | 'register'>(defaultMode);
-
+export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreReg }) => {
   // Login form state
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
 
-  // Register form state
-  const [regName, setRegName] = useState(initialRegisterData?.name || '');
-  const [regEmail, setRegEmail] = useState(initialRegisterData?.email || '');
-  const [regPhone, setRegPhone] = useState(initialRegisterData?.phone || '');
-  const [regSponsorId, setRegSponsorId] = useState(initialRegisterData?.sponsorId || 'MEM0001');
-  const [regPosition, setRegPosition] = useState<'LEFT' | 'RIGHT'>(initialRegisterData?.position || 'LEFT');
-  const [regPassword, setRegPassword] = useState(initialRegisterData?.password || '');
-  const [regConfirmPassword, setRegConfirmPassword] = useState(initialRegisterData?.confirmPassword || '');
-  const [showRegPassword, setShowRegPassword] = useState(false);
-  const [showRegConfirmPassword, setShowRegConfirmPassword] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   // Handle Login Submission
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setSuccessMsg(null);
 
     if (!identifier.trim() || !password.trim()) {
       setError('Please provide your Email Address and Password.');
@@ -85,122 +44,13 @@ export const LoginPage: React.FC<LoginPageProps> = ({
     }
   };
 
-  // Handle Signup Submission -> Proceeds to Step 2 (Full Profile & KYC Registration)
-  const handleRegisterSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    setSuccessMsg(null);
-
-    if (!regName.trim()) {
-      setError('Please provide your Full Name.');
-      return;
-    }
-
-    if (!regEmail.trim()) {
-      setError('Please provide a valid Email address.');
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(regEmail.trim())) {
-      setError('Please provide a valid email format (e.g. rahul@example.com).');
-      return;
-    }
-
-    const cleanPhone = regPhone.replace(/\D/g, '');
-    if (!cleanPhone || cleanPhone.length !== 10) {
-      setError('Please provide your 10-digit Phone number.');
-      return;
-    }
-
-    if (!regPassword) {
-      setError('Please set a password.');
-      return;
-    }
-
-    if (regPassword.length < 6) {
-      setError('Password must be at least 6 characters long.');
-      return;
-    }
-
-    if (regPassword !== regConfirmPassword) {
-      setError('Password and Confirm Password do not match.');
-      return;
-    }
-
-    const cleanSponsorId = regSponsorId.trim().toUpperCase() || 'MEM0001';
-    if (cleanSponsorId === 'ADMIN') {
-      setError('ADMIN cannot be used as a Sponsor ID. Please enter a valid registered Member ID.');
-      return;
-    }
-
-    try {
-      setLoading(true);
-      // Verify sponsor exists and retrieve their registered name
-      let sponsorName = 'Panchveda Sponsor';
-      try {
-        const sponsorRes = await api.lookupSponsor(cleanSponsorId);
-        if (sponsorRes.status && sponsorRes.data?.name) {
-          sponsorName = sponsorRes.data.name;
-        } else {
-          setError(sponsorRes.message || `Sponsor ID "${cleanSponsorId}" not found. Please enter a valid registered Member ID.`);
-          setLoading(false);
-          return;
-        }
-      } catch (err: any) {
-        setError(err.message || `Failed to verify Sponsor ID "${cleanSponsorId}".`);
-        setLoading(false);
-        return;
-      }
-
-      if (onProceedToFullReg) {
-        onProceedToFullReg({
-          name: regName.trim(),
-          email: regEmail.trim(),
-          phone: cleanPhone,
-          sponsorId: cleanSponsorId,
-          sponsorName,
-          position: regPosition,
-          password: regPassword,
-          confirmPassword: regConfirmPassword,
-        });
-      } else {
-        // Fallback: direct registration
-        const res = await api.register({
-          name: regName.trim(),
-          email: regEmail.trim(),
-          phone: cleanPhone,
-          password: regPassword,
-          confirmPassword: regConfirmPassword,
-          sponsorId: cleanSponsorId,
-          position: regPosition,
-        });
-
-        if (res.status) {
-          setSuccessMsg(
-            `🎉 Welcome ${res.data?.name || regName}! Your Member ID is ${res.memberId}. Your account is active. You can log in immediately below.`
-          );
-          setIdentifier(res.data?.email || regEmail.trim());
-          setPassword(regPassword);
-          setAuthMode('login');
-        } else {
-          setError(res.message || 'Registration failed. Please check your details.');
-        }
-      }
-    } catch (err: any) {
-      setError(err.message || 'Unable to proceed to full registration.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <div className="login-wrapper">
       {/* Background Ambient Orbs */}
       <div className="login-orb login-orb-1" />
       <div className="login-orb login-orb-2" />
 
-      <div className="login-card" style={{ maxWidth: authMode === 'register' ? '500px' : '460px' }}>
+      <div className="login-card" style={{ maxWidth: '460px' }}>
         {/* Brand Header */}
         <div style={{ textAlign: 'center', marginBottom: '22px' }}>
           <div style={{
@@ -227,33 +77,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({
           </div>
           <h1 className="login-title">Panchveda Wellness</h1>
           <p className="login-subtitle">
-            {authMode === 'login' 
-              ? 'Access your distributor dashboard & compensation ledger' 
-              : 'Step 1 of 2: Create Account Credentials'}
+            Access your distributor dashboard & compensation ledger
           </p>
         </div>
 
 
-
-        {/* Success Alert */}
-        {successMsg && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            background: 'rgba(16, 185, 129, 0.15)',
-            border: '1px solid rgba(16, 185, 129, 0.3)',
-            color: '#a7f3d0',
-            padding: '12px 14px',
-            borderRadius: '10px',
-            fontSize: '13px',
-            fontWeight: 600,
-            marginBottom: '20px'
-          }}>
-            <CheckCircle2 size={18} color="#10b981" style={{ flexShrink: 0 }} />
-            <span>{successMsg}</span>
-          </div>
-        )}
 
         {/* Error Alert */}
         {error && (
@@ -278,252 +106,73 @@ export const LoginPage: React.FC<LoginPageProps> = ({
         {/* =========================================================================
             SIGN IN FORM
             ========================================================================= */}
-        {authMode === 'login' ? (
-          <>
-            <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="login-label">Email Address</label>
-                <div className="input-with-icon">
-                  <Mail size={18} className="input-icon" color="#94a3b8" />
-                  <input
-                    type="email"
-                    required
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                    placeholder="e.g. aryan@gmail.com"
-                    className="login-input"
-                    autoComplete="email"
-                  />
-                </div>
-              </div>
+        <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label className="login-label">Email Address</label>
+            <div className="input-with-icon">
+              <Mail size={18} className="input-icon" color="#94a3b8" />
+              <input
+                type="email"
+                required
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+                placeholder="e.g. aryan@gmail.com"
+                className="login-input"
+                autoComplete="email"
+              />
+            </div>
+          </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <label className="login-label">Password</label>
-                <div className="input-with-icon">
-                  <Lock size={18} className="input-icon" color="#94a3b8" />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••••••"
-                    className="login-input"
-                    autoComplete="current-password"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="input-eye-btn"
-                    aria-label="Toggle password visibility"
-                  >
-                    {showPassword ? <EyeOff size={18} color="#94a3b8" /> : <Eye size={18} color="#94a3b8" />}
-                  </button>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="login-submit-btn"
-              >
-                {loading ? (
-                  <span>Authenticating...</span>
-                ) : (
-                  <>
-                    <span>Sign In to Platform</span>
-                    <ArrowRight size={18} />
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '13px', color: '#94a3b8' }}>
-              Don't have an account?{' '}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            <label className="login-label">Password</label>
+            <div className="input-with-icon">
+              <Lock size={18} className="input-icon" color="#94a3b8" />
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••••••"
+                className="login-input"
+                autoComplete="current-password"
+              />
               <button
                 type="button"
-                onClick={() => {
-                  if (onGoToPreReg) {
-                    onGoToPreReg();
-                  } else {
-                    setAuthMode('register');
-                  }
-                }}
-                style={{ color: '#38bdf8', fontWeight: 700, textDecoration: 'underline' }}
+                onClick={() => setShowPassword(!showPassword)}
+                className="input-eye-btn"
+                aria-label="Toggle password visibility"
               >
-                Sign Up / Join with Referral
+                {showPassword ? <EyeOff size={18} color="#94a3b8" /> : <Eye size={18} color="#94a3b8" />}
               </button>
             </div>
-          </>
-        ) : (
-          /* =========================================================================
-             SIGN UP / REGISTER FORM
-             ========================================================================= */
-          <>
-            <form onSubmit={handleRegisterSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              {/* Full Name */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                <label className="login-label">Full Name</label>
-                <div className="input-with-icon">
-                  <User size={18} className="input-icon" color="#94a3b8" />
-                  <input
-                    type="text"
-                    required
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                    placeholder="e.g. Rahul Sharma"
-                    className="login-input"
-                    autoComplete="name"
-                  />
-                </div>
-              </div>
+          </div>
 
-              {/* Email & Phone Grid */}
-              <div className="auth-form-row">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label className="login-label">Email Address</label>
-                  <div className="input-with-icon">
-                    <Mail size={18} className="input-icon" color="#94a3b8" />
-                    <input
-                      type="email"
-                      required
-                      value={regEmail}
-                      onChange={(e) => setRegEmail(e.target.value)}
-                      placeholder="rahul@example.com"
-                      className="login-input"
-                      autoComplete="email"
-                    />
-                  </div>
-                </div>
+          <button
+            type="submit"
+            disabled={loading}
+            className="login-submit-btn"
+          >
+            {loading ? (
+              <span>Authenticating...</span>
+            ) : (
+              <>
+                <span>Sign In to Platform</span>
+                <ArrowRight size={18} />
+              </>
+            )}
+          </button>
+        </form>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label className="login-label">Phone Number</label>
-                  <div className="input-with-icon">
-                    <Phone size={18} className="input-icon" color="#94a3b8" />
-                    <input
-                      type="tel"
-                      required
-                      value={regPhone}
-                      onChange={(e) => setRegPhone(e.target.value)}
-                      placeholder="98765 43210"
-                      className="login-input"
-                      autoComplete="tel"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Sponsor ID & Preferred Leg Grid */}
-              <div className="auth-form-row auth-form-row-sponsor">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label className="login-label">Sponsor Member ID</label>
-                  <div className="input-with-icon">
-                    <User size={18} className="input-icon" color="#94a3b8" />
-                    <input
-                      type="text"
-                      required
-                      value={regSponsorId}
-                      onChange={(e) => setRegSponsorId(e.target.value.toUpperCase())}
-                      placeholder="e.g. MEM0001"
-                      className="login-input"
-                      autoComplete="off"
-                    />
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label className="login-label">Preferred Placement</label>
-                  <select
-                    value={regPosition}
-                    onChange={(e) => setRegPosition(e.target.value as 'LEFT' | 'RIGHT')}
-                    className="login-input"
-                    style={{ paddingLeft: '14px', paddingRight: '32px', cursor: 'pointer', background: '#1e293b', color: '#f8fafc' }}
-                  >
-                    <option value="LEFT">Left Wing</option>
-                    <option value="RIGHT">Right Wing</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Password & Confirm Password Grid */}
-              <div className="auth-form-row">
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label className="login-label">Password</label>
-                  <div className="input-with-icon">
-                    <Lock size={18} className="input-icon" color="#94a3b8" />
-                    <input
-                      type={showRegPassword ? 'text' : 'password'}
-                      required
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="Min 6 characters"
-                      className="login-input"
-                      autoComplete="new-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowRegPassword(!showRegPassword)}
-                      className="input-eye-btn"
-                      aria-label="Toggle password"
-                    >
-                      {showRegPassword ? <EyeOff size={16} color="#94a3b8" /> : <Eye size={16} color="#94a3b8" />}
-                    </button>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
-                  <label className="login-label">Confirm Password</label>
-                  <div className="input-with-icon">
-                    <Lock size={18} className="input-icon" color="#94a3b8" />
-                    <input
-                      type={showRegConfirmPassword ? 'text' : 'password'}
-                      required
-                      value={regConfirmPassword}
-                      onChange={(e) => setRegConfirmPassword(e.target.value)}
-                      placeholder="Re-enter password"
-                      className="login-input"
-                      autoComplete="new-password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowRegConfirmPassword(!showRegConfirmPassword)}
-                      className="input-eye-btn"
-                      aria-label="Toggle confirm password"
-                    >
-                      {showRegConfirmPassword ? <EyeOff size={16} color="#94a3b8" /> : <Eye size={16} color="#94a3b8" />}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="login-submit-btn"
-                style={{ background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)' }}
-              >
-                {loading ? (
-                  <span>Verifying Sponsor ID...</span>
-                ) : (
-                  <>
-                    <span>Next: Complete Profile Details</span>
-                    <ArrowRight size={18} />
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '13px', color: '#94a3b8' }}>
-              Already registered?{' '}
-              <button
-                type="button"
-                onClick={() => setAuthMode('login')}
-                style={{ color: '#38bdf8', fontWeight: 700, textDecoration: 'underline' }}
-              >
-                Sign In Here
-              </button>
-            </div>
-          </>
-        )}
+        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '13px', color: '#94a3b8' }}>
+          Don't have an account?{' '}
+          <button
+            type="button"
+            onClick={onGoToPreReg}
+            style={{ color: '#38bdf8', fontWeight: 700, textDecoration: 'underline' }}
+          >
+            Sign Up / Join with Referral
+          </button>
+        </div>
 
         <div style={{ marginTop: '22px', textAlign: 'center', fontSize: '12px', color: '#64748b' }}>
           Protected by Enterprise Decimal-Safe Binary Ledger

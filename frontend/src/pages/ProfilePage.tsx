@@ -1,29 +1,36 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  Share2, Copy, Check, MessageCircle, Send, ExternalLink,
-  Mail, Phone, Calendar, MapPin, CreditCard,
-  FileText, Sparkles, ArrowLeft, ArrowRight, ShieldCheck
+  Mail, Phone, Calendar, CalendarDays, MapPin, Lock, UserRound, LayoutGrid, FileCheck2, Share2,
+  ShieldCheck, ArrowRight, Award, Package, Network, Users,
 } from 'lucide-react';
-import { api } from '../services/api';
+import { api, type KycDetails, type KycStatus } from '../services/api';
+import { KycSection } from '../components/KycSection';
+import { KycDocumentImage } from '../components/KycDocumentImage';
+import { NomineeCard, type NomineeDetails } from '../components/NomineeCard';
+import { ReferralCard } from '../components/ReferralCard';
 
 interface ProfilePageProps {
   user: any;
   token?: string | null;
   onNavigate?: (tab: string) => void;
+  onUserUpdate?: (user: any) => void;
 }
 
-type ReferralLeg = 'AUTO' | 'LEFT' | 'RIGHT';
+type ProfileTab = 'overview' | 'kyc' | 'referral';
 
-// Referral link for a placement leg (AUTO lets the prospect choose their leg)
-const getReferralUrl = (memberId: string, leg: ReferralLeg) => {
-  let url = `${window.location.origin}/pre-registration?ref=${encodeURIComponent(memberId)}`;
-  if (leg !== 'AUTO') url += `&leg=${leg}`;
-  return url;
+const KYC_META: Record<KycStatus, { label: string; tone: string }> = {
+  not_submitted: { label: 'KYC Not Submitted', tone: 'is-muted' },
+  pending: { label: 'KYC Under Review', tone: 'is-warning' },
+  approved: { label: 'KYC Verified', tone: 'is-success' },
+  rejected: { label: 'KYC Rejected', tone: 'is-danger' },
 };
 
-export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
+export const ProfilePage: React.FC<ProfilePageProps> = ({ user, token, onUserUpdate }) => {
   const isSuperAdmin = user?.role?.toLowerCase() === 'superadmin';
   const [rootSponsorId, setRootSponsorId] = useState<string>('MEM0001');
+  const [kyc, setKyc] = useState<KycDetails | null>(null);
+  const [activeTab, setActiveTab] = useState<ProfileTab>('overview');
+  const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
 
   // If logged in as Super Admin, dynamically fetch the Company Root Member ID
   useEffect(() => {
@@ -41,278 +48,246 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ user }) => {
   // For regular members: user.memberId. For Super Admin: Company Root ID (MEM0001)
   const memberId = isSuperAdmin ? rootSponsorId : (user?.memberId || 'MEM0001');
 
-  const [copiedLeg, setCopiedLeg] = useState<ReferralLeg | null>(null);
-
-  const referralLinks: Array<{
-    leg: ReferralLeg;
-    title: string;
-    description: string;
-    url: string;
-  }> = [
-    {
-      leg: 'AUTO',
-      title: 'Default Link',
-      description: 'New member chooses their own leg',
-      url: getReferralUrl(memberId, 'AUTO'),
-    },
-    {
-      leg: 'LEFT',
-      title: 'Left Leg Link',
-      description: 'Places new members in your LEFT leg',
-      url: getReferralUrl(memberId, 'LEFT'),
-    },
-    {
-      leg: 'RIGHT',
-      title: 'Right Leg Link',
-      description: 'Places new members in your RIGHT leg',
-      url: getReferralUrl(memberId, 'RIGHT'),
-    },
-  ];
-
-  const handleCopyLink = (leg: ReferralLeg, url: string) => {
-    navigator.clipboard.writeText(url);
-    setCopiedLeg(leg);
-    setTimeout(() => setCopiedLeg((current) => (current === leg ? null : current)), 2500);
-  };
-
-  const handleShareWhatsApp = (url: string) => {
-    const text = `Join my team on Panchveda Wellness! Register here: ${url}`;
-    window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
-  };
-
-  const handleShareTelegram = (url: string) => {
-    const text = `Join my team on Panchveda Wellness!`;
-    window.open(`https://t.me/share/url?url=${encodeURIComponent(url)}&text=${encodeURIComponent(text)}`, '_blank');
-  };
-
-  const handleNativeShare = async (leg: ReferralLeg, url: string) => {
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Join Panchveda Wellness',
-          text: `Join my team using Sponsor ID ${memberId}`,
-          url,
-        });
-      } catch {
-        handleCopyLink(leg, url);
-      }
-    } else {
-      handleCopyLink(leg, url);
-    }
-  };
-
   const displayName =
     user?.name || `${user?.firstName || ''} ${user?.lastName || ''}`.trim() || (isSuperAdmin ? 'Super Admin' : 'Member');
+  const initial = displayName.charAt(0).toUpperCase();
   const isActiveStatus = user?.status?.toLowerCase() === 'active' || Boolean(user?.isActive);
-  const fullAddress = [user?.address, user?.city, user?.state, user?.pincode].filter(Boolean).join(', ');
+  const kycStatus: KycStatus = kyc?.status || user?.kycStatus || 'not_submitted';
+  const kycMeta = KYC_META[kycStatus] || KYC_META.not_submitted;
+  const profilePhoto = kyc?.documents.profilePhoto;
 
-  const contactFields: Array<{ label: string; value: string; icon?: React.ElementType; wide?: boolean }> = [
-    { label: 'Email Address', value: user?.email || 'Not specified', icon: Mail },
-    { label: 'Mobile Number', value: user?.mobile || user?.phone || 'Not specified', icon: Phone },
-    { label: 'Gender', value: user?.gender || 'Not specified' },
-    { label: 'Date of Birth', value: user?.dob || 'Not specified', icon: Calendar },
-    { label: 'Residential Address', value: fullAddress || 'Not specified', icon: MapPin, wide: true },
-    { label: 'PAN Number', value: user?.panNumber || 'Not submitted', icon: CreditCard },
+  // KYC address is the current one; older accounts may still have an address from registration
+  const fullAddress = (kyc?.address
+    ? [kyc.address, kyc.state, kyc.pincode]
+    : [user?.address, user?.city, user?.state, user?.pincode]
+  ).filter(Boolean).join(', ');
+
+  const joinedOn = user?.joinDate || (user?.createdAt
+    ? new Date(user.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    : '');
+
+  const tabs: Array<{ id: ProfileTab; label: string; icon: React.ElementType }> = [
+    { id: 'overview', label: 'Overview', icon: LayoutGrid },
+    ...(!isSuperAdmin ? [{ id: 'kyc' as const, label: 'KYC', icon: FileCheck2 }] : []),
+    { id: 'referral', label: 'Refer & Grow', icon: Share2 },
+  ];
+
+  const selectTab = (tab: ProfileTab) => setActiveTab(tab);
+
+  // Arrow keys move between tabs (WAI-ARIA tabs pattern)
+  const handleTabKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    e.preventDefault();
+    const next = tabs[(index + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+    selectTab(next.id);
+    tabRefs.current[next.id]?.focus();
+  };
+
+  const handleNomineeSaved = (nominee: NomineeDetails) => {
+    onUserUpdate?.({ ...user, ...nominee });
+  };
+
+  const accountRows: Array<{ label: string; icon: React.ElementType; value: React.ReactNode }> = [
     {
-      label: 'Aadhaar Number',
-      value: user?.aadhaarNumber ? `•••• •••• ${user.aadhaarNumber.slice(-4)}` : 'Not submitted',
-      icon: FileText,
+      label: 'Account Status',
+      icon: ShieldCheck,
+      value: (
+        <span className={`profile-status-pill ${isSuperAdmin ? 'is-info' : isActiveStatus ? 'is-success' : 'is-warning'}`}>
+          {isSuperAdmin ? 'Super Admin' : user?.status ? user.status.toLowerCase() : 'Active'}
+        </span>
+      ),
     },
+    { label: 'Current Rank', icon: Award, value: isSuperAdmin ? 'Company Administrator' : user?.rank || 'Distributor' },
+    { label: 'Active Package', icon: Package, value: isSuperAdmin ? 'Executive Management' : user?.packageName || 'No package yet' },
+    {
+      label: isSuperAdmin ? 'Company Sponsor ID' : 'Sponsor ID',
+      icon: Users,
+      value: isSuperAdmin ? rootSponsorId : user?.sponsorId || 'None (Root Member)',
+    },
+    {
+      label: 'Binary Tree',
+      icon: Network,
+      value: (
+        <span className={`profile-status-pill ${user?.isBinaryActive ? 'is-success' : 'is-muted'}`}>
+          {user?.isBinaryActive ? 'Qualified (100+ BV)' : 'Needs 100 BV'}
+        </span>
+      ),
+    },
+    ...(joinedOn ? [{ label: 'Joined On', icon: CalendarDays, value: joinedOn }] : []),
+  ];
+
+  // Email and mobile are fixed for login and identity; gender / date of birth only exist on older accounts
+  const contactRows: Array<{ label: string; icon: React.ElementType; value: string; locked?: boolean }> = [
+    { label: 'Email Address', icon: Mail, value: user?.email || 'Not specified', locked: true },
+    { label: 'Mobile Number', icon: Phone, value: user?.mobile || user?.phone || 'Not specified', locked: true },
+    ...(fullAddress ? [{ label: 'Address', icon: MapPin, value: fullAddress }] : []),
+    ...(user?.gender ? [{ label: 'Gender', icon: UserRound, value: user.gender }] : []),
+    ...(user?.dob ? [{ label: 'Date of Birth', icon: Calendar, value: user.dob }] : []),
   ];
 
   return (
     <div className="page-body profile-page">
-      {/* Page header */}
-      <header className="profile-page-header">
-        <h1 className="page-title">Member Profile & Referral Center</h1>
-        <p className="page-subtitle">
-          Manage your account details and share your personal referral link to build your team.
-        </p>
-      </header>
+      {/* Identity header */}
+      <section className="profile-hero" aria-label="Profile summary">
+        <div className="profile-hero-avatar" aria-hidden="true">
+          {profilePhoto && token ? (
+            <KycDocumentImage
+              source={profilePhoto.source === 'upload' ? { kind: 'upload', fileKey: profilePhoto.fileKey } : { kind: 'drive', url: profilePhoto.url }}
+              token={token}
+              alt=""
+              className="profile-avatar-photo"
+              fallback={initial}
+            />
+          ) : (
+            initial
+          )}
+        </div>
 
-      {/* 1. Refer & Grow */}
-      <section className="profile-referral-card" aria-labelledby="profile-referral-title">
-        <div className="profile-referral-head">
-          <div className="profile-referral-intro">
-            <span className="profile-referral-badge">
-              <Sparkles size={14} aria-hidden="true" />
-              {isSuperAdmin ? 'SUPER ADMIN REFERRAL' : 'REFERRAL PROGRAM'}
+        <div className="profile-hero-main">
+          <h1 className="profile-hero-name">{displayName}</h1>
+          <p className="profile-hero-meta">
+            <span className="profile-hero-id">{isSuperAdmin ? 'Platform Owner (Super Admin)' : memberId}</span>
+            {joinedOn && <span>Joined {joinedOn}</span>}
+          </p>
+          <div className="profile-hero-chips">
+            <span className={`profile-status-pill ${isSuperAdmin ? 'is-info' : isActiveStatus ? 'is-success' : 'is-warning'}`}>
+              {isSuperAdmin ? 'Super Admin' : isActiveStatus ? 'Active Account' : user?.status || 'Inactive'}
             </span>
-            <h2 className="profile-referral-title" id="profile-referral-title">
-              Refer & Grow Your Network
-            </h2>
-            <p className="profile-referral-desc">
-              Invite new members using your personal referral link. When they register, our extreme outer-leg engine
-              automatically places them in your binary tree downline!
-            </p>
-            {isSuperAdmin && (
-              <div className="profile-company-note">
-                <ShieldCheck size={15} aria-hidden="true" />
-                <span>
-                  <strong>Company Mode:</strong> Your link enrolls distributors directly under Sponsor ID{' '}
-                  <strong>{memberId}</strong>.
-                </span>
-              </div>
+            {!isSuperAdmin && <span className={`profile-status-pill ${kycMeta.tone}`}>{kycMeta.label}</span>}
+            {!isSuperAdmin && (
+              <span className={`profile-status-pill ${user?.isBinaryActive ? 'is-success' : 'is-muted'}`}>
+                {user?.isBinaryActive ? 'Binary Qualified' : 'Binary: needs 100 BV'}
+              </span>
             )}
-          </div>
-
-          <div className="profile-sponsor-box">
-            <span className="profile-sponsor-label">{isSuperAdmin ? 'Company Sponsor ID' : 'Your Sponsor ID'}</span>
-            <span className="profile-sponsor-id">{memberId}</span>
           </div>
         </div>
 
-        <h3 className="profile-links-heading">Your Referral Links</h3>
-        <div className="profile-links-list">
-          {referralLinks.map((link) => {
-            const isCopied = copiedLeg === link.leg;
-            const LegIcon = link.leg === 'LEFT' ? ArrowLeft : link.leg === 'RIGHT' ? ArrowRight : Share2;
-
-            return (
-              <div key={link.leg} className="profile-link-row">
-                <div className="profile-link-meta">
-                  <span className="profile-link-icon" aria-hidden="true">
-                    <LegIcon size={15} />
-                  </span>
-                  <div className="profile-link-text">
-                    <div className="profile-link-title">{link.title}</div>
-                    <div className="profile-link-desc">{link.description}</div>
-                  </div>
-                </div>
-
-                <div className="profile-link-body">
-                  <code className="profile-link-url">{link.url}</code>
-
-                  <div className="profile-link-actions">
-                    <button
-                      type="button"
-                      className={`profile-link-btn is-copy ${isCopied ? 'is-copied' : ''}`}
-                      onClick={() => handleCopyLink(link.leg, link.url)}
-                      aria-label={`Copy ${link.title}`}
-                    >
-                      {isCopied ? <Check size={15} /> : <Copy size={15} />}
-                      <span>{isCopied ? 'Copied!' : 'Copy'}</span>
-                    </button>
-
-                    <a
-                      href={link.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="profile-link-btn is-ghost"
-                      title={`Open ${link.title}`}
-                      aria-label={`Open ${link.title}`}
-                    >
-                      <ExternalLink size={15} />
-                    </a>
-
-                    <button
-                      type="button"
-                      className="profile-link-btn is-whatsapp"
-                      onClick={() => handleShareWhatsApp(link.url)}
-                      title="Share on WhatsApp"
-                      aria-label={`Share ${link.title} on WhatsApp`}
-                    >
-                      <MessageCircle size={15} />
-                      <span className="profile-link-btn-label">WhatsApp</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="profile-link-btn is-telegram"
-                      onClick={() => handleShareTelegram(link.url)}
-                      title="Share on Telegram"
-                      aria-label={`Share ${link.title} on Telegram`}
-                    >
-                      <Send size={15} />
-                      <span className="profile-link-btn-label">Telegram</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="profile-link-btn is-ghost"
-                      onClick={() => handleNativeShare(link.leg, link.url)}
-                      title="More sharing options"
-                      aria-label={`More ways to share ${link.title}`}
-                    >
-                      <Share2 size={15} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+        <div className="profile-hero-sponsor">
+          <span className="profile-sponsor-label">{isSuperAdmin ? 'Company Sponsor ID' : 'Your Referral ID'}</span>
+          <span className="profile-sponsor-id">{memberId}</span>
         </div>
       </section>
 
-      {/* 2. Account summary & contact details */}
-      <div className="profile-details-grid">
-        <section className="profile-card" aria-labelledby="profile-account-title">
-          <div className="profile-identity">
-            <div className="profile-avatar" aria-hidden="true">
-              {(user?.name || user?.firstName || 'M').charAt(0).toUpperCase()}
-            </div>
-            <div className="profile-identity-text">
-              <h3 className="profile-identity-name" id="profile-account-title">
-                {displayName}
-              </h3>
-              <span className="profile-identity-id">
-                {isSuperAdmin ? 'Platform Owner (Super Admin)' : `ID: ${memberId}`}
-              </span>
-            </div>
+      {/* Nudge members to finish KYC */}
+      {!isSuperAdmin && activeTab !== 'kyc' && (kycStatus === 'not_submitted' || kycStatus === 'rejected') && (
+        <div className={`profile-kyc-callout ${kycStatus === 'rejected' ? 'is-danger' : ''}`}>
+          <FileCheck2 size={20} aria-hidden="true" />
+          <div className="profile-kyc-callout-text">
+            <strong>{kycStatus === 'rejected' ? 'Your KYC needs attention' : 'Complete your KYC'}</strong>
+            <span>
+              {kycStatus === 'rejected'
+                ? 'Your KYC was not approved. Review the reason and resubmit your details.'
+                : 'Add your bank, payment and identity details to get verified.'}
+            </span>
           </div>
+          <button type="button" className="primary-btn profile-kyc-callout-btn" onClick={() => selectTab('kyc')}>
+            <span>{kycStatus === 'rejected' ? 'Review KYC' : 'Start KYC'}</span>
+            <ArrowRight size={15} aria-hidden="true" />
+          </button>
+        </div>
+      )}
 
-          <dl className="profile-summary-list">
-            <div className="profile-summary-row">
-              <dt>Account Status</dt>
-              <dd>
-                <span className={`profile-status-pill ${isSuperAdmin ? 'is-info' : isActiveStatus ? 'is-success' : 'is-warning'}`}>
-                  {isSuperAdmin ? 'Super Admin' : user?.status ? user.status.toLowerCase() : 'Active'}
-                </span>
-              </dd>
-            </div>
-            <div className="profile-summary-row">
-              <dt>Current Rank</dt>
-              <dd>{isSuperAdmin ? 'Company Administrator' : user?.rank || 'Distributor'}</dd>
-            </div>
-            <div className="profile-summary-row">
-              <dt>Active Package</dt>
-              <dd>{isSuperAdmin ? 'Executive Management' : user?.packageName || 'Basic Package'}</dd>
-            </div>
-            <div className="profile-summary-row">
-              <dt>{isSuperAdmin ? 'Company Sponsor ID' : 'Sponsor ID'}</dt>
-              <dd>{isSuperAdmin ? rootSponsorId : user?.sponsorId || 'None (Root Member)'}</dd>
-            </div>
-            <div className="profile-summary-row">
-              <dt>Binary Active</dt>
-              <dd>
-                <span className={`profile-status-pill ${user?.isBinaryActive ? 'is-success' : 'is-muted'}`}>
-                  {user?.isBinaryActive ? 'Qualified (100+ BV)' : 'Needs 100 BV'}
-                </span>
-              </dd>
-            </div>
-          </dl>
-        </section>
+      {/* Section tabs */}
+      <div className="profile-tabs" role="tablist" aria-label="Profile sections">
+        {tabs.map((tab, index) => {
+          const Icon = tab.icon;
+          const selected = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              ref={(el) => { tabRefs.current[tab.id] = el; }}
+              type="button"
+              role="tab"
+              id={`profile-tab-${tab.id}`}
+              aria-selected={selected}
+              aria-controls={`profile-panel-${tab.id}`}
+              tabIndex={selected ? 0 : -1}
+              className={`profile-tab ${selected ? 'is-active' : ''}`}
+              onClick={() => selectTab(tab.id)}
+              onKeyDown={(e) => handleTabKeyDown(e, index)}
+            >
+              <Icon size={16} aria-hidden="true" />
+              <span>{tab.label}</span>
+              {tab.id === 'kyc' && <span className={`profile-tab-dot ${kycMeta.tone}`} aria-label={kycMeta.label} />}
+            </button>
+          );
+        })}
+      </div>
 
-        <section className="profile-card" aria-labelledby="profile-contact-title">
-          <h3 className="profile-card-title" id="profile-contact-title">
-            Contact & Identity Details
-          </h3>
-
-          <dl className="profile-contact-grid">
-            {contactFields.map((field) => {
-              const Icon = field.icon;
-              return (
-                <div key={field.label} className={`profile-contact-field ${field.wide ? 'is-wide' : ''}`}>
-                  <dt>{field.label}</dt>
-                  <dd>
-                    {Icon && <Icon size={15} aria-hidden="true" />}
-                    <span>{field.value}</span>
-                  </dd>
+      {/* Overview */}
+      <div
+        role="tabpanel"
+        id="profile-panel-overview"
+        aria-labelledby="profile-tab-overview"
+        hidden={activeTab !== 'overview'}
+        className="profile-tabpanel"
+      >
+        <div className="profile-overview-grid">
+          <section className="profile-card" aria-labelledby="profile-account-title">
+            <h3 className="profile-card-title" id="profile-account-title">Account Details</h3>
+            <dl className="profile-info-list">
+              {accountRows.map(({ label, icon: Icon, value }) => (
+                <div key={label} className="profile-info-row">
+                  <dt><Icon size={15} aria-hidden="true" />{label}</dt>
+                  <dd>{value}</dd>
                 </div>
-              );
-            })}
-          </dl>
-        </section>
+              ))}
+            </dl>
+          </section>
+
+          <div className="profile-overview-stack">
+            <section className="profile-card" aria-labelledby="profile-contact-title">
+              <h3 className="profile-card-title" id="profile-contact-title">Contact Information</h3>
+              <dl className="profile-info-list">
+                {contactRows.map(({ label, icon: Icon, value, locked }) => (
+                  <div key={label} className="profile-info-row">
+                    <dt><Icon size={15} aria-hidden="true" />{label}</dt>
+                    <dd>
+                      <span>{value}</span>
+                      {locked && (
+                        <span className="profile-locked-badge" title="This field cannot be changed">
+                          <Lock size={11} aria-hidden="true" />
+                          <span className="sr-only">(cannot be changed)</span>
+                        </span>
+                      )}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="profile-card-footnote">
+                <Lock size={12} aria-hidden="true" /> Email and mobile number are used to identify your account and can't be changed here.
+              </p>
+            </section>
+
+            {!isSuperAdmin && token && (
+              <NomineeCard user={user} token={token} onSaved={handleNomineeSaved} />
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* KYC: kept mounted so its status and photo feed the header, and drafts survive tab switches */}
+      {!isSuperAdmin && token && (
+        <div
+          role="tabpanel"
+          id="profile-panel-kyc"
+          aria-labelledby="profile-tab-kyc"
+          hidden={activeTab !== 'kyc'}
+          className="profile-tabpanel"
+        >
+          <KycSection token={token} onKycLoaded={setKyc} />
+        </div>
+      )}
+
+      {/* Referral */}
+      <div
+        role="tabpanel"
+        id="profile-panel-referral"
+        aria-labelledby="profile-tab-referral"
+        hidden={activeTab !== 'referral'}
+        className="profile-tabpanel"
+      >
+        <ReferralCard memberId={memberId} isSuperAdmin={isSuperAdmin} />
       </div>
     </div>
   );

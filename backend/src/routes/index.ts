@@ -27,6 +27,7 @@ import homeVideoRoutes from './homeVideo.routes';
 import adminHomeVideoRoutes from './adminHomeVideo.routes';
 import footerRoutes from './footer.routes';
 import adminFooterRoutes from './adminFooter.routes';
+import kycRoutes from './kyc.routes';
 
 const router = Router();
 
@@ -65,6 +66,9 @@ router.use('/company-account', companyAccountRoutes);
 
 // Authentication & Profile
 router.use('/auth', authRoutes);
+
+// Member KYC (bank, payment & identity documents)
+router.use('/kyc', kycRoutes);
 
 // Binary Tree & Placements
 router.use('/binary', binaryRoutes);

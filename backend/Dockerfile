@@ -41,8 +41,8 @@ RUN npm install --omit=dev && npm cache clean --force
 # Copy compiled JavaScript output from builder stage
 COPY --from=builder /app/dist ./dist
 
-# Create uploads directory structure and set proper permissions
-RUN mkdir -p /app/uploads/products && chown -R node:node /app
+# Create upload directories (public uploads + private KYC documents) and set proper permissions
+RUN mkdir -p /app/uploads/products /app/private_uploads/kyc && chown -R node:node /app
 
 # Switch to unprivileged user for security
 USER node

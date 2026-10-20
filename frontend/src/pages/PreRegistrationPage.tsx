@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, ShieldCheck, Users } from 'lucide-react';
+import { ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, ShieldCheck, Users, Lock } from 'lucide-react';
 import { api } from '../services/api';
 
 interface PreRegistrationPageProps {
@@ -11,6 +11,9 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
   const urlParams = new URLSearchParams(window.location.search);
   const refFromUrl = urlParams.get('ref') || urlParams.get('sponsorId') || urlParams.get('sponsor') || '';
   const legFromUrl = (urlParams.get('leg') || urlParams.get('position') || 'LEFT').toUpperCase();
+  // A referral link fixes the sponsor; a leg-specific link (…&leg=LEFT|RIGHT) also fixes the position
+  const isReferralLink = Boolean(refFromUrl.trim());
+  const isLegLocked = isReferralLink && Boolean(urlParams.get('leg') || urlParams.get('position'));
 
   const [sponsorId, setSponsorId] = useState(refFromUrl.toUpperCase());
   const [sponsorName, setSponsorName] = useState<string | null>(null);
@@ -45,7 +48,11 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
         setSponsorName(res.data.name);
         setIsVerified(true);
       } else {
-        setError(res.message || `Sponsor ID "${cleanId}" not found.`);
+        setError(
+          isReferralLink
+            ? `This referral link is not valid (Sponsor ID "${cleanId}" was not found). Please ask your sponsor for a new link.`
+            : res.message || `Sponsor ID "${cleanId}" not found.`
+        );
         setIsVerified(false);
         setSponsorName(null);
       }
@@ -167,12 +174,16 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
                   required
                   placeholder="e.g. MEM0001 (Member ID)"
                   value={sponsorId}
+                  readOnly={isReferralLink}
+                  aria-readonly={isReferralLink}
                   onChange={(e) => {
+                    if (isReferralLink) return;
                     setSponsorId(e.target.value.toUpperCase());
                     setIsVerified(false);
                     setSponsorName(null);
                   }}
                   style={{
+                    cursor: isReferralLink ? 'not-allowed' : 'text',
                     width: '100%',
                     padding: '11px 14px',
                     borderRadius: '10px',
@@ -184,12 +195,14 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
                     background: isVerified ? '#f0fdf4' : '#fff'
                   }}
                 />
-                {isVerified && (
+                {isVerified ? (
                   <CheckCircle2 size={18} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#10b981' }} />
+                ) : isReferralLink && (
+                  <Lock size={16} aria-hidden="true" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                 )}
               </div>
 
-              {!isVerified && (
+              {!isVerified && !isReferralLink && (
                 <button
                   type="button"
                   onClick={handleManualVerify}
@@ -210,6 +223,11 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
                 </button>
               )}
             </div>
+            {isReferralLink && (
+              <p style={{ fontSize: '12px', color: '#64748b', margin: '6px 0 0 0' }}>
+                Sponsor ID is set by your referral link.
+              </p>
+            )}
           </div>
 
           {/* Verified Sponsor Name Card */}
@@ -254,13 +272,16 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
           {/* Placement Direction (Left / Right Leg) */}
           <div>
             <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '8px' }}>
-              Select Placement Leg *
+              {isLegLocked ? 'Placement Leg (set by your referral link)' : 'Select Placement Leg *'}
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
               <button
                 type="button"
                 onClick={() => setPosition('LEFT')}
+                disabled={isLegLocked && position !== 'LEFT'}
+                aria-pressed={position === 'LEFT'}
                 style={{
+                  opacity: isLegLocked && position !== 'LEFT' ? 0.45 : 1,
                   padding: '14px 16px',
                   borderRadius: '12px',
                   border: position === 'LEFT' ? '2px solid #2563eb' : '1px solid #cbd5e1',
@@ -268,7 +289,7 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
                   color: position === 'LEFT' ? '#1d4ed8' : '#64748b',
                   fontWeight: 800,
                   fontSize: '14px',
-                  cursor: 'pointer',
+                  cursor: isLegLocked ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -283,7 +304,10 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
               <button
                 type="button"
                 onClick={() => setPosition('RIGHT')}
+                disabled={isLegLocked && position !== 'RIGHT'}
+                aria-pressed={position === 'RIGHT'}
                 style={{
+                  opacity: isLegLocked && position !== 'RIGHT' ? 0.45 : 1,
                   padding: '14px 16px',
                   borderRadius: '12px',
                   border: position === 'RIGHT' ? '2px solid #2563eb' : '1px solid #cbd5e1',
@@ -291,7 +315,7 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
                   color: position === 'RIGHT' ? '#1d4ed8' : '#64748b',
                   fontWeight: 800,
                   fontSize: '14px',
-                  cursor: 'pointer',
+                  cursor: isLegLocked ? 'not-allowed' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',

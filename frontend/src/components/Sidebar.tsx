@@ -23,6 +23,7 @@ import {
   Landmark,
   ShoppingCart,
   Share2,
+  UserRound,
   Info,
   Video,
   LayoutTemplate,
@@ -102,7 +103,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
           { id: 'home', label: 'Home', icon: Home }
         ] : []),
         { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'profile', label: 'Refer & Grow (Profile)', icon: Share2, badge: 'Share' }
+        { id: 'profile', label: isAdmin ? 'Profile & Referrals' : 'My Profile & KYC', icon: UserRound }
       ]
     },
     {
