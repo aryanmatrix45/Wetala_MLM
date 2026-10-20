@@ -208,6 +208,10 @@ async function runTests() {
     r = await call('POST', '/api/welcome-bonus/settle', { overrideGBV: 10000 }, LEFT.token);
     assert(r.status === 403, 'Members cannot run a settlement', r.status);
     const rupeesBefore = (await Wallet.findOne({ memberId: 'BVP00001' }))?.availableBalanceInPaise || 0;
+    // Settlement pays the last finished week, judged as of its end: the members must have joined by then
+    const monthAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    await Member.collection.updateMany({}, { $set: { createdAt: monthAgo } });
+    await Member.collection.updateMany({ binaryActivatedAt: { $ne: null } }, { $set: { binaryActivatedAt: monthAgo } });
     r = await call('POST', '/api/welcome-bonus/settle', { overrideGBV: 10000 }, adminToken);
     const rootWallet = await BVWallet.findOne({ ownerId: 'BVP00001' });
     assert(r.status === 200 && rootWallet?.availableBV === 400 && rootWallet?.totalWelcomeBonus === 400,

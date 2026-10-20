@@ -40,6 +40,14 @@ export interface IBinaryDailyClosing extends Document {
 
   commissionLedgerId?: string;
   walletCredited: boolean;
+
+  // Sponsor income: the direct sponsor's share of creditedAmount, paid by the company on top
+  sponsorId?: string;
+  sponsorBonusRate?: number; // e.g. 0.20
+  sponsorBonusAmount: number; // 0 when no sponsor income was due
+  sponsorCommissionLedgerId?: string;
+  sponsorWalletCredited: boolean;
+
   status: 'PAID' | 'NO_MATCH' | 'NOT_QUALIFIED';
   createdAt: Date;
   updatedAt: Date;
@@ -80,6 +88,11 @@ const binaryDailyClosingSchema = new Schema<IBinaryDailyClosing>(
     flushedAmount: { type: Number, default: 0 },
     commissionLedgerId: { type: String, trim: true },
     walletCredited: { type: Boolean, default: false },
+    sponsorId: { type: String, uppercase: true, trim: true },
+    sponsorBonusRate: { type: Number },
+    sponsorBonusAmount: { type: Number, default: 0 },
+    sponsorCommissionLedgerId: { type: String, trim: true },
+    sponsorWalletCredited: { type: Boolean, default: false },
     status: { type: String, enum: ['PAID', 'NO_MATCH', 'NOT_QUALIFIED'], required: true },
   },
   { timestamps: true }
@@ -88,6 +101,7 @@ const binaryDailyClosingSchema = new Schema<IBinaryDailyClosing>(
 binaryDailyClosingSchema.index({ memberId: 1, businessDate: 1 }, { unique: true });
 binaryDailyClosingSchema.index({ memberId: 1, businessDate: -1 });
 binaryDailyClosingSchema.index({ businessDate: 1, creditedAmount: -1 });
+binaryDailyClosingSchema.index({ sponsorId: 1, businessDate: -1 });
 
 export const BinaryDailyClosing = mongoose.model<IBinaryDailyClosing>('BinaryDailyClosing', binaryDailyClosingSchema);
 export default BinaryDailyClosing;

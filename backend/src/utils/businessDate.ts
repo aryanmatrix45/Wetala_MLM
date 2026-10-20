@@ -27,6 +27,12 @@ export class BusinessDate {
     return new Date(new Date(`${date}T00:00:00.000Z`).getTime() + days * DAY_MS).toISOString().slice(0, 10);
   }
 
+  /** The Monday of the IST week (Monday to Sunday) that the business date falls in */
+  static weekStartOf(date: string): string {
+    const day = new Date(`${date}T00:00:00.000Z`).getUTCDay(); // 0 is Sunday
+    return this.addDays(date, day === 0 ? -6 : 1 - day);
+  }
+
   /** First instant of the business date (IST midnight) as a UTC Date */
   static startOf(date: string): Date {
     return new Date(new Date(`${date}T00:00:00.000Z`).getTime() - OFFSET_MS);

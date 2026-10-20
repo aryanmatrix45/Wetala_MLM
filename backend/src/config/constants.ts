@@ -160,6 +160,19 @@ export const BV_LEDGER_ENTRY = {
 export type BVLedgerEntryType = typeof BV_LEDGER_ENTRY[keyof typeof BV_LEDGER_ENTRY];
 
 // ---------------------------------------------------------------------------
+// Welcome bonus: weekly pool paid as BV (defaults when the active rule set has no value)
+// ---------------------------------------------------------------------------
+
+export const WELCOME_BONUS_DEFAULTS = {
+  RATE_PERCENT: 4, // share of the company's weekly gross BV that forms the pool
+  MAX_MULTIPLIER: 2, // lifetime earnings stop at this many times the member's lifetime BV
+  MIN_LIFETIME_BV: 1250, // BV the member must have received in its lifetime (orders + transfers in)
+  MIN_SPONSORED_COUNT: 2, // directly sponsored binary-active members (100 BV+), placed anywhere in the tree
+  // Finished weeks the admin can still pick for settlement
+  SETTLEABLE_WEEKS: 8,
+} as const;
+
+// ---------------------------------------------------------------------------
 // Binary income: daily matching and settlement
 // ---------------------------------------------------------------------------
 

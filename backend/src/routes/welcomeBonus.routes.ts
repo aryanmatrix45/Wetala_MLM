@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { WelcomeBonusService } from '../services/compensation/WelcomeBonusService';
+import { WelcomeBonusService, WelcomeBonusError } from '../services/compensation/WelcomeBonusService';
 import { WelcomeBonusSettlement } from '../models/WelcomeBonusSettlement.model';
 import { WelcomeBonusTransaction } from '../models/WelcomeBonusTransaction.model';
 import { Member } from '../models/Member.model';
@@ -10,6 +10,10 @@ const router = Router();
 
 // Every welcome bonus endpoint needs a login: settlement credits spendable BV, so it is Super Admin only
 router.use(authenticate);
+
+/** Rule errors (week not finished, bonus switched off...) keep their status; anything else is a 500 */
+const statusFor = (error: unknown) =>
+  error instanceof WelcomeBonusError ? error.statusCode : HTTP_STATUS.INTERNAL_SERVER_ERROR;
 
 /** Members always get their own record; the Super Admin may ask for any member (default: first member). */
 const resolveMemberId = async (req: AuthenticatedRequest): Promise<string> => {
@@ -32,7 +36,7 @@ router.get('/admin-summary', requireSuperAdmin, async (_req: Request, res: Respo
       data: summary,
     });
   } catch (error: any) {
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+    res.status(statusFor(error)).json({
       status: false,
       message: error.message || 'Failed to fetch Welcome Bonus admin summary',
     });
@@ -40,19 +44,19 @@ router.get('/admin-summary', requireSuperAdmin, async (_req: Request, res: Respo
 });
 
 /**
- * Preview current / upcoming weekly Welcome Bonus settlement
- * GET /api/welcome-bonus/preview
+ * Preview a week's Welcome Bonus settlement (default: the last finished week)
+ * GET /api/welcome-bonus/preview?weekStart=YYYY-MM-DD
  */
 router.get('/preview', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const overrideGBV = req.query.overrideGBV ? parseFloat(req.query.overrideGBV as string) : undefined;
-    const preview = await WelcomeBonusService.previewWeeklySettlement({ overrideGBV });
+    const preview = await WelcomeBonusService.previewWeeklySettlement({ weekStart: req.query.weekStart, overrideGBV });
     res.json({
       status: true,
       data: preview,
     });
   } catch (error: any) {
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+    res.status(statusFor(error)).json({
       status: false,
       message: error.message || 'Failed to generate Welcome Bonus settlement preview',
     });
@@ -60,26 +64,29 @@ router.get('/preview', requireSuperAdmin, async (req: Request, res: Response) =>
 });
 
 /**
- * Execute weekly Welcome Bonus settlement
- * POST /api/welcome-bonus/settle
+ * Settle a finished week's Welcome Bonus (default: the last finished week)
+ * POST /api/welcome-bonus/settle  { weekStart?: 'YYYY-MM-DD' (a Monday), overrideGBV?: number }
  */
 router.post('/settle', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
-    const { overrideGBV, settlementId } = req.body;
+    const { overrideGBV, weekStart } = req.body;
     const result = await WelcomeBonusService.executeWeeklySettlement({
+      weekStart,
       overrideGBV: typeof overrideGBV === 'number' ? overrideGBV : undefined,
-      settlementId: typeof settlementId === 'string' && settlementId.trim() ? settlementId.trim() : undefined,
     });
 
     res.json({
       status: true,
-      message: `Weekly settlement ${result.settlement.settlementId} processed successfully`,
+      message: result.alreadySettled
+        ? `The week starting ${result.settlement.weekStart || result.settlement.settlementId} was already settled`
+        : `Weekly settlement ${result.settlement.settlementId} processed: ${result.transactions.length} members paid`,
+      alreadySettled: result.alreadySettled,
       settlement: result.settlement,
       transactionsCount: result.transactions.length,
       transactions: result.transactions,
     });
   } catch (error: any) {
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+    res.status(statusFor(error)).json({
       status: false,
       message: error.message || 'Failed to execute Welcome Bonus settlement',
     });
@@ -98,7 +105,7 @@ router.get('/settlements', requireSuperAdmin, async (_req: Request, res: Respons
       data: settlements,
     });
   } catch (error: any) {
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+    res.status(statusFor(error)).json({
       status: false,
       message: error.message || 'Failed to fetch settlements',
     });
@@ -128,7 +135,7 @@ router.get('/settlements/:settlementId', requireSuperAdmin, async (req: Request,
       transactions,
     });
   } catch (error: any) {
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+    res.status(statusFor(error)).json({
       status: false,
       message: error.message || 'Failed to fetch settlement details',
     });
@@ -156,7 +163,7 @@ router.get('/member-status/:memberId?', async (req: AuthenticatedRequest, res: R
       data: status,
     });
   } catch (error: any) {
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+    res.status(statusFor(error)).json({
       status: false,
       message: error.message || 'Failed to fetch member Welcome Bonus status',
     });
@@ -178,7 +185,7 @@ router.get('/history/:memberId?', async (req: AuthenticatedRequest, res: Respons
       data: history,
     });
   } catch (error: any) {
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+    res.status(statusFor(error)).json({
       status: false,
       message: error.message || 'Failed to fetch Welcome Bonus history',
     });

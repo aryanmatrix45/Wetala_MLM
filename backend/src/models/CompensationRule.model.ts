@@ -10,14 +10,13 @@ export interface ICompensationRule extends Document {
   // 1. Welcome Bonus (4% company weekly GBV pool divided equally among eligible members with 2x max cap)
   welcomeBonus: {
     isEnabled: boolean;
-    requiresLeftAndRight: boolean;
     ratePercent: number; // e.g. 4%
     maxMultiplier: number; // e.g. 2x, 3x, 4x
     settlementFrequency: 'WEEKLY' | 'DAILY' | 'MONTHLY';
     limitMode?: 'ACTIVE_PACKAGE' | 'FIXED' | 'MULTIPLIER';
     fixedAmount?: number;
-    minWingBv?: number;
-    minQualifyingBv?: number;
+    minLifetimeBv?: number; // BV received in the member's lifetime (orders + transfers in), e.g. 1250
+    minSponsoredCount?: number; // directly sponsored binary-active members (100 BV+), placed anywhere, e.g. 2
     notes?: string;
   };
   
@@ -60,13 +59,12 @@ export interface ICompensationRule extends Document {
     calculationBase: 'PURCHASE_VALUE' | 'BV' | 'QUALIFYING_VALUE';
   };
   
-  // 5. Sponsor Binary Income (20% on all earnings of direct team, uncapped)
+  // 5. Sponsor Income: 20% of each direct's daily binary income (as credited), paid on top, uncapped
   sponsorBinaryBonus: {
     isEnabled: boolean;
     sponsorBinaryRate: number; // 20% = 0.20
     sponsorDepth: number; // direct = 1
     calculationBase: 'BINARY_COMMISSION' | 'BV' | 'DOWNSTREAM_PURCHASE';
-    maxPayout?: number;
   };
   
   // 6. Team Performance Bonus (6 Slabs: 10:10 @ 3% max 10k, up to 25,000:25,000 @ 1% max 15L)
@@ -182,15 +180,14 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
     },
     welcomeBonus: {
       isEnabled: { type: Boolean, default: true },
-      requiresLeftAndRight: { type: Boolean, default: true },
       ratePercent: { type: Number, default: 4 },
       maxMultiplier: { type: Number, default: 2 },
       settlementFrequency: { type: String, default: 'WEEKLY' },
       limitMode: { type: String, default: 'MULTIPLIER' },
       fixedAmount: { type: Number, default: 0 },
-      minWingBv: { type: Number, default: 100 },
-      minQualifyingBv: { type: Number, default: 100 },
-      notes: { type: String, default: 'Company Weekly GBV pool divided equally among eligible members, capped at multiplier times qualifying BV.' },
+      minLifetimeBv: { type: Number, default: 1250 },
+      minSponsoredCount: { type: Number, default: 2 },
+      notes: { type: String, default: 'Company Weekly GBV pool divided equally among eligible members, capped at multiplier times lifetime BV.' },
     },
     binaryBonus: {
       isEnabled: { type: Boolean, default: true },
@@ -231,7 +228,6 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       sponsorBinaryRate: { type: Number, default: 0.20 }, // 20%
       sponsorDepth: { type: Number, default: 1 },
       calculationBase: { type: String, default: 'BINARY_COMMISSION' },
-      maxPayout: Number,
     },
     teamPerformanceBonus: {
       isEnabled: { type: Boolean, default: true },

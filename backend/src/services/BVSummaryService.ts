@@ -5,6 +5,8 @@ import { BinaryVolume } from '../models/BinaryVolume.model';
 import { Purchase } from '../models/Purchase.model';
 import { BV_SOURCE_TYPE, BV_WALLET, HTTP_STATUS } from '../config/constants';
 import { BVWalletError, BVWalletService } from './BVWalletService';
+import { LifetimeBvService } from './compensation/LifetimeBvService';
+import { WelcomeBonusService } from './compensation/WelcomeBonusService';
 
 /**
  * Member "Total Business Volume" for the dashboard:
@@ -23,7 +25,7 @@ export class BVSummaryService {
     // Catch up members whose wallet balance already qualifies (e.g. BV received before activation existed)
     await BVWalletService.activateFromWalletIfEligible(memberId);
     const member = await Member.findOne({ memberId }).select(
-      'memberId name personalBv isBinaryActive activationSource welcomeBonusEarned welcomeBonusCap ' +
+      'memberId name personalBv isBinaryActive activationSource welcomeBonusEarned ' +
         'activationLockedBV activationLockFromPersonalBV activationLockFromWalletBV activationLockedAt'
     );
     if (!member) throw new BVWalletError('Member not found.', HTTP_STATUS.NOT_FOUND);
@@ -41,13 +43,15 @@ export class BVSummaryService {
     // BV set directly on the member without a ledger row (e.g. the root member's opening balance)
     const otherBV = personalBV - (packageBV + purchaseBV + refundsBV);
 
-    const [wallet, volume, pendingOrders] = await Promise.all([
+    const [wallet, volume, pendingOrders, lifetimeBv, welcomeBonusConfig] = await Promise.all([
       BVWallet.findOne({ ownerId: memberId }).lean(),
       BinaryVolume.findOne({ memberId }).lean(),
       Purchase.aggregate([
         { $match: { memberId, paymentMethod: 'BV_WALLET', approvalStage: 'PAYMENT_SUBMITTED' } },
         { $group: { _id: null, count: { $sum: 1 }, bv: { $sum: '$bvAmount' } } },
       ]),
+      LifetimeBvService.forMember(memberId),
+      WelcomeBonusService.getConfig(),
     ]);
     const walletBV = wallet?.availableBV || 0;
     const lockedFromPersonal = member.activationLockFromPersonalBV || 0;
@@ -79,7 +83,8 @@ export class BVSummaryService {
       },
       welcomeBonus: {
         earned: member.welcomeBonusEarned || 0,
-        cap: member.welcomeBonusCap || 0,
+        lifetimeBv,
+        cap: lifetimeBv * welcomeBonusConfig.maxMultiplier,
       },
       binary: {
         isActive: Boolean(member.isBinaryActive),

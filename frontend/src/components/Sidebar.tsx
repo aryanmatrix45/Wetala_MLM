@@ -130,8 +130,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
       title: 'Finance & Compensation',
       items: [
         { id: 'welcome-bonus', label: 'Welcome Bonus', icon: Gift, badge: isAdmin ? '4% Pool' : 'BV' },
-        // Sponsor binary income is switched off for now (page kept for when it returns)
         { id: 'binary-ledger', label: 'Binary Income', icon: BarChart3, badge: 'Daily' },
+        { id: 'sponsor-income', label: 'Sponsor Income', icon: Users, badge: '20%' },
         { id: 'binary-leaderboard', label: 'Binary Leaderboard', icon: Trophy },
         { 
           id: 'withdrawals', 

@@ -1,25 +1,77 @@
-import { Member, IMember } from '../../models/Member.model';
-import { Purchase } from '../../models/Purchase.model';
+import { Member } from '../../models/Member.model';
 import { CompensationRule, ICompensationRule } from '../../models/CompensationRule.model';
 import { WelcomeBonusSettlement, IWelcomeBonusSettlement } from '../../models/WelcomeBonusSettlement.model';
 import { WelcomeBonusTransaction, IWelcomeBonusTransaction } from '../../models/WelcomeBonusTransaction.model';
 import { BVWalletService, runInTransaction } from '../BVWalletService';
+import { GrossVolumeService } from '../GrossVolumeService';
+import { LifetimeBvService } from './LifetimeBvService';
 import { DecimalUtil } from '../../utils/decimal';
-import { BINARY_POSITION, BV_OWNER_TYPE } from '../../config/constants';
+import { BusinessDate } from '../../utils/businessDate';
+import { BV_OWNER_TYPE, HTTP_STATUS, WELCOME_BONUS_DEFAULTS } from '../../config/constants';
+
+/**
+ * Welcome bonus: every week the company puts a share (4%) of its gross BV into a pool, split equally
+ * among the eligible members and credited to their BV Wallets.
+ *
+ * A member is eligible when:
+ *  1. the account is active;
+ *  2. it has received at least 1,250 BV in its lifetime (orders and transfers in, see LifetimeBvService);
+ *  3. it has directly sponsored at least 2 members whose binary status is active (100 BV or more),
+ *     placed anywhere in the tree;
+ *  4. its welcome bonus so far is below 2x its lifetime BV. The last payment is cut so the total
+ *     lands exactly on 2x.
+ * The member's own binary activation (100 BV lock) plays no part in its lifetime BV.
+ *
+ * Weeks run Monday to Sunday in IST. The Super Admin settles a week once it has finished; eligibility
+ * is taken as of that Sunday 23:59:59 IST.
+ */
+
+export class WelcomeBonusError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode: number = HTTP_STATUS.BAD_REQUEST) {
+    super(message);
+    this.name = 'WelcomeBonusError';
+    this.statusCode = statusCode;
+  }
+}
+
+export interface WelcomeBonusConfig {
+  isEnabled: boolean;
+  ratePercent: number;
+  maxMultiplier: number;
+  minLifetimeBv: number;
+  minSponsoredCount: number;
+  settlementFrequency: string;
+}
+
+export interface WeekPeriod {
+  weekStart: string; // IST Monday, 'YYYY-MM-DD'
+  periodStart: Date;
+  periodEnd: Date;
+  settlementId: string;
+}
 
 export interface MemberEligibilityResult {
   memberId: string;
   name: string;
   email: string;
-  hasLeftWing: boolean;
-  hasRightWing: boolean;
-  qualifyingBv: number;
+  lifetimeBv: number;
+  sponsoredCount: number;
   welcomeBonusCap: number;
   welcomeBonusEarned: number;
   remainingCap: number;
   isEligible: boolean;
   ineligibleReason?: string;
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+const formatDate = (d?: Date | null) =>
+  d ? new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '';
+
+const positive = (value: unknown, fallback: number) => (typeof value === 'number' && value > 0 ? value : fallback);
+const nonNegative = (value: unknown, fallback: number) => (typeof value === 'number' && value >= 0 ? value : fallback);
 
 export class WelcomeBonusService {
   /**
@@ -37,9 +89,10 @@ export class WelcomeBonusService {
         isActive: true,
         welcomeBonus: {
           isEnabled: true,
-          ratePercent: 4,
-          maxMultiplier: 2,
-          requiresLeftAndRight: true,
+          ratePercent: WELCOME_BONUS_DEFAULTS.RATE_PERCENT,
+          maxMultiplier: WELCOME_BONUS_DEFAULTS.MAX_MULTIPLIER,
+          minLifetimeBv: WELCOME_BONUS_DEFAULTS.MIN_LIFETIME_BV,
+          minSponsoredCount: WELCOME_BONUS_DEFAULTS.MIN_SPONSORED_COUNT,
           settlementFrequency: 'WEEKLY',
         },
       });
@@ -47,333 +100,335 @@ export class WelcomeBonusService {
     return rule;
   }
 
-  /**
-   * Helper to compute start & end of current settlement period (Weekly: Mon 00:00 to Sun 23:59:59)
-   */
-  static getWeeklyPeriod(targetDate: Date = new Date()): { periodStart: Date; periodEnd: Date; periodId: string } {
-    const d = new Date(targetDate);
-    const day = d.getDay(); // 0 is Sunday, 1 is Monday...
-    const diffToMonday = (day === 0 ? -6 : 1) - day;
-    
-    const monday = new Date(d);
-    monday.setDate(d.getDate() + diffToMonday);
-    monday.setHours(0, 0, 0, 0);
-
-    const sunday = new Date(monday);
-    sunday.setDate(monday.getDate() + 6);
-    sunday.setHours(23, 59, 59, 999);
-
-    // Generate week number format: YYYY-Www
-    const firstJan = new Date(monday.getFullYear(), 0, 1);
-    const days = Math.floor((monday.getTime() - firstJan.getTime()) / (24 * 60 * 60 * 1000));
-    const weekNumber = Math.ceil((days + firstJan.getDay() + 1) / 7);
-    const periodId = `SETTLE-${monday.getFullYear()}-W${String(weekNumber).padStart(2, '0')}`;
-
-    return { periodStart: monday, periodEnd: sunday, periodId };
-  }
-
-  /**
-   * Calculate valid Gross Business Volume (GBV) generated by company during settlement period
-   */
-  static async calculateWeeklyGBV(periodStart: Date, periodEnd: Date, overrideGBV?: number): Promise<number> {
-    if (typeof overrideGBV === 'number' && overrideGBV >= 0) {
-      return overrideGBV;
-    }
-
-    // 1. Sum up all completed & paid purchases in this window
-    const purchases = await Purchase.find({
-      status: { $in: ['COMPLETED', 'CONFIRMED'] },
-      paymentStatus: 'PAID',
-      $or: [
-        { completedAt: { $gte: periodStart, $lte: periodEnd } },
-        { createdAt: { $gte: periodStart, $lte: periodEnd } },
-      ],
-    });
-    const purchaseBv = purchases.reduce((sum, p) => sum + (p.totalBV || 0), 0);
-
-    // 2. Sum up any member joining package BV directly set on member without a duplicate purchase record
-    const paidJoiningMemberIds = new Set(
-      purchases
-        .filter(p => p.type === 'JOINING')
-        .map(p => p.memberId)
-    );
-    const newMembers = await Member.find({
-      createdAt: { $gte: periodStart, $lte: periodEnd },
-      packageBv: { $gt: 0 },
-    });
-    const directJoiningBv = newMembers
-      .filter(m => !paidJoiningMemberIds.has(m.memberId))
-      .reduce((sum, m) => sum + (m.packageBv || 0), 0);
-
-    const totalGBV = purchaseBv + directJoiningBv;
-    return totalGBV;
-  }
-
-  /**
-   * Check eligibility for a specific member:
-   * 1. Member is active
-   * 2. Left Wing has at least 1 valid member
-   * 3. Right Wing has at least 1 valid member
-   * 4. Member has not already reached their 2x maximum Welcome Bonus cap
-   */
-  static async checkMemberEligibility(
-    member: IMember,
-    maxMultiplierParam?: number,
-    ruleConfigParam?: any
-  ): Promise<MemberEligibilityResult> {
-    const rules = ruleConfigParam ? null : await this.getActiveRules();
-    const config = ruleConfigParam || rules?.welcomeBonus || {};
-
-    const maxMultiplier = typeof maxMultiplierParam === 'number' && maxMultiplierParam > 0
-      ? maxMultiplierParam 
-      : (typeof config.maxMultiplier === 'number' && config.maxMultiplier > 0 ? config.maxMultiplier : 2);
-    const minWingBv = typeof config.minWingBv === 'number' && config.minWingBv >= 0 ? config.minWingBv : 100;
-    const minQualifyingBv = typeof config.minQualifyingBv === 'number' && config.minQualifyingBv >= 0 ? config.minQualifyingBv : 100;
-    const requiresLeftAndRight = config.requiresLeftAndRight !== false;
-
-    // Total purchased personal BV from all packages + products
-    const qualifyingBv = Math.max(member.qualifyingBv || 0, member.personalBv || 0, member.packageBv || 0);
-    const welcomeBonusCap = qualifyingBv > 0 ? (qualifyingBv * maxMultiplier) : (member.welcomeBonusCap || 0);
-    const welcomeBonusEarned = member.welcomeBonusEarned || 0;
-    const remainingCap = Math.max(0, welcomeBonusCap - welcomeBonusEarned);
-
-    // Strictly direct sponsored referrals (sponsorId === member.memberId)
-    // Each child must be active and have purchased at least minWingBv (Package or Product)
-    const directSponsored = await Member.find({
-      sponsorId: member.memberId,
-      status: 'active',
-      isActive: true,
-      $or: [
-        { personalBv: { $gte: minWingBv } },
-        { packageBv: { $gte: minWingBv } },
-        { isBinaryActive: true },
-      ],
-    });
-
-    const hasDirectLeft = directSponsored.some((m) => {
-      const pos = (m.binaryPosition || m.position || '').toUpperCase().trim();
-      return pos === 'LEFT';
-    });
-    const hasDirectRight = directSponsored.some((m) => {
-      const pos = (m.binaryPosition || m.position || '').toUpperCase().trim();
-      return pos === 'RIGHT';
-    });
-
-    // Strictly direct sponsorship - NO spillover or sub-tree fallback
-    const hasLeftWing = hasDirectLeft;
-    const hasRightWing = hasDirectRight;
-
-    let isEligible = true;
-    let ineligibleReason = '';
-
-    if (!member.isActive || member.status !== 'active') {
-      isEligible = false;
-      ineligibleReason = 'Member account is inactive';
-    } else if (qualifyingBv < minQualifyingBv) {
-      isEligible = false;
-      ineligibleReason = `Member requires at least ${minQualifyingBv} BV in purchases (Package or Product)`;
-    } else if (requiresLeftAndRight && !hasLeftWing) {
-      isEligible = false;
-      ineligibleReason = `Missing directly sponsored active member (≥${minWingBv} BV) on Left Wing`;
-    } else if (requiresLeftAndRight && !hasRightWing) {
-      isEligible = false;
-      ineligibleReason = `Missing directly sponsored active member (≥${minWingBv} BV) on Right Wing`;
-    } else if (remainingCap <= 0) {
-      isEligible = false;
-      ineligibleReason = `Maximum ${maxMultiplier}× Welcome Bonus cap reached`;
-    }
-
-    return {
-      memberId: member.memberId,
-      name: member.name,
-      email: member.email,
-      hasLeftWing,
-      hasRightWing,
-      qualifyingBv,
-      welcomeBonusCap,
-      welcomeBonusEarned,
-      remainingCap,
-      isEligible,
-      ineligibleReason,
-    };
-  }
-
-  /**
-   * Preview weekly settlement figures before execution
-   */
-  static async previewWeeklySettlement(options?: {
-    periodStart?: Date;
-    periodEnd?: Date;
-    overrideGBV?: number;
-  }) {
+  static async getConfig(): Promise<WelcomeBonusConfig> {
     const rules = await this.getActiveRules();
-    const config = rules.welcomeBonus || {
-      isEnabled: true,
-      ratePercent: 4,
-      maxMultiplier: 2,
-      requiresLeftAndRight: true,
-      settlementFrequency: 'WEEKLY',
+    const c: any = rules.welcomeBonus || {};
+    return {
+      isEnabled: c.isEnabled !== false,
+      ratePercent: positive(c.ratePercent, WELCOME_BONUS_DEFAULTS.RATE_PERCENT),
+      maxMultiplier: positive(c.maxMultiplier, WELCOME_BONUS_DEFAULTS.MAX_MULTIPLIER),
+      minLifetimeBv: nonNegative(c.minLifetimeBv, WELCOME_BONUS_DEFAULTS.MIN_LIFETIME_BV),
+      minSponsoredCount: nonNegative(c.minSponsoredCount, WELCOME_BONUS_DEFAULTS.MIN_SPONSORED_COUNT),
+      settlementFrequency: c.settlementFrequency || 'WEEKLY',
     };
+  }
 
-    const period = this.getWeeklyPeriod(options?.periodStart || new Date());
-    const periodStart = options?.periodStart || period.periodStart;
-    const periodEnd = options?.periodEnd || period.periodEnd;
-    const settlementId = period.periodId;
+  // ---------------------------------------------------------------------------
+  // Weeks
+  // ---------------------------------------------------------------------------
 
-    const companyGrossBusinessVolume = await this.calculateWeeklyGBV(
-      periodStart,
-      periodEnd,
-      options?.overrideGBV
-    );
+  /** The IST week (Monday 00:00 to Sunday 23:59:59.999) that starts on the given Monday */
+  static getWeek(weekStart: string): WeekPeriod {
+    return {
+      weekStart,
+      periodStart: BusinessDate.startOf(weekStart),
+      periodEnd: BusinessDate.endOf(BusinessDate.addDays(weekStart, 6)),
+      settlementId: `WB-${weekStart}`,
+    };
+  }
 
-    const welcomeBonusRate = config.ratePercent > 0 ? config.ratePercent : 4;
-    const maxMultiplier = config.maxMultiplier > 0 ? config.maxMultiplier : 2;
+  static currentWeek(now: Date = new Date()): WeekPeriod {
+    return this.getWeek(BusinessDate.weekStartOf(BusinessDate.of(now)));
+  }
 
-    // Total Pool = Company Weekly GBV * Rate / 100
-    const totalWelcomeBonusPool = DecimalUtil.round(
-      (companyGrossBusinessVolume * welcomeBonusRate) / 100
-    );
+  static lastFinishedWeek(now: Date = new Date()): WeekPeriod {
+    return this.getWeek(BusinessDate.addDays(this.currentWeek(now).weekStart, -7));
+  }
 
-    // Get all members and evaluate eligibility
-    const allMembers = await Member.find().sort({ createdAt: 1 });
-    const memberEvaluations: MemberEligibilityResult[] = [];
-    const eligibleMembers: MemberEligibilityResult[] = [];
-
-    for (const m of allMembers) {
-      const evalRes = await this.checkMemberEligibility(m, maxMultiplier, config);
-      memberEvaluations.push(evalRes);
-      if (evalRes.isEligible) {
-        eligibleMembers.push(evalRes);
-      }
+  /** A week picked by the admin ('YYYY-MM-DD' Monday); the last finished week when none is given */
+  static parseWeek(value: unknown): WeekPeriod {
+    if (value === undefined || value === null || value === '') return this.lastFinishedWeek();
+    if (!BusinessDate.isValid(value) || BusinessDate.weekStartOf(value) !== value) {
+      throw new WelcomeBonusError('Pick the Monday the week starts on (YYYY-MM-DD).');
     }
+    return this.getWeek(value);
+  }
 
-    const eligibleMemberCount = eligibleMembers.length;
-    // Welcome bonus is paid as BV into the BV Wallet, which holds whole BV only:
-    // shares are rounded down and any remainder stays undistributed
-    const equalMemberShare =
-      eligibleMemberCount > 0
-        ? Math.floor(totalWelcomeBonusPool / eligibleMemberCount)
-        : 0;
+  /**
+   * The settlement already made for a week. Settlements made before weeks were keyed have no
+   * weekStart; they started on that Monday in the server's timezone, so they are matched by start time.
+   */
+  static async findSettlementForWeek(week: WeekPeriod): Promise<IWelcomeBonusSettlement | null> {
+    return WelcomeBonusSettlement.findOne({
+      $or: [
+        { weekStart: week.weekStart },
+        {
+          weekStart: { $exists: false },
+          periodStart: {
+            $gte: new Date(week.periodStart.getTime() - DAY_MS / 2),
+            $lt: new Date(week.periodStart.getTime() + DAY_MS),
+          },
+        },
+      ],
+    });
+  }
 
-    // Check individual cap impact and projected distribution
-    let projectedDistributed = 0;
-    const projectedPayouts = eligibleMembers.map((em) => {
-      const actualPayout = Math.min(equalMemberShare, Math.floor(em.remainingCap));
-      projectedDistributed += actualPayout;
+  /** Recently finished weeks that have not been settled, newest first */
+  static async getUnsettledWeeks(now: Date = new Date()): Promise<WeekPeriod[]> {
+    const weeks: WeekPeriod[] = [];
+    let week = this.lastFinishedWeek(now);
+    for (let i = 0; i < WELCOME_BONUS_DEFAULTS.SETTLEABLE_WEEKS; i++) {
+      if (!(await this.findSettlementForWeek(week))) weeks.push(week);
+      week = this.getWeek(BusinessDate.addDays(week.weekStart, -7));
+    }
+    return weeks;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Eligibility
+  // ---------------------------------------------------------------------------
+
+  /** Evaluates members as of a moment: lifetime BV and sponsored members are counted up to then */
+  static async evaluateMembers(
+    asOf: Date,
+    config: WelcomeBonusConfig,
+    memberIds?: string[]
+  ): Promise<MemberEligibilityResult[]> {
+    const [members, lifetimeBv, sponsorRows] = await Promise.all([
+      Member.find({ ...(memberIds ? { memberId: { $in: memberIds } } : {}), createdAt: { $lte: asOf } })
+        .select('memberId name email status isActive welcomeBonusEarned')
+        .sort({ createdAt: 1 })
+        .lean(),
+      LifetimeBvService.compute({ asOf, memberIds }),
+      // Directly sponsored members, wherever they were placed in the tree, whose binary status was
+      // active (100 BV reached) by then. Members activated before the date was recorded have none.
+      Member.aggregate([
+        {
+          $match: {
+            sponsorId: memberIds ? { $in: memberIds } : { $nin: [null, ''] },
+            status: 'active',
+            isActive: true,
+            isBinaryActive: true,
+            createdAt: { $lte: asOf },
+            $or: [{ binaryActivatedAt: { $lte: asOf } }, { binaryActivatedAt: null }],
+          },
+        },
+        { $group: { _id: '$sponsorId', count: { $sum: 1 } } },
+      ]),
+    ]);
+    const sponsoredByMember = new Map(sponsorRows.map((r) => [r._id as string, r.count as number]));
+
+    return members.map((m) => {
+      const memberLifetimeBv = lifetimeBv.get(m.memberId) || 0;
+      const sponsoredCount = sponsoredByMember.get(m.memberId) || 0;
+      const welcomeBonusCap = memberLifetimeBv * config.maxMultiplier;
+      const welcomeBonusEarned = m.welcomeBonusEarned || 0;
+      const remainingCap = Math.max(0, welcomeBonusCap - welcomeBonusEarned);
+
+      let ineligibleReason = '';
+      if (!m.isActive || m.status !== 'active') {
+        ineligibleReason = 'Member account is inactive';
+      } else if (memberLifetimeBv < config.minLifetimeBv) {
+        ineligibleReason = `Needs at least ${config.minLifetimeBv} BV in its lifetime (has ${memberLifetimeBv} BV)`;
+      } else if (sponsoredCount < config.minSponsoredCount) {
+        ineligibleReason = `Needs at least ${config.minSponsoredCount} directly sponsored members with active binary status (has ${sponsoredCount})`;
+      } else if (remainingCap <= 0) {
+        ineligibleReason = `Maximum ${config.maxMultiplier}× Welcome Bonus cap reached`;
+      }
+
       return {
-        memberId: em.memberId,
-        name: em.name,
-        qualifyingBv: em.qualifyingBv,
-        welcomeBonusCap: em.welcomeBonusCap,
-        welcomeBonusEarned: em.welcomeBonusEarned,
-        remainingCap: em.remainingCap,
-        equalMemberShare,
-        actualPayout,
-        isCapped: actualPayout < equalMemberShare,
+        memberId: m.memberId,
+        name: m.name,
+        email: m.email,
+        lifetimeBv: memberLifetimeBv,
+        sponsoredCount,
+        welcomeBonusCap,
+        welcomeBonusEarned,
+        remainingCap,
+        isEligible: !ineligibleReason,
+        ineligibleReason: ineligibleReason || undefined,
       };
     });
+  }
 
-    const projectedUndistributed = Math.max(
-      0,
-      DecimalUtil.round(totalWelcomeBonusPool - projectedDistributed)
-    );
+  static async checkMemberEligibility(memberId: string, asOf: Date = new Date()): Promise<MemberEligibilityResult> {
+    const id = memberId.toUpperCase();
+    const config = await this.getConfig();
+    const [result] = await this.evaluateMembers(asOf, config, [id]);
+    if (!result) throw new WelcomeBonusError(`Member ${id} not found`, HTTP_STATUS.NOT_FOUND);
+    return result;
+  }
 
-    // Check if this settlement was already processed
-    const existingSettlement = await WelcomeBonusSettlement.findOne({ settlementId });
+  // ---------------------------------------------------------------------------
+  // Settlement
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Works out a week's pool and payouts. For a week still running, figures are as of now (a projection).
+   */
+  static async planWeek(week: WeekPeriod, config: WelcomeBonusConfig, overrideGBV?: number) {
+    const asOf = new Date(Math.min(week.periodEnd.getTime(), Date.now()));
+    const companyGrossBusinessVolume =
+      typeof overrideGBV === 'number' && overrideGBV >= 0
+        ? overrideGBV
+        : (await GrossVolumeService.forPeriod(week.periodStart, asOf)).bv;
+    const totalWelcomeBonusPool = DecimalUtil.round((companyGrossBusinessVolume * config.ratePercent) / 100);
+
+    const allEvaluations = await this.evaluateMembers(asOf, config);
+    const eligible = allEvaluations.filter((e) => e.isEligible);
+    // Paid into the BV Wallet, which holds whole BV only: shares are rounded down and any
+    // remainder stays undistributed
+    const equalMemberShare = eligible.length > 0 ? Math.floor(totalWelcomeBonusPool / eligible.length) : 0;
+
+    const payouts = eligible.map((e) => ({
+      memberId: e.memberId,
+      name: e.name,
+      lifetimeBv: e.lifetimeBv,
+      sponsoredCount: e.sponsoredCount,
+      welcomeBonusCap: e.welcomeBonusCap,
+      welcomeBonusEarned: e.welcomeBonusEarned,
+      plannedPayout: Math.min(equalMemberShare, Math.floor(e.remainingCap)),
+    }));
+    const projectedDistributed = payouts.reduce((sum, p) => sum + p.plannedPayout, 0);
 
     return {
-      settlementId,
-      periodStart,
-      periodEnd,
+      ...week,
       companyGrossBusinessVolume,
-      welcomeBonusRate,
+      welcomeBonusRate: config.ratePercent,
       totalWelcomeBonusPool,
-      eligibleMemberCount,
+      eligibleMemberCount: eligible.length,
       equalMemberShare,
       projectedDistributed,
-      projectedUndistributed,
-      isAlreadyProcessed: !!existingSettlement,
-      existingSettlementStatus: existingSettlement ? existingSettlement.status : null,
-      projectedPayouts,
-      allEvaluations: memberEvaluations,
+      projectedUndistributed: Math.max(0, DecimalUtil.round(totalWelcomeBonusPool - projectedDistributed)),
+      payouts,
+      allEvaluations,
     };
   }
 
   /**
-   * Execute weekly settlement with strict idempotency and atomic updates
+   * Preview of a week's settlement (default: the last finished week)
    */
-  static async executeWeeklySettlement(options?: {
-    periodStart?: Date;
-    periodEnd?: Date;
-    overrideGBV?: number;
-    settlementId?: string;
-  }): Promise<{ settlement: IWelcomeBonusSettlement; transactions: IWelcomeBonusTransaction[] }> {
-    const preview = await this.previewWeeklySettlement(options);
-    const settlementId = options?.settlementId || preview.settlementId;
+  static async previewWeeklySettlement(options: { weekStart?: unknown; overrideGBV?: number } = {}) {
+    const config = await this.getConfig();
+    const week = this.parseWeek(options.weekStart);
+    const [plan, existing] = await Promise.all([
+      this.planWeek(week, config, options.overrideGBV),
+      this.findSettlementForWeek(week),
+    ]);
 
-    // Verify if already settled
-    let settlement = await WelcomeBonusSettlement.findOne({ settlementId });
-    if (settlement && settlement.status === 'COMPLETED') {
-      const existingTxns = await WelcomeBonusTransaction.find({ settlementId });
-      return { settlement, transactions: existingTxns };
+    return {
+      settlementId: existing?.settlementId || plan.settlementId,
+      weekStart: plan.weekStart,
+      periodStart: plan.periodStart,
+      periodEnd: plan.periodEnd,
+      isWeekFinished: plan.periodEnd.getTime() < Date.now(),
+      companyGrossBusinessVolume: plan.companyGrossBusinessVolume,
+      welcomeBonusRate: plan.welcomeBonusRate,
+      totalWelcomeBonusPool: plan.totalWelcomeBonusPool,
+      eligibleMemberCount: plan.eligibleMemberCount,
+      equalMemberShare: plan.equalMemberShare,
+      projectedDistributed: plan.projectedDistributed,
+      projectedUndistributed: plan.projectedUndistributed,
+      isAlreadyProcessed: !!existing,
+      existingSettlementStatus: existing ? existing.status : null,
+      projectedPayouts: plan.payouts.map((p) => ({
+        ...p,
+        remainingCap: Math.max(0, p.welcomeBonusCap - p.welcomeBonusEarned),
+        equalMemberShare: plan.equalMemberShare,
+        actualPayout: p.plannedPayout,
+        isCapped: p.plannedPayout < plan.equalMemberShare,
+      })),
+      allEvaluations: plan.allEvaluations,
+    };
+  }
+
+  /**
+   * Settles a finished week (default: the last finished week). The pool, eligible members and each
+   * payout are fixed on the settlement record before anyone is paid, so a run that stops partway is
+   * finished by running it again with the same figures. A member is never paid twice for a week.
+   */
+  static async executeWeeklySettlement(options: { weekStart?: unknown; overrideGBV?: number } = {}): Promise<{
+    settlement: IWelcomeBonusSettlement;
+    transactions: IWelcomeBonusTransaction[];
+    alreadySettled: boolean;
+  }> {
+    const config = await this.getConfig();
+    if (!config.isEnabled) {
+      throw new WelcomeBonusError('The welcome bonus is switched off in Income Settings.');
+    }
+    const week = this.parseWeek(options.weekStart);
+    if (week.periodEnd.getTime() >= Date.now()) {
+      throw new WelcomeBonusError(
+        `The week starting ${week.weekStart} has not finished yet. It can be settled from ${BusinessDate.addDays(week.weekStart, 7)}.`
+      );
+    }
+
+    let settlement = await this.findSettlementForWeek(week);
+    if (settlement?.status === 'COMPLETED') {
+      const transactions = await WelcomeBonusTransaction.find({ settlementId: settlement.settlementId });
+      return { settlement, transactions, alreadySettled: true };
     }
 
     if (!settlement) {
-      settlement = new WelcomeBonusSettlement({
-        settlementId,
-        periodStart: preview.periodStart,
-        periodEnd: preview.periodEnd,
-        companyGrossBusinessVolume: preview.companyGrossBusinessVolume,
-        welcomeBonusRate: preview.welcomeBonusRate,
-        totalWelcomeBonusPool: preview.totalWelcomeBonusPool,
-        eligibleMemberCount: preview.eligibleMemberCount,
-        equalMemberShare: preview.equalMemberShare,
-        totalAmountDistributed: 0,
-        totalAmountUndistributed: preview.totalWelcomeBonusPool,
-        status: 'PENDING',
-        processedAt: new Date(),
-      });
+      const plan = await this.planWeek(week, config, options.overrideGBV);
+      try {
+        settlement = await WelcomeBonusSettlement.create({
+          settlementId: plan.settlementId,
+          weekStart: plan.weekStart,
+          periodStart: plan.periodStart,
+          periodEnd: plan.periodEnd,
+          companyGrossBusinessVolume: plan.companyGrossBusinessVolume,
+          welcomeBonusRate: plan.welcomeBonusRate,
+          totalWelcomeBonusPool: plan.totalWelcomeBonusPool,
+          eligibleMemberCount: plan.eligibleMemberCount,
+          equalMemberShare: plan.equalMemberShare,
+          totalAmountDistributed: 0,
+          totalAmountUndistributed: plan.totalWelcomeBonusPool,
+          maxMultiplier: config.maxMultiplier,
+          minLifetimeBv: config.minLifetimeBv,
+          minSponsoredCount: config.minSponsoredCount,
+          payouts: plan.payouts,
+          status: 'PENDING',
+          processedAt: new Date(),
+        });
+      } catch (error: any) {
+        // A concurrent run created it first; carry on with its figures
+        if (error?.code !== 11000) throw error;
+        settlement = await this.findSettlementForWeek(week);
+        if (!settlement) throw error;
+      }
     }
 
-    const createdTransactions: IWelcomeBonusTransaction[] = [];
-    let totalDistributed = 0;
+    const settlementId = settlement.settlementId;
+    const transactions: IWelcomeBonusTransaction[] = [];
 
-    for (const payout of preview.projectedPayouts) {
-      const { memberId, actualPayout, remainingCap, equalMemberShare, welcomeBonusCap, welcomeBonusEarned } = payout;
+    for (const planned of settlement.payouts) {
+      const { memberId } = planned;
+      if (planned.plannedPayout <= 0) continue;
 
-      // Idempotency check: Guarantee the same member is never paid twice for this settlementId
       const existingTx = await WelcomeBonusTransaction.findOne({ memberId, settlementId });
       if (existingTx) {
-        createdTransactions.push(existingTx);
-        totalDistributed += existingTx.actualPayout;
+        transactions.push(existingTx);
         continue;
       }
 
-      if (actualPayout <= 0) {
-        continue;
-      }
-
-      const txId = `WBTX-${settlementId}-${memberId}`;
-      const member = await Member.findOne({ memberId }).select('name');
       await BVWalletService.ensureWallet({ ownerType: BV_OWNER_TYPE.MEMBER, ownerId: memberId });
 
       // The settlement record, the member's earned total and the BV Wallet credit commit together
-      let tx: IWelcomeBonusTransaction;
+      let tx: IWelcomeBonusTransaction | null;
       try {
         tx = await runInTransaction(async (session) => {
+          const member = await Member.findOne({ memberId }).select('name welcomeBonusEarned').session(session);
+          if (!member) return null;
+          // Never past the cap, even if another week was settled after this plan was made
+          const earned = member.welcomeBonusEarned || 0;
+          const remainingCap = Math.max(0, Math.floor(planned.welcomeBonusCap - earned));
+          const actualPayout = Math.min(planned.plannedPayout, remainingCap);
+          if (actualPayout <= 0) return null;
+
           const [created] = await WelcomeBonusTransaction.create(
             [
               {
-                transactionId: txId,
+                transactionId: `WBTX-${settlementId}-${memberId}`,
                 memberId,
                 settlementId,
-                companyGrossBusinessVolume: preview.companyGrossBusinessVolume,
-                bonusRate: preview.welcomeBonusRate,
-                totalBonusPool: preview.totalWelcomeBonusPool,
-                eligibleMemberCount: preview.eligibleMemberCount,
-                equalMemberShare,
-                previousWelcomeBonusEarned: welcomeBonusEarned,
-                welcomeBonusCap,
+                companyGrossBusinessVolume: settlement!.companyGrossBusinessVolume,
+                bonusRate: settlement!.welcomeBonusRate,
+                totalBonusPool: settlement!.totalWelcomeBonusPool,
+                eligibleMemberCount: settlement!.eligibleMemberCount,
+                equalMemberShare: settlement!.equalMemberShare,
+                previousWelcomeBonusEarned: earned,
+                welcomeBonusCap: planned.welcomeBonusCap,
                 remainingCap,
                 actualPayout,
               },
@@ -383,7 +438,7 @@ export class WelcomeBonusService {
           await Member.updateOne({ memberId }, { $inc: { welcomeBonusEarned: actualPayout } }, { session });
           await BVWalletService.creditWelcomeBonus(session, {
             memberId,
-            memberName: member?.name || memberId,
+            memberName: member.name || memberId,
             settlementId,
             amount: actualPayout,
           });
@@ -394,163 +449,51 @@ export class WelcomeBonusService {
         if (error?.code === 11000) {
           const paid = await WelcomeBonusTransaction.findOne({ memberId, settlementId });
           if (paid) {
-            createdTransactions.push(paid);
-            totalDistributed += paid.actualPayout;
+            transactions.push(paid);
             continue;
           }
         }
         throw error;
       }
 
-      createdTransactions.push(tx);
-      totalDistributed += actualPayout;
+      if (!tx) continue;
+      transactions.push(tx);
       await BVWalletService.activateFromWalletIfEligible(memberId);
     }
 
-    const totalUndistributed = Math.max(
-      0,
-      DecimalUtil.round(preview.totalWelcomeBonusPool - totalDistributed)
-    );
-
+    const totalDistributed = transactions.reduce((sum, t) => sum + (t.actualPayout || 0), 0);
     settlement.totalAmountDistributed = totalDistributed;
-    settlement.totalAmountUndistributed = totalUndistributed;
+    settlement.totalAmountUndistributed = Math.max(
+      0,
+      DecimalUtil.round(settlement.totalWelcomeBonusPool - totalDistributed)
+    );
     settlement.status = 'COMPLETED';
     settlement.processedAt = new Date();
     await settlement.save();
 
-    return { settlement, transactions: createdTransactions };
+    return { settlement, transactions, alreadySettled: false };
   }
 
-  /**
-   * Get Welcome Bonus status & live details for Member Dashboard
-   */
-  static async getMemberDashboardStatus(memberId: string) {
-    const member = await Member.findOne({ memberId });
-    if (!member) {
-      throw new Error(`Member ${memberId} not found`);
-    }
+  // ---------------------------------------------------------------------------
+  // Dashboards
+  // ---------------------------------------------------------------------------
 
-    const rules = await this.getActiveRules();
-    const config = rules.welcomeBonus || {
-      isEnabled: true,
-      ratePercent: 4,
-      maxMultiplier: 2,
-      requiresLeftAndRight: true,
-      settlementFrequency: 'WEEKLY',
-    };
-    const maxMultiplier = config.maxMultiplier > 0 ? config.maxMultiplier : 2;
-    const ratePercent = config.ratePercent > 0 ? config.ratePercent : 4;
-
-    const preview = await this.previewWeeklySettlement();
-    const eligibility = await this.checkMemberEligibility(member, maxMultiplier, config);
-
-    // Fetch history of past Welcome Bonus transactions for this member
-    const isRootOrAdmin = memberId === 'MEM0001' || !memberId;
-    const query = isRootOrAdmin ? {} : { memberId };
-    const history = await WelcomeBonusTransaction.find(query).sort({ createdAt: -1 });
-
-    const memberIds = [...new Set(history.map((h) => h.memberId))];
-    const members = await Member.find({ memberId: { $in: memberIds } }).select('memberId name');
-    const memberNameMap = new Map(members.map((m) => [m.memberId, m.name]));
-
-    let mappedHistory: any[] = [];
-
-    if (history.length > 0) {
-      mappedHistory = history.map((h) => ({
-        transactionId: h.transactionId,
-        settlementId: h.settlementId,
-        memberId: h.memberId,
-        memberName: memberNameMap.get(h.memberId) || h.memberId,
-        companyGrossBusinessVolume: h.companyGrossBusinessVolume,
-        bonusRate: h.bonusRate,
-        totalBonusPool: h.totalBonusPool,
-        eligibleMemberCount: h.eligibleMemberCount,
-        equalMemberShare: h.equalMemberShare,
-        actualPayout: h.actualPayout,
-        date: h.createdAt ? new Date(h.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-        status: 'Credited',
-      }));
-    } else {
-      const allSettlements = await WelcomeBonusSettlement.find().sort({ createdAt: -1 });
-      mappedHistory = allSettlements.map((s) => ({
-        transactionId: s.settlementId,
-        settlementId: s.settlementId,
-        memberId: 'All Eligible',
-        memberName: `${s.eligibleMemberCount} Eligible Members`,
-        companyGrossBusinessVolume: s.companyGrossBusinessVolume,
-        bonusRate: s.welcomeBonusRate,
-        totalBonusPool: s.totalWelcomeBonusPool,
-        eligibleMemberCount: s.eligibleMemberCount,
-        equalMemberShare: s.equalMemberShare,
-        actualPayout: s.equalMemberShare,
-        date: s.processedAt ? new Date(s.processedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-        status: 'Credited',
-      }));
-    }
-
-    let statusDisplay: 'Eligible' | 'Cap Reached' | 'Ineligible' = 'Eligible';
-    if (eligibility.remainingCap <= 0) {
-      statusDisplay = 'Cap Reached';
-    } else if (!eligibility.isEligible) {
-      statusDisplay = 'Ineligible';
-    }
-
+  private static activeRulesView(config: WelcomeBonusConfig) {
     return {
-      memberId: member.memberId,
-      name: member.name,
-      activeRules: {
-        ratePercent,
-        maxMultiplier,
-        requiresLeftAndRight: config.requiresLeftAndRight !== false,
-        settlementFrequency: config.settlementFrequency || 'Weekly',
-        minWingBv: typeof config.minWingBv === 'number' ? config.minWingBv : 100,
-        minQualifyingBv: typeof config.minQualifyingBv === 'number' ? config.minQualifyingBv : 100,
-        isEnabled: config.isEnabled ?? true,
-      },
-      qualifyingBusinessVolume: eligibility.qualifyingBv,
-      maximumWelcomeBonus: eligibility.welcomeBonusCap,
-      totalWelcomeBonusEarned: eligibility.welcomeBonusEarned,
-      remainingBonus: eligibility.remainingCap,
-      currentWeeklyCompanyGBV: preview.companyGrossBusinessVolume,
-      welcomeBonusPool: preview.totalWelcomeBonusPool,
-      eligibleMembers: preview.eligibleMemberCount,
-      thisWeeksShare: preview.equalMemberShare,
-      leftWing: eligibility.hasLeftWing,
-      rightWing: eligibility.hasRightWing,
-      status: statusDisplay,
-      ineligibleReason: eligibility.ineligibleReason,
-      history: mappedHistory,
+      ratePercent: config.ratePercent,
+      maxMultiplier: config.maxMultiplier,
+      minLifetimeBv: config.minLifetimeBv,
+      minSponsoredCount: config.minSponsoredCount,
+      settlementFrequency: config.settlementFrequency,
+      isEnabled: config.isEnabled,
     };
   }
 
-  /**
-   * Get Welcome Bonus Governance & Live Engine Overview for Super Admin / Admin
-   */
-  static async getAdminDashboardSummary() {
-    const rules = await this.getActiveRules();
-    const config = rules.welcomeBonus || {
-      isEnabled: true,
-      ratePercent: 4,
-      maxMultiplier: 2,
-      requiresLeftAndRight: true,
-      settlementFrequency: 'WEEKLY',
-    };
-    const maxMultiplier = config.maxMultiplier > 0 ? config.maxMultiplier : 2;
-    const ratePercent = config.ratePercent > 0 ? config.ratePercent : 4;
-
-    const preview = await this.previewWeeklySettlement();
-    const allSettlements = await WelcomeBonusSettlement.find().sort({ createdAt: -1 });
-    const totalPaidOutLifetime = allSettlements.reduce((sum, s) => sum + (s.totalAmountDistributed || 0), 0);
-    const totalSettlementsCount = allSettlements.length;
-    const lastSettlement = allSettlements.length > 0 ? allSettlements[0] : null;
-
-    // Fetch transactions across all members so Super Admin has complete audit visibility
-    const allTransactions = await WelcomeBonusTransaction.find().sort({ createdAt: -1 }).limit(100);
-    const memberIds = [...new Set(allTransactions.map((h) => h.memberId))];
+  private static async mapTransactions(rows: IWelcomeBonusTransaction[]) {
+    const memberIds = [...new Set(rows.map((h) => h.memberId))];
     const members = await Member.find({ memberId: { $in: memberIds } }).select('memberId name');
     const memberNameMap = new Map(members.map((m) => [m.memberId, m.name]));
-
-    const mappedTransactions = allTransactions.map((h) => ({
+    return rows.map((h) => ({
       transactionId: h.transactionId,
       settlementId: h.settlementId,
       memberId: h.memberId,
@@ -563,38 +506,102 @@ export class WelcomeBonusService {
       actualPayout: h.actualPayout,
       previousWelcomeBonusEarned: h.previousWelcomeBonusEarned,
       welcomeBonusCap: h.welcomeBonusCap,
-      date: h.createdAt ? new Date(h.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+      date: formatDate(h.createdAt),
       status: 'Credited',
     }));
+  }
+
+  /**
+   * Get Welcome Bonus status & live details for Member Dashboard. Pool figures are a projection for
+   * the week in progress.
+   */
+  static async getMemberDashboardStatus(memberId: string) {
+    const member = await Member.findOne({ memberId }).select('memberId name');
+    if (!member) {
+      throw new WelcomeBonusError(`Member ${memberId} not found`, HTTP_STATUS.NOT_FOUND);
+    }
+
+    const config = await this.getConfig();
+    const plan = await this.planWeek(this.currentWeek(), config);
+    const eligibility = plan.allEvaluations.find((e) => e.memberId === member.memberId);
+    if (!eligibility) throw new WelcomeBonusError(`Member ${memberId} not found`, HTTP_STATUS.NOT_FOUND);
+
+    const history = await this.mapTransactions(
+      await WelcomeBonusTransaction.find({ memberId: member.memberId }).sort({ createdAt: -1 })
+    );
+
+    let statusDisplay: 'Eligible' | 'Cap Reached' | 'Ineligible' = 'Eligible';
+    if (eligibility.welcomeBonusCap > 0 && eligibility.remainingCap <= 0) {
+      statusDisplay = 'Cap Reached';
+    } else if (!eligibility.isEligible) {
+      statusDisplay = 'Ineligible';
+    }
 
     return {
-      activeRules: {
-        ratePercent,
-        maxMultiplier,
-        requiresLeftAndRight: config.requiresLeftAndRight !== false,
-        settlementFrequency: config.settlementFrequency || 'Weekly',
-        minWingBv: typeof config.minWingBv === 'number' ? config.minWingBv : 100,
-        minQualifyingBv: typeof config.minQualifyingBv === 'number' ? config.minQualifyingBv : 100,
-        isEnabled: config.isEnabled ?? true,
-      },
-      currentWeeklyCompanyGBV: preview.companyGrossBusinessVolume,
-      welcomeBonusPool: preview.totalWelcomeBonusPool,
-      eligibleMembersCount: preview.eligibleMemberCount,
-      projectedShare: preview.equalMemberShare,
+      memberId: member.memberId,
+      name: member.name,
+      activeRules: this.activeRulesView(config),
+      lifetimeBv: eligibility.lifetimeBv,
+      sponsoredCount: eligibility.sponsoredCount,
+      qualifyingBusinessVolume: eligibility.lifetimeBv,
+      maximumWelcomeBonus: eligibility.welcomeBonusCap,
+      totalWelcomeBonusEarned: eligibility.welcomeBonusEarned,
+      remainingBonus: eligibility.remainingCap,
+      weekStart: plan.weekStart,
+      currentWeeklyCompanyGBV: plan.companyGrossBusinessVolume,
+      welcomeBonusPool: plan.totalWelcomeBonusPool,
+      eligibleMembers: plan.eligibleMemberCount,
+      thisWeeksShare: plan.equalMemberShare,
+      status: statusDisplay,
+      ineligibleReason: eligibility.ineligibleReason,
+      history,
+    };
+  }
+
+  /**
+   * Get Welcome Bonus Governance & Live Engine Overview for Super Admin / Admin
+   */
+  static async getAdminDashboardSummary() {
+    const config = await this.getConfig();
+    const [plan, allSettlements, recentTransactions, unsettledWeeks] = await Promise.all([
+      this.planWeek(this.currentWeek(), config),
+      WelcomeBonusSettlement.find().sort({ periodStart: -1 }).select('-payouts'),
+      WelcomeBonusTransaction.find().sort({ createdAt: -1 }).limit(100),
+      this.getUnsettledWeeks(),
+    ]);
+    const completed = allSettlements.filter((s) => s.status === 'COMPLETED');
+    const totalPaidOutLifetime = completed.reduce((sum, s) => sum + (s.totalAmountDistributed || 0), 0);
+    const lastSettlement = completed[0] || null;
+
+    return {
+      activeRules: this.activeRulesView(config),
+      weekStart: plan.weekStart,
+      currentWeeklyCompanyGBV: plan.companyGrossBusinessVolume,
+      welcomeBonusPool: plan.totalWelcomeBonusPool,
+      eligibleMembersCount: plan.eligibleMemberCount,
+      projectedShare: plan.equalMemberShare,
       totalPaidOutLifetime,
-      totalSettlementsCount,
-      lastSettlement: lastSettlement ? {
-        settlementId: lastSettlement.settlementId,
-        date: lastSettlement.processedAt ? new Date(lastSettlement.processedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-        totalAmountDistributed: lastSettlement.totalAmountDistributed,
-        eligibleMemberCount: lastSettlement.eligibleMemberCount,
-        companyGrossBusinessVolume: lastSettlement.companyGrossBusinessVolume,
-        bonusRate: lastSettlement.welcomeBonusRate,
-        totalPool: lastSettlement.totalWelcomeBonusPool,
-      } : null,
+      totalSettlementsCount: completed.length,
+      // Finished weeks waiting to be settled, newest first
+      unsettledWeeks: unsettledWeeks.map((w) => ({
+        weekStart: w.weekStart,
+        weekEnd: BusinessDate.addDays(w.weekStart, 6),
+      })),
+      lastSettlement: lastSettlement
+        ? {
+            settlementId: lastSettlement.settlementId,
+            date: formatDate(lastSettlement.processedAt),
+            totalAmountDistributed: lastSettlement.totalAmountDistributed,
+            eligibleMemberCount: lastSettlement.eligibleMemberCount,
+            companyGrossBusinessVolume: lastSettlement.companyGrossBusinessVolume,
+            bonusRate: lastSettlement.welcomeBonusRate,
+            totalPool: lastSettlement.totalWelcomeBonusPool,
+          }
+        : null,
       recentSettlements: allSettlements.slice(0, 10).map((s) => ({
         settlementId: s.settlementId,
-        date: s.processedAt ? new Date(s.processedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+        weekStart: s.weekStart || BusinessDate.of(s.periodStart),
+        date: formatDate(s.processedAt),
         companyGrossBusinessVolume: s.companyGrossBusinessVolume,
         welcomeBonusRate: s.welcomeBonusRate,
         totalWelcomeBonusPool: s.totalWelcomeBonusPool,
@@ -603,15 +610,16 @@ export class WelcomeBonusService {
         totalAmountDistributed: s.totalAmountDistributed,
         status: s.status,
       })),
-      eligibleMembersList: preview.projectedPayouts.map((em: any) => ({
-        memberId: em.memberId,
-        name: em.name,
-        qualifyingBv: em.qualifyingBv,
-        welcomeBonusCap: em.welcomeBonusCap,
-        welcomeBonusEarned: em.welcomeBonusEarned,
-        remainingCap: em.remainingCap,
+      eligibleMembersList: plan.payouts.map((p) => ({
+        memberId: p.memberId,
+        name: p.name,
+        lifetimeBv: p.lifetimeBv,
+        sponsoredCount: p.sponsoredCount,
+        welcomeBonusCap: p.welcomeBonusCap,
+        welcomeBonusEarned: p.welcomeBonusEarned,
+        remainingCap: Math.max(0, p.welcomeBonusCap - p.welcomeBonusEarned),
       })),
-      history: mappedTransactions,
+      history: await this.mapTransactions(recentTransactions),
     };
   }
 }

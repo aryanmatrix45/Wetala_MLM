@@ -1,7 +1,19 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+/** One eligible member's payout, fixed when the settlement starts so a retried run pays the same */
+export interface IWelcomeBonusPlannedPayout {
+  memberId: string;
+  name: string;
+  lifetimeBv: number;
+  sponsoredCount: number;
+  welcomeBonusCap: number;
+  welcomeBonusEarned: number; // before this settlement
+  plannedPayout: number;
+}
+
 export interface IWelcomeBonusSettlement extends Document {
   settlementId: string;
+  weekStart?: string; // IST Monday 'YYYY-MM-DD'; missing on settlements made before weeks were keyed
   periodStart: Date;
   periodEnd: Date;
   companyGrossBusinessVolume: number;
@@ -11,6 +23,11 @@ export interface IWelcomeBonusSettlement extends Document {
   equalMemberShare: number;
   totalAmountDistributed: number;
   totalAmountUndistributed: number;
+  // Rules the settlement was run with
+  maxMultiplier?: number;
+  minLifetimeBv?: number;
+  minSponsoredCount?: number;
+  payouts: IWelcomeBonusPlannedPayout[];
   status: 'PENDING' | 'COMPLETED' | 'FAILED';
   processedAt: Date;
   notes?: string;
@@ -26,6 +43,12 @@ const welcomeBonusSettlementSchema = new Schema<IWelcomeBonusSettlement>(
       unique: true,
       trim: true,
       index: true,
+    },
+    weekStart: {
+      type: String,
+      trim: true,
+      unique: true,
+      sparse: true,
     },
     periodStart: {
       type: Date,
@@ -77,6 +100,21 @@ const welcomeBonusSettlementSchema = new Schema<IWelcomeBonusSettlement>(
       default: 0,
       min: 0,
     },
+    maxMultiplier: { type: Number, min: 0 },
+    minLifetimeBv: { type: Number, min: 0 },
+    minSponsoredCount: { type: Number, min: 0 },
+    payouts: [
+      {
+        _id: false,
+        memberId: { type: String, required: true },
+        name: { type: String, default: '' },
+        lifetimeBv: { type: Number, default: 0 },
+        sponsoredCount: { type: Number, default: 0 },
+        welcomeBonusCap: { type: Number, default: 0 },
+        welcomeBonusEarned: { type: Number, default: 0 },
+        plannedPayout: { type: Number, default: 0 },
+      },
+    ],
     status: {
       type: String,
       enum: ['PENDING', 'COMPLETED', 'FAILED'],

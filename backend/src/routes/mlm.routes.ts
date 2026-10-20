@@ -9,6 +9,8 @@ import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 import { authenticate, AuthenticatedRequest } from '../middlewares/auth';
 import { WalletService } from '../services/WalletService';
 import { BVService } from '../services/BVService';
+import { GrossVolumeService } from '../services/GrossVolumeService';
+import { BusinessDate } from '../utils/businessDate';
 
 const router = Router();
 
@@ -98,37 +100,11 @@ router.get('/dashboard/stats', async (_req, res) => {
     const totalGrossValue = totalJoiningPackagePrice + repurchaseTurnover;
     const totalBusinessVolume = totalJoiningBV + repurchaseBv;
 
-    // Calculate current weekly settlement period (Mon 00:00 to Sun 23:59:59)
-    const now = new Date();
-    const day = now.getDay();
-    const diffToMonday = (day === 0 ? -6 : 1) - day;
-    const weekStart = new Date(now);
-    weekStart.setDate(now.getDate() + diffToMonday);
-    weekStart.setHours(0, 0, 0, 0);
-
-    let weeklyGrossBusinessVolume = 0;
-    let weeklyGrossRevenue = 0;
-
-    // Paid purchases in this weekly cycle
-    for (const p of purchases) {
-      const d = p.completedAt || p.verifiedAt || p.createdAt;
-      if (d && new Date(d) >= weekStart) {
-        weeklyGrossBusinessVolume += (p.totalBV || 0);
-        weeklyGrossRevenue += (p.totalAmount || 0);
-      }
-    }
-
-    // Direct members activated this week without purchase record
-    for (const m of members) {
-      if (paidJoiningMemberIds.has(m.memberId)) continue;
-      const d = m.createdAt || m.joinedAt;
-      if (d && new Date(d) >= weekStart && m.packageBv && m.packageBv > 0) {
-        const pkgKey = (m.joiningPackageId || m.packageName || '').toLowerCase().trim();
-        const price = pkgPriceMap.get(pkgKey) || 0;
-        weeklyGrossBusinessVolume += m.packageBv;
-        weeklyGrossRevenue += price;
-      }
-    }
+    // Current welcome bonus week (Monday to Sunday, IST), same figure the weekly settlement uses
+    const weekStart = BusinessDate.startOf(BusinessDate.weekStartOf(BusinessDate.today()));
+    const weekly = await GrossVolumeService.forPeriod(weekStart, new Date());
+    const weeklyGrossBusinessVolume = weekly.bv;
+    const weeklyGrossRevenue = weekly.revenue;
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);

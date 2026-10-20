@@ -46,13 +46,14 @@ export class CompensationEngine {
         isActive: true,
         welcomeBonus: {
           isEnabled: true,
-          requiresLeftAndRight: true,
           ratePercent: 4, // 4% on Company Weekly GBV Pool
           maxMultiplier: 2, // 2x max Welcome Bonus multiplier
           settlementFrequency: 'WEEKLY',
           limitMode: 'MULTIPLIER',
           fixedAmount: 0,
-          notes: '4% on Company Weekly GBV pool divided equally among eligible members with Left + Right, capped at 2x qualifying BV.',
+          minLifetimeBv: 1250,
+          minSponsoredCount: 2,
+          notes: '4% on Company Weekly GBV pool divided equally among members with 1,250 lifetime BV and 2 sponsored members, capped at 2x lifetime BV.',
         },
         binaryBonus: {
           isEnabled: true,
@@ -259,19 +260,7 @@ export class CompensationEngine {
 
       // 5. Evaluate Individual Compensation Bonuses
 
-      // A. Welcome Bonus Qualifying Volume & 2x Cap Update (Packages + Products cumulative)
-      const freshMemberDoc = await Member.findOne({ memberId: member.memberId });
-      const totalPurchasedPersonalBv = freshMemberDoc?.personalBv || (member.personalBv + bvAmount);
-      const mult = rules.welcomeBonus?.maxMultiplier || 2;
-      await Member.updateOne(
-        { memberId: member.memberId },
-        {
-          $set: {
-            qualifyingBv: totalPurchasedPersonalBv,
-            welcomeBonusCap: totalPurchasedPersonalBv * mult,
-          },
-        }
-      );
+      // A. Welcome bonus needs nothing here: lifetime BV is read from the ledgers (LifetimeBvService)
 
       // B. Self Purchase Bonus (Repurchase Only - 8%)
       if (purchase.type === PURCHASE_TYPE.REPURCHASE || purchase.type === PURCHASE_TYPE.RETAIL) {
@@ -288,8 +277,8 @@ export class CompensationEngine {
       }
 
       // C. Binary matching income is not paid here: the order's BV now waits on each ancestor's
-      //    leg and is matched and paid by the daily binary settlement once the IST day ends.
-      //    (The sponsor binary bonus is switched off for now.)
+      //    leg and is matched and paid by the daily binary settlement once the IST day ends, which
+      //    also pays the direct sponsor's 20% sponsor income.
       for (const { ancestorMemberId } of binaryAncestors) {
         // E. Team Bonus Tiers for Ancestors
         const teamComm = await TeamBonusService.processTeamBonus(

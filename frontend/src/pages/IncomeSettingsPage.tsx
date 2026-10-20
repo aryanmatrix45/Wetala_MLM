@@ -95,12 +95,13 @@ const FALLBACK_FULL_RULES = {
   isActive: true,
   welcomeBonus: {
     isEnabled: true,
-    requiresLeftAndRight: true,
     ratePercent: 4,
     maxMultiplier: 2,
+    minLifetimeBv: 1250,
+    minSponsoredCount: 2,
     settlementFrequency: 'Weekly',
     limitMode: 'MULTIPLIER',
-    notes: '4% Company Weekly GBV Pool divided equally among eligible members with Left + Right, capped at 2x qualifying BV.',
+    notes: '4% Company Weekly GBV Pool divided equally among members with 1,250 lifetime BV and 2 sponsored members, capped at 2x lifetime BV.',
   },
   binaryBonus: {
     isEnabled: true,
@@ -1328,59 +1329,60 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                           />
                         ) : (
                           <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                            {rules.welcomeBonus?.maxMultiplier || 2}× Qualifying Business Volume
+                            {rules.welcomeBonus?.maxMultiplier || 2}× Lifetime Business Volume
                           </div>
                         )}
                         <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
-                          Lifetime cap: Member purchased BV × {rules.welcomeBonus?.maxMultiplier ?? 2}
+                          Lifetime cap: member lifetime BV × {rules.welcomeBonus?.maxMultiplier ?? 2}
                         </span>
                       </div>
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-                      {/* Field 3: Require Left & Right Member */}
+                      {/* Field 3: Minimum Lifetime BV */}
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                          Require Left & Right Wings
-                        </label>
-                        {isAdmin ? (
-                          <select
-                            value={rules.welcomeBonus?.requiresLeftAndRight !== false ? 'true' : 'false'}
-                            onChange={(e) => setRules({ ...rules, welcomeBonus: { ...rules.welcomeBonus, requiresLeftAndRight: e.target.value === 'true' } })}
-                            style={{ width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
-                          >
-                            <option value="true">Yes (Require 1 Left + 1 Right Wings)</option>
-                            <option value="false">No (Direct Left/Right Wings Not Required)</option>
-                          </select>
-                        ) : (
-                          <div style={{ padding: '9px 12px', background: rules.welcomeBonus?.requiresLeftAndRight !== false ? '#ecfdf5' : '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: rules.welcomeBonus?.requiresLeftAndRight !== false ? '#065f46' : '#64748b' }}>
-                            {rules.welcomeBonus?.requiresLeftAndRight !== false ? '✓ Required (True)' : '✗ Not Required (False)'}
-                          </div>
-                        )}
-                        <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
-                          {rules.welcomeBonus?.requiresLeftAndRight !== false ? 'Must have directly sponsored active members on both wings' : 'Bonus distributed to all active purchasing members'}
-                        </span>
-                      </div>
-
-                      {/* Field 4: Minimum Wing BV */}
-                      <div>
-                        <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                          Min Wing Referral Volume (BV)
+                          Minimum Lifetime BV
                         </label>
                         {isAdmin ? (
                           <input
                             type="number"
-                            value={rules.welcomeBonus?.minWingBv ?? 100}
-                            onChange={(e) => setRules({ ...rules, welcomeBonus: { ...rules.welcomeBonus, minWingBv: parseFloat(e.target.value) || 0 } })}
+                            min="0"
+                            value={rules.welcomeBonus?.minLifetimeBv ?? 1250}
+                            onChange={(e) => setRules({ ...rules, welcomeBonus: { ...rules.welcomeBonus, minLifetimeBv: parseFloat(e.target.value) || 0 } })}
                             style={{ width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
                           />
                         ) : (
                           <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                            {rules.welcomeBonus?.minWingBv ?? 100} BV
+                            {(rules.welcomeBonus?.minLifetimeBv ?? 1250).toLocaleString()} BV
                           </div>
                         )}
                         <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
-                          Minimum purchase BV required for each direct left/right wing referral
+                          BV the member must have received in its lifetime: packages, products or transfers in
+                        </span>
+                      </div>
+
+                      {/* Field 4: Minimum Sponsored Members */}
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                          Minimum Sponsored Members
+                        </label>
+                        {isAdmin ? (
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={rules.welcomeBonus?.minSponsoredCount ?? 2}
+                            onChange={(e) => setRules({ ...rules, welcomeBonus: { ...rules.welcomeBonus, minSponsoredCount: parseInt(e.target.value, 10) || 0 } })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                          />
+                        ) : (
+                          <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                            {rules.welcomeBonus?.minSponsoredCount ?? 2} members
+                          </div>
+                        )}
+                        <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
+                          Directly sponsored members with active binary status (100 BV or more), placed anywhere in the tree (same wing allowed)
                         </span>
                       </div>
                     </div>
@@ -1421,7 +1423,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                           </div>
                         )}
                         <span style={{ fontSize: '11px', color: '#059669', marginTop: '2px', display: 'block', fontWeight: 600 }}>
-                          No daily capping • Single-leg eligible
+                          Share of each direct's daily binary income • No daily capping
                         </span>
                       </div>
 
@@ -1446,6 +1448,29 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                     </div>
 
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
+                      <div>
+                        <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                          Sponsor Income
+                        </label>
+                        {isAdmin ? (
+                          <select
+                            value={rules.sponsorBinaryBonus?.isEnabled !== false ? 'true' : 'false'}
+                            onChange={(e) => setRules({ ...rules, sponsorBinaryBonus: { ...rules.sponsorBinaryBonus, isEnabled: e.target.value === 'true' } })}
+                            style={{ width: '100%', padding: '9px 12px', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px' }}
+                          >
+                            <option value="true">On (paid in the daily binary settlement)</option>
+                            <option value="false">Off</option>
+                          </select>
+                        ) : (
+                          <div style={{ padding: '9px 12px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
+                            {rules.sponsorBinaryBonus?.isEnabled !== false ? 'On' : 'Off'}
+                          </div>
+                        )}
+                        <span style={{ fontSize: '11px', color: '#64748b', marginTop: '2px', display: 'block' }}>
+                          The direct sponsor gets this share on top; the member's own binary income is not reduced
+                        </span>
+                      </div>
+
                       <div>
                         <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
                           Retail Profit Margin Max (%)

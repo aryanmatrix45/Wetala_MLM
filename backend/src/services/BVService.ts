@@ -1,7 +1,6 @@
 import { BVLedger, IBVLedger } from '../models/BVLedger.model';
 import { BinaryVolume, IBinaryVolume } from '../models/BinaryVolume.model';
 import { Member } from '../models/Member.model';
-import { CompensationRule } from '../models/CompensationRule.model';
 import { Purchase, IPurchase } from '../models/Purchase.model';
 import { BinaryTreeService } from './tree/BinaryTreeService';
 import { BusinessDate } from '../utils/businessDate';
@@ -84,10 +83,6 @@ export class BVService {
     if (member) {
       const wasUnplaced = !member.parentId;
       member.personalBv = (member.personalBv || 0) + bvAmount;
-      member.qualifyingBv = member.personalBv;
-      const activeRule = await CompensationRule.findOne({ isActive: true }).sort({ version: -1 });
-      const mult = activeRule?.welcomeBonus?.maxMultiplier ?? 2;
-      member.welcomeBonusCap = member.personalBv * mult;
       if (member.personalBv >= 100) {
         if (!member.isBinaryActive) {
           member.isBinaryActive = true;
@@ -204,9 +199,6 @@ export class BVService {
         // The buyer's own personal BV
         const openingBV = await this.lastPersonalClosing(member.memberId);
         member.personalBv = Math.max(0, (member.personalBv || 0) - bv);
-        member.qualifyingBv = member.personalBv;
-        const activeRule = await CompensationRule.findOne({ isActive: true }).sort({ version: -1 });
-        member.welcomeBonusCap = member.personalBv * (activeRule?.welcomeBonus?.maxMultiplier ?? 2);
         await member.save();
         result.personalBvReversed += bv;
 

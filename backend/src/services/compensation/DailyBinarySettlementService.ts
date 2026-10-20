@@ -11,6 +11,7 @@ import { BinarySettlementRun, IBinarySettlementRun, IBinarySettlementTotals } fr
 import { ICompensationRule } from '../../models/CompensationRule.model';
 import { CompensationEngine } from './CompensationEngine';
 import { BinaryBonusService } from './BinaryBonusService';
+import { SponsorBonusService } from './SponsorBonusService';
 import { CapService } from './CapService';
 import { applyDailyCap, computeMatches, matchRulesFrom, BinaryMatchState } from './BinaryMatchingEngine';
 import { WalletService } from '../WalletService';
@@ -46,6 +47,8 @@ const randomCode = () => crypto.randomBytes(3).toString('hex').toUpperCase();
  *   credited  = min(matches x ₹250, daily cap)       (the rest is flushed, its BV is still used)
  * The closing, the BinaryVolume carry forward, the settled ledger rows and the commission are
  * written in one transaction; the wallet credit follows and is retried until it succeeds.
+ * The member's direct sponsor gets 20% of the credited amount as sponsor income, recorded in the same
+ * transaction and paid on top (the member's own credit is not reduced).
  * A member who does not qualify keeps all BV as carry forward; nothing is flushed.
  */
 export class DailyBinarySettlementService {
@@ -99,6 +102,8 @@ export class DailyBinarySettlementService {
     const closingId = `BINC-${businessDate.replace(/-/g, '')}-${memberId}-${randomCode()}`;
     const commissionLedgerId = creditedAmount > 0 ? `COMM-BIN-${businessDate.replace(/-/g, '')}-${memberId}-${randomCode()}` : undefined;
     const userId = member._id.toString();
+    const sponsorBonus =
+      creditedAmount > 0 ? await SponsorBonusService.planForDay(member, creditedAmount, businessDate, rules) : null;
 
     let closing: IBinaryDailyClosing | null = null;
     try {
@@ -128,6 +133,11 @@ export class DailyBinarySettlementService {
               flushedAmount,
               commissionLedgerId,
               walletCredited: creditedAmount === 0,
+              sponsorId: sponsorBonus?.sponsorId,
+              sponsorBonusRate: sponsorBonus?.rate,
+              sponsorBonusAmount: sponsorBonus?.amount || 0,
+              sponsorCommissionLedgerId: sponsorBonus?.ledgerId,
+              sponsorWalletCredited: !sponsorBonus,
               status,
             },
           ],
@@ -247,6 +257,10 @@ export class DailyBinarySettlementService {
           );
         }
 
+        if (sponsorBonus) {
+          await SponsorBonusService.recordCommission(session, sponsorBonus, { earner: member, businessDate, closingId, creditedAmount });
+        }
+
         return created;
       })) as IBinaryDailyClosing;
     } catch (error: any) {
@@ -259,6 +273,9 @@ export class DailyBinarySettlementService {
 
     if (closing && creditedAmount > 0) {
       await this.creditWallet(closing);
+    }
+    if (closing && sponsorBonus) {
+      await SponsorBonusService.creditWallet(closing);
     }
     if (closing && flushedAmount > 0) {
       await this.notifyCapExceeded(closing);
@@ -342,6 +359,7 @@ export class DailyBinarySettlementService {
           generatedAmount: { $sum: '$generatedAmount' },
           creditedAmount: { $sum: '$creditedAmount' },
           flushedAmount: { $sum: '$flushedAmount' },
+          sponsorBonusAmount: { $sum: { $ifNull: ['$sponsorBonusAmount', 0] } },
         },
       },
     ]);
@@ -356,6 +374,7 @@ export class DailyBinarySettlementService {
       generatedAmount: row?.generatedAmount || 0,
       creditedAmount: row?.creditedAmount || 0,
       flushedAmount: row?.flushedAmount || 0,
+      sponsorBonusAmount: row?.sponsorBonusAmount || 0,
     };
   }
 
@@ -419,6 +438,8 @@ export class DailyBinarySettlementService {
       // Retry wallet credits that did not go through on an earlier attempt
       const unpaid = await BinaryDailyClosing.find({ businessDate, walletCredited: false, creditedAmount: { $gt: 0 } });
       for (const closing of unpaid) await this.creditWallet(closing);
+      const unpaidSponsor = await BinaryDailyClosing.find({ businessDate, sponsorWalletCredited: false, sponsorBonusAmount: { $gt: 0 } });
+      for (const closing of unpaidSponsor) await SponsorBonusService.creditWallet(closing);
 
       const totals = { ...(await this.summarizeDate(businessDate)), membersEvaluated: memberIds.length };
       const finished = await BinarySettlementRun.findOneAndUpdate(
@@ -429,7 +450,7 @@ export class DailyBinarySettlementService {
 
       console.log(
         `[DailyBinarySettlement] ${businessDate} done: ${totals.earners} earner(s), ₹${totals.creditedAmount} credited, ` +
-          `₹${totals.flushedAmount} flushed, ${failures.length} failure(s).`
+          `₹${totals.flushedAmount} flushed, ₹${totals.sponsorBonusAmount} sponsor income, ${failures.length} failure(s).`
       );
       try {
         await AuditService.log({

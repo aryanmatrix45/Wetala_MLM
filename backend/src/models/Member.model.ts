@@ -106,9 +106,7 @@ export interface IMember extends Document {
   totalIncome: number;
   walletBalance: number;
 
-  // Welcome Bonus 2x Capping Tracking
-  qualifyingBv: number;
-  welcomeBonusCap: number;
+  // Welcome bonus BV paid so far (the cap comes from lifetime BV, see LifetimeBvService)
   welcomeBonusEarned: number;
   
   createdAt: Date;
@@ -423,14 +421,6 @@ const memberSchema = new Schema<IMember, IMemberModel>(
     walletBalance: {
       type: Number,
       default: 0,
-    },
-    qualifyingBv: {
-      type: Number,
-      default: 1250,
-    },
-    welcomeBonusCap: {
-      type: Number,
-      default: 2500,
     },
     welcomeBonusEarned: {
       type: Number,

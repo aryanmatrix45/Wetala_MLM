@@ -1,114 +1,123 @@
-import { Member } from '../../models/Member.model';
-import { CommissionLedger, ICommissionLedger } from '../../models/CommissionLedger.model';
+import { ClientSession } from 'mongoose';
+import { IMember, Member } from '../../models/Member.model';
+import { CommissionLedger } from '../../models/CommissionLedger.model';
 import { ICompensationRule } from '../../models/CompensationRule.model';
-import { SponsorTreeService } from '../tree/SponsorTreeService';
+import { BinaryDailyClosing, IBinaryDailyClosing } from '../../models/BinaryDailyClosing.model';
+import { WalletTransaction } from '../../models/WalletTransaction.model';
 import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
 import { COMMISSION_TYPE } from '../../config/constants';
 
+export interface SponsorBonusPlan {
+  sponsorId: string;
+  sponsorUserId: string;
+  sponsorName: string;
+  rate: number;
+  amount: number;
+  ledgerId: string;
+}
+
+/**
+ * Sponsor income: when a member's day closes with binary income, the member's direct sponsor gets
+ * 20% of what the member was credited that day (after the member's daily cap). It is paid by the
+ * company on top: the member keeps all of its own income. Direct sponsor only, uncapped, no deductions.
+ *
+ * Worked out and recorded by the daily binary settlement in the same transaction as the member's own
+ * binary commission; the wallet credit follows and is retried like binary income.
+ */
 export class SponsorBonusService {
-  /**
-   * Process Sponsor Bonus when a sponsored direct member achieves binary income or volume.
-   * Based on configurable rate (e.g. 20%) and calculation base.
-   * 100% Uncapped (no package daily capping applies).
-   * Deductions (TDS & Admin Fee) are configurable by Admin and can be 0%.
-   */
-  static async processSponsorBonus(
-    earnerMemberId: string,
-    qualifyingAmountOrIncome: number,
-    rules: ICompensationRule,
-    sourceEventId: string,
-    sourcePurchaseId?: string
-  ): Promise<ICommissionLedger[]> {
+  /** The sponsor income due on a member's binary income for a day, or null when none is due */
+  static async planForDay(
+    earner: IMember,
+    creditedAmount: number,
+    businessDate: string,
+    rules: ICompensationRule
+  ): Promise<SponsorBonusPlan | null> {
     const config = rules.sponsorBinaryBonus;
-    if (!config.isEnabled || qualifyingAmountOrIncome <= 0) {
-      return [];
-    }
+    if (!config || config.isEnabled === false || creditedAmount <= 0 || !earner.sponsorId) return null;
 
-    const earner = await Member.findOne({ memberId: earnerMemberId });
-    if (!earner || !earner.sponsorId) {
-      return [];
-    }
+    const sponsor = await Member.findOne({ memberId: earner.sponsorId.toUpperCase() }).select('memberId name role status isActive');
+    if (!sponsor || !sponsor.isActive || sponsor.status !== 'active') return null;
+    // Only distributors earn commissions (never the Super Admin / admin accounts)
+    if (sponsor.role && sponsor.role !== 'member') return null;
 
-    // Get sponsor upline chain according to configured depth (default 1 = direct sponsor)
-    const sponsors = await SponsorTreeService.getSponsorUplineChain(earnerMemberId, config.sponsorDepth || 1);
-    const commissions: ICommissionLedger[] = [];
+    const rate = typeof config.sponsorBinaryRate === 'number' && config.sponsorBinaryRate >= 0 ? config.sponsorBinaryRate : 0.2;
+    const amount = DecimalUtil.multiplyRate(creditedAmount, rate);
+    if (amount <= 0) return null;
 
-    for (let level = 0; level < sponsors.length; level++) {
-      const sponsor = sponsors[level];
-      if (!sponsor.isActive || sponsor.status === 'blocked') continue;
+    return {
+      sponsorId: sponsor.memberId,
+      sponsorUserId: sponsor._id.toString(),
+      sponsorName: sponsor.name,
+      rate,
+      amount,
+      // One per sponsor, member and day: re-running a day can never pay the sponsor twice
+      ledgerId: `COMM-SPO-${businessDate.replace(/-/g, '')}-${sponsor.memberId}-${earner.memberId}`,
+    };
+  }
 
-      // Only distributors/members with role 'member' can earn sponsor income (Super Admin / Admin cannot earn commissions)
-      if (sponsor.role && sponsor.role !== 'member') continue;
-
-      // Rate can apply directly or scaled by level (default 20% = 0.20)
-      const rate = config.sponsorBinaryRate;
-      let rawBonus = DecimalUtil.multiplyRate(qualifyingAmountOrIncome, rate);
-
-      if (config.maxPayout && rawBonus > config.maxPayout) {
-        rawBonus = config.maxPayout;
-      }
-
-      if (rawBonus <= 0) continue;
-
-      // Prevent duplicate bonus for the exact same source event
-      if (sourceEventId) {
-        const existing = await CommissionLedger.findOne({
-          sourceEventId,
-          memberId: sponsor.memberId,
+  /** Writes the sponsor's commission row; runs inside the settlement's transaction */
+  static async recordCommission(
+    session: ClientSession,
+    plan: SponsorBonusPlan,
+    source: { earner: IMember; businessDate: string; closingId: string; creditedAmount: number }
+  ): Promise<void> {
+    const paise = DecimalUtil.toPaise(plan.amount);
+    const percent = DecimalUtil.round(plan.rate * 100);
+    await CommissionLedger.create(
+      [
+        {
+          ledgerId: plan.ledgerId,
+          userId: plan.sponsorUserId,
+          memberId: plan.sponsorId,
           type: COMMISSION_TYPE.SPONSOR_BINARY_BONUS,
+          sourceEventId: `BINARY-DAILY-${source.businessDate}`,
+          grossAmount: plan.amount,
+          grossAmountInPaise: paise,
+          tdsDeduction: 0,
+          tdsDeductionInPaise: 0,
+          adminFee: 0,
+          adminFeeInPaise: 0,
+          payableAmount: plan.amount,
+          payableAmountInPaise: paise,
+          status: 'APPROVED',
+          calculationDetails: {
+            calculationBase: 'DAILY_BINARY_CLOSING',
+            businessDate: source.businessDate,
+            closingId: source.closingId,
+            sourceMemberId: source.earner.memberId,
+            sourceMemberName: source.earner.name,
+            baseAmount: source.creditedAmount,
+            rateApplied: plan.rate,
+            percentageApplied: percent,
+            tierApplied: 'Direct Sponsor',
+            notes: `Sponsor income for ${source.businessDate}: ${percent}% of ₹${source.creditedAmount} binary income of ${source.earner.name} (${source.earner.memberId}). Paid in addition; their income is not reduced.`,
+          },
           isReversed: false,
-        });
-        if (existing) {
-          commissions.push(existing);
-          continue;
-        }
-      }
-
-      const ledgerId = `COMM-SPO-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
-
-      const commission = await CommissionLedger.create({
-        ledgerId,
-        userId: sponsor._id.toString(),
-        memberId: sponsor.memberId,
-        type: COMMISSION_TYPE.SPONSOR_BINARY_BONUS,
-        sourceEventId,
-        sourcePurchaseId,
-        grossAmount: rawBonus,
-        grossAmountInPaise: DecimalUtil.toPaise(rawBonus),
-        tdsDeduction: 0,
-        tdsDeductionInPaise: 0,
-        adminFee: 0,
-        adminFeeInPaise: 0,
-        payableAmount: rawBonus,
-        payableAmountInPaise: DecimalUtil.toPaise(rawBonus),
-        status: 'APPROVED',
-        calculationDetails: {
-          sourcePurchaseId,
-          sourceEventId,
-          sourceMemberId: earnerMemberId,
-          calculationBase: config.calculationBase,
-          baseAmount: qualifyingAmountOrIncome,
-          rateApplied: rate,
-          percentageApplied: rate * 100,
-          tierApplied: `Level ${level + 1} Sponsor`,
-          tdsRateApplied: 0,
-          adminFeeRateApplied: 0,
-          notes: `Sponsor Binary Bonus from ${earner.name} (${earnerMemberId}) @ ${(rate * 100).toFixed(0)}%. 100% Net Credited to Wallet (Zero Deductions). Uncapped.`,
         },
-        isReversed: false,
-      });
+      ],
+      { session }
+    );
+  }
 
-      await WalletService.creditCommission(
-        sponsor.memberId,
-        rawBonus,
-        ledgerId,
-        `Sponsor Bonus (20%) from ${earner.name} (${earnerMemberId})`
-      );
-
-      commissions.push(commission);
+  /** Pays a closing's sponsor income into the sponsor's wallet, once. Safe to call again after a failure. */
+  static async creditWallet(closing: IBinaryDailyClosing): Promise<void> {
+    const { sponsorId, sponsorCommissionLedgerId, sponsorBonusAmount } = closing;
+    if (closing.sponsorWalletCredited || !sponsorId || !sponsorCommissionLedgerId || !(sponsorBonusAmount > 0)) return;
+    try {
+      const alreadyPaid = await WalletTransaction.exists({ referenceId: sponsorCommissionLedgerId, memberId: sponsorId });
+      if (!alreadyPaid) {
+        await WalletService.creditCommission(
+          sponsorId,
+          sponsorBonusAmount,
+          sponsorCommissionLedgerId,
+          `Sponsor income for ${closing.businessDate}: ${DecimalUtil.round((closing.sponsorBonusRate || 0) * 100)}% of ${closing.memberName || closing.memberId}'s binary income`
+        );
+      }
+      await BinaryDailyClosing.updateOne({ _id: closing._id }, { $set: { sponsorWalletCredited: true } });
+      closing.sponsorWalletCredited = true;
+    } catch (error: any) {
+      console.error(`[SponsorBonus] Wallet credit failed for ${sponsorId} on ${closing.businessDate}:`, error.message);
     }
-
-    return commissions;
   }
 }

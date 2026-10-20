@@ -63,8 +63,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
   const [welcomeBonus, setWelcomeBonus] = useState<any>(null);
   const [welcomeBonusLoading, setWelcomeBonusLoading] = useState(true);
   const [bvSummary, setBvSummary] = useState<BVSummary | null>(null);
+  const [sponsorIncome, setSponsorIncome] = useState<{ total: number; thisMonth: number; ratePercent: number } | null>(null);
   const [settling, setSettling] = useState(false);
   const [settleMsg, setSettleMsg] = useState('');
+  const [settleWeek, setSettleWeek] = useState('');
   const [isFullPayoutModalOpen, setIsFullPayoutModalOpen] = useState(false);
   const [showAllInline, setShowAllInline] = useState(false);
   const [payoutSearch, setPayoutSearch] = useState('');
@@ -210,15 +212,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           if (isMounted && res?.status && res.data) setBvSummary(res.data);
         })
         .catch(() => {});
+      api.getSponsorIncomeSummary(user.memberId)
+        .then((res) => {
+          const kpis = res?.data?.kpis;
+          if (isMounted && res?.status && kpis) {
+            setSponsorIncome({ total: kpis.totalNetCredited || 0, thisMonth: kpis.thisMonth || 0, ratePercent: kpis.appliedRatePercent ?? 20 });
+          }
+        })
+        .catch(() => {});
     }
     return () => { isMounted = false; };
   }, [user?.memberId, isAdmin]);
 
+  // Finished weeks not yet settled (newest first), from the admin summary
+  const unsettledWeeks: { weekStart: string; weekEnd: string }[] = welcomeBonus?.unsettledWeeks || [];
+  const selectedSettleWeek = unsettledWeeks.find((w) => w.weekStart === settleWeek) || unsettledWeeks[0];
+  const formatWeekDay = (date: string) =>
+    new Date(`${date}T00:00:00Z`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
   const handleRunSettlement = async () => {
+    if (!selectedSettleWeek) return;
+    const weekLabel = `${formatWeekDay(selectedSettleWeek.weekStart)} – ${formatWeekDay(selectedSettleWeek.weekEnd)}`;
+    if (!window.confirm(`Settle the welcome bonus for the week ${weekLabel}? BV will be credited to eligible members' BV Wallets.`)) return;
     setSettling(true);
     setSettleMsg('');
     try {
-      const res = await api.settleWelcomeBonus();
+      const res = await api.settleWelcomeBonus({ weekStart: selectedSettleWeek.weekStart });
       if (res?.status) {
         setSettleMsg(`✓ ${res.message || 'Settlement completed'}`);
         loadWelcomeBonus();
@@ -579,6 +598,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
             </div>
 
+            {/* Member Card 3: Sponsor Income (share of directly sponsored members' daily binary income) */}
+            <div
+              className="kpi-card"
+              onClick={() => onNavigate('sponsor-income')}
+              style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)', border: '1px solid #ddd6fe', cursor: 'pointer' }}
+            >
+              <div className="kpi-icon-box" style={{ background: '#ede9fe', color: '#7c3aed' }}>
+                <Users size={26} />
+              </div>
+              <div className="kpi-content">
+                <div className="kpi-label" style={{ color: '#5b21b6', fontWeight: 700 }}>Sponsor Income</div>
+                <div className="kpi-value" style={{ color: '#6d28d9' }}>
+                  ₹ {sponsorIncome ? sponsorIncome.total.toLocaleString('en-IN') : <SkeletonText width="60px" height="28px" />}
+                </div>
+                <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600, marginTop: '4px' }}>
+                  This month: ₹ {sponsorIncome ? sponsorIncome.thisMonth.toLocaleString('en-IN') : '...'} • {sponsorIncome?.ratePercent ?? 20}% of directs' binary
+                </div>
+              </div>
+            </div>
+
 
             {/* Member Card 4: Total Payout / Available Payout Balance */}
             <div className="kpi-card kpi-card-coral" style={{ position: 'relative', overflow: 'hidden' }}>
@@ -893,7 +932,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <p style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                 {isAdmin
                   ? `Weekly ${welcomeBonus?.activeRules?.ratePercent ?? 4}% Company GBV Pool • ${welcomeBonus?.activeRules?.maxMultiplier ?? 2}× Lifetime Cap • Governed by Super Admin`
-                  : `Track your weekly ${welcomeBonus?.activeRules?.ratePercent ?? 4}% pool earnings in Business Volume, lifetime ${welcomeBonus?.activeRules?.maxMultiplier ?? 2}× cap, and wing eligibility`}
+                  : `Track your weekly ${welcomeBonus?.activeRules?.ratePercent ?? 4}% pool earnings in Business Volume, lifetime ${welcomeBonus?.activeRules?.maxMultiplier ?? 2}× cap, and eligibility`}
               </p>
             </div>
           </div>
@@ -901,14 +940,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {isAdmin ? (
               <>
+                {unsettledWeeks.length > 0 ? (
+                  <select
+                    value={selectedSettleWeek?.weekStart || ''}
+                    onChange={(e) => setSettleWeek(e.target.value)}
+                    disabled={settling}
+                    aria-label="Week to settle"
+                    style={{ fontSize: '12px', padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a' }}
+                  >
+                    {unsettledWeeks.map((w) => (
+                      <option key={w.weekStart} value={w.weekStart}>
+                        Week {formatWeekDay(w.weekStart)} – {formatWeekDay(w.weekEnd)}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>All finished weeks settled</span>
+                )}
                 <button
                   onClick={handleRunSettlement}
-                  disabled={settling}
+                  disabled={settling || !selectedSettleWeek}
                   className="primary-btn"
                   style={{ fontSize: '12px', padding: '7px 16px', background: '#059669', borderColor: '#059669' }}
                 >
                   <Sparkles size={14} />
-                  {settling ? 'Settling...' : 'Run Weekly Settlement'}
+                  {settling ? 'Settling...' : 'Settle Week'}
                 </button>
                 <button 
                   onClick={() => onNavigate('income-settings')} 
@@ -989,9 +1045,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                   <div style={{ fontSize: '12px', color: '#334155', lineHeight: 1.5, background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
                       <CheckCircle2 size={14} color="#059669" /> 
-                      {welcomeBonus?.activeRules?.requiresLeftAndRight !== false 
-                        ? `Requires 1 Left + 1 Right Wings (≥${welcomeBonus?.activeRules?.minWingBv ?? 100} BV)` 
-                        : 'Wings: No wing requirement (All active purchasing members eligible)'}
+                      Lifetime BV of at least {(welcomeBonus?.activeRules?.minLifetimeBv ?? 1250).toLocaleString()} BV
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, marginTop: '4px' }}>
+                      <CheckCircle2 size={14} color="#059669" />
+                      {welcomeBonus?.activeRules?.minSponsoredCount ?? 2} directly sponsored binary-active members (any wing, any level)
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, marginTop: '4px' }}>
                       <CheckCircle2 size={14} color="#059669" /> Frequency: {welcomeBonus?.activeRules?.settlementFrequency || 'Weekly'}
@@ -1120,7 +1178,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Qualifying Business Volume</span>
+                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Lifetime Business Volume</span>
                     <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
                       {welcomeBonus ? `${(welcomeBonus.qualifyingBusinessVolume || 0).toLocaleString()} BV` : '—'}
                     </span>
@@ -1198,50 +1256,40 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 </div>
               </div>
 
-              {/* Member Card 3: Wings Verification Status */}
+              {/* Member Card 3: Eligibility Conditions */}
               <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '12px' }}>
-                    Wing Eligibility Criteria
+                    Eligibility Criteria
                   </span>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
-                        Direct Left Referral (≥{welcomeBonus?.activeRules?.minWingBv ?? 100} BV)
-                      </span>
-                      {welcomeBonus?.leftWing ? (
-                        <span style={{ color: '#059669', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
-                          <CheckCircle2 size={16} /> ✓ Active
+                    {[
+                      {
+                        label: 'Lifetime BV',
+                        met: (welcomeBonus?.lifetimeBv || 0) >= (welcomeBonus?.activeRules?.minLifetimeBv ?? 1250),
+                        value: `${(welcomeBonus?.lifetimeBv || 0).toLocaleString()} / ${(welcomeBonus?.activeRules?.minLifetimeBv ?? 1250).toLocaleString()} BV`,
+                      },
+                      {
+                        label: 'Directly Sponsored Members',
+                        met: (welcomeBonus?.sponsoredCount || 0) >= (welcomeBonus?.activeRules?.minSponsoredCount ?? 2),
+                        value: `${welcomeBonus?.sponsoredCount || 0} / ${welcomeBonus?.activeRules?.minSponsoredCount ?? 2}`,
+                      },
+                    ].map((condition) => (
+                      <div key={condition.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                          {condition.label}
                         </span>
-                      ) : (
-                        <span style={{ color: '#dc2626', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
-                          <XCircle size={16} /> ✗ Missing
+                        <span style={{ color: condition.met ? '#059669' : '#dc2626', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
+                          {condition.met ? <CheckCircle2 size={16} /> : <XCircle size={16} />} {condition.value}
                         </span>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
-                        Direct Right Referral (≥{welcomeBonus?.activeRules?.minWingBv ?? 100} BV)
-                      </span>
-                      {welcomeBonus?.rightWing ? (
-                        <span style={{ color: '#059669', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
-                          <CheckCircle2 size={16} /> ✓ Active
-                        </span>
-                      ) : (
-                        <span style={{ color: '#dc2626', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
-                          <XCircle size={16} /> ✗ Missing
-                        </span>
-                      )}
-                    </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
                 <div style={{ marginTop: '12px', fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
-                  {welcomeBonus?.activeRules?.requiresLeftAndRight !== false
-                    ? `Condition: Directly sponsor 1 Left + 1 Right (≥${welcomeBonus?.activeRules?.minWingBv ?? 100} BV each from Packages or Products) & lifetime earnings below ${welcomeBonus?.activeRules?.maxMultiplier ?? 2}× purchased BV cap.`
-                    : `Condition: Lifetime earnings below ${welcomeBonus?.activeRules?.maxMultiplier ?? 2}× purchased BV cap.`}
+                  Condition: at least {(welcomeBonus?.activeRules?.minLifetimeBv ?? 1250).toLocaleString()} BV received in your lifetime (packages, products or transfers) and {welcomeBonus?.activeRules?.minSponsoredCount ?? 2} directly sponsored members on any wing whose binary status is active (100 BV or more). Earnings stop at {welcomeBonus?.activeRules?.maxMultiplier ?? 2}× your lifetime BV.
                 </div>
               </div>
             </>

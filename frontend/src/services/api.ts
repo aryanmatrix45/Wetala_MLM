@@ -1136,13 +1136,17 @@ export const api = {
     return savedToken ? { ...extra, Authorization: `Bearer ${savedToken}` } : extra;
   },
 
-  async getWelcomeBonusPreview(overrideGBV?: number) {
-    const query = typeof overrideGBV === 'number' ? `?overrideGBV=${overrideGBV}` : '';
+  // weekStart: the Monday ('YYYY-MM-DD') of the week; defaults to the last finished week
+  async getWelcomeBonusPreview(weekStart?: string, overrideGBV?: number) {
+    const params = new URLSearchParams();
+    if (weekStart) params.set('weekStart', weekStart);
+    if (typeof overrideGBV === 'number') params.set('overrideGBV', String(overrideGBV));
+    const query = params.toString() ? `?${params}` : '';
     const res = await fetch(`${API_BASE_URL}/welcome-bonus/preview${query}`, { headers: this.welcomeBonusHeaders() });
     return res.json();
   },
 
-  async settleWelcomeBonus(data?: { overrideGBV?: number; settlementId?: string }) {
+  async settleWelcomeBonus(data?: { weekStart?: string; overrideGBV?: number }) {
     const res = await fetch(`${API_BASE_URL}/welcome-bonus/settle`, {
       method: 'POST',
       headers: this.welcomeBonusHeaders({ 'Content-Type': 'application/json' }),

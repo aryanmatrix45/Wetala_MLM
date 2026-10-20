@@ -15,6 +15,7 @@ export interface IBinarySettlementTotals {
   generatedAmount: number;
   creditedAmount: number;
   flushedAmount: number;
+  sponsorBonusAmount: number;
 }
 
 export interface IBinarySettlementRun extends Document {
@@ -52,6 +53,7 @@ const binarySettlementRunSchema = new Schema<IBinarySettlementRun>(
       generatedAmount: { type: Number, default: 0 },
       creditedAmount: { type: Number, default: 0 },
       flushedAmount: { type: Number, default: 0 },
+      sponsorBonusAmount: { type: Number, default: 0 },
     },
     failures: { type: [{ memberId: String, message: String, _id: false }], default: [] },
     error: { type: String },

@@ -66,10 +66,10 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
       if (res.status && res.data) {
         setData(res.data);
       } else {
-        setError(res.message || 'Failed to load Sponsor Binary Income data.');
+        setError(res.message || 'Failed to load sponsor income.');
       }
     } catch (err: any) {
-      setError(err.message || 'Error fetching Sponsor Binary Income.');
+      setError(err.message || 'Error fetching sponsor income.');
     } finally {
       setLoading(false);
     }
@@ -80,12 +80,16 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
   const kpis = data?.kpis || {
     totalGrossBonus: 0,
     totalNetCredited: 0,
+    thisMonth: 0,
     directTeamCount: 0,
     earningDirectsCount: 0,
     appliedRatePercent: 20,
     isUncapped: true,
     noLegRequirement: true,
+    isEnabled: true,
   };
+  const rate = kpis.appliedRatePercent;
+  const inr = (value: number) => `₹${(value || 0).toLocaleString('en-IN')}`;
 
   const directTeam = data?.directTeamBreakdown || [];
   const recentPayouts = data?.recentPayouts || [];
@@ -110,10 +114,10 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
           </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             <h1 className="page-title" style={{ margin: 0, wordBreak: 'break-word' }}>
-              Sponsor Binary Income
+              Sponsor Income
             </h1>
             <p className="page-subtitle" style={{ margin: '3px 0 0 0', lineHeight: 1.4, wordBreak: 'break-word' }}>
-              20% Direct Matching Bonus on all binary income earned by your direct team
+              {rate}% of the daily binary income of every member you sponsored directly, paid on top of theirs
             </p>
           </div>
         </div>
@@ -123,7 +127,7 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
             <Zap size={14} /> 100% Uncapped
           </span>
           <span style={{ fontSize: '12px', fontWeight: 700, padding: '5px 12px', borderRadius: '20px', background: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
-            <ShieldCheck size={14} /> Single-Leg Qualified
+            <ShieldCheck size={14} /> Their Income Not Reduced
           </span>
           <span style={{ fontSize: '12px', fontWeight: 700, padding: '5px 12px', borderRadius: '20px', background: '#ecfdf5', color: '#059669', border: '1px solid #a7f3d0', display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap' }}>
             <Percent size={14} /> 100% Net Direct Payout
@@ -211,23 +215,30 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
         </div>
       )}
 
+      {!loading && !kpis.isEnabled && (
+        <div style={{ padding: '14px 18px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '10px', color: '#92400e', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <AlertCircle size={18} style={{ flexShrink: 0 }} />
+          <span>Sponsor income is currently switched off in Income Settings. No new sponsor income is being paid.</span>
+        </div>
+      )}
+
       {/* 4 Top KPI Cards */}
       <div className="kpi-grid" style={{ marginBottom: '24px' }}>
         {/* KPI 1 */}
         <div className="dashboard-card" style={{ padding: '20px', borderRadius: '14px', background: 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)', border: '1px solid #e0e7ff', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#6b7280' }}>
-              {isAdmin ? `Bonus Credited to ${activeMemberName || activeMemberId}` : 'Total Net Credited to Wallet'}
+              {isAdmin ? `Sponsor Income of ${activeMemberName || activeMemberId}` : 'Total Sponsor Income'}
             </span>
             <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: '#ede9fe', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <IndianRupee size={18} />
             </div>
           </div>
           <div style={{ fontSize: '28px', fontWeight: 800, color: '#1e1b4b', marginBottom: '6px' }}>
-            ₹{kpis.totalNetCredited.toLocaleString()}
+            {inr(kpis.totalNetCredited)}
           </div>
           <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600 }}>
-            {isAdmin ? `100% Net Credited to Member ${activeMemberId} • Zero Deductions` : '100% Credited to Wallet • Zero Deductions'}
+            This month: {inr(kpis.thisMonth)} • Zero deductions
           </div>
         </div>
 
@@ -281,7 +292,7 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
             {kpis.appliedRatePercent}% Flat
           </div>
           <div style={{ fontSize: '12px', color: '#d97706', fontWeight: 600 }}>
-            Uncapped • 0% Daily Limit • Single Leg Eligible
+            Uncapped • Direct sponsor only • Paid daily
           </div>
         </div>
       </div>
@@ -293,7 +304,7 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
             <Info size={16} />
           </div>
           <h2 style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', margin: 0, wordBreak: 'break-word' }}>
-            Sponsor Binary Income Rules & Payout Policy
+            How Sponsor Income Works
           </h2>
         </div>
 
@@ -302,10 +313,10 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
           <div style={{ padding: '14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <CheckCircle2 size={16} color="#4f46e5" style={{ flexShrink: 0 }} />
-              <strong style={{ fontSize: '13px', color: '#1e293b' }}>20% on Direct's Binary Income</strong>
+              <strong style={{ fontSize: '13px', color: '#1e293b' }}>{rate}% of Each Direct's Daily Binary Income</strong>
             </div>
             <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
-              Whenever any member in your Left or Right direct team earns binary matching income (₹250 per cycle), you receive <strong>20% (₹50 per cycle)</strong> directly.
+              Each day, when a member you sponsored directly is paid binary income, you receive <strong>{rate}% of the amount credited to them</strong>. Example: they are paid ₹1,000, you get ₹{(1000 * rate / 100).toLocaleString('en-IN')}.
             </p>
           </div>
 
@@ -313,10 +324,10 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
           <div style={{ padding: '14px', borderRadius: '10px', background: '#f8fafc', border: '1px solid #e2e8f0', minWidth: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px' }}>
               <CheckCircle2 size={16} color="#059669" style={{ flexShrink: 0 }} />
-              <strong style={{ fontSize: '13px', color: '#1e293b' }}>No Leg Balancing Required</strong>
+              <strong style={{ fontSize: '13px', color: '#1e293b' }}>Their Income Is Not Reduced</strong>
             </div>
             <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
-              Both Left and Right legs do <strong>NOT</strong> need to be balanced. You earn even if income is generated exclusively from Left leg, Right leg, or a single active direct member.
+              Sponsor income is paid by the company <strong>on top</strong>. Your direct members keep 100% of their own binary income. It doesn't matter where they are placed in the tree.
             </p>
           </div>
 
@@ -327,7 +338,7 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
               <strong style={{ fontSize: '13px', color: '#1e293b' }}>100% Uncapped (No Daily Cap)</strong>
             </div>
             <p style={{ fontSize: '12px', color: '#64748b', margin: 0, lineHeight: 1.5 }}>
-              Package daily capping limits only apply to binary matching income. <strong>Sponsor Binary Bonus has NO daily capping</strong> and is paid completely.
+              Package daily capping limits only apply to binary matching income. <strong>Sponsor income has no daily cap</strong> and is credited to your wallet with the daily binary settlement.
             </p>
           </div>
         </div>
@@ -341,7 +352,7 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
               {isAdmin ? `Direct Team Sponsored by ${activeMemberName ? `${activeMemberName} (${activeMemberId})` : activeMemberId}` : 'Direct Team Members & Sponsor Earnings Breakdown'}
             </h2>
             <span style={{ fontSize: '12px', color: '#64748b', display: 'block', marginTop: '2px' }}>
-              {isAdmin ? `All members directly sponsored by ${activeMemberId}, their binary earnings, and 20% bonus credited to ${activeMemberId}` : 'All members sponsored by you, their binary earnings, and how much money you earned from each person'}
+              {isAdmin ? `All members directly sponsored by ${activeMemberId}, their binary income, and the ${rate}% sponsor income credited to ${activeMemberId}` : 'All members sponsored by you, their binary income, and how much sponsor income you earned from each person'}
             </span>
           </div>
 
@@ -393,9 +404,9 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
                   <th style={{ padding: '12px' }}>Leg Position</th>
                   <th style={{ padding: '12px' }}>Package</th>
                   <th style={{ padding: '12px' }}>Their Binary Income</th>
-                  <th style={{ padding: '12px' }}>{isAdmin ? `20% Sponsor Bonus to ${activeMemberId}` : 'Your 20% Sponsor Bonus'}</th>
+                  <th style={{ padding: '12px' }}>{isAdmin ? `${rate}% Sponsor Income to ${activeMemberId}` : `Your ${rate}% Sponsor Income`}</th>
                   <th style={{ padding: '12px' }}>{isAdmin ? `Net Credited to ${activeMemberId}` : 'Net Credited to Wallet'}</th>
-                  <th style={{ padding: '12px' }}>Last Bonus Credited</th>
+                  <th style={{ padding: '12px' }}>Last Credited</th>
                 </tr>
               </thead>
               <tbody>
@@ -452,52 +463,54 @@ export const SponsorIncomePage: React.FC<SponsorIncomePageProps> = ({ user: prop
         )}
       </div>
 
-      {/* Recent Sponsor Bonus Payout Ledger */}
+      {/* Recent sponsor income credits, one row per sponsored member per day */}
       <div className="dashboard-card" style={{ padding: '24px', borderRadius: '14px', background: '#ffffff', border: '1px solid #e2e8f0', minWidth: 0, maxWidth: '100%', boxSizing: 'border-box' }}>
         <div style={{ marginBottom: '18px' }}>
           <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0, wordBreak: 'break-word' }}>
-            {isAdmin ? `Recent Sponsor Bonus Credits for ${activeMemberId}` : 'Recent Sponsor Bonus Wallet Credits'}
+            {isAdmin ? `Recent Sponsor Income of ${activeMemberId}` : 'Recent Sponsor Income'}
           </h2>
           <span style={{ fontSize: '12px', color: '#64748b', display: 'block', marginTop: '2px' }}>
-            {isAdmin ? `Live record of 20% sponsor bonuses credited directly into ${activeMemberId}'s wallet` : 'Live record of 20% sponsor bonuses credited directly into your wallet'}
+            Each row is one sponsored member's binary income for one day and the {rate}% credited {isAdmin ? `to ${activeMemberId}` : 'to your wallet'}
           </span>
         </div>
 
         {recentPayouts.length === 0 ? (
           <div style={{ padding: '40px 20px', textAlign: 'center', color: '#94a3b8' }}>
             <Sparkles size={36} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
-            <p style={{ margin: 0, fontWeight: 600 }}>No sponsor bonus credits recorded yet.</p>
-            <span style={{ fontSize: '12px', color: '#94a3b8' }}>Bonus credits will appear automatically as soon as {isAdmin ? `${activeMemberId}'s` : 'your'} direct referrals complete binary cycles.</span>
+            <p style={{ margin: 0, fontWeight: 600 }}>No sponsor income credited yet.</p>
+            <span style={{ fontSize: '12px', color: '#94a3b8' }}>It appears after each daily binary settlement in which {isAdmin ? `${activeMemberId}'s` : 'your'} direct members earn binary income.</span>
           </div>
         ) : (
           <div className="table-responsive">
             <table className="data-table" style={{ width: '100%', minWidth: '650px', fontSize: '13px' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', textAlign: 'left' }}>
-                  <th style={{ padding: '12px' }}>Ledger ID</th>
-                  <th style={{ padding: '12px' }}>Source Direct Member</th>
-                  <th style={{ padding: '12px' }}>Bonus Amount (20%)</th>
-                  <th style={{ padding: '12px' }}>Credited to Wallet</th>
-                  <th style={{ padding: '12px' }}>Date</th>
+                  <th style={{ padding: '12px' }}>Day</th>
+                  <th style={{ padding: '12px' }}>Sponsored Member</th>
+                  <th style={{ padding: '12px' }}>Their Binary Income</th>
+                  <th style={{ padding: '12px' }}>Rate</th>
+                  <th style={{ padding: '12px' }}>{isAdmin ? 'Sponsor Income' : 'Your Sponsor Income'}</th>
                 </tr>
               </thead>
               <tbody>
-                {recentPayouts.map((payout: any, idx: number) => (
-                  <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                    <td style={{ padding: '12px', fontWeight: 700, color: '#64748b', fontSize: '12px' }}>
-                      {payout.ledgerId}
+                {recentPayouts.map((payout: any) => (
+                  <tr key={payout.ledgerId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <td style={{ padding: '12px', color: '#475569', fontWeight: 600 }}>
+                      {payout.businessDate
+                        ? new Date(`${payout.businessDate}T00:00:00Z`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' })
+                        : new Date(payout.createdAt).toLocaleDateString()}
                     </td>
                     <td style={{ padding: '12px', fontWeight: 700, color: '#1e293b' }}>
-                      {payout.sourceMemberId}
+                      {payout.sourceMemberName ? `${payout.sourceMemberName} (${payout.sourceMemberId})` : payout.sourceMemberId}
                     </td>
-                    <td style={{ padding: '12px', fontWeight: 700, color: '#0f172a' }}>
-                      ₹{payout.grossAmount}
+                    <td style={{ padding: '12px', color: '#0f172a' }}>
+                      {payout.baseAmount ? inr(payout.baseAmount) : '—'}
+                    </td>
+                    <td style={{ padding: '12px', color: '#64748b' }}>
+                      {payout.ratePercent ? `${payout.ratePercent}%` : '—'}
                     </td>
                     <td style={{ padding: '12px', fontWeight: 800, color: '#10b981' }}>
-                      + ₹{payout.netPayable || payout.grossAmount}
-                    </td>
-                    <td style={{ padding: '12px', color: '#64748b', fontSize: '12px' }}>
-                      {new Date(payout.createdAt).toLocaleDateString()}
+                      + {inr(payout.netPayable ?? payout.grossAmount)}
                     </td>
                   </tr>
                 ))}
