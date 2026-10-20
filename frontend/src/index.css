@@ -5459,11 +5459,11 @@ input, select, textarea {
     z-index: 900;
     height: calc(var(--bottom-nav-height) + env(safe-area-inset-bottom, 0px));
     padding-bottom: env(safe-area-inset-bottom, 0px);
-    background: rgba(255, 255, 255, 0.97);
+    background: #eef3ea;
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border-top: 1px solid #e2e8f0;
-    box-shadow: 0 -4px 16px rgba(15, 23, 42, 0.06);
+    border-top: 1px solid #f3e3a1;
+    box-shadow: 0 -8px 20px -12px rgba(63, 77, 54, 0.5);
   }
 
   .mobile-bottom-nav-item {
@@ -5477,7 +5477,7 @@ input, select, textarea {
     padding: 6px 2px;
     background: none;
     border: none;
-    color: #64748b;
+    color: #3f4d36;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     transition: color 0.15s ease;
@@ -5491,11 +5491,11 @@ input, select, textarea {
     top: 18px;
     bottom: 18px;
     width: 1px;
-    background: #e2e8f0;
+    background: rgba(255, 255, 255, 0.6);
   }
 
   .mobile-bottom-nav-item.is-active {
-    color: #2563eb;
+    color: #1f2a18;
   }
 
   .mobile-bottom-nav-item.is-active::after {
@@ -5506,11 +5506,11 @@ input, select, textarea {
     right: 30%;
     height: 3px;
     border-radius: 0 0 3px 3px;
-    background: #2563eb;
+    background: #ca8a04;
   }
 
   .mobile-bottom-nav-item:focus-visible {
-    outline: 2px solid #2563eb;
+    outline: 2px solid #ca8a04;
     outline-offset: -4px;
     border-radius: 10px;
   }
@@ -5534,7 +5534,7 @@ input, select, textarea {
     font-weight: 800;
     line-height: 17px;
     text-align: center;
-    border: 2px solid #ffffff;
+    border: 2px solid #9caf88;
     box-sizing: content-box;
   }
 
@@ -5786,6 +5786,72 @@ input, select, textarea {
   color: #eab308;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+/* Public header theme: pale sage (#eef3ea), gold accents */
+.public-header {
+  background: #eef3ea;
+  border-bottom: none;
+  box-shadow: inset 0 -1px 0 #f3e3a1, 0 8px 20px -12px rgba(63, 77, 54, 0.5);
+}
+
+.public-header .public-brand-name {
+  color: #2f3b28;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+.public-header .public-brand-tag {
+  align-self: flex-start;
+  margin-top: 3px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 9.5px;
+  color: #2f3b28;
+  background: linear-gradient(135deg, #fde047 0%, #eab308 100%);
+}
+
+.public-header .public-nav-link {
+  color: #3f4d36;
+}
+
+.public-header .public-nav-link:hover {
+  color: #1f2a18;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.public-header .public-nav-link.is-active {
+  color: #1f2a18;
+  font-weight: 700;
+}
+
+.public-header .public-nav-link.is-active::after {
+  background: #ca8a04;
+}
+
+.public-header .public-auth-btn.is-login {
+  background: rgba(255, 255, 255, 0.45);
+  color: #2f3b28;
+  border: 1.5px solid transparent;
+}
+
+.public-header .public-auth-btn.is-login:hover {
+  background: rgba(255, 255, 255, 0.7);
+}
+
+.public-header .public-auth-btn.is-signup {
+  background: linear-gradient(135deg, #fde047 0%, #eab308 100%);
+  color: #2f3b28;
+  box-shadow: 0 4px 14px -4px rgba(234, 179, 8, 0.7);
+}
+
+.public-header .public-auth-btn.is-signup:hover {
+  box-shadow: 0 6px 18px -4px rgba(234, 179, 8, 0.85);
+}
+
+.public-header .public-nav-link:focus-visible,
+.public-header .public-auth-btn:focus-visible,
+.public-header .public-brand:focus-visible {
+  outline-color: #ca8a04;
 }
 
 .public-nav {

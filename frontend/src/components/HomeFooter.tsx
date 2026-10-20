@@ -62,7 +62,7 @@ const getSocialColor = (platform: string) => {
     case 'facebook':
       return '#1877f2';
     case 'twitter':
-      return '#ffffff';
+      return '#0f172a';
     case 'whatsapp':
       return '#25d366';
     case 'telegram':
@@ -131,11 +131,11 @@ export const HomeFooter: React.FC = () => {
     <footer className="treandora-footer-wrapper">
       <style>{`
         .treandora-footer-wrapper {
-          background: #181d28;
-          color: #94a3b8;
+          background: #eef3ea;
+          color: #4b5a40;
           font-family: inherit;
           padding: 60px 48px 32px;
-          border-top: 1px solid rgba(255, 255, 255, 0.08);
+          border-top: none;
           margin-top: 48px;
           border-radius: 0;
           width: 100%;
@@ -225,7 +225,7 @@ export const HomeFooter: React.FC = () => {
         .footer-about-text {
           font-size: 13.5px;
           line-height: 1.65;
-          color: #94a3b8;
+          color: #4b5a40;
           text-align: justify;
         }
 
@@ -233,7 +233,7 @@ export const HomeFooter: React.FC = () => {
         .footer-col-title {
           font-size: 16px;
           font-weight: 700;
-          color: #ffffff;
+          color: #1f2a18;
           margin-bottom: 16px;
           letter-spacing: 0.2px;
         }
@@ -249,7 +249,7 @@ export const HomeFooter: React.FC = () => {
         }
 
         .footer-nav-link {
-          color: #94a3b8;
+          color: #4b5a40;
           text-decoration: none;
           font-size: 13.5px;
           transition: all 0.2s ease;
@@ -259,7 +259,7 @@ export const HomeFooter: React.FC = () => {
         }
 
         .footer-nav-link:hover {
-          color: #ffffff;
+          color: #1f2a18;
           transform: translateX(3px);
         }
 
@@ -271,24 +271,24 @@ export const HomeFooter: React.FC = () => {
         }
 
         .footer-contact-label {
-          color: #ffffff;
+          color: #1f2a18;
           font-weight: 600;
           margin-bottom: 3px;
           display: block;
         }
 
         .footer-contact-text {
-          color: #94a3b8;
+          color: #4b5a40;
         }
 
         .footer-contact-links {
-          color: #94a3b8;
+          color: #4b5a40;
           text-decoration: none;
           transition: color 0.2s ease;
         }
 
         .footer-contact-links:hover {
-          color: #ffffff;
+          color: #1f2a18;
           text-decoration: underline;
         }
 
@@ -305,9 +305,9 @@ export const HomeFooter: React.FC = () => {
           width: 36px;
           height: 36px;
           border-radius: 8px;
-          background: rgba(255, 255, 255, 0.08);
-          border: 1px solid rgba(255, 255, 255, 0.08);
-          color: #e2e8f0;
+          background: rgba(47, 59, 40, 0.08);
+          border: none;
+          color: #2f3b28;
           display: inline-flex;
           align-items: center;
           justify-content: center;
@@ -316,33 +316,33 @@ export const HomeFooter: React.FC = () => {
         }
 
         .footer-social-btn:hover {
-          background: rgba(255, 255, 255, 0.2);
-          color: #ffffff;
+          background: rgba(47, 59, 40, 0.15);
+          color: #1f2a18;
           transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+          box-shadow: 0 4px 12px rgba(47, 59, 40, 0.2);
         }
 
         /* Sub-footer bottom bar */
         .footer-bottom-bar {
           margin-top: 48px;
           padding-top: 20px;
-          border-top: 1px solid rgba(255, 255, 255, 0.06);
+          border-top: none;
           display: flex;
           justify-content: space-between;
           align-items: center;
           flex-wrap: wrap;
           gap: 16px;
           font-size: 12.5px;
-          color: #64748b;
+          color: #5b6b4f;
         }
 
         .footer-bottom-bar a {
-          color: #94a3b8;
+          color: #4b5a40;
           text-decoration: none;
         }
 
         .footer-bottom-bar a:hover {
-          color: #ffffff;
+          color: #1f2a18;
         }
       `}</style>
 
@@ -518,7 +518,7 @@ export const HomeFooter: React.FC = () => {
                       e.currentTarget.style.boxShadow = `0 4px 12px ${getSocialColor(item.platform)}40`;
                     }}
                     onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.borderColor = 'transparent';
                       e.currentTarget.style.boxShadow = 'none';
                     }}
                   >
