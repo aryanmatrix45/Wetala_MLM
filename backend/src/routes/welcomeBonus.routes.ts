@@ -3,15 +3,28 @@ import { WelcomeBonusService } from '../services/compensation/WelcomeBonusServic
 import { WelcomeBonusSettlement } from '../models/WelcomeBonusSettlement.model';
 import { WelcomeBonusTransaction } from '../models/WelcomeBonusTransaction.model';
 import { Member } from '../models/Member.model';
-import { HTTP_STATUS } from '../config/constants';
+import { HTTP_STATUS, ROLES } from '../config/constants';
+import { authenticate, requireSuperAdmin, AuthenticatedRequest } from '../middlewares/auth';
 
 const router = Router();
+
+// Every welcome bonus endpoint needs a login: settlement credits spendable BV, so it is Super Admin only
+router.use(authenticate);
+
+/** Members always get their own record; the Super Admin may ask for any member (default: first member). */
+const resolveMemberId = async (req: AuthenticatedRequest): Promise<string> => {
+  if (req.user?.role !== ROLES.SUPERADMIN) return (req.user?.memberId || '').toUpperCase();
+  const requested = req.params.memberId;
+  if (requested && requested !== 'undefined' && requested !== 'null') return requested.toUpperCase();
+  const firstMember = await Member.findOne().sort({ createdAt: 1 });
+  return firstMember ? firstMember.memberId : '';
+};
 
 /**
  * Get Welcome Bonus Governance & Live Engine Overview for Super Admin / Admin
  * GET /api/welcome-bonus/admin-summary
  */
-router.get('/admin-summary', async (_req: Request, res: Response) => {
+router.get('/admin-summary', requireSuperAdmin, async (_req: Request, res: Response) => {
   try {
     const summary = await WelcomeBonusService.getAdminDashboardSummary();
     res.json({
@@ -30,7 +43,7 @@ router.get('/admin-summary', async (_req: Request, res: Response) => {
  * Preview current / upcoming weekly Welcome Bonus settlement
  * GET /api/welcome-bonus/preview
  */
-router.get('/preview', async (req: Request, res: Response) => {
+router.get('/preview', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const overrideGBV = req.query.overrideGBV ? parseFloat(req.query.overrideGBV as string) : undefined;
     const preview = await WelcomeBonusService.previewWeeklySettlement({ overrideGBV });
@@ -50,7 +63,7 @@ router.get('/preview', async (req: Request, res: Response) => {
  * Execute weekly Welcome Bonus settlement
  * POST /api/welcome-bonus/settle
  */
-router.post('/settle', async (req: Request, res: Response) => {
+router.post('/settle', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const { overrideGBV, settlementId } = req.body;
     const result = await WelcomeBonusService.executeWeeklySettlement({
@@ -77,7 +90,7 @@ router.post('/settle', async (req: Request, res: Response) => {
  * List all Welcome Bonus settlements
  * GET /api/welcome-bonus/settlements
  */
-router.get('/settlements', async (_req: Request, res: Response) => {
+router.get('/settlements', requireSuperAdmin, async (_req: Request, res: Response) => {
   try {
     const settlements = await WelcomeBonusSettlement.find().sort({ createdAt: -1 });
     res.json({
@@ -96,7 +109,7 @@ router.get('/settlements', async (_req: Request, res: Response) => {
  * Get single settlement details with individual transactions
  * GET /api/welcome-bonus/settlements/:settlementId
  */
-router.get('/settlements/:settlementId', async (req: Request, res: Response) => {
+router.get('/settlements/:settlementId', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const { settlementId } = req.params;
     const settlement = await WelcomeBonusSettlement.findOne({ settlementId });
@@ -126,14 +139,9 @@ router.get('/settlements/:settlementId', async (req: Request, res: Response) => 
  * Get Welcome Bonus status for a Member (Dashboard View)
  * GET /api/welcome-bonus/member-status/:memberId?
  */
-router.get('/member-status/:memberId?', async (req: Request, res: Response) => {
+router.get('/member-status/:memberId?', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    let memberId = req.params.memberId;
-    if (!memberId || memberId === 'undefined' || memberId === 'null') {
-      // Default to root or first active member if unspecified
-      const firstMember = await Member.findOne().sort({ createdAt: 1 });
-      memberId = firstMember ? firstMember.memberId : '';
-    }
+    const memberId = await resolveMemberId(req);
 
     if (!memberId) {
       return res.status(HTTP_STATUS.NOT_FOUND).json({
@@ -159,13 +167,9 @@ router.get('/member-status/:memberId?', async (req: Request, res: Response) => {
  * Get Welcome Bonus payout history for a Member
  * GET /api/welcome-bonus/history/:memberId?
  */
-router.get('/history/:memberId?', async (req: Request, res: Response) => {
+router.get('/history/:memberId?', async (req: AuthenticatedRequest, res: Response) => {
   try {
-    let memberId = req.params.memberId;
-    if (!memberId || memberId === 'undefined' || memberId === 'null') {
-      const firstMember = await Member.findOne().sort({ createdAt: 1 });
-      memberId = firstMember ? firstMember.memberId : '';
-    }
+    const memberId = await resolveMemberId(req);
 
     const history = await WelcomeBonusTransaction.find({ memberId }).sort({ createdAt: -1 });
     res.json({

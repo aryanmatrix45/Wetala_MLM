@@ -92,6 +92,8 @@ export interface IMember extends Document {
   personalBv: number;
   isBinaryActive: boolean;
   binaryActivatedAt?: Date;
+  // How binary participation was first unlocked: earned personal BV, or BV Wallet balance
+  activationSource?: '' | 'PERSONAL_BV' | 'BV_WALLET';
   matchedPairs: number;
   totalIncome: number;
   walletBalance: number;
@@ -391,6 +393,11 @@ const memberSchema = new Schema<IMember, IMemberModel>(
     binaryActivatedAt: {
       type: Date,
     },
+    activationSource: {
+      type: String,
+      enum: ['', 'PERSONAL_BV', 'BV_WALLET'],
+      default: '',
+    },
     matchedPairs: {
       type: Number,
       default: 0,
@@ -469,7 +476,8 @@ memberSchema.pre('save', async function () {
   this.position = normalizedPos;
   this.binaryPosition = normalizedPos;
 
-  // Minimum 100 Business Volume (BV) required to participate in Binary Income Tree
+  // Minimum 100 Business Volume (BV) required to participate in Binary Income Tree.
+  // Members activated through their BV Wallet balance stay active (see BVWalletService).
   if ((this.personalBv || 0) >= 100) {
     if (!this.isBinaryActive) {
       this.isBinaryActive = true;
@@ -477,6 +485,9 @@ memberSchema.pre('save', async function () {
         this.binaryActivatedAt = new Date();
       }
     }
+    if (!this.activationSource) this.activationSource = 'PERSONAL_BV';
+  } else if (this.activationSource === 'BV_WALLET') {
+    this.isBinaryActive = true;
   } else {
     this.isBinaryActive = false;
   }

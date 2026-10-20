@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { api, type DashboardStats } from '../services/api';
+import { api, type DashboardStats, type BVSummary } from '../services/api';
 import { 
   Users, 
   UserPlus, 
@@ -26,6 +26,7 @@ import {
   CreditCard,
   Check,
   ArrowDownRight,
+  Coins,
   BarChart3
 } from 'lucide-react';
 import { WithdrawModal } from '../components/WithdrawModal';
@@ -61,6 +62,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
   const [statsLoading, setStatsLoading] = useState(true);
   const [welcomeBonus, setWelcomeBonus] = useState<any>(null);
   const [welcomeBonusLoading, setWelcomeBonusLoading] = useState(true);
+  const [bvSummary, setBvSummary] = useState<BVSummary | null>(null);
   const [settling, setSettling] = useState(false);
   const [settleMsg, setSettleMsg] = useState('');
   const [isFullPayoutModalOpen, setIsFullPayoutModalOpen] = useState(false);
@@ -68,6 +70,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
   const [payoutSearch, setPayoutSearch] = useState('');
   const [payoutFilterSettlement, setPayoutFilterSettlement] = useState('ALL');
   const isAdmin = user?.role?.toLowerCase() === 'superadmin' || user?.role?.toLowerCase() === 'admin';
+  // Binary status: live BV summary when loaded (personal + BV Wallet), otherwise the login profile
+  const binaryActive = bvSummary ? bvSummary.binary.isActive : (user?.personalBv || 0) >= 100;
+  const statusBV = bvSummary ? bvSummary.totalBV : (user?.personalBv || 0);
   const currentMemberId = user?.memberId || 'MEM0001';
   const effectivePayouts: any[] = isAdmin 
     ? (welcomeBonus?.history || [])
@@ -199,6 +204,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
     loadWelcomeBonus();
     loadWithdrawalData();
     loadBinaryData();
+    if (!isAdmin && user?.memberId) {
+      api.getBVSummary()
+        .then((res) => {
+          if (isMounted && res?.status && res.data) setBvSummary(res.data);
+        })
+        .catch(() => {});
+    }
     return () => { isMounted = false; };
   }, [user?.memberId, isAdmin]);
 
@@ -273,7 +285,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       </div>
 
       {/* 100 BV Binary Income Tree Participation Banner for Distributors */}
-      {!isAdmin && (user?.personalBv || 0) < 100 && (
+      {/* Live status when loaded; falls back to the profile from login */}
+      {!isAdmin && !(bvSummary ? bvSummary.binary.isActive : (user?.personalBv || 0) >= 100) && (
         <div style={{
           background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
           border: '1px solid #fde68a',
@@ -302,10 +315,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             </div>
             <div>
               <div style={{ fontWeight: 800, fontSize: '15px', color: '#92400e' }}>
-                Binary Tree Income Participation: Pending ({user?.personalBv || 0} / 100 BV)
+                Binary Tree Income Participation: Pending ({statusBV.toLocaleString()} / 100 BV)
               </div>
               <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#b45309' }}>
-                Your account is active for login! To participate in the binary income tree and earn matching bonuses, your account requires a minimum of <strong>100 Business Volume (BV)</strong>. Purchase products to activate binary participation.
+                Your account is active for login! To participate in the binary income tree and earn matching bonuses, your account requires a minimum of <strong>100 Business Volume (BV)</strong> (personal BV plus BV Wallet balance). Purchase products or receive BV in your BV Wallet to activate binary participation.
               </p>
             </div>
           </div>
@@ -474,14 +487,66 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">Distributor Status</div>
-                <div className="kpi-value" style={{ fontSize: '18px', color: (user?.personalBv || 0) >= 100 ? '#10b981' : '#d97706' }}>
-                  {(user?.personalBv || 0) >= 100 ? 'Binary Active' : 'Login Active'}
+                <div className="kpi-value" style={{ fontSize: '18px', color: binaryActive ? '#10b981' : '#d97706' }}>
+                  {binaryActive ? 'Binary Active' : 'Login Active'}
                 </div>
-                <div style={{ fontSize: '12px', color: (user?.personalBv || 0) >= 100 ? '#059669' : '#b45309', fontWeight: 700, marginTop: '4px' }}>
-                  {(user?.personalBv || 0) >= 100 
-                    ? `Tree Qualified: ${(user?.personalBv || 0).toLocaleString()} BV` 
-                    : `Tree Inactive: ${(user?.personalBv || 0)}/100 BV`}
+                <div style={{ fontSize: '12px', color: binaryActive ? '#059669' : '#b45309', fontWeight: 700, marginTop: '4px' }}>
+                  {binaryActive
+                    ? bvSummary?.binary.activationSource === 'BV_WALLET'
+                      ? `Activated with BV Wallet (${statusBV.toLocaleString()} BV)`
+                      : `Tree Qualified: ${statusBV.toLocaleString()} BV`
+                    : `Tree Inactive: ${statusBV}/100 BV`}
                 </div>
+              </div>
+            </div>
+
+            {/* Member Card: Total Business Volume (earned personal BV + spendable BV Wallet) */}
+            <div className="kpi-card kpi-card-purple">
+              <div className="kpi-icon-box kpi-icon-purple">
+                <Coins size={26} />
+              </div>
+              <div className="kpi-content" style={{ width: '100%' }}>
+                <div className="kpi-label">Total Business Volume</div>
+                <div className="kpi-value" style={{ color: '#6d28d9' }}>
+                  {bvSummary ? bvSummary.totalBV.toLocaleString('en-IN') : <SkeletonText width="60px" height="28px" />}{' '}
+                  <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                </div>
+                {bvSummary && (
+                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '6px', display: 'grid', gap: '2px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                      <span>Personal BV (earned)</span>
+                      <strong style={{ color: '#0f172a' }}>{bvSummary.personal.total.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', paddingLeft: '8px', color: '#64748b' }}>
+                      <span>Package · Products</span>
+                      <span>
+                        {bvSummary.personal.package.toLocaleString('en-IN')} · {bvSummary.personal.purchases.toLocaleString('en-IN')}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+                      <span>BV Wallet (spendable)</span>
+                      <strong style={{ color: '#0f172a' }}>{bvSummary.wallet.available.toLocaleString('en-IN')}</strong>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', paddingLeft: '8px', color: '#64748b' }}>
+                      <span>incl. welcome bonus</span>
+                      <span>{bvSummary.wallet.welcomeBonus.toLocaleString('en-IN')}</span>
+                    </div>
+                    {bvSummary.wallet.pendingOrderBV > 0 && (
+                      <div style={{ color: '#b45309', fontWeight: 600 }}>
+                        {bvSummary.wallet.pendingOrderBV.toLocaleString('en-IN')} BV paid on {bvSummary.wallet.pendingOrders} order(s) awaiting approval
+                      </div>
+                    )}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onNavigate('bv-wallet')}
+                  className="primary-btn"
+                  style={{ marginTop: '8px', fontSize: '11.5px', padding: '5px 12px', width: '100%', justifyContent: 'center' }}
+                >
+                  <Coins size={13} />
+                  <span>Open BV Wallet</span>
+                </button>
               </div>
             </div>
 

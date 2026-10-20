@@ -4,6 +4,8 @@ import {
   ArrowUpRight,
   CheckCircle2,
   Clock,
+  Gift,
+  ShoppingCart,
   Layers,
   PlusCircle,
   RefreshCw,
@@ -45,6 +47,15 @@ const OPERATOR_STORAGE_KEY = 'wetala_bv_operator_name';
 const SUPER_ADMIN_ID = 'ADMIN';
 
 const formatBV = (value: number | undefined) => `${(value || 0).toLocaleString('en-IN')} BV`;
+
+const TYPE_LABEL: Record<BVTransactionItem['type'], string> = {
+  GENERATION: 'Generated',
+  TRANSFER: 'Transfer',
+  REVERSAL: 'Reversal',
+  WELCOME_BONUS: 'Welcome bonus',
+  PURCHASE: 'Order payment',
+  PURCHASE_REFUND: 'Order refund',
+};
 const formatDateTime = (value?: string) =>
   value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 
@@ -237,7 +248,7 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
           <p className="page-subtitle">
             {isAdmin
               ? 'Generate BV, send it to members instantly, and audit or reverse transactions.'
-              : 'Send BV instantly to other members or the Super Admin, and track everything you sent and received.'}
+              : 'Send BV to other members or the Super Admin, pay for products and packages, and track everything you sent and received.'}
           </p>
         </div>
         <button type="button" onClick={refreshAll} className="primary-btn" style={ghostBtn} title="Refresh">
@@ -281,8 +292,16 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
           </>
         ) : (
           <>
-            <KpiCard tone="blue" icon={<ArrowDownLeft size={24} />} label="Total received" value={formatBV(wallet?.totalReceived)} valueColor="#2563eb" />
-            <KpiCard tone="purple" icon={<ArrowUpRight size={24} />} label="Total sent" value={formatBV(wallet?.totalSent)} valueColor="#7c3aed" />
+            <KpiCard
+              tone="blue"
+              icon={<ArrowDownLeft size={24} />}
+              label="Received"
+              value={formatBV(wallet?.totalReceived)}
+              valueColor="#2563eb"
+              sub={`${formatBV(wallet?.totalSent)} sent to others`}
+            />
+            <KpiCard tone="gold" icon={<Gift size={24} />} label="Welcome bonus" value={formatBV(wallet?.totalWelcomeBonus)} valueColor="#d97706" sub="Credited weekly as BV" />
+            <KpiCard tone="purple" icon={<ShoppingCart size={24} />} label="Spent on orders" value={formatBV(wallet?.totalSpent)} valueColor="#7c3aed" sub="Products & packages paid with BV" />
           </>
         )}
       </div>
@@ -689,6 +708,9 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
           {isAdmin && <option value="GENERATION">Generation</option>}
           <option value="TRANSFER">Transfer</option>
           <option value="REVERSAL">Reversal</option>
+          <option value="WELCOME_BONUS">Welcome bonus</option>
+          <option value="PURCHASE">Order payment</option>
+          <option value="PURCHASE_REFUND">Order refund</option>
         </select>
         {scope === 'mine' && (
           <select value={direction} onChange={(e) => setDirection(e.target.value)} style={selectStyle} aria-label="Direction">
@@ -752,13 +774,25 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
                 const outgoing = t.direction === 'SENT';
                 const sign = t.direction ? (outgoing ? '−' : '+') : '';
                 const typeLabel =
-                  t.type === 'GENERATION' ? 'Generated' : t.type === 'REVERSAL' ? 'Reversal' : outgoing ? 'Sent' : t.direction === 'RECEIVED' ? 'Received' : 'Transfer';
+                  t.type === 'TRANSFER' ? (outgoing ? 'Sent' : t.direction === 'RECEIVED' ? 'Received' : 'Transfer') : TYPE_LABEL[t.type] || t.type;
+                const TypeIcon =
+                  t.type === 'GENERATION'
+                    ? Layers
+                    : t.type === 'REVERSAL'
+                      ? Undo2
+                      : t.type === 'WELCOME_BONUS'
+                        ? Gift
+                        : t.type === 'PURCHASE' || t.type === 'PURCHASE_REFUND'
+                          ? ShoppingCart
+                          : outgoing
+                            ? ArrowUpRight
+                            : ArrowDownLeft;
                 return (
                   <tr key={t.transactionId}>
                     <td style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '12px' }}>{t.transactionId}</td>
                     <td>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}>
-                        {t.type === 'GENERATION' ? <Layers size={13} /> : t.type === 'REVERSAL' ? <Undo2 size={13} /> : outgoing ? <ArrowUpRight size={13} /> : <ArrowDownLeft size={13} />}
+                        <TypeIcon size={13} />
                         {typeLabel}
                       </span>
                     </td>

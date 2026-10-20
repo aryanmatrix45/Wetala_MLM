@@ -70,6 +70,14 @@ export interface ICommissionLedger extends Document {
   updatedAt: Date;
 }
 
+// Amounts are never negative, except on REVERSAL rows, which record a clawback as the negative of the original
+const nonNegativeUnlessReversal = {
+  validator(this: any, value: number) {
+    return value >= 0 || this?.type === COMMISSION_TYPE.REVERSAL;
+  },
+  message: 'Path `{PATH}` ({VALUE}) cannot be negative',
+};
+
 const commissionLedgerSchema = new Schema<ICommissionLedger>(
   {
     ledgerId: {
@@ -119,42 +127,42 @@ const commissionLedgerSchema = new Schema<ICommissionLedger>(
     grossAmount: {
       type: Number,
       required: true,
-      min: 0,
+      validate: nonNegativeUnlessReversal,
     },
     grossAmountInPaise: {
       type: Number,
       required: true,
-      min: 0,
+      validate: nonNegativeUnlessReversal,
     },
     tdsDeduction: {
       type: Number,
       default: 0,
-      min: 0,
+      validate: nonNegativeUnlessReversal,
     },
     tdsDeductionInPaise: {
       type: Number,
       default: 0,
-      min: 0,
+      validate: nonNegativeUnlessReversal,
     },
     adminFee: {
       type: Number,
       default: 0,
-      min: 0,
+      validate: nonNegativeUnlessReversal,
     },
     adminFeeInPaise: {
       type: Number,
       default: 0,
-      min: 0,
+      validate: nonNegativeUnlessReversal,
     },
     payableAmount: {
       type: Number,
       required: true,
-      min: 0,
+      validate: nonNegativeUnlessReversal,
     },
     payableAmountInPaise: {
       type: Number,
       required: true,
-      min: 0,
+      validate: nonNegativeUnlessReversal,
     },
     status: {
       type: String,

@@ -109,6 +109,10 @@ export type CompensationEventStatus = typeof COMPENSATION_EVENT_STATUS[keyof typ
 export const BV_WALLET = {
   ADMIN_OWNER_ID: 'ADMIN',
   ADMIN_DISPLAY_NAME: 'Super Admin',
+  // Counterparty for BV that enters or leaves wallets through the system (welcome bonus, order payments)
+  SYSTEM_OWNER_ID: 'SYSTEM',
+  // Personal BV + BV Wallet balance needed to activate binary tree participation
+  ACTIVATION_BV: 100,
   MAX_GENERATE_BV: Number(process.env.BV_MAX_GENERATE) || 10_000_000,
   MAX_ADMIN_TRANSFER_BV: Number(process.env.BV_MAX_ADMIN_TRANSFER) || 10_000_000,
   MAX_MEMBER_TRANSFER_BV: Number(process.env.BV_MAX_MEMBER_TRANSFER) || 100_000,
@@ -121,6 +125,7 @@ export const BV_WALLET = {
 export const BV_OWNER_TYPE = {
   ADMIN: 'ADMIN',
   MEMBER: 'MEMBER',
+  SYSTEM: 'SYSTEM', // no wallet: welcome bonus source, order payment sink
 } as const;
 
 export type BVOwnerType = typeof BV_OWNER_TYPE[keyof typeof BV_OWNER_TYPE];
@@ -129,6 +134,9 @@ export const BV_TXN_TYPE = {
   GENERATION: 'GENERATION',
   TRANSFER: 'TRANSFER',
   REVERSAL: 'REVERSAL', // admin-only correction that moves a transfer's BV back
+  WELCOME_BONUS: 'WELCOME_BONUS', // weekly welcome bonus share credited as BV
+  PURCHASE: 'PURCHASE', // BV spent on a product / package order
+  PURCHASE_REFUND: 'PURCHASE_REFUND', // BV returned when a BV-paid order is rejected or refunded
 } as const;
 
 export type BVTxnType = typeof BV_TXN_TYPE[keyof typeof BV_TXN_TYPE];

@@ -2,6 +2,7 @@ import { BVLedger, IBVLedger } from '../models/BVLedger.model';
 import { BinaryVolume, IBinaryVolume } from '../models/BinaryVolume.model';
 import { Member } from '../models/Member.model';
 import { CompensationRule } from '../models/CompensationRule.model';
+import { Purchase, IPurchase } from '../models/Purchase.model';
 import { BinaryTreeService } from './tree/BinaryTreeService';
 import { BV_SOURCE_TYPE, BVSourceType, BINARY_POSITION, BinaryPosition } from '../config/constants';
 
@@ -152,5 +153,84 @@ export class BVService {
     }
 
     return updatedAncestors;
+  }
+
+  /**
+   * Takes back the earned BV of a refunded order: the member's personal BV and the volume added to
+   * every upline leg. Uses the order's own BVLedger credits as the record of what was given, so it
+   * only reverses what was actually credited. Runs once per order (Purchase.bvVolumeReversed).
+   * Volume already consumed by binary matching cannot be un-matched; only unmatched volume is removed.
+   */
+  static async reversePurchaseVolume(purchase: IPurchase): Promise<{ personalBvReversed: number; uplineEntriesReversed: number }> {
+    const result = { personalBvReversed: 0, uplineEntriesReversed: 0 };
+    const claim = await Purchase.updateOne(
+      { purchaseId: purchase.purchaseId, bvVolumeReversed: { $ne: true } },
+      { $set: { bvVolumeReversed: true } }
+    );
+    if (!claim.modifiedCount) return result;
+
+    const creditTypes = [BV_SOURCE_TYPE.JOINING_PACKAGE, BV_SOURCE_TYPE.REPURCHASE, BV_SOURCE_TYPE.RETAIL];
+    const credits = await BVLedger.find({ referenceId: purchase.purchaseId, sourceType: { $in: creditTypes } });
+    const description = `Reversal of refunded order ${purchase.purchaseId}`;
+
+    for (const credit of credits) {
+      const bv = credit.earnedBV || 0;
+      if (bv <= 0) continue;
+      const member = await Member.findOne({ memberId: credit.memberId });
+      if (!member) continue;
+
+      const lastEntry = await BVLedger.findOne({ memberId: member.memberId }).sort({ createdAt: -1 });
+      const openingBV = lastEntry ? lastEntry.closingBV : 0;
+      let carriedForwardBV = 0;
+
+      if (!credit.position) {
+        // The buyer's own personal BV
+        member.personalBv = Math.max(0, (member.personalBv || 0) - bv);
+        member.qualifyingBv = member.personalBv;
+        const activeRule = await CompensationRule.findOne({ isActive: true }).sort({ version: -1 });
+        member.welcomeBonusCap = member.personalBv * (activeRule?.welcomeBonus?.maxMultiplier ?? 2);
+        await member.save();
+        result.personalBvReversed += bv;
+      } else {
+        // Upline leg volume
+        const vol = await BinaryVolume.findOne({ memberId: member.memberId });
+        if (vol) {
+          if (credit.position === BINARY_POSITION.LEFT) {
+            vol.leftTotalBV = Math.max(0, vol.leftTotalBV - bv);
+            vol.leftAvailableBV = Math.max(0, vol.leftAvailableBV - bv);
+            vol.leftCarryForwardBV = vol.leftAvailableBV;
+            carriedForwardBV = vol.leftAvailableBV;
+          } else {
+            vol.rightTotalBV = Math.max(0, vol.rightTotalBV - bv);
+            vol.rightAvailableBV = Math.max(0, vol.rightAvailableBV - bv);
+            vol.rightCarryForwardBV = vol.rightAvailableBV;
+            carriedForwardBV = vol.rightAvailableBV;
+          }
+          await vol.save();
+          await Member.updateOne({ memberId: member.memberId }, { $set: { leftBv: vol.leftTotalBV, rightBv: vol.rightTotalBV } });
+        }
+        result.uplineEntriesReversed++;
+      }
+
+      await BVLedger.create({
+        ledgerId: `BV-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+        userId: member._id.toString(),
+        memberId: member.memberId,
+        sourceMemberId: credit.sourceMemberId,
+        sourceType: BV_SOURCE_TYPE.REVERSAL,
+        referenceId: purchase.purchaseId,
+        position: credit.position,
+        openingBV,
+        earnedBV: 0,
+        consumedBV: bv,
+        carriedForwardBV,
+        flushedBV: 0,
+        closingBV: Math.max(0, openingBV - bv),
+        description,
+        isImmutable: true,
+      });
+    }
+
+    return result;
   }
 }

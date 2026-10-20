@@ -16,6 +16,8 @@ export interface IBVWallet extends Document {
   totalGenerated: number;
   totalReceived: number;
   totalSent: number;
+  totalWelcomeBonus: number;
+  totalSpent: number; // BV paid for orders, net of refunds
   sequence: number; // incremented on every balance change; mirrored on each ledger entry
   isFrozen: boolean;
   frozenReason: string;
@@ -39,6 +41,8 @@ const bvWalletSchema = new Schema<IBVWallet>(
     totalGenerated: { type: Number, default: 0 },
     totalReceived: { type: Number, default: 0 },
     totalSent: { type: Number, default: 0 },
+    totalWelcomeBonus: { type: Number, default: 0 },
+    totalSpent: { type: Number, default: 0 },
     sequence: { type: Number, default: 0 },
     isFrozen: { type: Boolean, default: false },
     frozenReason: { type: String, trim: true, default: '' },

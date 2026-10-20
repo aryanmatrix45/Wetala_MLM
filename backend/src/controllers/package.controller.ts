@@ -4,6 +4,8 @@ import { Member } from '../models/Member.model';
 import { Purchase } from '../models/Purchase.model';
 import { CompensationEngine } from '../services/compensation/CompensationEngine';
 import { AuditService } from '../services/AuditService';
+import { BVWalletError } from '../services/BVWalletService';
+import { submitPurchaseRequest, parsePaymentMethod, PURCHASE_PAYMENT_METHOD } from '../services/PurchaseRequestService';
 import { HTTP_STATUS, PURCHASE_TYPE, PURCHASE_STATUS } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
 
@@ -283,7 +285,8 @@ export const PackageController = {
    */
   async buyPackage(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { packageId } = req.body;
+      const { packageId, requestKey } = req.body;
+      const paymentMethod = parsePaymentMethod(req.body.paymentMethod);
       if (!packageId) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: 'Package ID is required.' });
         return;
@@ -330,37 +333,47 @@ export const PackageController = {
       const purchaseId = `PUR-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       const tempTxnId = `REQ-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-      const purchase = await Purchase.create({
-        purchaseId,
-        userId: member._id.toString(),
-        memberId: member.memberId,
-        memberName: member.name,
-        memberMobile: member.mobile,
-        memberEmail: member.email,
-        type: PURCHASE_TYPE.JOINING,
-        items: [
-          {
-            itemId: pkg.packageId,
-            itemType: 'PACKAGE',
-            name: pkg.name,
-            quantity: 1,
-            unitPrice: pkg.price,
-            unitPriceInPaise: pkg.priceInPaise || Math.round(pkg.price * 100),
-            unitBV: pkg.bv,
-            totalPrice: pkg.price,
-            totalPriceInPaise: pkg.priceInPaise || Math.round(pkg.price * 100),
-            totalBV: pkg.bv,
-          },
-        ],
-        totalAmount: pkg.price,
-        totalAmountInPaise: pkg.priceInPaise || Math.round(pkg.price * 100),
-        totalBV: pkg.bv,
-        status: PURCHASE_STATUS.PENDING,
-        paymentStatus: 'PENDING',
-        approvalStage: 'REQUESTED',
-        paymentMethod: 'BANK_TRANSFER',
-        transactionId: tempTxnId,
-        notes: `Package purchase request initiated: ${pkg.name}`,
+      const { purchase } = await submitPurchaseRequest({
+        member,
+        paymentMethod,
+        requestKey,
+        actor: {
+          role: req.user.role,
+          email: req.user.email,
+          ip: req.ip || '',
+          userAgent: (req.get('user-agent') || '').slice(0, 200),
+        },
+        payload: {
+          purchaseId,
+          userId: member._id.toString(),
+          memberId: member.memberId,
+          memberName: member.name,
+          memberMobile: member.mobile,
+          memberEmail: member.email,
+          type: PURCHASE_TYPE.JOINING,
+          items: [
+            {
+              itemId: pkg.packageId,
+              itemType: 'PACKAGE',
+              name: pkg.name,
+              quantity: 1,
+              unitPrice: pkg.price,
+              unitPriceInPaise: pkg.priceInPaise || Math.round(pkg.price * 100),
+              unitBV: pkg.bv,
+              totalPrice: pkg.price,
+              totalPriceInPaise: pkg.priceInPaise || Math.round(pkg.price * 100),
+              totalBV: pkg.bv,
+            },
+          ],
+          totalAmount: pkg.price,
+          totalAmountInPaise: pkg.priceInPaise || Math.round(pkg.price * 100),
+          totalBV: pkg.bv,
+          status: PURCHASE_STATUS.PENDING,
+          paymentStatus: 'PENDING',
+          approvalStage: 'REQUESTED',
+          transactionId: tempTxnId,
+          notes: `Package purchase request initiated: ${pkg.name}`,
+        },
       });
 
       await AuditService.log({
@@ -375,12 +388,17 @@ export const PackageController = {
           bv: pkg.bv,
           rp: pkg.rp,
           price: pkg.price,
+          paymentMethod,
+          bvAmount: purchase.bvAmount,
         },
       });
 
       res.status(HTTP_STATUS.OK).json({
         status: true,
-        message: `Package request for ${pkg.name} submitted to Super Admin! Please await payment instructions.`,
+        message:
+          paymentMethod === PURCHASE_PAYMENT_METHOD.BV_WALLET
+            ? `${purchase.bvAmount?.toLocaleString('en-IN')} BV paid for ${pkg.name}. Super Admin will verify and activate your package.`
+            : `Package request for ${pkg.name} submitted to Super Admin! Please await payment instructions.`,
         data: {
           memberId: member.memberId,
           packageId: pkg.packageId,
@@ -393,6 +411,10 @@ export const PackageController = {
         },
       });
     } catch (error: any) {
+      if (error instanceof BVWalletError) {
+        res.status(error.statusCode).json({ status: false, message: error.message, ...(error.details || {}) });
+        return;
+      }
       console.error('[buyPackage] Error:', error);
       res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
     }

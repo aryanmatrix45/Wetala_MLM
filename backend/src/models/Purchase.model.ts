@@ -53,8 +53,16 @@ export interface IPurchase extends Document {
   totalBV: number;
   status: PurchaseStatus;
   paymentStatus: 'PENDING' | 'SUBMITTED' | 'PAID' | 'FAILED' | 'REFUNDED';
-  paymentMethod?: string;
+  paymentMethod?: 'BANK_TRANSFER' | 'BV_WALLET' | string;
   transactionId: string;
+
+  // Paid with BV Wallet: the order's own BV value is charged (money and BV are never converted)
+  bvAmount?: number;
+  bvTransactionId?: string;
+  bvRefundTransactionId?: string;
+  requestKey?: string;
+  // Set once the earned personal / binary BV of a refunded order has been reversed
+  bvVolumeReversed?: boolean;
   
   // Multi-step Purchase & Approval lifecycle
   approvalStage: PurchaseApprovalStage;
@@ -213,7 +221,7 @@ const purchaseSchema = new Schema<IPurchase>(
     },
     paymentMode: {
       type: String,
-      enum: ['UPI', 'NEFT', 'IMPS', 'NET_BANKING', 'QR_SCAN', 'CASH', 'OTHER', 'ONLINE'],
+      enum: ['UPI', 'NEFT', 'IMPS', 'NET_BANKING', 'QR_SCAN', 'CASH', 'OTHER', 'ONLINE', 'BV_WALLET'],
       default: 'UPI',
     },
     paymentProofUrl: {
@@ -238,6 +246,11 @@ const purchaseSchema = new Schema<IPurchase>(
       type: String,
       default: 'BANK_TRANSFER',
     },
+    bvAmount: { type: Number, min: 0 },
+    bvTransactionId: { type: String, trim: true },
+    bvRefundTransactionId: { type: String, trim: true },
+    requestKey: { type: String, trim: true },
+    bvVolumeReversed: { type: Boolean, default: false },
     transactionId: {
       type: String,
       required: true,
@@ -261,6 +274,12 @@ const purchaseSchema = new Schema<IPurchase>(
   {
     timestamps: true,
   }
+);
+
+// A retried "pay with BV" request with the same key returns the original order instead of charging twice
+purchaseSchema.index(
+  { memberId: 1, requestKey: 1 },
+  { unique: true, partialFilterExpression: { requestKey: { $type: 'string' } } }
 );
 
 export const Purchase = mongoose.model<IPurchase>('Purchase', purchaseSchema);

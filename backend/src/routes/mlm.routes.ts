@@ -381,7 +381,7 @@ const handleApproveMember = async (req: AuthenticatedRequest, res: any) => {
     member.approvalStatus = 'approved';
     member.status = 'active';
     member.isActive = true; // Enables login access
-    member.isBinaryActive = (member.personalBv || 0) >= 100;
+    member.isBinaryActive = (member.personalBv || 0) >= 100 || member.activationSource === 'BV_WALLET';
     member.approvedAt = new Date();
     member.approvedBy = req.user?.email || 'ADMIN';
     await member.save();

@@ -29,6 +29,7 @@ import footerRoutes from './footer.routes';
 import adminFooterRoutes from './adminFooter.routes';
 import kycRoutes from './kyc.routes';
 import bvWalletRoutes from './bvWallet.routes';
+import bvSummaryRoutes from './bvSummary.routes';
 
 const router = Router();
 
@@ -108,6 +109,9 @@ router.use('/wallet', walletRoutes);
 
 // BV Wallet: generation, PIN-confirmed transfers & history
 router.use('/bv-wallet', bvWalletRoutes);
+
+// Member Total Business Volume (personal + BV Wallet, team shown separately)
+router.use('/bv-summary', bvSummaryRoutes);
 
 // Member & Admin Withdrawal Requests & Notifications
 router.use('/withdrawals', withdrawalRoutes);

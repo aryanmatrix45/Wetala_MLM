@@ -7,8 +7,30 @@ import { Package } from '../models/Package.model';
 import { CompanyAccount } from '../models/CompanyAccount.model';
 import { CompensationEngine } from '../services/compensation/CompensationEngine';
 import { AuditService } from '../services/AuditService';
+import { BVService } from '../services/BVService';
+import { BVWalletService, BVWalletError, runInTransaction } from '../services/BVWalletService';
+import { submitPurchaseRequest, parsePaymentMethod, PURCHASE_PAYMENT_METHOD } from '../services/PurchaseRequestService';
 import { HTTP_STATUS, PURCHASE_TYPE, PURCHASE_STATUS, ROLES } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
+
+const isSuperAdmin = (req: AuthenticatedRequest) => req.user?.role === ROLES.SUPERADMIN;
+
+const actorFromRequest = (req: AuthenticatedRequest) => ({
+  role: req.user?.role || '',
+  email: req.user?.email || '',
+  ip: req.ip || '',
+  userAgent: (req.get('user-agent') || '').slice(0, 200),
+});
+
+/** Sends BV Wallet errors (e.g. insufficient BV) with their own status; anything else as a 500. */
+const sendError = (res: Response, error: any, context: string) => {
+  if (error instanceof BVWalletError) {
+    res.status(error.statusCode).json({ status: false, message: error.message, ...(error.details || {}) });
+    return;
+  }
+  console.error(`[PurchaseController.${context}] Error:`, error);
+  res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
+};
 
 export const PurchaseController = {
   /**
@@ -17,8 +39,18 @@ export const PurchaseController = {
    */
   async requestPurchase(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { memberId: rawMemberId, type = PURCHASE_TYPE.JOINING, items = [], notes } = req.body;
-      const targetMemberId = (rawMemberId || req.user?.memberId || '').toUpperCase().trim();
+      const { memberId: rawMemberId, type = PURCHASE_TYPE.JOINING, items = [], notes, requestKey } = req.body;
+      const paymentMethod = parsePaymentMethod(req.body.paymentMethod);
+      // Members can only order for themselves; the Super Admin may place bank orders for a member
+      const targetMemberId = (isSuperAdmin(req) ? rawMemberId || '' : req.user?.memberId || '').toUpperCase().trim();
+
+      if (paymentMethod === PURCHASE_PAYMENT_METHOD.BV_WALLET && !req.user?.memberId) {
+        res.status(HTTP_STATUS.FORBIDDEN).json({
+          status: false,
+          message: 'Only members can pay with their own BV Wallet.',
+        });
+        return;
+      }
 
       if (!targetMemberId || !Array.isArray(items) || items.length === 0) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -167,24 +199,35 @@ export const PurchaseController = {
       const purchaseId = `PUR-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
       const tempTxnId = `REQ-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
 
-      const purchase = await Purchase.create({
-        purchaseId,
-        userId: member._id.toString(),
-        memberId: member.memberId,
-        memberName: member.name,
-        memberMobile: member.mobile,
-        memberEmail: member.email,
-        type: mappedItems.some((i) => i.itemType === 'PACKAGE') ? PURCHASE_TYPE.JOINING : PURCHASE_TYPE.REPURCHASE,
-        items: mappedItems,
-        totalAmount,
-        totalAmountInPaise: Math.round(totalAmount * 100),
-        totalBV,
-        status: PURCHASE_STATUS.PENDING,
-        paymentStatus: 'PENDING',
-        approvalStage: 'REQUESTED',
-        transactionId: tempTxnId,
-        notes: notes || `Purchase request initiated by ${member.name} (${member.memberId})`,
+      const { purchase, duplicate } = await submitPurchaseRequest({
+        payload: {
+          purchaseId,
+          userId: member._id.toString(),
+          memberId: member.memberId,
+          memberName: member.name,
+          memberMobile: member.mobile,
+          memberEmail: member.email,
+          type: mappedItems.some((i) => i.itemType === 'PACKAGE') ? PURCHASE_TYPE.JOINING : PURCHASE_TYPE.REPURCHASE,
+          items: mappedItems,
+          totalAmount,
+          totalAmountInPaise: Math.round(totalAmount * 100),
+          totalBV,
+          status: PURCHASE_STATUS.PENDING,
+          paymentStatus: 'PENDING',
+          approvalStage: 'REQUESTED',
+          transactionId: tempTxnId,
+          notes: notes || `Purchase request initiated by ${member.name} (${member.memberId})`,
+        },
+        member,
+        paymentMethod,
+        requestKey,
+        actor: actorFromRequest(req),
       });
+
+      if (duplicate) {
+        res.status(HTTP_STATUS.OK).json({ status: true, duplicate: true, message: 'This order was already placed.', data: purchase });
+        return;
+      }
 
       await AuditService.log({
         action: 'MEMBER_REQUEST_PURCHASE',
@@ -196,18 +239,22 @@ export const PurchaseController = {
           totalAmount,
           totalBV,
           itemsCount: mappedItems.length,
-          stage: 'REQUESTED',
+          paymentMethod,
+          bvAmount: purchase.bvAmount,
+          stage: purchase.approvalStage,
         },
       });
 
       res.status(HTTP_STATUS.CREATED).json({
         status: true,
-        message: 'Purchase request submitted to Super Admin! Please await payment instructions.',
+        message:
+          paymentMethod === PURCHASE_PAYMENT_METHOD.BV_WALLET
+            ? `Order placed and ${purchase.bvAmount?.toLocaleString('en-IN')} BV paid from your BV Wallet. Super Admin will verify and activate your order.`
+            : 'Purchase request submitted to Super Admin! Please await payment instructions.',
         data: purchase,
       });
     } catch (error: any) {
-      console.error('[PurchaseController.requestPurchase] Error:', error);
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
+      sendError(res, error, 'requestPurchase');
     }
   },
 
@@ -314,6 +361,11 @@ export const PurchaseController = {
         return;
       }
 
+      if (!isSuperAdmin(req) && purchase.memberId !== req.user?.memberId?.toUpperCase()) {
+        res.status(HTTP_STATUS.NOT_FOUND).json({ status: false, message: 'Purchase request not found.' });
+        return;
+      }
+
       // Allow submission if in REQUESTED or PAYMENT_INSTRUCTIONS_SENT
       if (purchase.approvalStage !== 'PAYMENT_INSTRUCTIONS_SENT' && purchase.approvalStage !== 'REQUESTED') {
         res.status(HTTP_STATUS.BAD_REQUEST).json({
@@ -383,12 +435,49 @@ export const PurchaseController = {
         return;
       }
 
+      if (
+        purchase.approvalStage === 'REJECTED' ||
+        purchase.status === PURCHASE_STATUS.CANCELLED ||
+        purchase.status === PURCHASE_STATUS.REFUNDED
+      ) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: `This order was ${purchase.status === PURCHASE_STATUS.REFUNDED ? 'refunded' : 'rejected'} and cannot be approved.`,
+        });
+        return;
+      }
+
       const member = await Member.findOne({ memberId: purchase.memberId });
       if (!member) {
         res.status(HTTP_STATUS.NOT_FOUND).json({
           status: false,
           message: `Member ${purchase.memberId} not found in database.`,
         });
+        return;
+      }
+
+      // Claim the order atomically so two approvals (or an approval racing a rejection) can't both apply
+      const now = new Date();
+      const claimed = await Purchase.findOneAndUpdate(
+        {
+          purchaseId,
+          status: { $in: [PURCHASE_STATUS.PENDING, PURCHASE_STATUS.CONFIRMED] },
+          approvalStage: { $ne: 'REJECTED' },
+        },
+        {
+          $set: {
+            status: PURCHASE_STATUS.COMPLETED,
+            paymentStatus: 'PAID',
+            approvalStage: 'VERIFIED_AND_PAID',
+            verifiedBy: req.user?.email || 'ADMIN',
+            verifiedAt: now,
+            completedAt: now,
+          },
+        },
+        { returnDocument: 'after' }
+      );
+      if (!claimed) {
+        res.status(HTTP_STATUS.CONFLICT).json({ status: false, message: 'This order was already processed.' });
         return;
       }
 
@@ -429,15 +518,6 @@ export const PurchaseController = {
         }
       }
 
-      // Update Purchase status
-      purchase.status = PURCHASE_STATUS.COMPLETED;
-      purchase.paymentStatus = 'PAID';
-      purchase.approvalStage = 'VERIFIED_AND_PAID';
-      purchase.verifiedBy = req.user?.email || 'ADMIN';
-      purchase.verifiedAt = new Date();
-      purchase.completedAt = new Date();
-      await purchase.save();
-
       // Trigger authoritative Compensation Engine to credit BV & volume propagation
       let compensationResult: any = null;
       try {
@@ -463,7 +543,7 @@ export const PurchaseController = {
       res.status(HTTP_STATUS.OK).json({
         status: true,
         message: `Payment verified and marked as paid! Business volume of ${purchase.totalBV?.toLocaleString()} BV and package benefits credited to ${member.name} (${member.memberId}).`,
-        data: purchase,
+        data: claimed,
         compensation: compensationResult,
       });
     } catch (error: any) {
@@ -481,16 +561,35 @@ export const PurchaseController = {
       const { purchaseId } = req.params;
       const { reason = 'Invalid payment details or cancelled by admin.' } = req.body;
 
-      const purchase = await Purchase.findOne({ purchaseId });
-      if (!purchase) {
+      const existing = await Purchase.findOne({ purchaseId });
+      if (!existing) {
         res.status(HTTP_STATUS.NOT_FOUND).json({ status: false, message: 'Purchase request not found.' });
         return;
       }
+      if (existing.status === PURCHASE_STATUS.COMPLETED || existing.approvalStage === 'VERIFIED_AND_PAID') {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'This order is already approved. Use Refund instead of Reject.',
+        });
+        return;
+      }
 
-      purchase.status = PURCHASE_STATUS.CANCELLED;
-      purchase.approvalStage = 'REJECTED';
-      purchase.rejectionReason = reason;
-      await purchase.save();
+      // Reject and (for BV-paid orders) return the BV in one transaction
+      const { purchase, refund } = await runInTransaction(async (session) => {
+        const rejected = await Purchase.findOneAndUpdate(
+          {
+            purchaseId,
+            status: { $in: [PURCHASE_STATUS.PENDING, PURCHASE_STATUS.CONFIRMED] },
+            approvalStage: { $nin: ['VERIFIED_AND_PAID', 'REJECTED'] },
+          },
+          { $set: { status: PURCHASE_STATUS.CANCELLED, approvalStage: 'REJECTED', rejectionReason: reason, cancelledAt: new Date() } },
+          { session, returnDocument: 'after' }
+        );
+        if (!rejected) throw new BVWalletError('This order was already processed.', HTTP_STATUS.CONFLICT);
+        const bvRefund = await BVWalletService.refundPurchaseInSession(session, rejected, `Order rejected: ${reason}`);
+        return { purchase: rejected, refund: bvRefund };
+      });
+      if (refund) await BVWalletService.activateFromWalletIfEligible(purchase.memberId);
 
       await AuditService.log({
         action: 'ADMIN_REJECT_PURCHASE',
@@ -501,17 +600,19 @@ export const PurchaseController = {
           purchaseId: purchase.purchaseId,
           reason,
           stage: 'REJECTED',
+          bvRefunded: refund?.amount || 0,
         },
       });
 
       res.status(HTTP_STATUS.OK).json({
         status: true,
-        message: `Purchase request ${purchaseId} rejected.`,
+        message: refund
+          ? `Purchase request ${purchaseId} rejected and ${refund.amount.toLocaleString('en-IN')} BV returned to the member.`
+          : `Purchase request ${purchaseId} rejected.`,
         data: purchase,
       });
     } catch (error: any) {
-      console.error('[PurchaseController.rejectPurchase] Error:', error);
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
+      sendError(res, error, 'rejectPurchase');
     }
   },
 
@@ -523,6 +624,10 @@ export const PurchaseController = {
     try {
       const { memberId } = req.params;
       const cleanMemberId = memberId.toUpperCase().trim();
+      if (!isSuperAdmin(req) && cleanMemberId !== req.user?.memberId?.toUpperCase()) {
+        res.status(HTTP_STATUS.FORBIDDEN).json({ status: false, message: 'You can only view your own purchase history.' });
+        return;
+      }
 
       const member = await Member.findOne({ memberId: cleanMemberId });
       if (!member) {
@@ -615,26 +720,63 @@ export const PurchaseController = {
       const { purchaseId } = req.params;
       const { reason = 'Customer refund' } = req.body;
 
-      const purchase = await Purchase.findOne({ purchaseId });
-      if (!purchase) {
+      const existing = await Purchase.findOne({ purchaseId });
+      if (!existing) {
         res.status(HTTP_STATUS.NOT_FOUND).json({ status: false, message: 'Purchase not found.' });
         return;
       }
+      if (existing.status === PURCHASE_STATUS.REFUNDED) {
+        res.status(HTTP_STATUS.CONFLICT).json({ status: false, message: 'This order was already refunded.' });
+        return;
+      }
+      if (existing.status !== PURCHASE_STATUS.COMPLETED) {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({
+          status: false,
+          message: 'Only approved orders can be refunded. Reject pending orders instead.',
+        });
+        return;
+      }
 
-      purchase.status = PURCHASE_STATUS.REFUNDED;
-      purchase.paymentStatus = 'REFUNDED';
-      purchase.refundedAt = new Date();
-      await purchase.save();
+      // Mark refunded and (for BV-paid orders) return the BV in one transaction
+      const { purchase, refund } = await runInTransaction(async (session) => {
+        const refunded = await Purchase.findOneAndUpdate(
+          { purchaseId, status: PURCHASE_STATUS.COMPLETED },
+          { $set: { status: PURCHASE_STATUS.REFUNDED, paymentStatus: 'REFUNDED', refundedAt: new Date() } },
+          { session, returnDocument: 'after' }
+        );
+        if (!refunded) throw new BVWalletError('This order was already refunded.', HTTP_STATUS.CONFLICT);
+        const bvRefund = await BVWalletService.refundPurchaseInSession(session, refunded, `Order refunded: ${reason}`);
+        return { purchase: refunded, refund: bvRefund };
+      });
 
+      // Take back the earned personal / binary BV, then claw back commissions
+      const volumeReversal = await BVService.reversePurchaseVolume(purchase);
       const reversalResult = await CompensationEngine.reversePurchaseCommission(purchaseId, reason);
+      if (refund) await BVWalletService.activateFromWalletIfEligible(purchase.memberId);
+
+      await AuditService.log({
+        action: 'ADMIN_REFUND_PURCHASE',
+        entity: 'PURCHASE',
+        entityId: purchaseId,
+        performedBy: req.user?.email || 'ADMIN',
+        reason,
+        newValues: {
+          commissionsReversed: reversalResult.reversedCount,
+          personalBvReversed: volumeReversal.personalBvReversed,
+          uplineEntriesReversed: volumeReversal.uplineEntriesReversed,
+          bvRefunded: refund?.amount || 0,
+        },
+      });
 
       res.status(HTTP_STATUS.OK).json({
         status: true,
-        message: `Purchase refunded and ${reversalResult.reversedCount} related commission(s) reversed.`,
-        data: reversalResult,
+        message:
+          `Purchase refunded: ${reversalResult.reversedCount} commission(s) reversed and ${volumeReversal.personalBvReversed} BV taken back` +
+          (refund ? `; ${refund.amount.toLocaleString('en-IN')} BV returned to the member's BV Wallet.` : '.'),
+        data: { ...reversalResult, ...volumeReversal, bvRefunded: refund?.amount || 0 },
       });
     } catch (error: any) {
-      res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({ status: false, message: error.message });
+      sendError(res, error, 'refundPurchase');
     }
   },
 
@@ -642,9 +784,11 @@ export const PurchaseController = {
    * 9. Get purchases list with comprehensive filters & search
    * GET /api/purchases
    */
-  async getPurchases(req: Request, res: Response): Promise<void> {
+  async getPurchases(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const { memberId, type, status, stage, search, limit = 200, page = 1 } = req.query;
+      const { type, status, stage, search, limit = 200, page = 1 } = req.query;
+      // Members only ever see their own orders
+      const memberId = isSuperAdmin(req) ? req.query.memberId : req.user?.memberId || '__none__';
       const conditions: any[] = [];
 
       if (memberId) conditions.push({ memberId: String(memberId).toUpperCase().trim() });

@@ -282,7 +282,8 @@ async function runTests() {
     const all = await BVWallet.find().lean();
     assert(all.reduce((s, x) => s + x.availableBV, 0) === 10000 && r.data.data.totalGenerated === 10000, 'All 10,000 BV is accounted for across wallets');
     const [memberA, memberB] = await Promise.all([Member.findOne({ memberId: 'TBV001' }), Member.findOne({ memberId: 'TBV002' })]);
-    assert(memberA?.personalBv === 0 && memberB?.personalBv === 0 && !memberA?.isBinaryActive, 'Wallet BV does not change personal BV or binary activation');
+    assert(memberA?.personalBv === 0 && memberB?.personalBv === 0, 'Wallet BV does not change earned personal BV');
+    assert(memberA?.isBinaryActive === true && memberA?.activationSource === 'BV_WALLET', 'Holding wallet BV activates binary participation');
 
     // Tamper with a balance and confirm reconciliation catches it
     await BVWallet.updateOne({ ownerId: 'TBV002' }, { $inc: { availableBV: 7 } });

@@ -5,7 +5,9 @@ import { BVTransaction, IBVTransaction } from '../models/BVTransaction.model';
 import { BVWalletLedger } from '../models/BVWalletLedger.model';
 import { AdminNotification, NotificationType } from '../models/AdminNotification.model';
 import { Member, IMember } from '../models/Member.model';
+import { Purchase, IPurchase } from '../models/Purchase.model';
 import { AuditService } from './AuditService';
+import { BinaryTreeService } from './tree/BinaryTreeService';
 import {
   HTTP_STATUS,
   BV_WALLET,
@@ -28,8 +30,15 @@ import {
  * Transfers cannot be undone by members. The Super Admin can reverse a transfer once, which writes
  * a new REVERSAL transaction moving the BV back; the original amounts are never edited.
  *
- * Wallet BV is not earned volume: it never touches Member.personalBv, BinaryVolume, BVLedger
- * or commissions.
+ * Other ways BV enters or leaves a wallet:
+ *  - WELCOME_BONUS: the weekly welcome bonus share is credited as BV (WelcomeBonusService)
+ *  - PURCHASE: a member pays for an order with its own BV value (e.g. a 1,250 BV package costs
+ *    1,250 BV; rupee prices are never converted); the order then waits for Super Admin approval
+ *  - PURCHASE_REFUND: the BV comes back if that order is rejected or refunded
+ *
+ * Wallet BV itself is not earned volume: it never changes Member.personalBv, BinaryVolume or BVLedger.
+ * Earned BV comes from the order once the Super Admin approves it. A wallet balance can, however,
+ * unlock binary participation (personal BV + wallet balance >= BV_WALLET.ACTIVATION_BV).
  */
 
 export class BVWalletError extends Error {
@@ -82,7 +91,7 @@ const maskEmail = (email?: string) => {
   return domain ? `${user.slice(0, 1)}***@${domain}` : '';
 };
 
-const runInTransaction = <T>(fn: (session: ClientSession) => Promise<T>): Promise<T> =>
+export const runInTransaction = <T>(fn: (session: ClientSession) => Promise<T>): Promise<T> =>
   mongoose.connection.transaction(fn) as Promise<T>;
 
 const parseAmount = (value: unknown, max: number): number => {
@@ -164,7 +173,7 @@ export class BVWalletService {
     entryType: BVLedgerEntryType,
     txn: IBVTransaction,
     delta: number,
-    totals: Partial<Record<'totalGenerated' | 'totalReceived' | 'totalSent', number>> = {},
+    totals: Partial<Record<'totalGenerated' | 'totalReceived' | 'totalSent' | 'totalWelcomeBonus' | 'totalSpent', number>> = {},
     options: { requireNotFrozen?: boolean } = {}
   ): Promise<IBVWallet | null> {
     const filter: Record<string, unknown> = { ownerId };
@@ -430,6 +439,8 @@ export class BVWalletService {
       throw error;
     }
 
+    if (recipient.ownerType === BV_OWNER_TYPE.MEMBER) await this.activateFromWalletIfEligible(recipient.ownerId);
+
     await safeAudit({
       action: 'BV_TRANSFERRED',
       entity: 'BV_WALLET',
@@ -530,6 +541,8 @@ export class BVWalletService {
       return { original: claimed, reversal };
     });
 
+    if (result.original.senderType === BV_OWNER_TYPE.MEMBER) await this.activateFromWalletIfEligible(result.original.senderId);
+
     await safeAudit({
       action: 'BV_TRANSFER_REVERSED',
       entity: 'BV_WALLET',
@@ -542,6 +555,253 @@ export class BVWalletService {
     });
 
     return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Welcome bonus (called by WelcomeBonusService inside its settlement transaction)
+  // ---------------------------------------------------------------------------
+
+  static async creditWelcomeBonus(
+    session: ClientSession,
+    input: { memberId: string; memberName: string; settlementId: string; amount: number }
+  ): Promise<IBVTransaction> {
+    const memberId = input.memberId.toUpperCase();
+    const [txn] = await BVTransaction.create(
+      [
+        {
+          transactionId: newTransactionId(),
+          type: BV_TXN_TYPE.WELCOME_BONUS,
+          status: BV_TXN_STATUS.COMPLETED,
+          senderType: BV_OWNER_TYPE.SYSTEM,
+          senderId: BV_WALLET.SYSTEM_OWNER_ID,
+          senderName: 'Welcome Bonus',
+          recipientType: BV_OWNER_TYPE.MEMBER,
+          recipientId: memberId,
+          recipientName: input.memberName,
+          amount: input.amount,
+          title: `Welcome bonus (${input.settlementId})`,
+          note: 'Weekly welcome bonus share',
+          settlementId: input.settlementId,
+          initiatedBy: { role: 'system', email: 'SYSTEM' },
+        },
+      ],
+      { session }
+    );
+    const wallet = await this.moveBalance(session, memberId, BV_LEDGER_ENTRY.CREDIT_IN, txn, input.amount, {
+      totalWelcomeBonus: input.amount,
+    });
+    if (!wallet) throw new BVWalletError(`BV wallet for ${memberId} not found.`, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+
+    await this.notify(session, {
+      type: 'BV_WELCOME_BONUS',
+      title: 'Welcome Bonus Credited',
+      message: `${formatBV(input.amount)} welcome bonus (${input.settlementId}) was added to your BV Wallet.`,
+      recipientId: memberId,
+      txn,
+    });
+    return txn;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Orders paid with BV
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Creates an order paid from the member's BV Wallet. The BV is debited and the order is created in
+   * one transaction; the order then waits for Super Admin approval (PAYMENT_SUBMITTED stage).
+   */
+  static async createPurchaseWithBV(input: {
+    purchase: Record<string, unknown> & { totalBV: number; purchaseId: string };
+    memberId: string;
+    memberName: string;
+    requestKey?: unknown;
+    actor: BVActor;
+  }): Promise<{ purchase: IPurchase; duplicate: boolean }> {
+    const memberId = input.memberId.toUpperCase();
+    const requestKey = parseRequestKey(input.requestKey);
+
+    const findDuplicate = () => (requestKey ? Purchase.findOne({ memberId, requestKey }) : Promise.resolve(null));
+    const existing = await findDuplicate();
+    if (existing) return { purchase: existing, duplicate: true };
+
+    // Paid with the order's own BV value; rupee prices play no part
+    const bvAmount = Number(input.purchase.totalBV) || 0;
+    if (!Number.isInteger(bvAmount) || bvAmount < 1) {
+      throw new BVWalletError('This order has no BV value, so it cannot be paid with BV. Please pay by bank / UPI.');
+    }
+
+    await this.ensureWallet({ ownerType: BV_OWNER_TYPE.MEMBER, ownerId: memberId });
+    const bvTransactionId = newTransactionId();
+
+    let purchase: IPurchase;
+    try {
+      purchase = await runInTransaction(async (session) => {
+        const [order] = await Purchase.create(
+          [
+            {
+              ...input.purchase,
+              paymentMethod: 'BV_WALLET',
+              paymentMode: 'BV_WALLET',
+              paymentStatus: 'SUBMITTED',
+              approvalStage: 'PAYMENT_SUBMITTED',
+              paymentSubmittedAt: new Date(),
+              payerName: input.memberName,
+              utrNumber: bvTransactionId,
+              bvAmount,
+              bvTransactionId,
+              requestKey,
+            },
+          ],
+          { session }
+        );
+
+        const [txn] = await BVTransaction.create(
+          [
+            {
+              transactionId: bvTransactionId,
+              type: BV_TXN_TYPE.PURCHASE,
+              status: BV_TXN_STATUS.COMPLETED,
+              senderType: BV_OWNER_TYPE.MEMBER,
+              senderId: memberId,
+              senderName: input.memberName,
+              recipientType: BV_OWNER_TYPE.SYSTEM,
+              recipientId: BV_WALLET.SYSTEM_OWNER_ID,
+              recipientName: 'Company order',
+              amount: bvAmount,
+              title: `Order ${order.purchaseId}`,
+              note: order.items.map((i) => `${i.quantity} x ${i.name}`).join(', ').slice(0, BV_WALLET.NOTE_MAX_LENGTH),
+              purchaseId: order.purchaseId,
+              initiatedBy: input.actor,
+            },
+          ],
+          { session }
+        );
+
+        const wallet = await this.moveBalance(
+          session,
+          memberId,
+          BV_LEDGER_ENTRY.DEBIT_OUT,
+          txn,
+          -bvAmount,
+          { totalSpent: bvAmount },
+          { requireNotFrozen: true }
+        );
+        if (!wallet) throw await this.insufficientBalanceError(memberId, bvAmount);
+        return order;
+      });
+    } catch (error: any) {
+      if (error?.code === 11000 && requestKey && error?.keyPattern?.requestKey) {
+        const duplicate = await findDuplicate();
+        if (duplicate) return { purchase: duplicate, duplicate: true };
+      }
+      throw error;
+    }
+
+    await safeAudit({
+      action: 'BV_PURCHASE_PAID',
+      entity: 'BV_WALLET',
+      entityId: bvTransactionId,
+      performedBy: actorLabel(input.actor),
+      performedByRole: input.actor.role,
+      newValues: { memberId, purchaseId: purchase.purchaseId, bvAmount, totalAmount: purchase.totalAmount },
+      ipAddress: input.actor.ip,
+    });
+
+    return { purchase, duplicate: false };
+  }
+
+  /**
+   * Returns the BV of a BV-paid order to the member (order rejected or refunded). Runs inside the
+   * caller's transaction so the order's status change and the refund commit together. Idempotent.
+   */
+  static async refundPurchaseInSession(session: ClientSession, purchase: IPurchase, reason: string): Promise<IBVTransaction | null> {
+    if (purchase.paymentMethod !== 'BV_WALLET') return null;
+
+    const existing = await BVTransaction.findOne({ type: BV_TXN_TYPE.PURCHASE_REFUND, purchaseId: purchase.purchaseId }).session(session);
+    if (existing) return existing;
+    const paid = await BVTransaction.findOne({ type: BV_TXN_TYPE.PURCHASE, purchaseId: purchase.purchaseId }).session(session);
+    if (!paid) return null;
+
+    const [txn] = await BVTransaction.create(
+      [
+        {
+          transactionId: newTransactionId(),
+          type: BV_TXN_TYPE.PURCHASE_REFUND,
+          status: BV_TXN_STATUS.COMPLETED,
+          senderType: BV_OWNER_TYPE.SYSTEM,
+          senderId: BV_WALLET.SYSTEM_OWNER_ID,
+          senderName: 'Company order',
+          recipientType: BV_OWNER_TYPE.MEMBER,
+          recipientId: paid.senderId,
+          recipientName: paid.senderName,
+          amount: paid.amount,
+          title: `Refund for order ${purchase.purchaseId}`,
+          note: reason.slice(0, BV_WALLET.NOTE_MAX_LENGTH),
+          purchaseId: purchase.purchaseId,
+          initiatedBy: { role: 'system', email: 'SYSTEM' },
+        },
+      ],
+      { session }
+    );
+
+    const wallet = await this.moveBalance(session, paid.senderId, BV_LEDGER_ENTRY.CREDIT_IN, txn, paid.amount, {
+      totalSpent: -paid.amount,
+    });
+    if (!wallet) throw new BVWalletError(`BV wallet for ${paid.senderId} not found.`, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+
+    await Purchase.updateOne({ purchaseId: purchase.purchaseId }, { $set: { bvRefundTransactionId: txn.transactionId } }, { session });
+    await this.notify(session, {
+      type: 'BV_PURCHASE_REFUND',
+      title: 'BV Refunded',
+      message: `${formatBV(paid.amount)} for order ${purchase.purchaseId} was returned to your BV Wallet. Reason: ${reason}`,
+      recipientId: paid.senderId,
+      txn,
+    });
+    return txn;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Binary activation from the wallet balance
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Activates binary participation (and places the member in the tree if needed) once personal BV
+   * plus BV Wallet balance reaches BV_WALLET.ACTIVATION_BV. Activation is permanent and does not
+   * consume the BV. Best effort: called after wallet credits commit, never fails the caller.
+   */
+  static async activateFromWalletIfEligible(memberId: string): Promise<boolean> {
+    try {
+      const id = memberId.toUpperCase();
+      const member = await Member.findOne({ memberId: id });
+      if (!member || member.isBinaryActive) return false;
+
+      const wallet = await BVWallet.findOne({ ownerId: id });
+      const total = (member.personalBv || 0) + (wallet?.availableBV || 0);
+      if (total < BV_WALLET.ACTIVATION_BV) return false;
+
+      const activated = await Member.updateOne(
+        { memberId: id, isBinaryActive: { $ne: true } },
+        { $set: { isBinaryActive: true, activationSource: 'BV_WALLET', binaryActivatedAt: member.binaryActivatedAt || new Date() } }
+      );
+      if (!activated.modifiedCount) return false;
+
+      if (!member.parentId && member.sponsorId) {
+        await BinaryTreeService.placeMemberInBinaryTree(id);
+      }
+
+      await safeAudit({
+        action: 'BINARY_ACTIVATED_FROM_BV_WALLET',
+        entity: 'BV_WALLET',
+        entityId: walletIdFor(id),
+        performedBy: 'SYSTEM',
+        performedByRole: 'system',
+        newValues: { memberId: id, personalBv: member.personalBv || 0, walletBV: wallet?.availableBV || 0 },
+      });
+      return true;
+    } catch (error) {
+      console.error(`[BVWalletService] Wallet activation check failed for ${memberId}:`, error);
+      return false;
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -566,6 +826,8 @@ export class BVWalletService {
       note: txn.note,
       sender: { type: txn.senderType, id: txn.senderId, name: txn.senderName },
       recipient: txn.recipientId ? { type: txn.recipientType, id: txn.recipientId, name: txn.recipientName } : null,
+      purchaseId: txn.purchaseId,
+      settlementId: txn.settlementId,
       reversalOf: txn.reversalOf,
       reversedBy: txn.reversedBy,
       reversedAt: txn.reversedAt,
@@ -586,6 +848,7 @@ export class BVWalletService {
 
   static async getWalletSummary(owner: BVOwner) {
     const wallet = await this.ensureWallet(owner);
+    if (owner.ownerType === BV_OWNER_TYPE.MEMBER) await this.activateFromWalletIfEligible(owner.ownerId);
     return {
       walletId: wallet.walletId,
       ownerType: wallet.ownerType,
@@ -594,11 +857,14 @@ export class BVWalletService {
       totalGenerated: wallet.totalGenerated,
       totalReceived: wallet.totalReceived,
       totalSent: wallet.totalSent,
+      totalWelcomeBonus: wallet.totalWelcomeBonus || 0,
+      totalSpent: wallet.totalSpent || 0,
       isFrozen: wallet.isFrozen,
       frozenReason: wallet.frozenReason,
       limits: {
         maxTransferBV: owner.ownerType === BV_OWNER_TYPE.ADMIN ? BV_WALLET.MAX_ADMIN_TRANSFER_BV : BV_WALLET.MAX_MEMBER_TRANSFER_BV,
         maxGenerateBV: BV_WALLET.MAX_GENERATE_BV,
+        activationBV: BV_WALLET.ACTIVATION_BV,
       },
     };
   }
@@ -771,21 +1037,34 @@ export class BVWalletService {
 
   /**
    * Verifies that balances agree with the records:
-   *  - all wallet BV equals all BV ever generated
+   *  - all wallet BV = generated + welcome bonus credited + order refunds - BV spent on orders
    *  - each wallet's balance equals the sum of its ledger entries, with no missing entries
    */
   static async reconcile() {
     const issues: string[] = [];
 
-    const [generated] = await BVTransaction.aggregate([
-      { $match: { type: BV_TXN_TYPE.GENERATION } },
-      { $group: { _id: null, total: { $sum: '$amount' } } },
+    const flows = await BVTransaction.aggregate([
+      {
+        $match: {
+          type: { $in: [BV_TXN_TYPE.GENERATION, BV_TXN_TYPE.WELCOME_BONUS, BV_TXN_TYPE.PURCHASE, BV_TXN_TYPE.PURCHASE_REFUND] },
+        },
+      },
+      { $group: { _id: '$type', total: { $sum: '$amount' } } },
     ]);
+    const flow = (type: string) => flows.find((f) => f._id === type)?.total || 0;
+    const totalGenerated = flow(BV_TXN_TYPE.GENERATION);
+    const totalWelcomeBonus = flow(BV_TXN_TYPE.WELCOME_BONUS);
+    const totalSpentOnOrders = flow(BV_TXN_TYPE.PURCHASE);
+    const totalRefunded = flow(BV_TXN_TYPE.PURCHASE_REFUND);
+    const expectedInWallets = totalGenerated + totalWelcomeBonus + totalRefunded - totalSpentOnOrders;
+
     const wallets = await BVWallet.find().select('walletId ownerId availableBV sequence').lean();
-    const totalGenerated = generated?.total || 0;
     const totalInWallets = wallets.reduce((sum, w) => sum + w.availableBV, 0);
-    if (totalGenerated !== totalInWallets) {
-      issues.push(`Total generated (${totalGenerated} BV) does not match total held in wallets (${totalInWallets} BV).`);
+    if (expectedInWallets !== totalInWallets) {
+      issues.push(
+        `Wallets hold ${totalInWallets} BV but records give ${expectedInWallets} BV ` +
+          `(generated ${totalGenerated} + welcome bonus ${totalWelcomeBonus} + refunds ${totalRefunded} - spent ${totalSpentOnOrders}).`
+      );
     }
 
     const ledgerTotals = await BVWalletLedger.aggregate([
@@ -814,6 +1093,9 @@ export class BVWalletService {
     return {
       ok: issues.length === 0,
       totalGenerated,
+      totalWelcomeBonus,
+      totalSpentOnOrders,
+      totalRefunded,
       totalInWallets,
       walletsChecked: wallets.length,
       issues: issues.slice(0, 50),

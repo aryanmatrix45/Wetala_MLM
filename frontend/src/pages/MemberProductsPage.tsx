@@ -22,7 +22,8 @@ import {
   Info,
   Clock,
 } from 'lucide-react';
-import { api, type ProductItem, type CategoryItem, type SubcategoryItem, getAssetUrl, retryWithImageFallback } from '../services/api';
+import { api, newRequestKey, type ProductItem, type CategoryItem, type SubcategoryItem, type PaymentMethod, getAssetUrl, retryWithImageFallback } from '../services/api';
+import { PaymentMethodPicker } from '../components/PaymentMethodPicker';
 import { htmlToPlainText } from '../utils/text';
 
 interface MemberProductsPageProps {
@@ -77,6 +78,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [orderNotes, setOrderNotes] = useState('');
   const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('BANK_TRANSFER');
+  const [checkoutRequestKey, setCheckoutRequestKey] = useState(newRequestKey);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string; purchase?: any } | null>(null);
 
   // Synchronize cart to localStorage
@@ -362,6 +365,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
         type: 'REPURCHASE',
         items: itemsPayload,
         notes: orderNotes.trim() || `Product Repurchase order placed by member ${user.name || user.memberId}`,
+        paymentMethod,
+        requestKey: checkoutRequestKey,
       });
 
       if (res.status && res.data) {
@@ -370,9 +375,14 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
         setIsCartOpen(false);
         setIsReviewModalOpen(false);
         setOrderNotes('');
+        setPaymentMethod('BANK_TRANSFER');
+        setCheckoutRequestKey(newRequestKey());
         setFeedback({
           type: 'success',
-          message: `Repurchase request #${res.data.purchaseId} submitted to Super Admin! Super Admin will review and provide company payment details.`,
+          message:
+            paymentMethod === 'BV_WALLET'
+              ? `Order #${res.data.purchaseId} placed and ${(res.data.bvAmount || 0).toLocaleString('en-IN')} BV paid from your BV Wallet. Super Admin will verify and activate it.`
+              : `Repurchase request #${res.data.purchaseId} submitted to Super Admin! Super Admin will review and provide company payment details.`,
           purchase: res.data,
         });
         await loadProducts();
@@ -2453,13 +2463,29 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 <Info size={16} />
                 <span>Next Steps in the Purchase Workflow</span>
               </div>
-              <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#0369a1', lineHeight: '1.6' }}>
-                <li>Your request will be submitted directly to Super Admin for approval.</li>
-                <li>Once approved, you will receive company bank account & UPI QR details to make payment.</li>
-                <li>Submit your transaction ID (UTR) after payment for instant admin verification.</li>
-                <li><strong>+{cartTotalBV.toLocaleString()} BV</strong> will be credited to your account upon verification.</li>
-              </ul>
+              {paymentMethod === 'BV_WALLET' ? (
+                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#0369a1', lineHeight: '1.6' }}>
+                  <li>The BV is deducted from your BV Wallet when you submit.</li>
+                  <li>Super Admin verifies the order; if it is rejected, the BV returns to your wallet.</li>
+                  <li><strong>+{cartTotalBV.toLocaleString()} BV</strong> will be credited to your account upon verification.</li>
+                </ul>
+              ) : (
+                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#0369a1', lineHeight: '1.6' }}>
+                  <li>Your request will be submitted directly to Super Admin for approval.</li>
+                  <li>Once approved, you will receive company bank account & UPI QR details to make payment.</li>
+                  <li>Submit your transaction ID (UTR) after payment for instant admin verification.</li>
+                  <li><strong>+{cartTotalBV.toLocaleString()} BV</strong> will be credited to your account upon verification.</li>
+                </ul>
+              )}
             </div>
+
+            <PaymentMethodPicker
+              amountInr={cartTotalAmount}
+              amountBV={cartTotalBV}
+              value={paymentMethod}
+              onChange={setPaymentMethod}
+              disabled={checkoutLoading}
+            />
 
             {/* Optional Delivery / Order Notes */}
             <div>
@@ -2544,7 +2570,11 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
               >
                 <Send size={16} />
                 <span>
-                  {checkoutLoading ? 'Submitting Request...' : 'Send Request to Super Admin'}
+                  {checkoutLoading
+                    ? 'Submitting Request...'
+                    : paymentMethod === 'BV_WALLET'
+                      ? 'Pay with BV & Send to Super Admin'
+                      : 'Send Request to Super Admin'}
                 </span>
               </button>
             </div>

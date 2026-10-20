@@ -109,16 +109,44 @@ const toQueryString = (params: Record<string, string | number | undefined>): str
 
 export type BVTransactionStatus = 'COMPLETED' | 'REVERSED';
 
+export type PaymentMethod = 'BANK_TRANSFER' | 'BV_WALLET';
+
+export const newRequestKey = () =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `req-${Date.now()}-${Math.random().toString(36).slice(2, 12)}`;
+
+export interface BVSummary {
+  memberId: string;
+  name: string;
+  totalBV: number;
+  personal: { total: number; package: number; purchases: number; refunds: number; other: number };
+  wallet: {
+    available: number;
+    received: number;
+    sent: number;
+    welcomeBonus: number;
+    spentOnOrders: number;
+    pendingOrders: number;
+    pendingOrderBV: number;
+  };
+  team: { left: number; right: number };
+  welcomeBonus: { earned: number; cap: number };
+  binary: { isActive: boolean; activationSource: '' | 'PERSONAL_BV' | 'BV_WALLET'; activationBV: number };
+}
+
 export interface BVTransactionItem {
   transactionId: string;
-  type: 'GENERATION' | 'TRANSFER' | 'REVERSAL';
+  type: 'GENERATION' | 'TRANSFER' | 'REVERSAL' | 'WELCOME_BONUS' | 'PURCHASE' | 'PURCHASE_REFUND';
   status: BVTransactionStatus;
   direction?: 'GENERATED' | 'SENT' | 'RECEIVED';
   amount: number;
   title: string;
   note: string;
-  sender: { type: 'ADMIN' | 'MEMBER'; id: string; name: string };
-  recipient: { type?: 'ADMIN' | 'MEMBER'; id: string; name: string } | null;
+  sender: { type: 'ADMIN' | 'MEMBER' | 'SYSTEM'; id: string; name: string };
+  recipient: { type?: 'ADMIN' | 'MEMBER' | 'SYSTEM'; id: string; name: string } | null;
+  purchaseId?: string;
+  settlementId?: string;
   reversalOf?: string;
   reversedBy?: string;
   reversedAt?: string;
@@ -135,9 +163,11 @@ export interface BVWalletSummary {
   totalGenerated: number;
   totalReceived: number;
   totalSent: number;
+  totalWelcomeBonus: number;
+  totalSpent: number;
   isFrozen: boolean;
   frozenReason: string;
-  limits: { maxTransferBV: number; maxGenerateBV: number };
+  limits: { maxTransferBV: number; maxGenerateBV: number; activationBV: number };
 }
 
 export interface BVRecipient {
@@ -639,14 +669,14 @@ export const api = {
     return result;
   },
 
-  async buyPackage(packageId: string, token: string) {
+  async buyPackage(packageId: string, token: string, payment?: { paymentMethod: PaymentMethod; requestKey?: string }) {
     const res = await fetch(`${API_BASE_URL}/packages/buy`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ packageId }),
+      body: JSON.stringify({ packageId, ...payment }),
     });
     const result = await res.json();
     if (!res.ok) throw new Error(result.message || 'Failed to buy package');
@@ -1056,35 +1086,40 @@ export const api = {
     return res.json();
   },
 
-  // Standalone Welcome Bonus System
+  // Standalone Welcome Bonus System (all endpoints need a login; settlement is Super Admin only)
+  welcomeBonusHeaders(extra: Record<string, string> = {}): Record<string, string> {
+    const savedToken = localStorage.getItem('wetala_token') || '';
+    return savedToken ? { ...extra, Authorization: `Bearer ${savedToken}` } : extra;
+  },
+
   async getWelcomeBonusPreview(overrideGBV?: number) {
     const query = typeof overrideGBV === 'number' ? `?overrideGBV=${overrideGBV}` : '';
-    const res = await fetch(`${API_BASE_URL}/welcome-bonus/preview${query}`);
+    const res = await fetch(`${API_BASE_URL}/welcome-bonus/preview${query}`, { headers: this.welcomeBonusHeaders() });
     return res.json();
   },
 
   async settleWelcomeBonus(data?: { overrideGBV?: number; settlementId?: string }) {
     const res = await fetch(`${API_BASE_URL}/welcome-bonus/settle`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: this.welcomeBonusHeaders({ 'Content-Type': 'application/json' }),
       body: JSON.stringify(data || {}),
     });
     return res.json();
   },
 
   async getWelcomeBonusSettlements() {
-    const res = await fetch(`${API_BASE_URL}/welcome-bonus/settlements`);
+    const res = await fetch(`${API_BASE_URL}/welcome-bonus/settlements`, { headers: this.welcomeBonusHeaders() });
     return res.json();
   },
 
   async getWelcomeBonusMemberStatus(memberId?: string) {
     const path = memberId ? `/${memberId}` : '';
-    const res = await fetch(`${API_BASE_URL}/welcome-bonus/member-status${path}`);
+    const res = await fetch(`${API_BASE_URL}/welcome-bonus/member-status${path}`, { headers: this.welcomeBonusHeaders() });
     return res.json();
   },
 
   async getWelcomeBonusAdminSummary() {
-    const res = await fetch(`${API_BASE_URL}/welcome-bonus/admin-summary`);
+    const res = await fetch(`${API_BASE_URL}/welcome-bonus/admin-summary`, { headers: this.welcomeBonusHeaders() });
     return res.json();
   },
 
@@ -1259,6 +1294,12 @@ export const api = {
     return this.bvWalletRequest('GET', `/admin/transactions${toQueryString(params)}`, undefined, token);
   },
 
+  async getBVSummary(token?: string): Promise<{ status: boolean; message?: string; data?: BVSummary }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/bv-summary/me`, { headers: { Authorization: `Bearer ${savedToken}` } });
+    return res.json();
+  },
+
   // Sponsor Binary Income APIs
   async getSponsorIncomeSummary(memberId: string, token?: string) {
     const savedToken = token || localStorage.getItem('wetala_token') || '';
@@ -1343,7 +1384,7 @@ export const api = {
 
   // Purchase Requests & Multi-stage Order Approvals
   async requestPurchase(
-    data: { memberId?: string; type?: string; items: any[]; notes?: string },
+    data: { memberId?: string; type?: string; items: any[]; notes?: string; paymentMethod?: PaymentMethod; requestKey?: string },
     token?: string
   ): Promise<{ status: boolean; message: string; data: any }> {
     const savedToken = token || localStorage.getItem('wetala_token') || '';
@@ -1363,7 +1404,7 @@ export const api = {
   },
 
   async createPurchase(
-    data: { memberId?: string; type?: string; items: any[]; notes?: string },
+    data: { memberId?: string; type?: string; items: any[]; notes?: string; paymentMethod?: PaymentMethod; requestKey?: string },
     token?: string
   ): Promise<{ status: boolean; message: string; data: any }> {
     return this.requestPurchase(data, token);

@@ -23,7 +23,8 @@ import {
   Send,
   CreditCard
 } from 'lucide-react';
-import { api, type PackageItem } from '../services/api';
+import { api, newRequestKey, type PackageItem, type PaymentMethod } from '../services/api';
+import { PaymentMethodPicker } from '../components/PaymentMethodPicker';
 
 interface PackagesPageProps {
   user?: any;
@@ -169,6 +170,16 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
   // Member Buy Modal
   const [buyingPkg, setBuyingPkg] = useState<PackageItem | null>(null);
   const [buyingLoading, setBuyingLoading] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('BANK_TRANSFER');
+  const [buyRequestKey, setBuyRequestKey] = useState(newRequestKey);
+
+  // Each time the buy dialog opens it starts on bank payment with a fresh request key
+  useEffect(() => {
+    if (buyingPkg) {
+      setPaymentMethod('BANK_TRANSFER');
+      setBuyRequestKey(newRequestKey());
+    }
+  }, [buyingPkg]);
 
   // Active Multi-Stage Package Request for current member
   const [activePackageRequest, setActivePackageRequest] = useState<any | null>(null);
@@ -387,7 +398,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
     try {
       setBuyingLoading(true);
       setFeedback(null);
-      const res = await api.buyPackage(buyingPkg.packageId, savedToken);
+      const res = await api.buyPackage(buyingPkg.packageId, savedToken, { paymentMethod, requestKey: buyRequestKey });
       setFeedback({ 
         type: 'success', 
         message: res.message || `Package request for ${buyingPkg.name} submitted to Super Admin! Please await payment instructions.` 
@@ -1018,7 +1029,15 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 Payment Verification in Progress
               </div>
               <p style={{ margin: 0, fontSize: '13px', color: '#581c87', lineHeight: 1.5 }}>
-                Your payment details (UTR: <strong>{activePackageRequest.utrNumber}</strong>, Payer: <strong>{activePackageRequest.payerName}</strong>) for <strong>{activePackageRequest.items[0]?.name}</strong> have been submitted. The Super Admin is verifying the credit. Upon verification, your package and business volume will be activated immediately.
+                {activePackageRequest.paymentMethod === 'BV_WALLET' ? (
+                  <>
+                    You paid <strong>{(activePackageRequest.bvAmount || 0).toLocaleString('en-IN')} BV</strong> from your BV Wallet for <strong>{activePackageRequest.items[0]?.name}</strong> (ref <strong>{activePackageRequest.bvTransactionId}</strong>). The Super Admin is verifying the order. Upon approval, your package and business volume will be activated; if it is rejected, the BV returns to your wallet.
+                  </>
+                ) : (
+                  <>
+                    Your payment details (UTR: <strong>{activePackageRequest.utrNumber}</strong>, Payer: <strong>{activePackageRequest.payerName}</strong>) for <strong>{activePackageRequest.items[0]?.name}</strong> have been submitted. The Super Admin is verifying the credit. Upon verification, your package and business volume will be activated immediately.
+                  </>
+                )}
               </p>
             </div>
           )}
@@ -2250,9 +2269,18 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     {buyingPkg.description}
                   </div>
                 )}
+                <PaymentMethodPicker
+                  amountInr={buyingPkg.price}
+                  amountBV={buyingPkg.bv}
+                  value={paymentMethod}
+                  onChange={setPaymentMethod}
+                  disabled={buyingLoading}
+                />
                 <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#0369a1' }}>
                   <Send size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }} />
-                  Your request will be submitted to Super Admin. Once approved, the company bank details, UPI ID, and QR code will be provided to complete payment.
+                  {paymentMethod === 'BV_WALLET'
+                    ? 'The BV is deducted from your BV Wallet now. Super Admin will verify and activate your package; if the request is rejected, the BV comes back to your wallet.'
+                    : 'Your request will be submitted to Super Admin. Once approved, the company bank details, UPI ID, and QR code will be provided to complete payment.'}
                 </div>
               </div>
 
@@ -2277,7 +2305,9 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   <span>
                     {buyingLoading 
                       ? 'Submitting Request...' 
-                      : (isUpgradeModal ? `Submit Upgrade Request` : 'Submit Purchase Request')}
+                      : paymentMethod === 'BV_WALLET'
+                        ? 'Pay with BV & Submit'
+                        : (isUpgradeModal ? `Submit Upgrade Request` : 'Submit Purchase Request')}
                   </span>
                 </button>
               </div>

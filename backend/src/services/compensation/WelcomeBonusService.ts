@@ -3,10 +3,9 @@ import { Purchase } from '../../models/Purchase.model';
 import { CompensationRule, ICompensationRule } from '../../models/CompensationRule.model';
 import { WelcomeBonusSettlement, IWelcomeBonusSettlement } from '../../models/WelcomeBonusSettlement.model';
 import { WelcomeBonusTransaction, IWelcomeBonusTransaction } from '../../models/WelcomeBonusTransaction.model';
-import { CommissionLedger } from '../../models/CommissionLedger.model';
-import { WalletService } from '../WalletService';
+import { BVWalletService, runInTransaction } from '../BVWalletService';
 import { DecimalUtil } from '../../utils/decimal';
-import { COMMISSION_TYPE, BINARY_POSITION } from '../../config/constants';
+import { BINARY_POSITION, BV_OWNER_TYPE } from '../../config/constants';
 
 export interface MemberEligibilityResult {
   memberId: string;
@@ -249,15 +248,17 @@ export class WelcomeBonusService {
     }
 
     const eligibleMemberCount = eligibleMembers.length;
+    // Welcome bonus is paid as BV into the BV Wallet, which holds whole BV only:
+    // shares are rounded down and any remainder stays undistributed
     const equalMemberShare =
       eligibleMemberCount > 0
-        ? DecimalUtil.round(totalWelcomeBonusPool / eligibleMemberCount)
+        ? Math.floor(totalWelcomeBonusPool / eligibleMemberCount)
         : 0;
 
     // Check individual cap impact and projected distribution
     let projectedDistributed = 0;
     const projectedPayouts = eligibleMembers.map((em) => {
-      const actualPayout = Math.min(equalMemberShare, em.remainingCap);
+      const actualPayout = Math.min(equalMemberShare, Math.floor(em.remainingCap));
       projectedDistributed += actualPayout;
       return {
         memberId: em.memberId,
@@ -353,70 +354,57 @@ export class WelcomeBonusService {
       }
 
       const txId = `WBTX-${settlementId}-${memberId}`;
+      const member = await Member.findOne({ memberId }).select('name');
+      await BVWalletService.ensureWallet({ ownerType: BV_OWNER_TYPE.MEMBER, ownerId: memberId });
 
-      // Create immutable transaction record
-      const tx = await WelcomeBonusTransaction.create({
-        transactionId: txId,
-        memberId,
-        settlementId,
-        companyGrossBusinessVolume: preview.companyGrossBusinessVolume,
-        bonusRate: preview.welcomeBonusRate,
-        totalBonusPool: preview.totalWelcomeBonusPool,
-        eligibleMemberCount: preview.eligibleMemberCount,
-        equalMemberShare,
-        previousWelcomeBonusEarned: welcomeBonusEarned,
-        welcomeBonusCap,
-        remainingCap,
-        actualPayout,
-      });
+      // The settlement record, the member's earned total and the BV Wallet credit commit together
+      let tx: IWelcomeBonusTransaction;
+      try {
+        tx = await runInTransaction(async (session) => {
+          const [created] = await WelcomeBonusTransaction.create(
+            [
+              {
+                transactionId: txId,
+                memberId,
+                settlementId,
+                companyGrossBusinessVolume: preview.companyGrossBusinessVolume,
+                bonusRate: preview.welcomeBonusRate,
+                totalBonusPool: preview.totalWelcomeBonusPool,
+                eligibleMemberCount: preview.eligibleMemberCount,
+                equalMemberShare,
+                previousWelcomeBonusEarned: welcomeBonusEarned,
+                welcomeBonusCap,
+                remainingCap,
+                actualPayout,
+              },
+            ],
+            { session }
+          );
+          await Member.updateOne({ memberId }, { $inc: { welcomeBonusEarned: actualPayout } }, { session });
+          await BVWalletService.creditWelcomeBonus(session, {
+            memberId,
+            memberName: member?.name || memberId,
+            settlementId,
+            amount: actualPayout,
+          });
+          return created;
+        });
+      } catch (error: any) {
+        // A concurrent run already paid this member for this settlement
+        if (error?.code === 11000) {
+          const paid = await WelcomeBonusTransaction.findOne({ memberId, settlementId });
+          if (paid) {
+            createdTransactions.push(paid);
+            totalDistributed += paid.actualPayout;
+            continue;
+          }
+        }
+        throw error;
+      }
 
       createdTransactions.push(tx);
       totalDistributed += actualPayout;
-
-      // Update Member cumulative Welcome Bonus earned and totalIncome
-      await Member.updateOne(
-        { memberId },
-        {
-          $inc: {
-            welcomeBonusEarned: actualPayout,
-            totalIncome: actualPayout,
-          },
-        }
-      );
-
-      // Create CommissionLedger record for central audit
-      const ledgerId = `COMM-WB-${settlementId}-${memberId}`;
-      await CommissionLedger.create({
-        ledgerId,
-        userId: memberId,
-        memberId,
-        type: COMMISSION_TYPE.WELCOME_BONUS,
-        sourceEventId: settlementId,
-        grossAmount: actualPayout,
-        grossAmountInPaise: DecimalUtil.toPaise(actualPayout),
-        tdsDeduction: 0,
-        tdsDeductionInPaise: 0,
-        adminFee: 0,
-        adminFeeInPaise: 0,
-        payableAmount: actualPayout,
-        payableAmountInPaise: DecimalUtil.toPaise(actualPayout),
-        status: 'PAID',
-        calculationDetails: {
-          calculationBase: 'WEEKLY_COMPANY_GBV_POOL',
-          baseAmount: preview.companyGrossBusinessVolume,
-          percentageApplied: preview.welcomeBonusRate,
-          notes: `Weekly Welcome Bonus Share: Pool ${preview.totalWelcomeBonusPool} BV / ${preview.eligibleMemberCount} members = ${equalMemberShare} BV. Actual Payout: ${actualPayout} BV (Cap: ${welcomeBonusCap} BV).`,
-        },
-        isReversed: false,
-      });
-
-      // Credit member wallet
-      await WalletService.creditCommission(
-        memberId,
-        actualPayout,
-        ledgerId,
-        `Welcome Bonus Weekly Payout (${settlementId})`
-      );
+      await BVWalletService.activateFromWalletIfEligible(memberId);
     }
 
     const totalUndistributed = Math.max(

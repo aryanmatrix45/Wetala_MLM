@@ -2,8 +2,9 @@ import mongoose, { Document, Schema } from 'mongoose';
 import { BV_OWNER_TYPE, BVOwnerType, BV_TXN_TYPE, BVTxnType, BV_TXN_STATUS, BVTxnStatus } from '../config/constants';
 
 /**
- * One row per BV Wallet business event: a generation, an instant transfer, or an admin reversal
- * of a transfer. Drives transaction history. Balance movements are recorded in BVWalletLedger.
+ * One row per BV Wallet business event: a generation, an instant transfer, an admin reversal of a
+ * transfer, a welcome bonus credit, or an order paid with BV (and its refund). Drives transaction
+ * history. Balance movements are recorded in BVWalletLedger.
  */
 export interface IBVTransaction extends Document {
   transactionId: string;
@@ -19,6 +20,8 @@ export interface IBVTransaction extends Document {
   title: string;
   note: string;
   requestKey?: string;
+  purchaseId?: string; // PURCHASE / PURCHASE_REFUND
+  settlementId?: string; // WELCOME_BONUS
   // Reversal links: a REVERSAL row points at the transfer it undid; that transfer points back
   reversalOf?: string;
   reversedBy?: string;
@@ -57,6 +60,8 @@ const bvTransactionSchema = new Schema<IBVTransaction>(
     title: { type: String, required: true, trim: true },
     note: { type: String, trim: true, default: '' },
     requestKey: { type: String, trim: true },
+    purchaseId: { type: String, trim: true },
+    settlementId: { type: String, trim: true },
     reversalOf: { type: String, trim: true },
     reversedBy: { type: String, trim: true },
     reversedAt: { type: Date },
@@ -81,6 +86,16 @@ bvTransactionSchema.index({ senderId: 1, recipientId: 1, amount: 1, createdAt: -
 bvTransactionSchema.index(
   { senderId: 1, requestKey: 1 },
   { unique: true, partialFilterExpression: { requestKey: { $type: 'string' } } }
+);
+// An order is paid with BV at most once and refunded at most once
+bvTransactionSchema.index(
+  { type: 1, purchaseId: 1 },
+  { unique: true, partialFilterExpression: { purchaseId: { $type: 'string' } } }
+);
+// A member receives at most one welcome bonus credit per settlement
+bvTransactionSchema.index(
+  { type: 1, settlementId: 1, recipientId: 1 },
+  { unique: true, partialFilterExpression: { settlementId: { $type: 'string' } } }
 );
 // A transfer can be reversed at most once
 bvTransactionSchema.index(

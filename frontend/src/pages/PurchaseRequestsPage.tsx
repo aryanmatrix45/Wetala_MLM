@@ -70,6 +70,9 @@ interface PurchaseRecord {
   payerName?: string;
   utrNumber?: string;
   paymentMode?: string;
+  paymentMethod?: string;
+  bvAmount?: number;
+  bvTransactionId?: string;
   paymentSubmittedAt?: string;
   verifiedBy?: string;
   verifiedAt?: string;
@@ -1382,7 +1385,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                     <div>
                                       <div style={{ fontSize: '10px', color: '#7e22ce', fontWeight: 800, textTransform: 'uppercase' }}>Mode</div>
                                       <div style={{ fontSize: '13px', fontWeight: 700, color: '#3b0764', marginTop: '2px' }}>
-                                        {pur.paymentMode || 'UPI'}
+                                        {pur.paymentMethod === 'BV_WALLET' ? (
+                                          <span style={{ background: '#ede9fe', color: '#6d28d9', padding: '2px 8px', borderRadius: '9999px', fontSize: '11px', fontWeight: 800 }}>
+                                            Paid with BV: {(pur.bvAmount || 0).toLocaleString('en-IN')} BV
+                                          </span>
+                                        ) : (
+                                          pur.paymentMode || 'UPI'
+                                        )}
                                       </div>
                                     </div>
 
@@ -1979,7 +1988,9 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                           </div>
                           <div>
                             <span style={{ color: '#7e22ce', fontWeight: 600 }}>Payment Mode:</span>
-                            <div style={{ fontWeight: 700, color: '#3b0764' }}>{pur.paymentMode || 'UPI'}</div>
+                            <div style={{ fontWeight: 700, color: '#3b0764' }}>
+                              {pur.paymentMethod === 'BV_WALLET' ? `BV Wallet (${(pur.bvAmount || 0).toLocaleString('en-IN')} BV)` : pur.paymentMode || 'UPI'}
+                            </div>
                           </div>
                           <div>
                             <span style={{ color: '#7e22ce', fontWeight: 600 }}>Submitted At:</span>
