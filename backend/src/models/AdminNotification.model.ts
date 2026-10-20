@@ -5,7 +5,9 @@ export type NotificationType =
   | 'WITHDRAWAL_APPROVED'
   | 'WITHDRAWAL_PAID'
   | 'WITHDRAWAL_REJECTED'
-  | 'SYSTEM_ALERT';
+  | 'SYSTEM_ALERT'
+  | 'BV_RECEIVED'
+  | 'BV_TRANSFER_REVERSED';
 
 export interface IAdminNotification extends Document {
   notificationId: string;
@@ -40,6 +42,8 @@ const adminNotificationSchema = new Schema<IAdminNotification>(
         'WITHDRAWAL_PAID',
         'WITHDRAWAL_REJECTED',
         'SYSTEM_ALERT',
+        'BV_RECEIVED',
+        'BV_TRANSFER_REVERSED',
       ],
       default: 'WITHDRAWAL_REQUEST',
       index: true,

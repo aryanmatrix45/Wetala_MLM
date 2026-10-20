@@ -97,6 +97,56 @@ export const getAssetUrl = (url?: string): string => {
   return normalized;
 };
 
+/** Builds "?a=1&b=2" from defined, non-empty params (or "" when there are none). */
+const toQueryString = (params: Record<string, string | number | undefined>): string => {
+  const search = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') search.set(key, String(value));
+  });
+  const query = search.toString();
+  return query ? `?${query}` : '';
+};
+
+export type BVTransactionStatus = 'COMPLETED' | 'REVERSED';
+
+export interface BVTransactionItem {
+  transactionId: string;
+  type: 'GENERATION' | 'TRANSFER' | 'REVERSAL';
+  status: BVTransactionStatus;
+  direction?: 'GENERATED' | 'SENT' | 'RECEIVED';
+  amount: number;
+  title: string;
+  note: string;
+  sender: { type: 'ADMIN' | 'MEMBER'; id: string; name: string };
+  recipient: { type?: 'ADMIN' | 'MEMBER'; id: string; name: string } | null;
+  reversalOf?: string;
+  reversedBy?: string;
+  reversedAt?: string;
+  reversalReason?: string;
+  createdAt: string;
+  initiatedBy?: { role?: string; email?: string; operatorName?: string; ip?: string };
+}
+
+export interface BVWalletSummary {
+  walletId: string;
+  ownerType: 'ADMIN' | 'MEMBER';
+  ownerId: string;
+  availableBV: number;
+  totalGenerated: number;
+  totalReceived: number;
+  totalSent: number;
+  isFrozen: boolean;
+  frozenReason: string;
+  limits: { maxTransferBV: number; maxGenerateBV: number };
+}
+
+export interface BVRecipient {
+  memberId: string;
+  name: string;
+  mobile: string;
+  email: string;
+}
+
 export interface DashboardStats {
   status?: boolean;
   totalMembers: number;
@@ -1147,6 +1197,66 @@ export const api = {
       headers: { Authorization: `Bearer ${savedToken}` },
     });
     return res.json();
+  },
+
+  // BV Wallet APIs (generation, PIN-confirmed transfers, history)
+  async bvWalletRequest(method: 'GET' | 'POST', path: string, body?: unknown, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const headers: Record<string, string> = { Authorization: `Bearer ${savedToken}` };
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const res = await fetch(`${API_BASE_URL}/bv-wallet${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    return res.json();
+  },
+
+  getBVWallet(token?: string) {
+    return this.bvWalletRequest('GET', '/me', undefined, token);
+  },
+
+  getBVTransactions(params: Record<string, string | number | undefined> = {}, token?: string) {
+    return this.bvWalletRequest('GET', `/transactions${toQueryString(params)}`, undefined, token);
+  },
+
+  searchBVRecipients(q: string, token?: string) {
+    return this.bvWalletRequest('GET', `/recipients/search?q=${encodeURIComponent(q)}`, undefined, token);
+  },
+
+  getBVRecipient(recipientId: string, token?: string) {
+    return this.bvWalletRequest('GET', `/recipients/${encodeURIComponent(recipientId)}`, undefined, token);
+  },
+
+  sendBVTransfer(
+    data: {
+      recipientId: string;
+      amount: number;
+      title: string;
+      note?: string;
+      requestKey: string;
+      confirmRepeat?: boolean;
+      operatorName?: string;
+    },
+    token?: string
+  ) {
+    return this.bvWalletRequest('POST', '/transfers', data, token);
+  },
+
+  reverseBVTransfer(transactionId: string, data: { reason: string; operatorName: string; password: string }, token?: string) {
+    return this.bvWalletRequest('POST', `/admin/transactions/${encodeURIComponent(transactionId)}/reverse`, data, token);
+  },
+
+  generateBV(data: { amount: number; title: string; note: string; operatorName: string; password: string }, token?: string) {
+    return this.bvWalletRequest('POST', '/admin/generate', data, token);
+  },
+
+  getBVAdminOverview(token?: string) {
+    return this.bvWalletRequest('GET', '/admin/overview', undefined, token);
+  },
+
+  getAllBVTransactions(params: Record<string, string | number | undefined> = {}, token?: string) {
+    return this.bvWalletRequest('GET', `/admin/transactions${toQueryString(params)}`, undefined, token);
   },
 
   // Sponsor Binary Income APIs

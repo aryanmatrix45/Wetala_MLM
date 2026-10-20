@@ -38,6 +38,10 @@ export function useNotifications(user?: { memberId?: string; role?: string } | n
   return { notifications, unreadCount, isAdmin, reload };
 }
 
+/** BV Wallet notifications (BV received, reversals) open the BV Wallet. */
+export const isBVNotification = (n: any): boolean =>
+  Boolean(n?.metadata?.module === 'BV_WALLET' || String(n?.type || '').startsWith('BV_'));
+
 /** Notifications about capping limits link to package upgrades instead of payouts. */
 export const isCappingNotification = (n: any): boolean =>
   Boolean(

@@ -101,3 +101,49 @@ export const COMPENSATION_EVENT_STATUS = {
 } as const;
 
 export type CompensationEventStatus = typeof COMPENSATION_EVENT_STATUS[keyof typeof COMPENSATION_EVENT_STATUS];
+
+// ---------------------------------------------------------------------------
+// BV Wallet: transferable BV credit balances (separate from earned personal/binary BV)
+// ---------------------------------------------------------------------------
+
+export const BV_WALLET = {
+  ADMIN_OWNER_ID: 'ADMIN',
+  ADMIN_DISPLAY_NAME: 'Super Admin',
+  MAX_GENERATE_BV: Number(process.env.BV_MAX_GENERATE) || 10_000_000,
+  MAX_ADMIN_TRANSFER_BV: Number(process.env.BV_MAX_ADMIN_TRANSFER) || 10_000_000,
+  MAX_MEMBER_TRANSFER_BV: Number(process.env.BV_MAX_MEMBER_TRANSFER) || 100_000,
+  // A second identical transfer (same sender, recipient and amount) inside this window needs explicit confirmation
+  REPEAT_WARNING_WINDOW_MS: 2 * 60 * 1000,
+  TITLE_MAX_LENGTH: 100,
+  NOTE_MAX_LENGTH: 500,
+} as const;
+
+export const BV_OWNER_TYPE = {
+  ADMIN: 'ADMIN',
+  MEMBER: 'MEMBER',
+} as const;
+
+export type BVOwnerType = typeof BV_OWNER_TYPE[keyof typeof BV_OWNER_TYPE];
+
+export const BV_TXN_TYPE = {
+  GENERATION: 'GENERATION',
+  TRANSFER: 'TRANSFER',
+  REVERSAL: 'REVERSAL', // admin-only correction that moves a transfer's BV back
+} as const;
+
+export type BVTxnType = typeof BV_TXN_TYPE[keyof typeof BV_TXN_TYPE];
+
+export const BV_TXN_STATUS = {
+  COMPLETED: 'COMPLETED',
+  REVERSED: 'REVERSED', // a completed transfer that a later REVERSAL undid
+} as const;
+
+export type BVTxnStatus = typeof BV_TXN_STATUS[keyof typeof BV_TXN_STATUS];
+
+export const BV_LEDGER_ENTRY = {
+  GENERATE: 'GENERATE', // admin mints BV
+  DEBIT_OUT: 'DEBIT_OUT', // BV leaves the sender's wallet
+  CREDIT_IN: 'CREDIT_IN', // BV arrives in the recipient's wallet
+} as const;
+
+export type BVLedgerEntryType = typeof BV_LEDGER_ENTRY[keyof typeof BV_LEDGER_ENTRY];

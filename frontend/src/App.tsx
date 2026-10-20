@@ -20,6 +20,7 @@ import { PurchaseRequestsPage } from './pages/PurchaseRequestsPage';
 import { PreRegistrationPage } from './pages/PreRegistrationPage';
 import { FullRegistrationPage } from './pages/FullRegistrationPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { BVWalletPage } from './pages/BVWalletPage';
 import { MemberHomePage } from './pages/MemberHomePage';
 import { AdminSlidersPage } from './pages/AdminSlidersPage';
 import { AdminSocialMediaPage } from './pages/AdminSocialMediaPage';
@@ -471,6 +472,8 @@ export function App() {
         {activeTab === 'rank-rewards' && <IncomeSettingsPage user={user} token={token} defaultSection="rewards" />}
 
         {activeTab === 'wallet-payouts' && <PayoutsPage user={user} token={token} defaultSubTab="commissions" onNavigate={handleTabChange} />}
+
+        {activeTab === 'bv-wallet' && <BVWalletPage user={user} token={token} />}
 
         {activeTab === 'withdrawals' && <PayoutsPage user={user} token={token} defaultSubTab="requests" onNavigate={handleTabChange} />}
 

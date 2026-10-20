@@ -28,6 +28,7 @@ import adminHomeVideoRoutes from './adminHomeVideo.routes';
 import footerRoutes from './footer.routes';
 import adminFooterRoutes from './adminFooter.routes';
 import kycRoutes from './kyc.routes';
+import bvWalletRoutes from './bvWallet.routes';
 
 const router = Router();
 
@@ -104,6 +105,9 @@ router.use('/admin/subcategories', adminSubcategoryRoutes);
 
 // Wallets & Transactions
 router.use('/wallet', walletRoutes);
+
+// BV Wallet: generation, PIN-confirmed transfers & history
+router.use('/bv-wallet', bvWalletRoutes);
 
 // Member & Admin Withdrawal Requests & Notifications
 router.use('/withdrawals', withdrawalRoutes);

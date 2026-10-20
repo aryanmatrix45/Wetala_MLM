@@ -1,6 +1,6 @@
 import React from 'react';
 import { api } from '../services/api';
-import { isCappingNotification } from '../hooks/useNotifications';
+import { isBVNotification, isCappingNotification } from '../hooks/useNotifications';
 
 interface NotificationListProps {
   notifications: any[];
@@ -12,7 +12,7 @@ interface NotificationListProps {
 
 /**
  * Notification items shared by the header dropdown (desktop) and the bottom-nav sheet (mobile).
- * Clicking an item marks it read and opens Packages (capping alerts) or Withdrawals.
+ * Clicking an item marks it read and opens Packages (capping alerts), the BV Wallet (BV transfers) or Withdrawals.
  */
 export const NotificationList: React.FC<NotificationListProps> = ({
   notifications,
@@ -24,6 +24,7 @@ export const NotificationList: React.FC<NotificationListProps> = ({
     {notifications.length > 0 ? (
       notifications.map((n, i) => {
         const isCapping = isCappingNotification(n);
+        const isBV = isBVNotification(n);
 
         return (
           <button
@@ -34,7 +35,7 @@ export const NotificationList: React.FC<NotificationListProps> = ({
               if (n._id || n.notificationId) {
                 api.markNotificationRead(n._id || n.notificationId).catch(() => {});
               }
-              onNavigate?.(isCapping ? 'packages' : 'withdrawals');
+              onNavigate?.(isCapping ? 'packages' : isBV ? 'bv-wallet' : 'withdrawals');
             }}
             style={{
               display: 'block',
@@ -58,7 +59,7 @@ export const NotificationList: React.FC<NotificationListProps> = ({
                   UPGRADE
                 </span>
               ) : n.amount ? (
-                <span style={{ color: '#059669' }}>₹{n.amount.toLocaleString()}</span>
+                <span style={{ color: '#059669' }}>{isBV ? `${n.amount.toLocaleString('en-IN')} BV` : `₹${n.amount.toLocaleString()}`}</span>
               ) : null}
             </div>
             <div style={{ color: '#475569', fontSize: '11px', marginTop: '3px', lineHeight: '1.4' }}>{n.message}</div>

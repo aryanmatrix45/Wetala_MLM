@@ -27,6 +27,7 @@ import {
   Info,
   Video,
   LayoutTemplate,
+  Coins,
   X
 } from 'lucide-react';
 import { api } from '../services/api';
@@ -138,6 +139,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
           badge: pendingWithdrawals > 0 ? (isAdmin ? `${pendingWithdrawals} New` : `${pendingWithdrawals} Pending`) : undefined 
         },
         { id: 'wallet-payouts', label: 'Wallet & Payouts', icon: Wallet },
+        { id: 'bv-wallet', label: 'BV Wallet', icon: Coins },
         { id: 'income-settings', label: 'Income & Simulator', icon: IndianRupee, badge: 'Engine' },
         { id: 'team-bonus', label: 'Team Bonus Slabs', icon: Users2 },
         { id: 'direct-royalty', label: 'Royalty & Consultancy', icon: Sparkles },

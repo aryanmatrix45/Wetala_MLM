@@ -757,9 +757,16 @@ export const WithdrawalController = {
    */
   async getMemberNotifications(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
-      const targetMemberId = (req.params.memberId || req.user?.memberId)?.toUpperCase();
+      const isAdmin = req.user?.role === ROLES.SUPERADMIN;
+      const ownMemberId = req.user?.memberId?.toUpperCase();
+      const targetMemberId = (isAdmin ? req.params.memberId || ownMemberId : ownMemberId)?.toUpperCase();
       if (!targetMemberId) {
         res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: 'Member ID required' });
+        return;
+      }
+      // Members may only read their own notifications (they carry transfer requests and payout details)
+      if (!isAdmin && req.params.memberId && req.params.memberId.toUpperCase() !== ownMemberId) {
+        res.status(HTTP_STATUS.FORBIDDEN).json({ status: false, message: 'You can only view your own notifications.' });
         return;
       }
 
@@ -791,8 +798,11 @@ export const WithdrawalController = {
   async markNotificationAsRead(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
       const { id } = req.params;
+      const isAdmin = req.user?.role === ROLES.SUPERADMIN;
+      // Members may only mark their own notifications as read
+      const ownership = isAdmin ? {} : { recipientId: req.user?.memberId?.toUpperCase() || '__none__' };
       await AdminNotification.findOneAndUpdate(
-        getNotificationQuery(id),
+        { $and: [getNotificationQuery(id), ownership] },
         { $set: { isRead: true } }
       );
       res.status(HTTP_STATUS.OK).json({ status: true, message: 'Marked as read' });
