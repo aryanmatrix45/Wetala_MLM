@@ -6,7 +6,7 @@ import { CommissionLedger } from '../models/CommissionLedger.model';
 import { Purchase } from '../models/Purchase.model';
 import { HTTP_STATUS, BINARY_POSITION, BinaryPosition, ROLES, PURCHASE_STATUS, PURCHASE_TYPE } from '../config/constants';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
-import { optionalAuthenticate, authenticate, AuthenticatedRequest } from '../middlewares/auth';
+import { authenticate, AuthenticatedRequest } from '../middlewares/auth';
 import { WalletService } from '../services/WalletService';
 import { BVService } from '../services/BVService';
 
@@ -209,24 +209,24 @@ router.get('/dashboard/stats', async (_req, res) => {
   }
 });
 
-// Member List from MongoDB (Role-scoped: Regular members only see members they added or sponsored)
-router.get('/members', optionalAuthenticate, async (req: AuthenticatedRequest, res) => {
+// Member List from MongoDB (Role-scoped: Super Admin sees everyone, members see only their direct sponsorships)
+router.get('/members', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
     const user = req.user;
     let query: any = {};
 
-    // If authenticated as a Regular Member:
-    // Only see members they personally added (addedBy) or personally sponsored (sponsorId)
-    if (user && user.role === ROLES.MEMBER && user.memberId) {
-      const userMemberId = user.memberId.toUpperCase().trim();
-      query = {
-        $or: [
-          { addedBy: userMemberId },
-          { sponsorId: userMemberId },
-        ],
-      };
+    if (user?.role !== ROLES.SUPERADMIN) {
+      if (user?.role !== ROLES.MEMBER || !user.memberId) {
+        res.status(HTTP_STATUS.FORBIDDEN).json({
+          status: false,
+          message: 'Access denied.'
+        });
+        return;
+      }
+      // Regular Member: only members they directly sponsored
+      query = { sponsorId: user.memberId.toUpperCase().trim() };
     } else {
-      // Super Admin / Admin: can filter by status / approvalStatus
+      // Super Admin: can filter by status / approvalStatus
       if (req.query.approvalStatus) {
         query.approvalStatus = req.query.approvalStatus;
       }
@@ -274,342 +274,6 @@ router.get('/members', optionalAuthenticate, async (req: AuthenticatedRequest, r
     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
       status: false,
       message: error.message || 'Failed to fetch members'
-    });
-  }
-});
-
-// Register New Member with Password & Unique validation
-router.post('/members', optionalAuthenticate, async (req: AuthenticatedRequest, res) => {
-  try {
-    const {
-      name,
-      email,
-      mobile,
-      countryCode,
-      dob,
-      gender,
-      address,
-      state,
-      city,
-      pincode,
-      panNumber,
-      aadhaarNumber,
-      termsAccepted,
-      password,
-      confirmPassword,
-      sponsorId,
-      parentId,
-      placementId,
-      position,
-      packageName,
-      packageId,
-      package: pkgInput
-    } = req.body;
-
-    // 1. Mandatory field checks
-    if (!name || !name.trim()) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: false,
-        message: 'Full Name is required.'
-      });
-      return;
-    }
-
-    if (!mobile || !mobile.trim()) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: false,
-        message: 'Mobile Number is required.'
-      });
-      return;
-    }
-
-    if (!email || !email.trim()) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: false,
-        message: 'Email ID is required.'
-      });
-      return;
-    }
-
-    if (!password) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: false,
-        message: 'Password is required.'
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: false,
-        message: 'Password must be at least 6 characters long.'
-      });
-      return;
-    }
-
-    if (confirmPassword && password !== confirmPassword) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: false,
-        message: 'Password and Confirm Password do not match.'
-      });
-      return;
-    }
-
-    const cleanEmail = email.toLowerCase().trim();
-    
-    // 1. Mobile Number Validation: Must contain exactly 10 numeric digits, no non-numeric characters
-    const cleanPhone = String(mobile).trim();
-    let strippedPhone = cleanPhone;
-    if (strippedPhone.startsWith('+91')) {
-      strippedPhone = strippedPhone.slice(3).trim();
-    } else if (strippedPhone.startsWith('+')) {
-      strippedPhone = strippedPhone.replace(/^\+\d{1,4}\s*/, '').trim();
-    }
-
-    // Reject non-numeric characters
-    if (!/^\d+$/.test(strippedPhone)) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: false,
-        message: 'Mobile number must contain digits only. Letters and special characters are not allowed.'
-      });
-      return;
-    }
-
-    // Reject invalid lengths
-    if (strippedPhone.length !== 10) {
-      res.status(HTTP_STATUS.BAD_REQUEST).json({
-        status: false,
-        message: 'Mobile number must contain exactly 10 digits.'
-      });
-      return;
-    }
-
-    const cleanMobile = strippedPhone;
-    let resolvedCountryCode = (countryCode || '+91').trim();
-    if (!/^\+\d{1,4}$/.test(resolvedCountryCode)) {
-      resolvedCountryCode = '+91';
-    }
-
-    // 2. Aadhaar Number Validation: Must contain exactly 12 numeric digits, reject letters and special characters
-    let validAadhaar = '';
-    if (aadhaarNumber && String(aadhaarNumber).trim()) {
-      const rawAadhaarInput = String(aadhaarNumber).trim();
-      const compactAadhaar = rawAadhaarInput.replace(/\s+/g, '');
-
-      // Reject non-numeric characters
-      if (!/^\d+$/.test(compactAadhaar) || /[^\d\s]/.test(rawAadhaarInput)) {
-        res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: false,
-          message: 'Aadhaar number must contain numeric digits only. Letters and special characters are not allowed.'
-        });
-        return;
-      }
-
-      // Reject invalid length
-      if (compactAadhaar.length !== 12) {
-        res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: false,
-          message: 'Aadhaar number must contain exactly 12 digits.'
-        });
-        return;
-      }
-
-      validAadhaar = compactAadhaar;
-    }
-
-    // 3. Uniqueness Checks
-    const existingEmail = await Member.findOne({ email: cleanEmail });
-    if (existingEmail) {
-      res.status(HTTP_STATUS.CONFLICT).json({
-        status: false,
-        message: `A member with email "${cleanEmail}" already exists. Email must be unique.`
-      });
-      return;
-    }
-
-    const existingMobile = await Member.findOne({
-      $or: [{ mobile: cleanMobile }, { phone: cleanMobile }]
-    });
-    if (existingMobile) {
-      res.status(HTTP_STATUS.CONFLICT).json({
-        status: false,
-        message: `A member with mobile number "${cleanMobile}" already exists. Mobile must be unique.`
-      });
-      return;
-    }
-
-    // 3. Sponsor ID and Binary Placement (Distinct relationships)
-    const totalCount = await Member.countDocuments();
-    let finalParentId = '';
-    let finalPos: BinaryPosition = BINARY_POSITION.LEFT;
-    let finalSponsorId = (sponsorId || '').trim().toUpperCase();
-
-    const rawPosition = (position || '').trim().toUpperCase();
-    const targetPos: BinaryPosition = rawPosition === 'RIGHT' ? BINARY_POSITION.RIGHT : BINARY_POSITION.LEFT;
-
-    if (totalCount === 0) {
-      // First member in system: ROOT NODE of the MLM tree
-      // Has NO sponsor ID (not even ADMIN) and NO parent ID
-      finalSponsorId = '';
-      finalParentId = '';
-      finalPos = BINARY_POSITION.LEFT;
-    } else {
-      // All subsequent members strictly require a valid existing member's ID as sponsor
-      if (!finalSponsorId) {
-        res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: false,
-          message: 'Sponsor ID is mandatory. Please provide a valid existing Member ID.'
-        });
-        return;
-      }
-
-      if (finalSponsorId === 'ADMIN') {
-        res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: false,
-          message: 'ADMIN cannot be used as a Sponsor ID. A valid registered Member ID is required.'
-        });
-        return;
-      }
-
-      const sponsorExists = await Member.findOne({ memberId: finalSponsorId });
-      if (!sponsorExists) {
-        res.status(HTTP_STATUS.BAD_REQUEST).json({
-          status: false,
-          message: `Sponsor ID "${finalSponsorId}" does not exist in our system. Please enter a valid Member ID.`
-        });
-        return;
-      }
-
-      // Binary Tree Placement is DECOUPLED from registration:
-      // Member is assigned preferredLeg, but parentId remains empty ('')
-      // until binary activation (>= 100 BV).
-      finalParentId = '';
-      finalPos = targetPos;
-    }
-
-    // 4. Resolve Dynamic Package from MongoDB (only if explicitly specified)
-    const targetPkgIdentifier = packageId || packageName || pkgInput;
-    let selectedPackage = null;
-    if (targetPkgIdentifier) {
-      selectedPackage = await Package.findOne({
-        $or: [
-          { packageId: targetPkgIdentifier },
-          { name: targetPkgIdentifier },
-          { name: new RegExp(`^${targetPkgIdentifier}$`, 'i') },
-        ],
-        isActive: true,
-      });
-    }
-
-    const finalPackageName = selectedPackage ? selectedPackage.name : null;
-    const finalPackageId = selectedPackage ? selectedPackage.packageId : null;
-    const finalPackageBv = selectedPackage ? selectedPackage.bv : 0;
-    const finalPackageRp = selectedPackage ? selectedPackage.rp : 0;
-    const finalDailyCapping = selectedPackage ? (selectedPackage.dailyCapping || 0) : 0;
-
-    // 5. Generate Sequential Unique Member ID
-    const newMemberId = await Member.generateNextMemberId();
-
-    // 6. Creator tracking - All members are immediately active and approved for instant login!
-    const reqUser = req.user;
-    let addedBy = 'ADMIN';
-
-    if (totalCount === 0) {
-      addedBy = 'ADMIN';
-    } else if (reqUser && reqUser.role === ROLES.SUPERADMIN) {
-      addedBy = 'ADMIN';
-    } else if (reqUser && reqUser.role === ROLES.MEMBER && reqUser.memberId) {
-      addedBy = reqUser.memberId.toUpperCase().trim();
-    } else {
-      addedBy = finalSponsorId || 'SYSTEM';
-    }
-
-    const approvalStatus: 'pending' | 'approved' = 'approved';
-    const memberStatus: 'active' | 'pending' = 'active';
-    const isActive = true;
-
-    // 7. Create and Save Member in MongoDB (password automatically hashed by pre-save hook)
-    const newMember = await Member.create({
-      memberId: newMemberId,
-      name: name.trim(),
-      email: cleanEmail,
-      countryCode: resolvedCountryCode,
-      mobile: cleanMobile,
-      phone: cleanMobile,
-      dob: dob ? dob.trim() : '',
-      gender: gender ? String(gender).trim() : '',
-      address: address ? String(address).trim() : '',
-      state: state ? String(state).trim() : '',
-      city: city ? String(city).trim() : '',
-      pincode: pincode ? String(pincode).trim() : '',
-      panNumber: panNumber ? String(panNumber).trim().toUpperCase() : '',
-      aadhaarNumber: validAadhaar,
-      termsAccepted: termsAccepted !== false,
-      password,
-      sponsorId: finalSponsorId,
-      parentId: finalParentId,
-      position: finalPos,
-      preferredLeg: targetPos,
-      binaryParentId: finalParentId,
-      placementId: finalParentId,
-      binaryPosition: finalPos,
-      joiningPackageId: finalPackageId,
-      packageName: finalPackageName,
-      packageBv: finalPackageBv,
-      packageRp: finalPackageRp,
-      dailyCapping: finalDailyCapping,
-      status: memberStatus,
-      approvalStatus,
-      addedBy,
-      isActive,
-      personalBv: 0,
-      isBinaryActive: totalCount === 0,
-      leftBv: 0,
-      rightBv: 0,
-      matchedPairs: 0,
-      totalIncome: 0,
-      walletBalance: 0
-    });
-
-    await WalletService.getOrCreateWallet(newMember.memberId, newMember._id.toString()).catch(() => null);
-    await BVService.getOrCreateBinaryVolume(newMember.memberId, newMember._id.toString()).catch(() => null);
-
-    if (finalPackageBv >= 100) {
-      await BinaryTreeService.placeMemberInBinaryTree(newMember.memberId);
-    }
-
-    const successMessage = `🎉 Welcome to the Panchveda Wellness Family, ${newMember.name}! Member ID: ${newMember.memberId}. Direct login is enabled with email and password.`;
-
-    res.status(HTTP_STATUS.CREATED).json({
-      success: true,
-      status: true,
-      message: successMessage,
-      member: {
-        id: newMember._id.toString(),
-        memberId: newMember.memberId,
-        name: newMember.name,
-        email: newMember.email,
-        mobile: newMember.mobile,
-        dob: newMember.dob,
-        sponsorId: newMember.sponsorId,
-        parentId: newMember.parentId,
-        placementId: newMember.placementId,
-        position: newMember.position,
-        binaryParentId: newMember.binaryParentId,
-        binaryPosition: newMember.binaryPosition,
-        packageName: newMember.packageName,
-        joinDate: newMember.joinDate,
-        status: newMember.status,
-        approvalStatus: newMember.approvalStatus,
-        addedBy: newMember.addedBy,
-        walletBalance: newMember.walletBalance
-      }
-    });
-  } catch (error: any) {
-    console.error('[POST /api/members] Error creating member:', error);
-    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
-      status: false,
-      message: error.message || 'Failed to register new member'
     });
   }
 });

@@ -444,24 +444,6 @@ export const api = {
     return res.json();
   },
 
-  async addMember(data: any, token?: string): Promise<any> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    const authToken = token || localStorage.getItem('wetala_token');
-    if (authToken) {
-      headers['Authorization'] = `Bearer ${authToken}`;
-    }
-    const res = await fetch(`${API_BASE_URL}/members`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(data),
-    });
-    const result = await res.json();
-    if (!res.ok) {
-      throw new Error(result.message || `Failed to create member: ${res.statusText}`);
-    }
-    return result;
-  },
-
   // Member Approval Requests for Super Admin
   async getMemberRequests(token?: string): Promise<{ status: boolean; totalPending: number; data: any[] }> {
     const headers: Record<string, string> = {};

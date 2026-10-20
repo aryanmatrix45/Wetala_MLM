@@ -10,7 +10,6 @@ import { IncomeSettingsPage } from './pages/IncomeSettingsPage';
 import { PayoutsPage } from './pages/PayoutsPage';
 import { SponsorIncomePage } from './pages/SponsorIncomePage';
 import { BinaryLedgerPage } from './pages/BinaryLedgerPage';
-import { AddMemberModal } from './components/AddMemberModal';
 import { LoginPage } from './pages/LoginPage';
 import { AdminProductsPage } from './pages/AdminProductsPage';
 import { AdminCategoriesPage } from './pages/AdminCategoriesPage';
@@ -60,7 +59,6 @@ export function App() {
   };
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
-  const [isAddMemberOpen, setIsAddMemberOpen] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Public routing state: 'public' is the open website; login & registration have their own paths
@@ -233,15 +231,6 @@ export function App() {
     setTimeout(tryScroll, 50);
   };
 
-  const [refreshKey, setRefreshKey] = useState(0);
-
-  const handleAddMember = async (memberData: any) => {
-    const res = await api.addMember(memberData, token || undefined);
-    alert(res.message || `Member ${res.member?.name || memberData.name} registered successfully! Member ID: ${res.member?.memberId}`);
-    setIsAddMemberOpen(false);
-    setRefreshKey((prev) => prev + 1);
-  };
-
   if (loading) {
     return (
       <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0b1120' }}>
@@ -397,10 +386,8 @@ export function App() {
 
         {(activeTab === 'dashboard' || activeTab === 'welcome-bonus') && (
           <DashboardPage
-            key={refreshKey}
             user={user}
             onNavigate={(tab) => setActiveTab(tab)}
-            onOpenAddMember={() => setIsAddMemberOpen(true)}
             initialSection={activeTab === 'welcome-bonus' ? 'welcome-bonus' : undefined}
           />
         )}
@@ -415,17 +402,14 @@ export function App() {
 
         {activeTab === 'members' && (
           <MembersPage 
-            key={refreshKey} 
             user={user} 
             token={token} 
-            onOpenAddMember={() => setIsAddMemberOpen(true)} 
             onNavigate={(tab) => setActiveTab(tab)}
           />
         )}
 
         {activeTab === 'member-requests' && (
           <MemberRequestsPage
-            key={refreshKey}
             user={user}
             token={token}
             onNavigate={(tab) => setActiveTab(tab)}
@@ -536,14 +520,6 @@ export function App() {
         notifications={notifications}
         unreadCount={unreadCount}
         isAdmin={isAdminUser}
-      />
-
-      {/* Add Member Modal */}
-      <AddMemberModal
-        isOpen={isAddMemberOpen}
-        onClose={() => setIsAddMemberOpen(false)}
-        onAddMember={handleAddMember}
-        user={user}
       />
     </div>
   );

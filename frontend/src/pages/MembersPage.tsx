@@ -3,7 +3,6 @@ import {
   Users, 
   UserCheck, 
   UserX, 
-  UserPlus, 
   Search, 
   Filter, 
   RotateCcw, 
@@ -34,13 +33,12 @@ interface MemberItem {
 }
 
 interface MembersPageProps {
-  onOpenAddMember: () => void;
   user?: any;
   token?: string | null;
   onNavigate?: (tab: string) => void;
 }
 
-export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user, token, onNavigate }) => {
+export const MembersPage: React.FC<MembersPageProps> = ({ user, token, onNavigate }) => {
   const [members, setMembers] = useState<MemberItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPackage, setSelectedPackage] = useState('All Packages');
@@ -124,7 +122,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
       <div className="welcome-header">
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <h1 className="page-title">{isAdmin ? 'All Members Directory' : 'My Registered Members'}</h1>
+            <h1 className="page-title">{isAdmin ? 'All Members Directory' : 'My Direct Members'}</h1>
             <span style={{
               background: '#eff6ff',
               color: '#2563eb',
@@ -144,7 +142,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
           <p className="page-subtitle">
             {isAdmin 
               ? 'Complete company-wide directory. Track placements, approval states, and member activity.'
-              : `Showing members registered under or sponsored by your ID (${user?.memberId || 'Account'}). New additions require Super Admin approval.`}
+              : `Members who joined directly with your Sponsor ID (${user?.memberId || 'Account'}). Share your referral link to grow your team.`}
           </p>
         </div>
 
@@ -170,19 +168,6 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
               <span>{pendingCount} Pending Requests</span>
             </button>
           )}
-
-          <button 
-            onClick={onOpenAddMember} 
-            className="primary-btn" 
-            style={{ 
-              padding: '10px 22px', 
-              borderRadius: '10px',
-              boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)'
-            }}
-          >
-            <UserPlus size={18} />
-            <span>Add Member</span>
-          </button>
         </div>
       </div>
 
@@ -247,7 +232,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
             <Users size={24} />
           </div>
           <div className="kpi-content">
-            <div className="kpi-label">{isAdmin ? 'Total Members' : 'My Total Members'}</div>
+            <div className="kpi-label">{isAdmin ? 'Total Members' : 'My Direct Members'}</div>
             <div className="kpi-value">{totalCount}</div>
           </div>
         </div>
@@ -307,7 +292,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
             <Search size={16} className="search-icon" />
             <input 
               type="text" 
-              placeholder={isAdmin ? "Search by Name, ID, Mobile, Sponsor..." : "Search in my registered members..."}
+              placeholder={isAdmin ? "Search by Name, ID, Mobile, Sponsor..." : "Search in my direct members..."}
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -399,8 +384,8 @@ export const MembersPage: React.FC<MembersPageProps> = ({ onOpenAddMember, user,
                       {searchTerm 
                         ? 'Try adjusting your search keywords or clearing filters.' 
                         : isAdmin 
-                        ? 'Click the "Add Member" button to create the first member.' 
-                        : 'Click "Add Member" above to register your first team member!'}
+                        ? 'Members will appear here once they register.' 
+                        : 'Members who register using your referral link will appear here.'}
                     </p>
                   </td>
                 </tr>

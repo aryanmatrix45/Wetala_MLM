@@ -35,7 +35,6 @@ import { type WithdrawalRequestItem } from '../services/api';
 interface DashboardPageProps {
   user?: any;
   onNavigate: (tab: string) => void;
-  onOpenAddMember: () => void;
   initialSection?: string;
 }
 
@@ -56,7 +55,7 @@ const SkeletonText: React.FC<{ width?: string | number; height?: string | number
   />
 );
 
-export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, onOpenAddMember, initialSection }) => {
+export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, initialSection }) => {
   const [trendRange, setTrendRange] = useState('30');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
@@ -270,11 +269,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               <span>Withdraw Payout</span>
             </button>
           )}
-
-          <button onClick={onOpenAddMember} className="primary-btn">
-            <UserPlus size={16} />
-            <span>Add Member</span>
-          </button>
         </div>
       </div>
 
@@ -1823,11 +1817,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
 
       {/* Quick Action Strip */}
       <div className="quick-actions-strip">
-        <button onClick={onOpenAddMember} className="quick-action-btn">
-          <UserPlus size={20} color="#2563eb" />
-          <span>Add Member</span>
-        </button>
-
         <button onClick={() => onNavigate('genealogy')} className="quick-action-btn">
           <GitMerge size={20} color="#059669" />
           <span>Genealogy Tree</span>
