@@ -1,9 +1,29 @@
 import React, { useEffect, useState } from 'react';
-import { Home, ShoppingBag, Bell, Share2, X, LogIn, UserPlus } from 'lucide-react';
+import { Home, ShoppingBag, Bell, Share2, X, LogIn, UserPlus, Gift } from 'lucide-react';
 import { NotificationList } from './NotificationList';
 import { SocialMediaSection } from './SocialMediaSection';
+import { ReferralCard } from './ReferralCard';
+import { api } from '../services/api';
 
-type SheetKind = 'notifications' | 'social';
+type SheetKind = 'notifications' | 'refer' | 'social';
+
+const SHEET_COPY: Record<SheetKind, { title: string; subtitle: string; guestText: string }> = {
+  notifications: {
+    title: 'Notifications',
+    subtitle: '',
+    guestText: 'Log in to see payout updates, purchase approvals and account alerts.',
+  },
+  refer: {
+    title: 'Refer & Earn',
+    subtitle: 'Share your referral link to grow your team',
+    guestText: 'Log in to get your personal referral links and invite new members.',
+  },
+  social: {
+    title: 'Social Media',
+    subtitle: 'Follow our official channels for tutorials, live sessions and news',
+    guestText: '',
+  },
+};
 
 interface MobileBottomNavProps {
   activeTab: string;
@@ -11,6 +31,8 @@ interface MobileBottomNavProps {
   notifications: any[];
   unreadCount: number;
   isAdmin?: boolean;
+  /** Signed-in member's ID, used for their referral links */
+  memberId?: string;
   /** Visitor is not signed in: notifications sheet invites them to log in instead */
   isGuest?: boolean;
   onLogin?: () => void;
@@ -19,7 +41,7 @@ interface MobileBottomNavProps {
 
 /**
  * Fixed bottom navigation for phones (hidden on desktop via CSS).
- * Home and Products switch tabs; Notifications and Social Media open a bottom sheet
+ * Home and Products switch tabs; Refer, Notifications and Social Media open a bottom sheet
  * that sits above the bar so members can switch sections without closing it first.
  */
 export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
@@ -28,11 +50,26 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   notifications,
   unreadCount,
   isAdmin = false,
+  memberId,
   isGuest = false,
   onLogin,
   onSignUp,
 }) => {
   const [openSheet, setOpenSheet] = useState<SheetKind | null>(null);
+  // The Super Admin refers under the company root member (same as the Profile page)
+  const [rootSponsorId, setRootSponsorId] = useState('MEM0001');
+
+  useEffect(() => {
+    if (!isAdmin || openSheet !== 'refer') return;
+    api
+      .getRootSponsor()
+      .then((res: any) => {
+        if (res?.data?.memberId) setRootSponsorId(res.data.memberId);
+      })
+      .catch(() => {});
+  }, [isAdmin, openSheet]);
+
+  const referralMemberId = isAdmin ? rootSponsorId : memberId;
 
   const closeSheet = () => setOpenSheet(null);
   const toggleSheet = (kind: SheetKind) => setOpenSheet((current) => (current === kind ? null : kind));
@@ -78,6 +115,13 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
       onClick: () => goTo('member-products'),
     },
     {
+      key: 'refer',
+      label: 'Refer',
+      icon: Gift,
+      isActive: openSheet === 'refer',
+      onClick: () => toggleSheet('refer'),
+    },
+    {
       key: 'notifications',
       label: 'Notifications',
       icon: Bell,
@@ -109,11 +153,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             <header className="bottom-sheet-header">
               <div>
                 <h2 className="bottom-sheet-title" id="bottom-sheet-title">
-                  {openSheet === 'notifications'
-                    ? isAdmin
-                      ? 'Admin Alerts & Requests'
-                      : 'Notifications'
-                    : 'Social Media'}
+                  {openSheet === 'notifications' && isAdmin ? 'Admin Alerts & Requests' : SHEET_COPY[openSheet].title}
                 </h2>
                 <p className="bottom-sheet-subtitle">
                   {openSheet === 'notifications'
@@ -122,7 +162,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                       : unreadCount > 0
                         ? `${unreadCount} new`
                         : 'You are up to date'
-                    : 'Follow our official channels for tutorials, live sessions and news'}
+                    : SHEET_COPY[openSheet].subtitle}
                 </p>
               </div>
               <button type="button" className="bottom-sheet-close" onClick={closeSheet} aria-label="Close">
@@ -131,12 +171,12 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </header>
 
             <div className="bottom-sheet-body">
-              {openSheet === 'notifications' && isGuest ? (
+              {openSheet !== 'social' && (isGuest || (openSheet === 'refer' && !referralMemberId)) ? (
                 <div className="bottom-sheet-guest">
                   <span className="bottom-sheet-guest-icon" aria-hidden="true">
-                    <Bell size={22} />
+                    {openSheet === 'refer' ? <Gift size={22} /> : <Bell size={22} />}
                   </span>
-                  <p>Log in to see payout updates, purchase approvals and account alerts.</p>
+                  <p>{SHEET_COPY[openSheet].guestText}</p>
                   <div className="bottom-sheet-guest-actions">
                     <button
                       type="button"
@@ -174,6 +214,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                     View all in Payout Center →
                   </button>
                 </>
+              ) : openSheet === 'refer' && referralMemberId ? (
+                <ReferralCard memberId={referralMemberId} isSuperAdmin={isAdmin} />
               ) : (
                 <SocialMediaSection showEmptyState />
               )}

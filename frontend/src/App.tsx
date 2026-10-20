@@ -513,6 +513,7 @@ export function App() {
         notifications={notifications}
         unreadCount={unreadCount}
         isAdmin={isAdminUser}
+        memberId={user?.memberId}
       />
     </div>
   );

@@ -5451,7 +5451,7 @@ input, select, textarea {
 
   .mobile-bottom-nav {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(5, minmax(0, 1fr));
     position: fixed;
     left: 0;
     right: 0;
@@ -5539,7 +5539,7 @@ input, select, textarea {
   }
 
   .mobile-bottom-nav-label {
-    font-size: 11.5px;
+    font-size: 10.5px;
     font-weight: 600;
     max-width: 100%;
     white-space: nowrap;
@@ -5651,6 +5651,14 @@ input, select, textarea {
   }
   .bottom-sheet .social-links-grid {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* Referral links inside the sheet: the sheet header already titles them */
+  .bottom-sheet .profile-referral-card {
+    margin: 0;
+  }
+  .bottom-sheet .profile-referral-head {
+    display: none;
   }
 
   /* Notifications live in the bottom nav on phones */
