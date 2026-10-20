@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { HomeSlider } from '../components/HomeSlider';
 import { SocialMediaSection } from '../components/SocialMediaSection';
-import { ShopByCategorySection } from '../components/ShopByCategorySection';
+// Shop by Category is temporarily hidden on the homepage; uncomment this and the section below to restore it.
+// import { ShopByCategorySection } from '../components/ShopByCategorySection';
 import { HomeVideoSection } from '../components/HomeVideoSection';
 import { AboutUsSection } from '../components/AboutUsSection';
 import { HomeFooter } from '../components/HomeFooter';
@@ -145,7 +146,7 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({ onNavigate }) =>
           </section>
         )}
 
-        {/* 2. Shop by Category */}
+        {/* 2. Shop by Category (temporarily hidden; uncomment to restore, along with its import above)
         <ShopByCategorySection
           onSelectCategory={(category) => {
             if (onNavigate && category._id) {
@@ -153,6 +154,7 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({ onNavigate }) =>
             }
           }}
         />
+        */}
 
         {/* 3. Featured Products */}
         <section className="home-section home-products-section" aria-labelledby="home-products-title">
