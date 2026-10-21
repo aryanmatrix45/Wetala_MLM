@@ -1,21 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Share2,
-  Save,
-  RefreshCw,
-  ExternalLink,
-  CheckCircle2,
-  AlertCircle,
-  Eye,
-  Plus,
-  Trash2,
-  Youtube,
-  Instagram,
-  Facebook,
-  Linkedin,
-  Globe,
-  Sparkles,
-} from 'lucide-react';
+import { Alert, Badge, PageHeader } from '../components/ui';
+import { ExternalLink, Eye, Facebook, Globe, Instagram, Linkedin, Plus, RefreshCw, Save, Share2, Sparkles, Trash2, Youtube } from 'lucide-react';
 import { api, type SocialLinkItem, type SocialPlatformType } from '../services/api';
 
 // Platform icons
@@ -51,63 +36,63 @@ const PLATFORM_META: Record<
     name: 'YouTube Channel',
     placeholder: 'https://youtube.com/@channelName',
     badgeBg: '#FF0000',
-    badgeColor: '#ffffff',
+    badgeColor: 'var(--text-inverse)',
     icon: <Youtube size={18} />,
   },
   instagram: {
     name: 'Instagram Profile',
     placeholder: 'https://instagram.com/company_official',
     badgeBg: 'linear-gradient(45deg, #f09433, #dc2743, #bc1888)',
-    badgeColor: '#ffffff',
+    badgeColor: 'var(--text-inverse)',
     icon: <Instagram size={18} />,
   },
   twitter: {
     name: 'X (Twitter)',
     placeholder: 'https://x.com/company_official',
     badgeBg: '#09090b',
-    badgeColor: '#ffffff',
+    badgeColor: 'var(--text-inverse)',
     icon: <TwitterXIcon size={16} />,
   },
   facebook: {
     name: 'Facebook Page',
     placeholder: 'https://facebook.com/company_page',
     badgeBg: '#1877F2',
-    badgeColor: '#ffffff',
+    badgeColor: 'var(--text-inverse)',
     icon: <Facebook size={18} />,
   },
   whatsapp: {
     name: 'WhatsApp Channel / Group',
     placeholder: 'https://chat.whatsapp.com/... or https://wa.me/91...',
     badgeBg: '#25D366',
-    badgeColor: '#ffffff',
+    badgeColor: 'var(--text-inverse)',
     icon: <WhatsAppIcon size={18} />,
   },
   telegram: {
     name: 'Telegram Channel',
     placeholder: 'https://t.me/company_channel',
     badgeBg: '#229ED9',
-    badgeColor: '#ffffff',
+    badgeColor: 'var(--text-inverse)',
     icon: <TelegramIcon size={18} />,
   },
   linkedin: {
     name: 'LinkedIn Page',
     placeholder: 'https://linkedin.com/company/...',
     badgeBg: '#0A66C2',
-    badgeColor: '#ffffff',
+    badgeColor: 'var(--text-inverse)',
     icon: <Linkedin size={18} />,
   },
   website: {
     name: 'Official Website',
     placeholder: 'https://www.company.com',
-    badgeBg: '#4f46e5',
-    badgeColor: '#ffffff',
+    badgeBg: 'var(--accent)',
+    badgeColor: 'var(--text-inverse)',
     icon: <Globe size={18} />,
   },
   custom: {
     name: 'Custom Social Link',
     placeholder: 'https://...',
-    badgeBg: '#0284c7',
-    badgeColor: '#ffffff',
+    badgeBg: 'var(--info)',
+    badgeColor: 'var(--text-inverse)',
     icon: <Share2 size={18} />,
   },
 };
@@ -236,244 +221,62 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
   const configuredCount = links.filter((l) => l.url?.trim()).length;
 
   return (
-    <div className="page-body admin-social-page" style={{ padding: '24px 32px', maxWidth: 1280, margin: '0 auto' }}>
-      {/* Page Header */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 40,
-                height: 40,
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                color: '#2563eb',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 2px 6px rgba(37, 99, 235, 0.15)',
-              }}
-            >
-              <Share2 size={22} />
-            </div>
-            <div>
-              <h1 style={{ fontSize: 22, fontWeight: 700, margin: 0, color: '#0f172a' }}>
-                Manage Social Media Links
-              </h1>
-              <p style={{ margin: 0, fontSize: 13, color: '#64748b' }}>
-                Configure company social channels displayed on the member dashboard directly below the slider.
-              </p>
-            </div>
-          </div>
-        </div>
+    <div className="page-body admin-social-page">
+      <PageHeader
+        title={
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            Social Links
+            <Badge tone={activeCount ? 'success' : 'neutral'} size="lg">{activeCount} live</Badge>
+          </span>
+        }
+        subtitle={`Company channels shown on the home page below the slider. ${configuredCount} of ${links.length} platforms have a link.`}
+        actions={
+          <>
+            <button type="button" onClick={fetchLinks} disabled={loading} className="btn btn-secondary">
+              <RefreshCw size={16} className={loading ? 'spin-anim' : ''} />
+              <span>Reload</span>
+            </button>
+            <button type="button" onClick={() => setShowAddModal(true)} className="btn btn-secondary">
+              <Plus size={16} />
+              <span>Add link</span>
+            </button>
+            <button type="button" onClick={handleSaveAll} disabled={saving} className="btn btn-primary">
+              <Save size={16} />
+              <span>{saving ? 'Saving…' : 'Save all'}</span>
+            </button>
+          </>
+        }
+      />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <button
-            type="button"
-            onClick={fetchLinks}
-            disabled={loading}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 16px',
-              borderRadius: 8,
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#334155',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <RefreshCw size={14} className={loading ? 'spin-anim' : ''} />
-            <span>Reload</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setShowAddModal(true)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 16px',
-              borderRadius: 8,
-              border: '1px solid #e2e8f0',
-              background: '#f8fafc',
-              color: '#0f172a',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <Plus size={16} />
-            <span>Add Link</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleSaveAll}
-            disabled={saving}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 20px',
-              borderRadius: 8,
-              border: 'none',
-              background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-              color: '#ffffff',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: saving ? 'not-allowed' : 'pointer',
-              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
-              opacity: saving ? 0.7 : 1,
-            }}
-          >
-            <Save size={15} />
-            <span>{saving ? 'Saving...' : 'Save All Changes'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Feedback Toast */}
       {feedback && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '12px 16px',
-            borderRadius: 10,
-            marginBottom: 20,
-            fontSize: 13,
-            fontWeight: 500,
-            background: feedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
-            color: feedback.type === 'success' ? '#15803d' : '#b91c1c',
-            border: `1px solid ${feedback.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-          }}
-        >
-          {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span style={{ flex: 1 }}>{feedback.message}</span>
-          <button
-            type="button"
-            onClick={() => setFeedback(null)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              cursor: 'pointer',
-              color: 'inherit',
-              fontWeight: 700,
-            }}
-          >
-            ×
-          </button>
-        </div>
+        <Alert tone={feedback.type === 'success' ? 'success' : 'error'} onClose={() => setFeedback(null)}>
+          {feedback.message}
+        </Alert>
       )}
-
-      {/* Overview Stat Cards */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-          gap: 16,
-          marginBottom: 24,
-        }}
-      >
-        <div
-          style={{
-            background: '#ffffff',
-            padding: 16,
-            borderRadius: 12,
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          }}
-        >
-          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-            Live On Member Portal
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: '#16a34a', marginTop: 4 }}>
-            {activeCount} Platforms
-          </div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-            Active with valid URLs configured
-          </div>
-        </div>
-
-        <div
-          style={{
-            background: '#ffffff',
-            padding: 16,
-            borderRadius: 12,
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          }}
-        >
-          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-            Total Configured
-          </div>
-          <div style={{ fontSize: 24, fontWeight: 700, color: '#2563eb', marginTop: 4 }}>
-            {configuredCount} / {links.length}
-          </div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-            Platforms with links filled
-          </div>
-        </div>
-
-        <div
-          style={{
-            background: '#ffffff',
-            padding: 16,
-            borderRadius: 12,
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-          }}
-        >
-          <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, textTransform: 'uppercase' }}>
-            Dashboard Position
-          </div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', marginTop: 8 }}>
-            After Slider
-          </div>
-          <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
-            Positioned above Featured Products
-          </div>
-        </div>
-      </div>
 
       {/* Live Member Preview Strip */}
       <div
         style={{
-          background: 'linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%)',
-          borderRadius: 14,
+          background: 'var(--surface-subtle)',
+          borderRadius: 'var(--radius-lg)',
           padding: '20px 24px',
-          border: '1px solid #e2e8f0',
+          border: '1px solid var(--border-color)',
           marginBottom: 28,
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
-          <Eye size={16} color="#64748b" />
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#334155' }}>
+          <Eye size={16} color="var(--text-muted)" />
+          <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-body)' }}>
             Live Member View Preview (How it looks on Member Home)
           </span>
           <span
             style={{
               marginLeft: 'auto',
-              fontSize: 11,
-              color: '#059669',
-              background: '#dcfce7',
+              fontSize: 'var(--fs-xs)',
+              color: 'var(--success)',
+              background: 'var(--success-soft)',
               padding: '2px 8px',
-              borderRadius: 12,
+              borderRadius: 'var(--radius-lg)',
               fontWeight: 600,
             }}
           >
@@ -486,11 +289,11 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
             style={{
               padding: 24,
               textAlign: 'center',
-              color: '#94a3b8',
-              fontSize: 13,
-              background: '#ffffff',
-              borderRadius: 10,
-              border: '1px dashed #cbd5e1',
+              color: 'var(--text-light)',
+              fontSize: 'var(--fs-base)',
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px dashed var(--border-strong)',
             }}
           >
             No active social media links are currently visible. Enter a URL below and ensure the toggle is ON to display it to members.
@@ -515,9 +318,9 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                       alignItems: 'center',
                       gap: 12,
                       padding: '10px 14px',
-                      borderRadius: 12,
-                      background: '#ffffff',
-                      border: '1px solid #e2e8f0',
+                      borderRadius: 'var(--radius-lg)',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border-color)',
                       boxShadow: '0 2px 4px rgba(0,0,0,0.03)',
                     }}
                   >
@@ -525,7 +328,7 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                       style={{
                         width: 38,
                         height: 38,
-                        borderRadius: 10,
+                        borderRadius: 'var(--radius-md)',
                         background: meta.badgeBg,
                         color: meta.badgeColor,
                         display: 'flex',
@@ -538,9 +341,9 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div
                         style={{
-                          fontSize: 13,
+                          fontSize: 'var(--fs-base)',
                           fontWeight: 700,
-                          color: '#0f172a',
+                          color: 'var(--text-main)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -550,8 +353,8 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                       </div>
                       <div
                         style={{
-                          fontSize: 10,
-                          color: '#64748b',
+                          fontSize: 'var(--fs-2xs)',
+                          color: 'var(--text-muted)',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
@@ -560,7 +363,7 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                         {item.subtitle || 'Click to visit'}
                       </div>
                     </div>
-                    <ExternalLink size={13} color="#94a3b8" />
+                    <ExternalLink size={13} color="var(--text-light)" />
                   </div>
                 );
               })}
@@ -578,9 +381,9 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
             <div
               key={item._id}
               style={{
-                background: '#ffffff',
-                borderRadius: 14,
-                border: item.isActive && isUrlValid ? '1.5px solid #e2e8f0' : '1px solid #f1f5f9',
+                background: 'var(--surface)',
+                borderRadius: 'var(--radius-lg)',
+                border: item.isActive && isUrlValid ? '1.5px solid var(--border-color)' : '1px solid var(--border-light)',
                 boxShadow: '0 2px 5px rgba(0,0,0,0.03)',
                 padding: '18px 20px',
                 transition: 'border 0.2s ease',
@@ -595,7 +398,7 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                   gap: 12,
                   marginBottom: 16,
                   paddingBottom: 14,
-                  borderBottom: '1px solid #f1f5f9',
+                  borderBottom: '1px solid var(--border-light)',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -603,7 +406,7 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                     style={{
                       width: 42,
                       height: 42,
-                      borderRadius: 10,
+                      borderRadius: 'var(--radius-md)',
                       background: meta.badgeBg,
                       color: meta.badgeColor,
                       display: 'flex',
@@ -616,31 +419,31 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 15, fontWeight: 700, color: '#0f172a' }}>
+                      <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)' }}>
                         {meta.name}
                       </span>
                       {item.platform === 'custom' && (
                         <span
                           style={{
-                            fontSize: 10,
+                            fontSize: 'var(--fs-2xs)',
                             fontWeight: 700,
                             textTransform: 'uppercase',
-                            background: '#f1f5f9',
-                            color: '#475569',
+                            background: 'var(--surface-muted)',
+                            color: 'var(--text-secondary)',
                             padding: '2px 6px',
-                            borderRadius: 4,
+                            borderRadius: 'var(--radius-xs)',
                           }}
                         >
                           Custom
                         </span>
                       )}
                     </div>
-                    <span style={{ fontSize: 12, color: '#64748b' }}>
+                    <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                       {item.isActive
                         ? isUrlValid
-                          ? '✅ Active & Displayed on Member Portal'
-                          : '⚠️ Active but URL is empty (Hidden until URL entered)'
-                        : '⏸️ Deactivated (Hidden from Members)'}
+                          ? 'Shown on the home page'
+                          : 'Hidden until a URL is entered'
+                        : 'Disabled — hidden from members'}
                     </span>
                   </div>
                 </div>
@@ -656,13 +459,13 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: 6,
-                        fontSize: 12,
-                        color: '#2563eb',
+                        fontSize: 'var(--fs-sm)',
+                        color: 'var(--primary)',
                         fontWeight: 600,
                         textDecoration: 'none',
                         padding: '6px 12px',
-                        borderRadius: 6,
-                        background: '#eff6ff',
+                        borderRadius: 'var(--radius-sm)',
+                        background: 'var(--primary-light)',
                       }}
                     >
                       <ExternalLink size={13} />
@@ -676,7 +479,7 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
-                      fontSize: 13,
+                      fontSize: 'var(--fs-base)',
                       fontWeight: 600,
                       cursor: 'pointer',
                       userSelect: 'none',
@@ -690,10 +493,10 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                         width: 18,
                         height: 18,
                         cursor: 'pointer',
-                        accentColor: '#2563eb',
+                        accentColor: 'var(--primary)',
                       }}
                     />
-                    <span style={{ color: item.isActive ? '#15803d' : '#94a3b8' }}>
+                    <span style={{ color: item.isActive ? 'var(--success-hover)' : 'var(--text-light)' }}>
                       {item.isActive ? 'Active' : 'Disabled'}
                     </span>
                   </label>
@@ -707,7 +510,7 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                       style={{
                         background: 'transparent',
                         border: 'none',
-                        color: '#ef4444',
+                        color: 'var(--danger)',
                         cursor: 'pointer',
                         padding: 6,
                       }}
@@ -728,16 +531,9 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
               >
                 {/* URL Input */}
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#475569',
-                      marginBottom: 6,
-                    }}
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}
                   >
-                    Link URL <span style={{ color: '#ef4444' }}>*</span>
+                    Link URL <span style={{ color: 'var(--danger)' }}>*</span>
                   </label>
                   <input
                     type="url"
@@ -747,10 +543,10 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      color: '#0f172a',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-base)',
+                      color: 'var(--text-main)',
                       outline: 'none',
                       fontFamily: 'monospace',
                     }}
@@ -759,14 +555,7 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
 
                 {/* Display Title */}
                 <div>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#475569',
-                      marginBottom: 6,
-                    }}
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}
                   >
                     Title Label
                   </label>
@@ -778,10 +567,10 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      color: '#0f172a',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-base)',
+                      color: 'var(--text-main)',
                       outline: 'none',
                     }}
                   />
@@ -789,14 +578,7 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
 
                 {/* Subtitle / Description */}
                 <div>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#475569',
-                      marginBottom: 6,
-                    }}
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}
                   >
                     Subtitle / Action Hint
                   </label>
@@ -808,10 +590,10 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      color: '#0f172a',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-base)',
+                      color: 'var(--text-main)',
                       outline: 'none',
                     }}
                   />
@@ -819,14 +601,7 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
 
                 {/* Order */}
                 <div>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontSize: 12,
-                      fontWeight: 600,
-                      color: '#475569',
-                      marginBottom: 6,
-                    }}
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}
                   >
                     Display Sequence (Order)
                   </label>
@@ -839,10 +614,10 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                     style={{
                       width: '100%',
                       padding: '9px 12px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 13,
-                      color: '#0f172a',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-base)',
+                      color: 'var(--text-main)',
                       outline: 'none',
                     }}
                   />
@@ -862,8 +637,8 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
           background: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(8px)',
           padding: '14px 20px',
-          borderRadius: 14,
-          border: '1px solid #e2e8f0',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border-color)',
           boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
           display: 'flex',
           alignItems: 'center',
@@ -872,30 +647,15 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
           gap: 12,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#475569' }}>
-          <Sparkles size={16} color="#2563eb" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base)', color: 'var(--text-secondary)' }}>
+          <Sparkles size={16} color="var(--primary)" />
           <span>Click <strong>"Save All Changes"</strong> once you finish editing links.</span>
         </div>
 
         <button
           type="button"
           onClick={handleSaveAll}
-          disabled={saving}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '10px 24px',
-            borderRadius: 8,
-            border: 'none',
-            background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-            color: '#ffffff',
-            fontSize: 14,
-            fontWeight: 700,
-            cursor: saving ? 'not-allowed' : 'pointer',
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
-          }}
-        >
+          disabled={saving} className="btn btn-primary">
           <Save size={16} />
           <span>{saving ? 'Saving...' : 'Save All Changes'}</span>
         </button>
@@ -903,40 +663,16 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
 
       {/* Modal: Add New Social Link */}
       {showAddModal && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.6)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: 20,
-          }}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              borderRadius: 16,
-              padding: 24,
-              width: '100%',
-              maxWidth: 480,
-              boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-            }}
-          >
+        <div className="modal-backdrop">
+          <div className="modal modal-legacy" style={{ maxWidth: 480, padding: 24 }} role="dialog" aria-modal="true">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: '#0f172a' }}>
+              <h2 style={{ fontSize: 'var(--fs-xl)', fontWeight: 700, margin: 0, color: 'var(--text-main)' }}>
                 Add Social Channel
               </h2>
               <button
                 type="button"
                 onClick={() => setShowAddModal(false)}
-                style={{ background: 'transparent', border: 'none', fontSize: 20, cursor: 'pointer' }}
+                style={{ background: 'transparent', border: 'none', fontSize: 'var(--fs-2xl)', cursor: 'pointer' }}
               >
                 ×
               </button>
@@ -944,7 +680,7 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
 
             <form onSubmit={handleCreateCustom}>
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                   Platform Type
                 </label>
                 <select
@@ -953,10 +689,10 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 13,
-                    color: '#0f172a',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-strong)',
+                    fontSize: 'var(--fs-base)',
+                    color: 'var(--text-main)',
                   }}
                 >
                   <option value="youtube">YouTube</option>
@@ -972,8 +708,8 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
-                  Title <span style={{ color: '#ef4444' }}>*</span>
+                <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                  Title <span style={{ color: 'var(--danger)' }}>*</span>
                 </label>
                 <input
                   type="text"
@@ -984,15 +720,15 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 13,
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-strong)',
+                    fontSize: 'var(--fs-base)',
                   }}
                 />
               </div>
 
               <div style={{ marginBottom: 14 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                   Subtitle
                 </label>
                 <input
@@ -1003,16 +739,16 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 13,
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-strong)',
+                    fontSize: 'var(--fs-base)',
                   }}
                 />
               </div>
 
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#475569', marginBottom: 6 }}>
-                  Link URL <span style={{ color: '#ef4444' }}>*</span>
+                <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                  Link URL <span style={{ color: 'var(--danger)' }}>*</span>
                 </label>
                 <input
                   type="url"
@@ -1023,9 +759,9 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
                   style={{
                     width: '100%',
                     padding: '9px 12px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 13,
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-strong)',
+                    fontSize: 'var(--fs-base)',
                   }}
                 />
               </div>
@@ -1033,32 +769,12 @@ export const AdminSocialMediaPage: React.FC<AdminSocialMediaPageProps> = ({ toke
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
-                  style={{
-                    padding: '9px 16px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    fontSize: 13,
-                    cursor: 'pointer',
-                  }}
-                >
+                  onClick={() => setShowAddModal(false)} className="btn btn-secondary">
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
-                  style={{
-                    padding: '9px 20px',
-                    borderRadius: 8,
-                    border: 'none',
-                    background: '#2563eb',
-                    color: '#ffffff',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
+                  disabled={saving} className="btn btn-primary">
                   {saving ? 'Adding...' : 'Add Link'}
                 </button>
               </div>

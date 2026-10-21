@@ -42,36 +42,36 @@ export const NotificationList: React.FC<NotificationListProps> = ({
               width: '100%',
               textAlign: 'left',
               padding: '10px 12px',
-              background: isCapping ? (n.isRead ? '#fffbeb' : '#fef2f2') : (n.isRead ? '#f8fafc' : '#eff6ff'),
-              border: `1.5px solid ${isCapping ? (n.isRead ? '#fde68a' : '#fca5a5') : (n.isRead ? '#e2e8f0' : '#bfdbfe')}`,
-              borderRadius: '8px',
-              fontSize: '12px',
+              background: isCapping ? (n.isRead ? 'var(--warning-light)' : 'var(--danger-light)') : (n.isRead ? 'var(--surface-subtle)' : 'var(--primary-light)'),
+              border: `1.5px solid ${isCapping ? (n.isRead ? 'var(--warning-border)' : 'var(--danger-border)') : (n.isRead ? 'var(--border-color)' : 'var(--primary-border)')}`,
+              borderRadius: 'var(--radius-md)',
+              fontSize: 'var(--fs-sm)',
               cursor: 'pointer',
             }}
           >
-            <div style={{ fontWeight: 700, color: isCapping ? '#b91c1c' : '#0f172a', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontWeight: 700, color: isCapping ? 'var(--danger-hover)' : 'var(--text-main)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
               <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 {isCapping && <span aria-hidden="true">⚠️</span>}
                 <span>{n.title}</span>
               </span>
               {isCapping ? (
-                <span style={{ fontSize: '10px', fontWeight: 800, background: '#fee2e2', color: '#dc2626', padding: '1px 6px', borderRadius: '4px' }}>
+                <span style={{ fontSize: 'var(--fs-2xs)', fontWeight: 800, background: 'var(--danger-soft)', color: 'var(--danger)', padding: '1px 6px', borderRadius: 'var(--radius-xs)' }}>
                   UPGRADE
                 </span>
               ) : n.amount ? (
-                <span style={{ color: '#059669' }}>{isBV ? `${n.amount.toLocaleString('en-IN')} BV` : `₹${n.amount.toLocaleString()}`}</span>
+                <span style={{ color: 'var(--success)' }}>{isBV ? `${n.amount.toLocaleString('en-IN')} BV` : `₹${n.amount.toLocaleString()}`}</span>
               ) : null}
             </div>
-            <div style={{ color: '#475569', fontSize: '11px', marginTop: '3px', lineHeight: '1.4' }}>{n.message}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#94a3b8', fontSize: '10px', marginTop: '4px' }}>
+            <div style={{ color: 'var(--text-secondary)', fontSize: 'var(--fs-xs)', marginTop: '3px', lineHeight: '1.4' }}>{n.message}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-light)', fontSize: 'var(--fs-2xs)', marginTop: '4px' }}>
               <span>{n.createdAt ? new Date(n.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}</span>
-              {isCapping && <span style={{ color: '#dc2626', fontWeight: 700 }}>Upgrade Package →</span>}
+              {isCapping && <span style={{ color: 'var(--danger)', fontWeight: 700 }}>Upgrade Package →</span>}
             </div>
           </button>
         );
       })
     ) : (
-      <div style={{ textAlign: 'center', padding: '16px 0', color: '#94a3b8', fontSize: '12px' }}>
+      <div style={{ textAlign: 'center', padding: '16px 0', color: 'var(--text-light)', fontSize: 'var(--fs-sm)' }}>
         No recent notifications
       </div>
     )}

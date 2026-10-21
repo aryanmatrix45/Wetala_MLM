@@ -1,24 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Sliders,
-  Plus,
-  Search,
-  Edit3,
-  Trash2,
-  CheckCircle2,
-  RefreshCw,
-  Monitor,
-  Smartphone,
-  ExternalLink,
-  ArrowUp,
-  ArrowDown,
-  X,
-  Layers,
-  Check,
-  Copy,
-  AlertCircle,
-  Eye,
-} from 'lucide-react';
+import { AlertCircle, ArrowDown, ArrowUp, Check, CheckCircle2, Copy, Edit3, ExternalLink, Eye, Layers, Monitor, Plus, RefreshCw, Search, Sliders, Smartphone, Trash2, X } from 'lucide-react';
 import {
   api,
   getAssetUrl,
@@ -131,11 +112,11 @@ const SliderFormPreview: React.FC<{ src: string }> = ({ src }) => {
     <div
       style={{
         position: 'relative',
-        borderRadius: '10px',
+        borderRadius: 'var(--radius-md)',
         overflow: 'hidden',
         height: '180px',
-        background: '#0f172a',
-        border: '1px solid #cbd5e1',
+        background: 'var(--surface-inverse)',
+        border: '1px solid var(--border-strong)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -156,14 +137,14 @@ const SliderFormPreview: React.FC<{ src: string }> = ({ src }) => {
       )}
       {status === 'loading' && (
         <span
-          style={{ position: 'absolute', color: '#94a3b8', fontSize: '12px', display: 'flex', alignItems: 'center', gap: 6 }}
+          style={{ position: 'absolute', color: 'var(--text-light)', fontSize: 'var(--fs-sm)', display: 'flex', alignItems: 'center', gap: 6 }}
         >
           <RefreshCw size={13} className="spin-anim" /> Loading preview…
         </span>
       )}
       {status === 'error' && (
-        <div style={{ padding: '16px 20px', textAlign: 'center', color: '#e2e8f0', fontSize: '12.5px', lineHeight: 1.5 }}>
-          <strong style={{ display: 'block', color: '#fca5a5', marginBottom: 4 }}>Preview could not be loaded</strong>
+        <div style={{ padding: '16px 20px', textAlign: 'center', color: 'var(--border-color)', fontSize: 'var(--fs-sm)', lineHeight: 1.5 }}>
+          <strong style={{ display: 'block', color: 'var(--danger-border)', marginBottom: 4 }}>Preview could not be loaded</strong>
           {isDrive
             ? 'Make sure the Google Drive file is shared as "Anyone with the link" (Share → General access).'
             : 'Check that the link points directly to an image file (.jpg, .png, .webp).'}
@@ -606,26 +587,6 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
       {/* Top Header Banner */}
       <div className="welcome-header" style={{ marginBottom: '24px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #0284c7 100%)',
-                color: 'white',
-                padding: '3px 10px',
-                borderRadius: '20px',
-                fontSize: '11px',
-                fontWeight: 800,
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-              }}
-            >
-              SUPERADMIN MODULE
-            </span>
-            <span style={{ color: '#64748b', fontSize: '13px' }}>
-              Panchveda Wellness • Homepage Banner Slider Management
-            </span>
-          </div>
-
           <h1 className="page-title">Home Page Sliders</h1>
           <p className="page-subtitle">
             Configure desktop and mobile promotional banners, set redirect destinations, and reorder sliders in real-time.
@@ -636,7 +597,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
           <button
             type="button"
-            className="btn-secondary"
+            className="btn btn-secondary"
             onClick={fetchSliders}
             disabled={refreshing}
             title="Refresh Slider Data"
@@ -647,7 +608,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
 
           <button
             type="button"
-            className="btn-secondary"
+            className="btn btn-secondary"
             onClick={() => {
               setBulkFiles([]);
               setBulkUrls('');
@@ -661,7 +622,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
 
           <button
             type="button"
-            className="btn-primary"
+            className="btn btn-primary"
             onClick={openAddModal}
           >
             <Plus size={17} />
@@ -676,19 +637,19 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
           style={{
             padding: '12px 16px',
             marginBottom: '20px',
-            borderRadius: '10px',
+            borderRadius: 'var(--radius-md)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: feedback.type === 'success' ? '#ecfdf5' : '#fef2f2',
-            border: `1px solid ${feedback.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-            color: feedback.type === 'success' ? '#065f46' : '#991b1b',
+            background: feedback.type === 'success' ? 'var(--success-light)' : 'var(--danger-light)',
+            border: `1px solid ${feedback.type === 'success' ? 'var(--success-border)' : 'var(--danger-border)'}`,
+            color: feedback.type === 'success' ? 'var(--success-strong)' : 'var(--danger-strong)',
             boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {feedback.type === 'success' ? <CheckCircle2 size={18} color="#059669" /> : <AlertCircle size={18} color="#dc2626" />}
-            <span style={{ fontSize: '14px', fontWeight: 600 }}>{feedback.message}</span>
+            {feedback.type === 'success' ? <CheckCircle2 size={18} color="var(--success)" /> : <AlertCircle size={18} color="var(--danger)" />}
+            <span style={{ fontSize: 'var(--fs-md)', fontWeight: 600 }}>{feedback.message}</span>
           </div>
           <button
             onClick={() => setFeedback(null)}
@@ -709,7 +670,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
           <div className="kpi-content">
             <div className="kpi-label">Total Sliders</div>
             <div className="kpi-value">{metrics.total}</div>
-            <div className="kpi-trend-pill" style={{ background: '#eff6ff', color: '#2563eb' }}>
+            <div className="kpi-trend-pill" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
               <span>Across all devices</span>
             </div>
           </div>
@@ -723,7 +684,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
           <div className="kpi-content">
             <div className="kpi-label">Desktop (Parent)</div>
             <div className="kpi-value">{metrics.desktop}</div>
-            <div className="kpi-trend-pill" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
+            <div className="kpi-trend-pill" style={{ background: 'var(--accent-light)', color: 'var(--accent)' }}>
               <span>Wide Banner (16:9)</span>
             </div>
           </div>
@@ -737,7 +698,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
           <div className="kpi-content">
             <div className="kpi-label">Mobile (Child)</div>
             <div className="kpi-value">{metrics.mobile}</div>
-            <div className="kpi-trend-pill" style={{ background: '#ecfdf5', color: '#059669' }}>
+            <div className="kpi-trend-pill" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
               <span>Phone Optimized</span>
             </div>
           </div>
@@ -752,11 +713,11 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
             <div className="kpi-label">Published Live</div>
             <div className="kpi-value" style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
               {metrics.active}
-              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>
+              <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', fontWeight: 500 }}>
                 / {metrics.total}
               </span>
             </div>
-            <div className="kpi-trend-pill" style={{ background: '#fffbeb', color: '#b45309' }}>
+            <div className="kpi-trend-pill" style={{ background: 'var(--warning-light)', color: 'var(--warning-hover)' }}>
               <span>{metrics.inactive} in Draft</span>
             </div>
           </div>
@@ -764,7 +725,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
       </div>
 
       {/* Main Container Card: Search, Filter Tabs & Slider List */}
-      <div className="dashboard-card" style={{ padding: '24px', marginBottom: '30px' }}>
+      <div className="dashboard-card" style={{ marginBottom: 'var(--space-6)' }}>
         {/* Search & Filter Toolbar */}
         <div
           style={{
@@ -775,7 +736,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
             alignItems: 'center',
             marginBottom: '24px',
             paddingBottom: '18px',
-            borderBottom: '1px solid #f1f5f9',
+            borderBottom: '1px solid var(--border-light)',
           }}
         >
           {/* Filter Chips / Tabs */}
@@ -806,7 +767,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
             </button>
 
             {/* Divider */}
-            <div style={{ width: '1px', height: '24px', background: '#e2e8f0', margin: '0 4px' }} />
+            <div style={{ width: '1px', height: '24px', background: 'var(--surface-sunken)', margin: '0 4px' }} />
 
             {/* Status Filter Dropdown / Chips */}
             <select
@@ -814,12 +775,12 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
               onChange={(e) => setStatusFilter(e.target.value as any)}
               style={{
                 padding: '7px 12px',
-                borderRadius: '9999px',
-                border: '1px solid #cbd5e1',
-                fontSize: '13px',
+                borderRadius: 'var(--radius-full)',
+                border: '1px solid var(--border-strong)',
+                fontSize: 'var(--fs-base)',
                 fontWeight: 600,
-                color: '#334155',
-                background: '#ffffff',
+                color: 'var(--text-body)',
+                background: 'var(--surface)',
                 outline: 'none',
                 cursor: 'pointer',
               }}
@@ -835,7 +796,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
             <div style={{ position: 'relative', width: '100%' }}>
               <Search
                 size={16}
-                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', pointerEvents: 'none' }}
+                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)', pointerEvents: 'none' }}
               />
               <input
                 type="text"
@@ -845,12 +806,12 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 style={{
                   width: '100%',
                   padding: '9px 34px 9px 36px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '13px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  fontSize: 'var(--fs-base)',
                   outline: 'none',
-                  background: '#f8fafc',
-                  color: '#0f172a',
+                  background: 'var(--surface-subtle)',
+                  color: 'var(--text-main)',
                 }}
               />
               {search && (
@@ -864,7 +825,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: '#94a3b8',
+                    color: 'var(--text-light)',
                     cursor: 'pointer',
                     padding: 0,
                   }}
@@ -875,8 +836,8 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
             </div>
             <button
               type="submit"
-              className="btn-secondary"
-              style={{ padding: '8px 14px', height: '38px' }}
+              className="btn btn-secondary"
+              style={{ height: '38px' }}
             >
               Search
             </button>
@@ -885,12 +846,12 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
 
         {/* Loading State */}
         {loading ? (
-          <div style={{ textAlign: 'center', padding: '70px 20px', color: '#64748b' }}>
-            <div className="spin-anim" style={{ display: 'inline-block', marginBottom: '16px', color: '#1d72fe' }}>
+          <div style={{ textAlign: 'center', padding: '70px 20px', color: 'var(--text-muted)' }}>
+            <div className="spin-anim" style={{ display: 'inline-block', marginBottom: '16px', color: 'var(--primary)' }}>
               <RefreshCw size={32} />
             </div>
-            <h4 style={{ color: '#0f172a', fontSize: '16px', fontWeight: 600, margin: '0 0 6px 0' }}>Loading Sliders...</h4>
-            <p style={{ margin: 0, fontSize: '13px' }}>Fetching configuration from database</p>
+            <h4 style={{ color: 'var(--text-main)', fontSize: 'var(--fs-lg)', fontWeight: 600, margin: '0 0 6px 0' }}>Loading Sliders...</h4>
+            <p style={{ margin: 0, fontSize: 'var(--fs-base)' }}>Fetching configuration from database</p>
           </div>
         ) : sliders.length === 0 ? (
           /* Empty State */
@@ -898,9 +859,9 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
             style={{
               textAlign: 'center',
               padding: '60px 20px',
-              background: '#f8fafc',
-              borderRadius: '14px',
-              border: '1px dashed #cbd5e1',
+              background: 'var(--surface-subtle)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px dashed var(--border-strong)',
             }}
           >
             <div
@@ -908,34 +869,34 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 width: '64px',
                 height: '64px',
                 borderRadius: '50%',
-                background: '#eff6ff',
-                color: '#1d72fe',
+                background: 'var(--primary-light)',
+                color: 'var(--primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 margin: '0 auto 16px',
-                boxShadow: '0 4px 12px rgba(29, 114, 254, 0.15)',
+                boxShadow: 'none',
               }}
             >
               <Sliders size={28} />
             </div>
-            <h3 style={{ color: '#0f172a', fontSize: '18px', fontWeight: 700, margin: '0 0 8px 0' }}>
+            <h3 className="section-title" style={{ margin: '0 0 8px 0' }}>
               No Home Sliders Found
             </h3>
-            <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '440px', margin: '0 auto 24px', lineHeight: 1.6 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-md)', maxWidth: '440px', margin: '0 auto 24px', lineHeight: 1.6 }}>
               No sliders match your current filter settings. Upload promotional images for desktop and mobile displays to engage members.
             </p>
             <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
               <button
                 type="button"
-                className="btn-primary"
+                className="btn btn-primary"
                 onClick={openAddModal}
               >
                 <Plus size={16} /> Add Single Slider
               </button>
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn btn-secondary"
                 onClick={() => {
                   setBulkFiles([]);
                   setBulkUrls('');
@@ -985,7 +946,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                         transform: 'translate(-50%, -50%)',
                         background: 'rgba(15, 23, 42, 0.75)',
                         backdropFilter: 'blur(4px)',
-                        color: '#fff',
+                        color: 'var(--text-inverse)',
                         border: 'none',
                         borderRadius: '50%',
                         width: '40px',
@@ -1022,7 +983,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                             width: '6px',
                             height: '6px',
                             borderRadius: '50%',
-                            background: isActive ? '#34d399' : '#94a3b8',
+                            background: isActive ? 'var(--success)' : 'var(--text-light)',
                             display: 'inline-block',
                           }}
                         />
@@ -1039,7 +1000,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                   {/* Card Body */}
                   <div className="admin-slider-card-body">
                     <h3 className="admin-slider-card-title">
-                      {slider.title || <span style={{ color: '#94a3b8', fontStyle: 'italic', fontWeight: 400 }}>Untitled Banner</span>}
+                      {slider.title || <span style={{ color: 'var(--text-light)', fontStyle: 'italic', fontWeight: 400 }}>Untitled Banner</span>}
                     </h3>
 
                     {/* Link */}
@@ -1057,7 +1018,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                           <ExternalLink size={12} />
                         </a>
                       ) : (
-                        <span style={{ color: '#94a3b8', fontSize: '12px' }}>No redirect link configured</span>
+                        <span style={{ color: 'var(--text-light)', fontSize: 'var(--fs-sm)' }}>No redirect link configured</span>
                       )}
                     </div>
 
@@ -1067,13 +1028,13 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '6px',
+                        background: 'var(--surface-subtle)',
+                        border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-sm)',
                         padding: '4px 8px',
                         marginTop: '10px',
-                        fontSize: '11px',
-                        color: '#64748b',
+                        fontSize: 'var(--fs-xs)',
+                        color: 'var(--text-muted)',
                       }}
                     >
                       <span
@@ -1094,7 +1055,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                         style={{
                           background: 'none',
                           border: 'none',
-                          color: copiedId === id ? '#10b981' : '#64748b',
+                          color: copiedId === id ? 'var(--success)' : 'var(--text-muted)',
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
@@ -1125,7 +1086,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                         >
                           <ArrowDown size={14} />
                         </button>
-                        <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '4px', fontWeight: 600 }}>
+                        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginLeft: '4px', fontWeight: 600 }}>
                           #{slider.order || 1}
                         </span>
                       </div>
@@ -1163,32 +1124,10 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
       {/* ADD / EDIT SLIDER MODAL                                  */}
       {/* ======================================================== */}
       {isAddModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px',
-          }}
-          onClick={() => setIsAddModalOpen(false)}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              borderRadius: '16px',
-              maxWidth: '580px',
-              width: '100%',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              overflow: 'hidden',
-              border: '1px solid #e2e8f0',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="modal-backdrop"
+          onClick={() => setIsAddModalOpen(false)}>
+          <div className="modal modal-legacy" style={{ maxWidth: '580px' }}
+            onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             {/* Modal Header */}
             <div
               style={{
@@ -1196,15 +1135,15 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '20px 24px',
-                borderBottom: '1px solid #f1f5f9',
-                background: '#fafbfc',
+                borderBottom: '1px solid var(--border-light)',
+                background: 'var(--surface-subtle)',
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
+                <h3 className="section-title" style={{ margin: 0 }}>
                   {editingSlider ? 'Edit Slider' : 'Add New Slider'}
                 </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                <p style={{ margin: '2px 0 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
                   {editingSlider ? 'Update slide settings and redirect link' : 'Upload image or specify external banner link'}
                 </p>
               </div>
@@ -1214,10 +1153,10 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#64748b',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: '6px',
-                  borderRadius: '6px',
+                  borderRadius: 'var(--radius-sm)',
                 }}
               >
                 <X size={18} />
@@ -1229,12 +1168,12 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 {formError && (
                   <div
                     style={{
-                      background: '#fef2f2',
-                      border: '1px solid #fecaca',
-                      color: '#991b1b',
+                      background: 'var(--danger-light)',
+                      border: '1px solid var(--danger-border)',
+                      color: 'var(--danger-strong)',
                       padding: '10px 14px',
-                      borderRadius: '8px',
-                      fontSize: '13px',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 'var(--fs-base)',
                       marginBottom: '16px',
                     }}
                   >
@@ -1244,8 +1183,8 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
 
                 {/* Device Type Select Boxes */}
                 <div style={{ marginBottom: '18px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
-                    Target Device Type <span style={{ color: '#ef4444' }}>*</span>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                    Target Device Type <span style={{ color: 'var(--danger)' }}>*</span>
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div
@@ -1257,9 +1196,9 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                         style={{
                           width: '36px',
                           height: '36px',
-                          borderRadius: '8px',
-                          background: '#eff6ff',
-                          color: '#2563eb',
+                          borderRadius: 'var(--radius-md)',
+                          background: 'var(--primary-light)',
+                          color: 'var(--primary)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1268,8 +1207,8 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                         <Monitor size={18} />
                       </div>
                       <div>
-                        <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>Desktop (`parent`)</strong>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>Exactly 1920 x 480px (4:1 banner)</span>
+                        <strong style={{ fontSize: 'var(--fs-base)', color: 'var(--text-main)', display: 'block' }}>Desktop (`parent`)</strong>
+                        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Exactly 1920 x 480px (4:1 banner)</span>
                       </div>
                     </div>
 
@@ -1282,9 +1221,9 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                         style={{
                           width: '36px',
                           height: '36px',
-                          borderRadius: '8px',
-                          background: '#ecfdf5',
-                          color: '#059669',
+                          borderRadius: 'var(--radius-md)',
+                          background: 'var(--success-light)',
+                          color: 'var(--success)',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -1293,8 +1232,8 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                         <Smartphone size={18} />
                       </div>
                       <div>
-                        <strong style={{ fontSize: '13px', color: '#0f172a', display: 'block' }}>Mobile (`child`)</strong>
-                        <span style={{ fontSize: '11px', color: '#64748b' }}>Exactly 1080 x 540px (2:1 banner)</span>
+                        <strong style={{ fontSize: 'var(--fs-base)', color: 'var(--text-main)', display: 'block' }}>Mobile (`child`)</strong>
+                        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Exactly 1080 x 540px (2:1 banner)</span>
                       </div>
                     </div>
                   </div>
@@ -1302,7 +1241,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
 
                 {/* File Upload Dropzone */}
                 <div style={{ marginBottom: '18px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Upload Image File
                   </label>
                   <div
@@ -1316,10 +1255,10 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       }
                     }}
                     style={{
-                      border: '2px dashed #94a3b8',
-                      borderRadius: '12px',
+                      border: '2px dashed var(--text-light)',
+                      borderRadius: 'var(--radius-lg)',
                       padding: '24px 16px',
-                      background: '#f8fafc',
+                      background: 'var(--surface-subtle)',
                       transition: 'all 0.2s',
                     }}
                   >
@@ -1331,13 +1270,13 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       style={{ display: 'none' }}
                     />
                     <label htmlFor="single-slider-upload" style={{ cursor: 'pointer', textAlign: 'center', display: 'block' }}>
-                      <p style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
+                      <p style={{ margin: '0 0 6px 0', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)' }}>
                         {SLIDER_SPECS[formType].header}
                       </p>
-                      <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#2563eb', fontWeight: 600, textDecoration: 'underline' }}>
+                      <p style={{ margin: '0 0 10px 0', fontSize: 'var(--fs-base)', color: 'var(--primary)', fontWeight: 600, textDecoration: 'underline' }}>
                         {SLIDER_SPECS[formType].subHeader}
                       </p>
-                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 500 }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block', fontWeight: 500 }}>
                         {SLIDER_SPECS[formType].footnote}
                       </span>
                     </label>
@@ -1347,11 +1286,11 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 {/* Direct Image URL Field */}
                 <div style={{ marginBottom: '18px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>
-                      Or Direct Image URL <span style={{ color: '#64748b', fontWeight: 400 }}>(Optional if uploaded)</span>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                      Or Direct Image URL <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(Optional if uploaded)</span>
                     </label>
                     {isValidatingUrl && (
-                      <span style={{ fontSize: '12px', color: '#2563eb', display: 'flex', alignItems: 'center', gap: 4 }}>
+                      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: 4 }}>
                         <RefreshCw size={12} className="spin-anim" /> Checking size...
                       </span>
                     )}
@@ -1372,28 +1311,28 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       style={{
                         width: '100%',
                         padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-strong)',
+                        fontSize: 'var(--fs-base)',
                         outline: 'none',
                       }}
                     />
                     <button
                       type="button"
-                      className="btn-secondary"
+                      className="btn btn-secondary"
                       onClick={() => validateCurrentUrl(formImageUrl, formType)}
                       disabled={isValidatingUrl || !formImageUrl || formImageUrl.startsWith('data:')}
-                      style={{ padding: '8px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                      style={{ padding: '8px 14px', fontSize: 'var(--fs-sm)', whiteSpace: 'nowrap' }}
                     >
                       Check Size
                     </button>
                   </div>
-                  <span style={{ fontSize: '11px', color: '#64748b', display: 'block', marginTop: '4px' }}>
+                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
                     Paste a direct image link or Google Drive link. Must be exactly {SLIDER_SPECS[formType].width} x {SLIDER_SPECS[formType].height}px.
                   </span>
 
                   {dimensionNotice && (
-                    <div style={{ marginTop: '8px', padding: '6px 12px', background: '#ecfdf5', border: '1px solid #a7f3d0', borderRadius: '6px', color: '#047857', fontSize: '12px', fontWeight: 600 }}>
+                    <div style={{ marginTop: '8px', padding: '6px 12px', background: 'var(--success-light)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-sm)', color: 'var(--success-hover)', fontSize: 'var(--fs-sm)', fontWeight: 600 }}>
                       {dimensionNotice}
                     </div>
                   )}
@@ -1402,7 +1341,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 {/* Live Image Preview */}
                 {formImageUrl && (
                   <div style={{ marginBottom: '18px' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Image Preview
                     </label>
                     <SliderFormPreview src={getAssetUrl(formImageUrl.trim())} />
@@ -1411,7 +1350,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
 
                 {/* Title Input */}
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Banner Title / Headline
                   </label>
                   <input
@@ -1422,9 +1361,9 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-base)',
                       outline: 'none',
                     }}
                   />
@@ -1432,7 +1371,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
 
                 {/* Redirect Link Input */}
                 <div style={{ marginBottom: '18px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Target Redirect Link
                   </label>
                   <input
@@ -1443,9 +1382,9 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-base)',
                       outline: 'none',
                     }}
                   />
@@ -1454,7 +1393,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 {/* Order & Status Row */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Display Order #
                     </label>
                     <input
@@ -1465,16 +1404,16 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       style={{
                         width: '100%',
                         padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-strong)',
+                        fontSize: 'var(--fs-base)',
                         outline: 'none',
                       }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Publish Status
                     </label>
                     <select
@@ -1483,11 +1422,11 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       style={{
                         width: '100%',
                         padding: '10px 12px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-strong)',
+                        fontSize: 'var(--fs-base)',
                         outline: 'none',
-                        background: '#ffffff',
+                        background: 'var(--surface)',
                       }}
                     >
                       <option value="active">Active (Visible)</option>
@@ -1504,20 +1443,20 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                   justifyContent: 'flex-end',
                   gap: '12px',
                   padding: '16px 24px',
-                  borderTop: '1px solid #f1f5f9',
-                  background: '#fafbfc',
+                  borderTop: '1px solid var(--border-light)',
+                  background: 'var(--surface-subtle)',
                 }}
               >
                 <button
                   type="button"
-                  className="btn-secondary"
+                  className="btn btn-secondary"
                   onClick={() => setIsAddModalOpen(false)}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary"
+                  className="btn btn-primary"
                   disabled={formSubmitting}
                 >
                   {formSubmitting ? 'Saving...' : editingSlider ? 'Save Changes' : 'Create Slider'}
@@ -1532,47 +1471,25 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
       {/* BULK UPLOAD MODAL                                        */}
       {/* ======================================================== */}
       {isBulkModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(6px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 9999,
-            padding: '20px',
-          }}
-          onClick={() => setIsBulkModalOpen(false)}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              borderRadius: '16px',
-              maxWidth: '560px',
-              width: '100%',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              overflow: 'hidden',
-              border: '1px solid #e2e8f0',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
+        <div className="modal-backdrop"
+          onClick={() => setIsBulkModalOpen(false)}>
+          <div className="modal modal-legacy" style={{ maxWidth: '560px' }}
+            onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
             <div
               style={{
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
                 padding: '20px 24px',
-                borderBottom: '1px solid #f1f5f9',
-                background: '#fafbfc',
+                borderBottom: '1px solid var(--border-light)',
+                background: 'var(--surface-subtle)',
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#0f172a' }}>
+                <h3 className="section-title" style={{ margin: 0 }}>
                   Bulk Upload Sliders
                 </h3>
-                <p style={{ margin: '2px 0 0 0', fontSize: '13px', color: '#64748b' }}>
+                <p style={{ margin: '2px 0 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
                   Upload multiple image files or paste image URLs to create sliders in batch
                 </p>
               </div>
@@ -1582,7 +1499,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 style={{
                   background: 'none',
                   border: 'none',
-                  color: '#64748b',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: '6px',
                 }}
@@ -1596,12 +1513,12 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 {bulkError && (
                   <div
                     style={{
-                      background: '#fef2f2',
-                      border: '1px solid #fecaca',
-                      color: '#991b1b',
+                      background: 'var(--danger-light)',
+                      border: '1px solid var(--danger-border)',
+                      color: 'var(--danger-strong)',
                       padding: '10px 14px',
-                      borderRadius: '8px',
-                      fontSize: '13px',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 'var(--fs-base)',
                       marginBottom: '16px',
                     }}
                   >
@@ -1611,7 +1528,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
 
                 {/* Target Device Type */}
                 <div style={{ marginBottom: '18px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Device Type for this Batch
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -1620,9 +1537,9 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       onClick={() => setBulkType('parent')}
                       style={{ cursor: 'pointer' }}
                     >
-                      <Monitor size={18} color="#2563eb" />
+                      <Monitor size={18} color="var(--primary)" />
                       <div>
-                        <strong style={{ fontSize: '13px', color: '#0f172a' }}>Desktop (`parent`)</strong>
+                        <strong style={{ fontSize: 'var(--fs-base)', color: 'var(--text-main)' }}>Desktop (`parent`)</strong>
                       </div>
                     </div>
                     <div
@@ -1630,9 +1547,9 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       onClick={() => setBulkType('child')}
                       style={{ cursor: 'pointer' }}
                     >
-                      <Smartphone size={18} color="#059669" />
+                      <Smartphone size={18} color="var(--success)" />
                       <div>
-                        <strong style={{ fontSize: '13px', color: '#0f172a' }}>Mobile (`child`)</strong>
+                        <strong style={{ fontSize: 'var(--fs-base)', color: 'var(--text-main)' }}>Mobile (`child`)</strong>
                       </div>
                     </div>
                   </div>
@@ -1640,7 +1557,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
 
                 {/* Multiple File Upload */}
                 <div style={{ marginBottom: '18px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Select Image Files
                   </label>
                   <div
@@ -1654,10 +1571,10 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       }
                     }}
                     style={{
-                      border: '2px dashed #94a3b8',
-                      borderRadius: '12px',
+                      border: '2px dashed var(--text-light)',
+                      borderRadius: 'var(--radius-lg)',
                       padding: '24px 16px',
-                      background: '#f8fafc',
+                      background: 'var(--surface-subtle)',
                       transition: 'all 0.2s',
                     }}
                   >
@@ -1670,13 +1587,13 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                       style={{ display: 'none' }}
                     />
                     <label htmlFor="bulk-files-input" style={{ cursor: 'pointer', textAlign: 'center', display: 'block' }}>
-                      <p style={{ margin: '0 0 6px 0', fontSize: '15px', fontWeight: 700, color: '#0f172a' }}>
+                      <p style={{ margin: '0 0 6px 0', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)' }}>
                         Drag & Drop your {bulkType === 'parent' ? 'desktop' : 'mobile'} slider images here
                       </p>
-                      <p style={{ margin: '0 0 10px 0', fontSize: '13px', color: '#2563eb', fontWeight: 600, textDecoration: 'underline' }}>
+                      <p style={{ margin: '0 0 10px 0', fontSize: 'var(--fs-base)', color: 'var(--primary)', fontWeight: 600, textDecoration: 'underline' }}>
                         or click to browse
                       </p>
-                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 500 }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block', fontWeight: 500 }}>
                         {SLIDER_SPECS[bulkType].footnote}
                       </span>
                     </label>
@@ -1700,7 +1617,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
 
                 {/* Multiple URLs Textarea */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Or Paste Multiple Image URLs (One URL per line)
                   </label>
                   <textarea
@@ -1711,9 +1628,9 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                     style={{
                       width: '100%',
                       padding: '10px 12px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-base)',
                       outline: 'none',
                       fontFamily: 'monospace',
                       resize: 'vertical',
@@ -1728,20 +1645,20 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                   justifyContent: 'flex-end',
                   gap: '12px',
                   padding: '16px 24px',
-                  borderTop: '1px solid #f1f5f9',
-                  background: '#fafbfc',
+                  borderTop: '1px solid var(--border-light)',
+                  background: 'var(--surface-subtle)',
                 }}
               >
                 <button
                   type="button"
-                  className="btn-secondary"
+                  className="btn btn-secondary"
                   onClick={() => setIsBulkModalOpen(false)}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="btn-primary"
+                  className="btn btn-primary"
                   disabled={bulkSubmitting}
                 >
                   {bulkSubmitting ? 'Uploading Batch...' : 'Upload All Sliders'}
@@ -1779,7 +1696,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 right: '0',
                 background: 'rgba(255,255,255,0.2)',
                 border: 'none',
-                color: '#fff',
+                color: 'var(--text-inverse)',
                 borderRadius: '50%',
                 width: '32px',
                 height: '32px',
@@ -1802,7 +1719,7 @@ export const AdminSlidersPage: React.FC<AdminSlidersPageProps> = ({ token: propT
                 width: '100%',
                 maxHeight: '85vh',
                 objectFit: 'contain',
-                borderRadius: '12px',
+                borderRadius: 'var(--radius-lg)',
                 boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
               }}
             />

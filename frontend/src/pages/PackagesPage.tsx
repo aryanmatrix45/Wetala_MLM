@@ -1,28 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Package, 
-  CheckCircle2, 
-  Coins, 
-  Edit3, 
-  Plus, 
-  X, 
-  AlertCircle, 
-  Share2, 
-  Trash2, 
-  Table as TableIcon, 
-  LayoutGrid, 
-  Search, 
-  ShieldAlert, 
-  Sparkles, 
-  Shield, 
-  TrendingUp, 
-  ArrowRight,
-  Landmark,
-  QrCode,
-  Clock,
-  Send,
-  CreditCard
-} from 'lucide-react';
+import { Alert, EmptyState, LoadingState, PageHeader, SegmentedControl } from '../components/ui';
+import { ArrowRight, CheckCircle2, Clock, Coins, CreditCard, Edit3, Landmark, LayoutGrid, Package, Plus, QrCode, Search, Send, Share2, Shield, ShieldAlert, Sparkles, TableIcon, Trash2, TrendingUp, X } from 'lucide-react';
 import { api, newRequestKey, type PackageItem, type PaymentMethod } from '../services/api';
 import { PaymentMethodPicker } from '../components/PaymentMethodPicker';
 
@@ -36,9 +14,9 @@ interface PackagesPageProps {
 const TIER_THEMES = [
   {
     badge: 'STARTER',
-    accent: '#2563eb', // Brand Blue
-    lightBg: '#eff6ff',
-    borderAccent: '#bfdbfe',
+    accent: 'var(--primary)', // Brand Blue
+    lightBg: 'var(--primary-light)',
+    borderAccent: 'var(--primary-border)',
     popular: false,
     perks: [
       '1,250 Business Volume (BV) allocated',
@@ -50,9 +28,9 @@ const TIER_THEMES = [
   },
   {
     badge: 'EXECUTIVE',
-    accent: '#10b981', // Emerald
-    lightBg: '#ecfdf5',
-    borderAccent: '#a7f3d0',
+    accent: 'var(--success)', // Emerald
+    lightBg: 'var(--success-light)',
+    borderAccent: 'var(--success-border)',
     popular: true,
     perks: [
       '2,500 Business Volume (BV) allocated',
@@ -64,9 +42,9 @@ const TIER_THEMES = [
   },
   {
     badge: 'PROFESSIONAL',
-    accent: '#8b5cf6', // Violet
-    lightBg: '#f5f3ff',
-    borderAccent: '#ddd6fe',
+    accent: 'var(--accent)', // Violet
+    lightBg: 'var(--accent-light)',
+    borderAccent: 'var(--accent-border)',
     popular: false,
     perks: [
       '5,000 Business Volume (BV) allocated',
@@ -78,9 +56,9 @@ const TIER_THEMES = [
   },
   {
     badge: 'ELITE VIP',
-    accent: '#f59e0b', // Amber/Gold
-    lightBg: '#fffbeb',
-    borderAccent: '#fde68a',
+    accent: 'var(--warning)', // Amber/Gold
+    lightBg: 'var(--warning-light)',
+    borderAccent: 'var(--warning-border)',
     popular: false,
     perks: [
       '10,000 Business Volume (BV) allocated',
@@ -448,138 +426,43 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
   return (
     <div className="page-body">
-      {/* Top Header */}
-      <div className="welcome-header" style={{ marginBottom: '24px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span style={{ 
-              background: 'linear-gradient(135deg, #10b981 0%, #0284c7 100%)', 
-              color: 'white', 
-              padding: '3px 10px', 
-              borderRadius: '20px', 
-              fontSize: '11px', 
-              fontWeight: 800,
-              letterSpacing: '0.5px',
-              textTransform: 'uppercase'
-            }}>
-              {isAdmin ? 'ADMIN CONTROL' : 'PANCHVEDA WELLNESS'}
-            </span>
-            <span style={{ color: '#64748b', fontSize: '13px' }}>
-              {isAdmin ? 'Manage joining packages & compensation rules' : 'Choose your joining package • Grow together'}
-            </span>
-          </div>
-
-          <h1 className="page-title">
-            {isAdmin ? 'Joining Packages Management' : 'Joining Packages & Business Volume (BV)'}
-          </h1>
-
-          <p className="page-subtitle">
-            {isAdmin 
-              ? 'Add new packages, configure prices, BV, RP, daily payout caps, customize feature perks, and toggle active status.' 
-              : 'Select your preferred joining package to activate binary earnings, reward points, and daily binary capping limits.'}
-          </p>
-        </div>
-
-        {/* Admin toolbar */}
-        {isAdmin && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* View Mode Toggle */}
-            <div style={{ 
-              display: 'flex', 
-              background: '#f1f5f9', 
-              padding: '4px', 
-              borderRadius: '10px',
-              border: '1px solid #e2e8f0'
-            }}>
-              <button
-                onClick={() => setAdminViewMode('table')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: adminViewMode === 'table' ? 'white' : 'transparent',
-                  color: adminViewMode === 'table' ? '#0f172a' : '#64748b',
-                  fontWeight: 700,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  boxShadow: adminViewMode === 'table' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <TableIcon size={14} />
-                <span>Table View</span>
+      <PageHeader
+        title={isAdmin ? 'Packages' : 'Joining Packages'}
+        subtitle={
+          isAdmin
+            ? 'Prices, BV, reward points, daily caps, features and availability for joining packages.'
+            : 'Choose a joining package to activate binary earnings, reward points and your daily capping limit.'
+        }
+        actions={
+          isAdmin && (
+            <>
+              <SegmentedControl
+                ariaLabel="View"
+                value={adminViewMode}
+                onChange={(v) => setAdminViewMode(v as typeof adminViewMode)}
+                options={[
+                  { value: 'table', label: 'Table', icon: <TableIcon size={14} /> },
+                  { value: 'cards', label: 'Cards', icon: <LayoutGrid size={14} /> },
+                ]}
+              />
+              <button type="button" onClick={openCreateModal} className="btn btn-primary">
+                <Plus size={16} />
+                <span>New package</span>
               </button>
-
-              <button
-                onClick={() => setAdminViewMode('cards')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '6px 12px',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: adminViewMode === 'cards' ? 'white' : 'transparent',
-                  color: adminViewMode === 'cards' ? '#0f172a' : '#64748b',
-                  fontWeight: 700,
-                  fontSize: '12px',
-                  cursor: 'pointer',
-                  boxShadow: adminViewMode === 'cards' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <LayoutGrid size={14} />
-                <span>Cards View</span>
-              </button>
-            </div>
-
-            <button 
-              onClick={openCreateModal}
-              className="primary-btn"
-              style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-            >
-              <Plus size={18} />
-              <span>Create New Package</span>
-            </button>
-          </div>
-        )}
-      </div>
+            </>
+          )
+        }
+      />
 
       {/* Alert Notifications */}
+      {/* Alert Notifications */}
       {feedback && (
-        <div style={{
-          padding: '14px 18px',
-          borderRadius: '12px',
-          marginBottom: '22px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          background: feedback.type === 'success' ? '#f0fdf4' : '#fef2f2',
-          border: `1px solid ${feedback.type === 'success' ? '#bbf7d0' : '#fecaca'}`,
-          color: feedback.type === 'success' ? '#166534' : '#991b1b',
-          fontSize: '14px',
-          fontWeight: 600,
-        }}>
-          {feedback.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
-          <span>{feedback.message}</span>
-          <button 
-            onClick={() => setFeedback(null)} 
-            style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
-          >
-            <X size={16} />
-          </button>
-        </div>
+        <Alert tone={feedback.type === 'success' ? 'success' : 'error'} onClose={() => setFeedback(null)}>{feedback.message}</Alert>
       )}
 
       {/* Loading state */}
       {loading && (
-        <div style={{ padding: '60px 0', textAlign: 'center' }}>
-          <div style={{ width: '38px', height: '38px', border: '3px solid #e2e8f0', borderTopColor: '#1d72fe', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
-          <p style={{ color: '#64748b', fontSize: '14px' }}>Loading packages...</p>
-        </div>
+        <LoadingState label="Loading packages…" />
       )}
 
       {/* ADMIN TABLE VIEW */}
@@ -588,7 +471,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
           {/* Table Toolbar */}
           <div style={{ 
             padding: '16px 20px', 
-            borderBottom: '1px solid #f1f5f9', 
+            borderBottom: '1px solid var(--border-light)', 
             display: 'flex', 
             justifyContent: 'space-between', 
             alignItems: 'center',
@@ -596,7 +479,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
             gap: '12px'
           }}>
             <div style={{ position: 'relative', width: '280px' }}>
-              <Search size={16} color="#94a3b8" style={{ position: 'absolute', left: '12px', top: '10px' }} />
+              <Search size={16} color="var(--text-light)" style={{ position: 'absolute', left: '12px', top: '10px' }} />
               <input
                 type="text"
                 placeholder="Search packages by name, tier, BV..."
@@ -605,43 +488,54 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 style={{
                   width: '100%',
                   padding: '8px 12px 8px 36px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '13px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  fontSize: 'var(--fs-base)',
                 }}
               />
             </div>
 
-            <div style={{ fontSize: '13px', color: '#64748b' }}>
+            <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
               Showing <strong>{filteredPackages.length}</strong> package(s)
             </div>
           </div>
 
           {/* Table */}
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          <div className="table-responsive">
+            <table className="data-table">
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569', fontWeight: 700 }}>
-                  <th style={{ padding: '14px 18px' }}>Tier #</th>
-                  <th style={{ padding: '14px 18px' }}>Package Name & Version</th>
-                  <th style={{ padding: '14px 18px' }}>Joining Price</th>
-                  <th style={{ padding: '14px 18px' }}>Business Volume (BV)</th>
-                  <th style={{ padding: '14px 18px' }}>Reward Points (RP)</th>
-                  <th style={{ padding: '14px 18px' }}>Daily Capping</th>
-                  <th style={{ padding: '14px 18px' }}>Features</th>
-                  <th style={{ padding: '14px 18px' }}>Status</th>
-                  <th style={{ padding: '14px 18px', textAlign: 'right' }}>Actions</th>
+                <tr>
+                  <th>Tier #</th>
+                  <th>Package Name & Version</th>
+                  <th>Joining Price</th>
+                  <th>Business Volume (BV)</th>
+                  <th>Reward Points (RP)</th>
+                  <th>Daily Capping</th>
+                  <th>Features</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
+                {filteredPackages.length === 0 && (
+                  <tr>
+                    <td colSpan={9}>
+                      <EmptyState
+                        icon={<Package size={22} />}
+                        title={packages.length ? 'No matching packages' : 'No packages yet'}
+                        text={packages.length ? 'Try a different search.' : 'Create the first joining package to make it available to members.'}
+                      />
+                    </td>
+                  </tr>
+                )}
                 {filteredPackages.map((pkg, idx) => {
                   const theme = TIER_THEMES[idx % TIER_THEMES.length];
                   const badgeText = pkg.badge || theme.badge;
                   const perksCount = Array.isArray(pkg.features) ? pkg.features.length : theme.perks.length;
 
                   return (
-                    <tr key={pkg.packageId} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s ease' }}>
-                      <td style={{ padding: '16px 18px' }}>
+                    <tr key={pkg.packageId} style={{ transition: 'background 0.15s ease' }}>
+                      <td>
                         <div style={{
                           width: '32px',
                           height: '32px',
@@ -658,25 +552,25 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                         </div>
                       </td>
 
-                      <td style={{ padding: '16px 18px' }}>
+                      <td>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <strong style={{ fontSize: '14px', color: '#0f172a' }}>{pkg.name}</strong>
+                          <strong style={{ fontSize: 'var(--fs-md)', color: 'var(--text-main)' }}>{pkg.name}</strong>
                           <span style={{
-                            fontSize: '10px',
+                            fontSize: 'var(--fs-2xs)',
                             fontWeight: 800,
                             color: theme.accent,
                             background: theme.lightBg,
                             padding: '1px 6px',
-                            borderRadius: '4px'
+                            borderRadius: 'var(--radius-xs)'
                           }}>
                             {badgeText}
                           </span>
                         </div>
-                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>ID: {pkg.packageId}</span>
+                        <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-light)' }}>ID: {pkg.packageId}</span>
                         {pkg.description && (
                           <div style={{
-                            fontSize: '11.5px',
-                            color: '#64748b',
+                            fontSize: 'var(--fs-sm)',
+                            color: 'var(--text-muted)',
                             marginTop: '2px',
                             maxWidth: '220px',
                             overflow: 'hidden',
@@ -688,66 +582,66 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                         )}
                       </td>
 
-                      <td style={{ padding: '16px 18px' }}>
-                        <strong style={{ fontSize: '15px', color: '#0f172a' }}>₹ {pkg.price.toLocaleString()}</strong>
+                      <td>
+                        <strong style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-main)' }}>₹ {pkg.price.toLocaleString()}</strong>
                       </td>
 
-                      <td style={{ padding: '16px 18px' }}>
+                      <td>
                         <span style={{
-                          background: '#eff6ff',
-                          color: '#2563eb',
+                          background: 'var(--primary-light)',
+                          color: 'var(--primary)',
                           padding: '4px 10px',
-                          borderRadius: '6px',
+                          borderRadius: 'var(--radius-sm)',
                           fontWeight: 800,
-                          fontSize: '12px'
+                          fontSize: 'var(--fs-sm)'
                         }}>
                           {pkg.bv.toLocaleString()} BV
                         </span>
                       </td>
 
-                      <td style={{ padding: '16px 18px' }}>
+                      <td>
                         <span style={{
-                          background: '#fffbeb',
-                          color: '#d97706',
+                          background: 'var(--warning-light)',
+                          color: 'var(--warning)',
                           padding: '4px 10px',
-                          borderRadius: '6px',
+                          borderRadius: 'var(--radius-sm)',
                           fontWeight: 800,
-                          fontSize: '12px'
+                          fontSize: 'var(--fs-sm)'
                         }}>
                           {pkg.rp ?? 0} RP
                         </span>
                       </td>
 
-                      <td style={{ padding: '16px 18px' }}>
-                        <span style={{ color: '#0f172a', fontWeight: 800, fontSize: '13px' }}>
+                      <td>
+                        <span style={{ color: 'var(--text-main)', fontWeight: 800, fontSize: 'var(--fs-base)' }}>
                           ₹ {(pkg.dailyCapping ?? 4000).toLocaleString()}
                         </span>
                       </td>
 
-                      <td style={{ padding: '16px 18px' }}>
+                      <td>
                         <span style={{
-                          fontSize: '12px',
-                          color: '#475569',
-                          background: '#f1f5f9',
+                          fontSize: 'var(--fs-sm)',
+                          color: 'var(--text-secondary)',
+                          background: 'var(--surface-muted)',
                           padding: '3px 8px',
-                          borderRadius: '6px',
+                          borderRadius: 'var(--radius-sm)',
                           fontWeight: 600
                         }}>
                           {perksCount} perk(s)
                         </span>
                       </td>
 
-                      <td style={{ padding: '16px 18px' }}>
+                      <td>
                         <button
                           onClick={() => handleToggleStatus(pkg)}
                           title="Click to toggle status"
                           style={{
-                            background: pkg.isActive ? '#ecfdf5' : '#f1f5f9',
-                            color: pkg.isActive ? '#059669' : '#64748b',
-                            border: `1px solid ${pkg.isActive ? '#a7f3d0' : '#cbd5e1'}`,
+                            background: pkg.isActive ? 'var(--success-light)' : 'var(--surface-muted)',
+                            color: pkg.isActive ? 'var(--success)' : 'var(--text-muted)',
+                            border: `1px solid ${pkg.isActive ? 'var(--success-border)' : 'var(--border-strong)'}`,
                             padding: '3px 10px',
-                            borderRadius: '12px',
-                            fontSize: '11px',
+                            borderRadius: 'var(--radius-lg)',
+                            fontSize: 'var(--fs-xs)',
                             fontWeight: 800,
                             cursor: 'pointer',
                           }}
@@ -756,32 +650,18 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                         </button>
                       </td>
 
-                      <td style={{ padding: '16px 18px', textAlign: 'right' }}>
+                      <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: '8px' }}>
                           <button
                             onClick={() => openEditModal(pkg)}
-                            className="outline-btn"
-                            style={{ padding: '6px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                            className="btn btn-secondary btn-sm"
                           >
                             <Edit3 size={14} />
                             <span>Edit</span>
                           </button>
 
                           <button
-                            onClick={() => setDeletingPkg(pkg)}
-                            style={{
-                              background: '#fef2f2',
-                              color: '#dc2626',
-                              border: '1px solid #fecaca',
-                              padding: '6px 10px',
-                              borderRadius: '8px',
-                              fontSize: '12px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              cursor: 'pointer',
-                            }}
-                          >
+                            onClick={() => setDeletingPkg(pkg)} className="btn btn-danger-outline btn-sm">
                             <Trash2 size={14} />
                             <span>Delete</span>
                           </button>
@@ -799,8 +679,8 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
       {/* Member Active Package Overview Banner */}
       {!loading && !isAdmin && userCurrentPkg && (
         <div style={{
-          background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-          borderRadius: '16px',
+          background: 'var(--surface-inverse)',
+          borderRadius: 'var(--radius-lg)',
           padding: '20px 24px',
           marginBottom: '28px',
           color: 'white',
@@ -816,10 +696,10 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
             <div style={{
               width: '46px',
               height: '46px',
-              borderRadius: '12px',
+              borderRadius: 'var(--radius-lg)',
               background: 'rgba(16, 185, 129, 0.15)',
               border: '1px solid rgba(16, 185, 129, 0.3)',
-              color: '#34d399',
+              color: 'var(--success)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -829,31 +709,31 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                <span style={{ fontSize: '11px', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>
+                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-light)', textTransform: 'uppercase', letterSpacing: '0.6px', fontWeight: 700 }}>
                   Active Membership Tier
                 </span>
-                <span style={{ background: '#10b981', color: 'white', fontSize: '10px', fontWeight: 800, padding: '2px 8px', borderRadius: '12px' }}>
+                <span style={{ background: 'var(--success)', color: 'white', fontSize: 'var(--fs-2xs)', fontWeight: 800, padding: '2px 8px', borderRadius: 'var(--radius-lg)' }}>
                   ACTIVE
                 </span>
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'white', margin: 0 }}>
-                {userCurrentPkg.name} <span style={{ color: '#38bdf8', fontSize: '14px', fontWeight: 700 }}>({userCurrentPkg.badge || 'STARTER'})</span>
+              <h3 style={{ fontSize: 'var(--fs-xl)', fontWeight: 800, color: 'white', margin: 0 }}>
+                {userCurrentPkg.name} <span style={{ color: 'var(--info)', fontSize: 'var(--fs-md)', fontWeight: 700 }}>({userCurrentPkg.badge || 'STARTER'})</span>
               </h3>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Daily Binary Cap</span>
-              <strong style={{ fontSize: '14px', color: '#f8fafc' }}>₹ {(userCurrentPkg.dailyCapping ?? 4000).toLocaleString()} / Day</strong>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Daily Binary Cap</span>
+              <strong style={{ fontSize: 'var(--fs-md)', color: 'var(--surface-subtle)' }}>₹ {(userCurrentPkg.dailyCapping ?? 4000).toLocaleString()} / Day</strong>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Active Volume</span>
-              <strong style={{ fontSize: '14px', color: '#60a5fa' }}>{userCurrentPkg.bv.toLocaleString()} BV</strong>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Active Volume</span>
+              <strong style={{ fontSize: 'var(--fs-md)', color: 'var(--primary-muted)' }}>{userCurrentPkg.bv.toLocaleString()} BV</strong>
             </div>
-            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.08)' }}>
-              <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Reward Points</span>
-              <strong style={{ fontSize: '14px', color: '#fbbf24' }}>{userCurrentPkg.rp ?? 1} RP</strong>
+            <div style={{ background: 'rgba(255,255,255,0.05)', padding: '8px 14px', borderRadius: 'var(--radius-md)', border: '1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-light)', display: 'block', textTransform: 'uppercase', fontWeight: 700 }}>Reward Points</span>
+              <strong style={{ fontSize: 'var(--fs-md)', color: 'var(--warning-muted)' }}>{userCurrentPkg.rp ?? 1} RP</strong>
             </div>
           </div>
         </div>
@@ -863,96 +743,100 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
       {!loading && !isAdmin && activePackageRequest && (
         <div style={{ marginBottom: '28px' }}>
           {activePackageRequest.approvalStage === 'REQUESTED' && (
-            <div style={{ background: '#fef3c7', border: '1px solid #fde68a', borderRadius: '16px', padding: '18px 22px', boxShadow: '0 4px 12px rgba(245, 158, 11, 0.08)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#92400e', fontWeight: 800, fontSize: '16px', marginBottom: '6px' }}>
+            <div style={{ background: 'var(--warning-soft)', border: '1px solid var(--warning-border)', borderRadius: 'var(--radius-lg)', padding: '18px 22px', boxShadow: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--warning-strong)', fontWeight: 800, fontSize: 'var(--fs-lg)', marginBottom: '6px' }}>
                 <Clock size={20} />
                 Package Request Pending Super Admin Approval
               </div>
-              <p style={{ margin: 0, fontSize: '13px', color: '#b45309', lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: 'var(--warning-hover)', lineHeight: 1.5 }}>
                 You have requested <strong>{activePackageRequest.items[0]?.name}</strong> (Order #{activePackageRequest.purchaseId}) for <strong>₹{activePackageRequest.totalAmount.toLocaleString()}</strong> ({activePackageRequest.totalBV.toLocaleString()} BV). Super Admin will review your request and send company bank details, UPI ID, and QR code to complete payment.
               </p>
             </div>
           )}
 
           {activePackageRequest.approvalStage === 'PAYMENT_INSTRUCTIONS_SENT' && (
-            <div style={{ background: '#ffffff', border: '2px solid #0284c7', borderRadius: '18px', padding: '24px', boxShadow: '0 8px 30px rgba(2, 132, 199, 0.12)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px' }}>
+            <div style={{ background: 'var(--surface)', border: '2px solid var(--info)', borderRadius: 'var(--radius-lg)', padding: '24px', boxShadow: '0 8px 30px rgba(2, 132, 199, 0.12)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '16px', borderBottom: '1px solid var(--border-color)', paddingBottom: '14px' }}>
                 <div>
-                  <span style={{ background: '#0284c7', color: 'white', padding: '3px 10px', borderRadius: '12px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                  <span style={{ background: 'var(--info)', color: 'white', padding: '3px 10px', borderRadius: 'var(--radius-lg)', fontSize: 'var(--fs-xs)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                     ACTION REQUIRED • STEP 2: MAKE PAYMENT
                   </span>
-                  <h3 style={{ margin: '8px 0 0 0', fontSize: '19px', fontWeight: 800, color: '#0f172a' }}>
+                  <h3 className="section-title" style={{ margin: '8px 0 0 0' }}>
                     Payment Instructions for {activePackageRequest.items[0]?.name}
                   </h3>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Total Amount to Pay</div>
-                  <div style={{ fontSize: '20px', fontWeight: 900, color: '#059669' }}>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Total Amount to Pay</div>
+                  <div style={{ fontSize: 'var(--fs-2xl)', fontWeight: 900, color: 'var(--success)' }}>
                     ₹ {activePackageRequest.totalAmount.toLocaleString()}{' '}
-                    <span style={{ fontSize: '13px', color: '#0284c7', fontWeight: 700 }}>({activePackageRequest.totalBV.toLocaleString()} BV)</span>
+                    <span style={{ fontSize: 'var(--fs-base)', color: 'var(--info)', fontWeight: 700 }}>({activePackageRequest.totalBV.toLocaleString()} BV)</span>
                   </div>
                 </div>
               </div>
 
               {/* Admin Note */}
               {activePackageRequest.adminMessage && (
-                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '12px 16px', marginBottom: '18px', fontSize: '13px', color: '#0369a1', lineHeight: 1.5 }}>
+                <div style={{ background: 'var(--info-light)', border: '1px solid var(--info-border)', borderRadius: 'var(--radius-md)', padding: '12px 16px', marginBottom: '18px', fontSize: 'var(--fs-base)', color: 'var(--info-strong)', lineHeight: 1.5 }}>
                   <strong style={{ display: 'block', marginBottom: '2px' }}>Super Admin Message:</strong>
                   {activePackageRequest.adminMessage}
                 </div>
               )}
 
               {/* Company Account Snapshot Cards */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '22px' }}>
-                {/* Bank Card */}
-                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px' }}>
-                  <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-                    <Landmark size={18} className="text-sky-600" />
-                    Company Bank Account Details
-                  </div>
-                  <div style={{ fontSize: '13px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div><span style={{ color: '#64748b' }}>Bank Name:</span> <strong>{activePackageRequest.companyAccountSnapshot?.bankName || 'State Bank of India'}</strong></div>
-                    <div><span style={{ color: '#64748b' }}>A/C Holder:</span> <strong>{activePackageRequest.companyAccountSnapshot?.accountHolderName || 'Panchveda Wellness Pvt Ltd'}</strong></div>
-                    <div><span style={{ color: '#64748b' }}>Account No:</span> <strong style={{ color: '#0284c7', fontSize: '14px', letterSpacing: '0.5px' }}>{activePackageRequest.companyAccountSnapshot?.accountNumber || '9876543210123'}</strong></div>
-                    <div><span style={{ color: '#64748b' }}>IFSC Code:</span> <strong style={{ letterSpacing: '0.5px' }}>{activePackageRequest.companyAccountSnapshot?.ifscCode || 'SBIN0001234'}</strong></div>
-                    <div><span style={{ color: '#64748b' }}>Branch:</span> {activePackageRequest.companyAccountSnapshot?.branchName || 'Main Branch'}</div>
-                  </div>
-                </div>
-
-                {/* UPI & QR Card */}
-                <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px', display: 'flex', gap: '14px', alignItems: 'center' }}>
-                  {activePackageRequest.companyAccountSnapshot?.qrCodeUrl && (
-                    <img
-                      src={activePackageRequest.companyAccountSnapshot.qrCodeUrl}
-                      alt="Company Payment QR"
-                      style={{ width: '96px', height: '96px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', flexShrink: 0 }}
-                    />
-                  )}
-                  <div style={{ fontSize: '13px', color: '#334155', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <QrCode size={18} className="text-purple-600" />
-                      Company UPI ID & QR Code
+              {(() => {
+                const acct = activePackageRequest.companyAccountSnapshot;
+                const val = (v?: string) => v || <span style={{ color: 'var(--text-light)', fontWeight: 500 }}>Not configured</span>;
+                return (
+                  <div className="stat-panel-grid">
+                    <div className="stat-panel is-muted">
+                      <div className="icon-text" style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: 'var(--space-2)' }}>
+                        <Landmark size={16} /> Company bank account
+                      </div>
+                      <div className="detail-list">
+                        <div className="detail-row"><span>Bank</span><span>{val(acct?.bankName)}</span></div>
+                        <div className="detail-row"><span>Account holder</span><span>{acct?.accountHolderName || 'Panchveda Wellness Pvt Ltd'}</span></div>
+                        <div className="detail-row"><span>Account no.</span><span className="text-mono">{val(acct?.accountNumber)}</span></div>
+                        <div className="detail-row"><span>IFSC</span><span className="text-mono">{val(acct?.ifscCode)}</span></div>
+                        <div className="detail-row"><span>Branch</span><span>{val(acct?.branchName)}</span></div>
+                      </div>
                     </div>
-                    <div><span style={{ color: '#64748b' }}>UPI Handle:</span> <strong style={{ color: '#7e22ce', fontSize: '14px' }}>{activePackageRequest.companyAccountSnapshot?.upiId || 'panchveda@sbi'}</strong></div>
-                    <div><span style={{ color: '#64748b' }}>Payee Name:</span> {activePackageRequest.companyAccountSnapshot?.upiHolderName || 'Panchveda Wellness'}</div>
-                    <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Scan using GPay, PhonePe, Paytm, or BHIM.</div>
+
+                    <div className="stat-panel is-muted" style={{ display: 'flex', gap: 'var(--space-4)', alignItems: 'center' }}>
+                      {acct?.qrCodeUrl && (
+                        <img
+                          src={acct.qrCodeUrl}
+                          alt="Company payment QR code"
+                          style={{ width: 96, height: 96, objectFit: 'contain', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', background: 'var(--surface)', flexShrink: 0 }}
+                        />
+                      )}
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div className="icon-text" style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: 'var(--space-2)' }}>
+                          <QrCode size={16} /> Company UPI
+                        </div>
+                        <div className="detail-list">
+                          <div className="detail-row"><span>UPI ID</span><span className="text-mono">{val(acct?.upiId)}</span></div>
+                          <div className="detail-row"><span>Payee</span><span>{acct?.upiHolderName || 'Panchveda Wellness'}</span></div>
+                        </div>
+                        <div className="form-hint" style={{ marginTop: 'var(--space-2)' }}>Pay with GPay, PhonePe, Paytm or BHIM.</div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                );
+              })()}
 
               {/* Payment Proof Submission Form */}
-              <form onSubmit={handleSubmitPayment} style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '14px', padding: '20px' }}>
-                <h4 style={{ margin: '0 0 12px 0', fontSize: '15px', fontWeight: 800, color: '#581c87', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <form onSubmit={handleSubmitPayment} style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-lg)', padding: '20px' }}>
+                <h4 style={{ margin: '0 0 12px 0', fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--accent-strong)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <CreditCard size={18} />
                   Submit Your Payment Proof & UTR Reference
                 </h4>
-                <p style={{ margin: '0 0 14px 0', fontSize: '12px', color: '#6b21a8' }}>
+                <p style={{ margin: '0 0 14px 0', fontSize: 'var(--fs-sm)', color: 'var(--accent-strong)' }}>
                   After completing the transfer, enter the transaction UTR number and the sender name below. Super Admin will verify and activate your package immediately.
                 </p>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '16px' }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#4c1d95', marginBottom: '4px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Bank UTR / Transaction ID *
                     </label>
                     <input
@@ -961,12 +845,12 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       placeholder="e.g. 423456789012 or UPI Ref"
                       value={paymentForm.utrNumber}
                       onChange={(e) => setPaymentForm({ ...paymentForm, utrNumber: e.target.value })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #c084fc', fontSize: '13px', background: '#fff' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--accent-border)', fontSize: 'var(--fs-base)', background: 'var(--surface)' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#4c1d95', marginBottom: '4px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Payer Full Name *
                     </label>
                     <input
@@ -975,18 +859,18 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       placeholder="Name on bank / UPI account"
                       value={paymentForm.payerName}
                       onChange={(e) => setPaymentForm({ ...paymentForm, payerName: e.target.value })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #c084fc', fontSize: '13px', background: '#fff' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--accent-border)', fontSize: 'var(--fs-base)', background: 'var(--surface)' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#4c1d95', marginBottom: '4px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Payment Mode
                     </label>
                     <select
                       value={paymentForm.paymentMode}
                       onChange={(e) => setPaymentForm({ ...paymentForm, paymentMode: e.target.value })}
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #c084fc', fontSize: '13px', background: '#fff' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--accent-border)', fontSize: 'var(--fs-base)', background: 'var(--surface)' }}
                     >
                       <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
                       <option value="IMPS">IMPS Instant Bank Transfer</option>
@@ -1004,15 +888,15 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '8px',
-                    background: '#7c3aed',
-                    color: '#fff',
+                    background: 'var(--accent)',
+                    color: 'var(--text-inverse)',
                     border: 'none',
                     padding: '12px 24px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-md)',
                     fontWeight: 700,
-                    fontSize: '13px',
+                    fontSize: 'var(--fs-base)',
                     cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(124, 58, 237, 0.3)',
+                    boxShadow: 'none',
                   }}
                 >
                   <CheckCircle2 size={16} />
@@ -1023,12 +907,12 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
           )}
 
           {activePackageRequest.approvalStage === 'PAYMENT_SUBMITTED' && (
-            <div style={{ background: '#faf5ff', border: '1px solid #d8b4fe', borderRadius: '16px', padding: '18px 22px', boxShadow: '0 4px 12px rgba(168, 85, 247, 0.08)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: '#6b21a8', fontWeight: 800, fontSize: '16px', marginBottom: '6px' }}>
+            <div style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-lg)', padding: '18px 22px', boxShadow: 'none' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--accent-strong)', fontWeight: 800, fontSize: 'var(--fs-lg)', marginBottom: '6px' }}>
                 <Clock size={20} />
                 Payment Verification in Progress
               </div>
-              <p style={{ margin: 0, fontSize: '13px', color: '#581c87', lineHeight: 1.5 }}>
+              <p style={{ margin: 0, fontSize: 'var(--fs-base)', color: 'var(--accent-strong)', lineHeight: 1.5 }}>
                 {activePackageRequest.paymentMethod === 'BV_WALLET' ? (
                   <>
                     You paid <strong>{(activePackageRequest.bvAmount || 0).toLocaleString('en-IN')} BV</strong> from your BV Wallet for <strong>{activePackageRequest.items[0]?.name}</strong> (ref <strong>{activePackageRequest.bvTransactionId}</strong>). The Super Admin is verifying the order. Upon approval, your package and business volume will be activated; if it is rejected, the BV returns to your wallet.
@@ -1045,6 +929,12 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
       )}
 
       {/* MODERN EXECUTIVE CARDS VIEW */}
+      {!loading && (!isAdmin || adminViewMode === 'cards') && packages.length === 0 && (
+        <div className="card">
+          <EmptyState icon={<Package size={22} />} title="No packages available" text={isAdmin ? 'Create the first joining package.' : 'Joining packages will appear here once they are published.'} />
+        </div>
+      )}
+
       {!loading && (!isAdmin || adminViewMode === 'cards') && (
         <div style={{
           display: 'grid',
@@ -1079,15 +969,15 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   display: 'flex',
                   flexDirection: 'column',
                   padding: '24px',
-                  borderRadius: '20px',
+                  borderRadius: 'var(--radius-xl)',
                   background: 'white',
                   border: isCurrent 
-                    ? '2px solid #10b981' 
+                    ? '2px solid var(--success)' 
                     : isUpgrade
-                      ? '1px solid #bfdbfe'
+                      ? '1px solid var(--primary-border)'
                       : isPopular 
-                        ? '2px solid #2563eb' 
-                        : '1px solid #e2e8f0',
+                        ? '2px solid var(--primary)' 
+                        : '1px solid var(--border-color)',
                   boxShadow: isCurrent
                     ? '0 12px 28px -4px rgba(16, 185, 129, 0.16)'
                     : isPopular 
@@ -1102,17 +992,17 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     position: 'absolute',
                     top: '-12px',
                     right: '24px',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                    background: 'var(--success)',
                     color: 'white',
-                    fontSize: '10px',
+                    fontSize: 'var(--fs-2xs)',
                     fontWeight: 800,
                     padding: '3px 12px',
-                    borderRadius: '9999px',
+                    borderRadius: 'var(--radius-full)',
                     letterSpacing: '0.8px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    boxShadow: '0 4px 10px rgba(16, 185, 129, 0.35)'
+                    boxShadow: 'none'
                   }}>
                     <CheckCircle2 size={12} />
                     <span>CURRENT ACTIVE PLAN</span>
@@ -1123,13 +1013,13 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     top: '-12px',
                     right: '24px',
                     background: isPopular 
-                      ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' 
-                      : 'linear-gradient(135deg, #7c3aed 0%, #6366f1 100%)',
+                      ? 'var(--primary)' 
+                      : 'var(--accent)',
                     color: 'white',
-                    fontSize: '10px',
+                    fontSize: 'var(--fs-2xs)',
                     fontWeight: 800,
                     padding: '3px 12px',
-                    borderRadius: '9999px',
+                    borderRadius: 'var(--radius-full)',
                     letterSpacing: '0.8px',
                     display: 'flex',
                     alignItems: 'center',
@@ -1146,17 +1036,17 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     position: 'absolute',
                     top: '-12px',
                     right: '24px',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                    background: 'var(--primary)',
                     color: 'white',
-                    fontSize: '10px',
+                    fontSize: 'var(--fs-2xs)',
                     fontWeight: 800,
                     padding: '3px 12px',
-                    borderRadius: '9999px',
+                    borderRadius: 'var(--radius-full)',
                     letterSpacing: '0.8px',
                     display: 'flex',
                     alignItems: 'center',
                     gap: '4px',
-                    boxShadow: '0 4px 10px rgba(37, 99, 235, 0.35)'
+                    boxShadow: 'none'
                   }}>
                     <Sparkles size={12} />
                     <span>MOST POPULAR</span>
@@ -1168,14 +1058,14 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   <div style={{
                     width: '48px',
                     height: '48px',
-                    borderRadius: '14px',
+                    borderRadius: 'var(--radius-lg)',
                     background: theme.lightBg,
                     color: theme.accent,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     border: `1px solid ${theme.borderAccent}`,
-                    fontSize: '20px',
+                    fontSize: 'var(--fs-2xl)',
                     fontWeight: 900,
                     fontFamily: 'var(--font-display, sans-serif)',
                     flexShrink: 0
@@ -1185,17 +1075,17 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>
+                      <h3 className="section-title">
                         {pkg.name}
                       </h3>
                     </div>
                     <span style={{
-                      fontSize: '11px',
+                      fontSize: 'var(--fs-xs)',
                       fontWeight: 800,
                       color: theme.accent,
                       background: theme.lightBg,
                       padding: '2px 8px',
-                      borderRadius: '6px',
+                      borderRadius: 'var(--radius-sm)',
                       letterSpacing: '0.5px'
                     }}>
                       {badgeText}
@@ -1207,19 +1097,19 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 <div style={{ 
                   margin: '4px 0 18px', 
                   paddingBottom: '16px', 
-                  borderBottom: '1px solid #f1f5f9' 
+                  borderBottom: '1px solid var(--border-light)' 
                 }}>
                   <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                     <span style={{ 
                       fontFamily: 'var(--font-display, sans-serif)', 
                       fontSize: '32px', 
                       fontWeight: 900, 
-                      color: '#0f172a',
+                      color: 'var(--text-main)',
                       letterSpacing: '-0.5px'
                     }}>
                       ₹ {pkg.price.toLocaleString()}
                     </span>
-                    <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+                    <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', fontWeight: 600 }}>
                       / one-time
                     </span>
                   </div>
@@ -1230,11 +1120,11 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '5px',
-                      background: '#ecfdf5',
-                      color: '#059669',
+                      background: 'var(--success-light)',
+                      color: 'var(--success)',
                       padding: '3px 8px',
-                      borderRadius: '6px',
-                      fontSize: '11px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: 'var(--fs-xs)',
                       fontWeight: 700,
                       marginTop: '8px',
                     }}>
@@ -1248,11 +1138,11 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '5px',
-                      background: '#eff6ff',
-                      color: '#2563eb',
+                      background: 'var(--primary-light)',
+                      color: 'var(--primary)',
                       padding: '3px 8px',
-                      borderRadius: '6px',
-                      fontSize: '11px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: 'var(--fs-xs)',
                       fontWeight: 700,
                       marginTop: '8px',
                     }}>
@@ -1271,9 +1161,9 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 }}>
                   {/* BV Box */}
                   <div style={{
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '12px',
+                    background: 'var(--surface-subtle)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-lg)',
                     padding: '10px 12px',
                     display: 'flex',
                     alignItems: 'center',
@@ -1282,9 +1172,9 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     <div style={{
                       width: '30px',
                       height: '30px',
-                      borderRadius: '8px',
-                      background: '#eff6ff',
-                      color: '#2563eb',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--primary-light)',
+                      color: 'var(--primary)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1293,8 +1183,8 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       <Share2 size={16} />
                     </div>
                     <div>
-                      <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Volume</div>
-                      <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
+                      <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Volume</div>
+                      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 800, color: 'var(--text-main)' }}>
                         {pkg.bv.toLocaleString()} BV
                       </div>
                     </div>
@@ -1302,9 +1192,9 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
                   {/* RP Box */}
                   <div style={{
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '12px',
+                    background: 'var(--surface-subtle)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: 'var(--radius-lg)',
                     padding: '10px 12px',
                     display: 'flex',
                     alignItems: 'center',
@@ -1313,9 +1203,9 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     <div style={{
                       width: '30px',
                       height: '30px',
-                      borderRadius: '8px',
-                      background: '#fffbeb',
-                      color: '#d97706',
+                      borderRadius: 'var(--radius-md)',
+                      background: 'var(--warning-light)',
+                      color: 'var(--warning)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1324,8 +1214,8 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       <Coins size={16} />
                     </div>
                     <div>
-                      <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Rewards</div>
-                      <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
+                      <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Rewards</div>
+                      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 800, color: 'var(--text-main)' }}>
                         {pkg.rp ?? 0} RP
                       </div>
                     </div>
@@ -1334,9 +1224,9 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
                 {/* Daily Capping Bar */}
                 <div style={{
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '12px',
+                  background: 'var(--surface-subtle)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
                   padding: '10px 14px',
                   display: 'flex',
                   alignItems: 'center',
@@ -1344,10 +1234,10 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   marginBottom: pkg.description ? '12px' : '20px'
                 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Shield size={16} color="#0284c7" />
-                    <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>Daily Binary Cap:</span>
+                    <Shield size={16} color="var(--info)" />
+                    <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontWeight: 600 }}>Daily Binary Cap:</span>
                   </div>
-                  <strong style={{ fontSize: '13px', color: '#0f172a' }}>
+                  <strong style={{ fontSize: 'var(--fs-base)', color: 'var(--text-main)' }}>
                     ₹ {(pkg.dailyCapping ?? 4000).toLocaleString()} / Day
                   </strong>
                 </div>
@@ -1355,11 +1245,11 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 {/* Package Description */}
                 {pkg.description && (
                   <div style={{
-                    fontSize: '12px',
-                    color: '#475569',
-                    background: '#f8fafc',
+                    fontSize: 'var(--fs-sm)',
+                    color: 'var(--text-secondary)',
+                    background: 'var(--surface-subtle)',
                     padding: '8px 12px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-md)',
                     borderLeft: `3px solid ${theme.accent}`,
                     marginBottom: '18px',
                     lineHeight: '1.45',
@@ -1371,8 +1261,8 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 {/* Dynamic Features List */}
                 <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
                   {perksList.map((perk, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: '12.5px', color: '#475569' }}>
-                      <CheckCircle2 size={16} color="#10b981" style={{ flexShrink: 0, marginTop: '1px' }} />
+                    <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
+                      <CheckCircle2 size={16} color="var(--success)" style={{ flexShrink: 0, marginTop: '1px' }} />
                       <span>{perk}</span>
                     </div>
                   ))}
@@ -1384,24 +1274,15 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <button
                         onClick={() => openEditModal(pkg)}
-                        className="outline-btn"
-                        style={{ flex: 1, justifyContent: 'center', fontSize: '13px' }}
+                        className="btn btn-secondary"
+                        style={{ flex: 1 }}
                       >
                         <Edit3 size={15} />
                         <span>Edit Rules</span>
                       </button>
                       <button
-                        onClick={() => setDeletingPkg(pkg)}
-                        style={{
-                          background: '#fef2f2',
-                          color: '#dc2626',
-                          border: '1px solid #fecaca',
-                          borderRadius: '8px',
-                          padding: '8px 12px',
-                          cursor: 'pointer',
-                        }}
-                        title="Delete package"
-                      >
+                        onClick={() => setDeletingPkg(pkg)} className="btn btn-danger-outline"
+                        title="Delete package">
                         <Trash2 size={16} />
                       </button>
                     </div>
@@ -1414,14 +1295,14 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                         fontWeight: 800,
                         padding: '12px',
                         cursor: 'default',
-                        background: '#ecfdf5',
-                        color: '#059669',
-                        border: '1.5px solid #a7f3d0',
-                        borderRadius: '12px',
+                        background: 'var(--success-light)',
+                        color: 'var(--success)',
+                        border: '1.5px solid var(--success-border)',
+                        borderRadius: 'var(--radius-lg)',
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
-                        fontSize: '13px',
+                        fontSize: 'var(--fs-base)',
                       }}
                     >
                       <CheckCircle2 size={16} />
@@ -1430,23 +1311,8 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   ) : isUpgrade ? (
                     <button
                       onClick={() => setBuyingPkg(pkg)}
-                      className="primary-btn"
-                      style={{
-                        width: '100%',
-                        justifyContent: 'center',
-                        fontWeight: 800,
-                        padding: '12px',
-                        cursor: 'pointer',
-                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '12px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        fontSize: '13px',
-                        boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
-                      }}
+                      className="btn btn-primary"
+                      style={{ width: '100%' }}
                     >
                       <TrendingUp size={16} />
                       <span>Upgrade to {pkg.name}</span>
@@ -1454,32 +1320,16 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   ) : isLowerTier ? (
                     <button
                       disabled
-                      className="outline-btn"
-                      style={{
-                        width: '100%',
-                        justifyContent: 'center',
-                        fontWeight: 600,
-                        padding: '12px',
-                        cursor: 'not-allowed',
-                        background: '#f8fafc',
-                        color: '#94a3b8',
-                        borderColor: '#e2e8f0',
-                        fontSize: '12px',
-                      }}
+                      className="btn btn-secondary btn-sm"
+                      style={{ width: '100%' }}
                     >
                       <span>Included in Current Plan</span>
                     </button>
                   ) : (
                     <button
                       onClick={() => setBuyingPkg(pkg)}
-                      className="primary-btn"
-                      style={{
-                        width: '100%',
-                        justifyContent: 'center',
-                        fontWeight: 700,
-                        padding: '12px',
-                        cursor: 'pointer',
-                      }}
+                      className="btn btn-primary"
+                      style={{ width: '100%' }}
                     >
                       Buy {pkg.name}
                     </button>
@@ -1493,33 +1343,14 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
       {/* Admin Edit Package Rules Modal */}
       {editingPkg && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 200,
-          padding: '16px',
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            width: '560px',
-            maxWidth: '100%',
-            maxHeight: '92vh',
-            overflowY: 'auto',
-            padding: '28px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
-          }}>
+        <div className="modal-backdrop">
+          <div className="modal modal-legacy" style={{ maxWidth: '560px', padding: '28px' }} role="dialog" aria-modal="true">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                <h3 className="section-title">
                   Edit Package ({editingPkg.name})
                 </h3>
-                <p style={{ fontSize: '13px', color: '#64748b' }}>
+                <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
                   Customize tier version, features, and payout capping rules.
                 </p>
               </div>
@@ -1534,7 +1365,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 {/* Name, Badge, Tier Number */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Package Name *
                     </label>
                     <input
@@ -1542,11 +1373,11 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Version / Badge Tag *
                     </label>
                     <input
@@ -1555,11 +1386,11 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, badge: e.target.value.toUpperCase() })}
                       required
                       placeholder="e.g. STARTER, VIP"
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', textTransform: 'uppercase' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)', textTransform: 'uppercase' }}
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Tier # *
                     </label>
                     <input
@@ -1568,7 +1399,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, packageNumber: Number(e.target.value) })}
                       min="1"
                       required
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
                 </div>
@@ -1576,7 +1407,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 {/* Price & BV */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Joining Price (₹) *
                     </label>
                     <input
@@ -1585,12 +1416,12 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
                       min="0"
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Business Volume (BV) *
                     </label>
                     <input
@@ -1599,7 +1430,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, bv: Number(e.target.value) })}
                       min="0"
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
                 </div>
@@ -1607,7 +1438,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 {/* RP & Daily Capping */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Reward Points (RP) *
                     </label>
                     <input
@@ -1616,12 +1447,12 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, rp: e.target.value === '' ? 0 : Number(e.target.value) })}
                       min="0"
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Daily Binary Capping (₹) *
                     </label>
                     <input
@@ -1630,14 +1461,14 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, dailyCapping: Number(e.target.value) })}
                       min="0"
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Description
                   </label>
                   <input
@@ -1645,18 +1476,18 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Short description"
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                   />
                 </div>
 
                 {/* DYNAMIC PACKAGE FEATURES & PERKS */}
                 <div style={{
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
+                  background: 'var(--surface-subtle)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
                   padding: '14px',
                 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', display: 'block', marginBottom: '8px' }}>
+                  <label style={{ fontSize: 'var(--fs-sm)', fontWeight: 800, color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>
                     Package Features & Perks ({formData.features.length})
                   </label>
 
@@ -1671,19 +1502,19 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                           justifyContent: 'space-between',
                           background: 'white',
                           padding: '6px 10px',
-                          borderRadius: '6px',
-                          border: '1px solid #e2e8f0',
-                          fontSize: '12px'
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--border-color)',
+                          fontSize: 'var(--fs-sm)'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#334155' }}>
-                          <CheckCircle2 size={14} color="#10b981" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-body)' }}>
+                          <CheckCircle2 size={14} color="var(--success)" />
                           <span>{feature}</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveFeature(fIdx)}
-                          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+                          style={{ background: 'none', border: 'none', color: 'var(--text-light)', cursor: 'pointer', padding: '2px' }}
                           title="Remove feature"
                         >
                           <X size={14} />
@@ -1691,7 +1522,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       </div>
                     ))}
                     {formData.features.length === 0 && (
-                      <span style={{ fontSize: '12px', color: '#94a3b8', fontStyle: 'italic' }}>No features added yet.</span>
+                      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-light)', fontStyle: 'italic' }}>No features added yet.</span>
                     )}
                   </div>
 
@@ -1708,13 +1539,13 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                           handleAddFeature();
                         }
                       }}
-                      style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-sm)' }}
                     />
                     <button
                       type="button"
                       onClick={() => handleAddFeature()}
-                      className="primary-btn"
-                      style={{ padding: '8px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                      className="btn btn-primary btn-sm"
+                      style={{ whiteSpace: 'nowrap' }}
                     >
                       + Add Perk
                     </button>
@@ -1729,9 +1560,9 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       id="isPopularToggleEdit"
                       checked={formData.isPopular}
                       onChange={(e) => setFormData({ ...formData, isPopular: e.target.checked })}
-                      style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
                     />
-                    <label htmlFor="isPopularToggleEdit" style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                    <label htmlFor="isPopularToggleEdit" className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Mark as "Most Popular"
                     </label>
                   </div>
@@ -1742,20 +1573,20 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       id="isActiveToggleEdit"
                       checked={formData.isActive}
                       onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
-                      style={{ width: '16px', height: '16px', accentColor: '#1d72fe' }}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
                     />
-                    <label htmlFor="isActiveToggleEdit" style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                    <label htmlFor="isActiveToggleEdit" className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Active Plan
                     </label>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
-                <button type="button" onClick={() => setEditingPkg(null)} className="outline-btn" disabled={submitting}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
+                <button type="button" onClick={() => setEditingPkg(null)} className="btn btn-secondary" disabled={submitting}>
                   Cancel
                 </button>
-                <button type="submit" className="primary-btn" disabled={submitting}>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? 'Saving Rules...' : 'Save Package Rules'}
                 </button>
               </div>
@@ -1766,33 +1597,14 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
       {/* Admin Create New Package Modal */}
       {isCreateOpen && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 200,
-          padding: '16px',
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            width: '560px',
-            maxWidth: '100%',
-            maxHeight: '92vh',
-            overflowY: 'auto',
-            padding: '28px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
-          }}>
+        <div className="modal-backdrop">
+          <div className="modal modal-legacy" style={{ maxWidth: '560px', padding: '28px' }} role="dialog" aria-modal="true">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                <h3 className="section-title">
                   Create New Joining Package
                 </h3>
-                <p style={{ fontSize: '13px', color: '#64748b' }}>
+                <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
                   Configure tier version, perks, and payout capping rules.
                 </p>
               </div>
@@ -1805,7 +1617,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
               <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Package Name *
                     </label>
                     <input
@@ -1814,11 +1626,11 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                       required
                       placeholder="e.g. Package 5"
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Version / Badge *
                     </label>
                     <input
@@ -1827,11 +1639,11 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, badge: e.target.value.toUpperCase() })}
                       required
                       placeholder="e.g. MASTER"
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', textTransform: 'uppercase' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)', textTransform: 'uppercase' }}
                     />
                   </div>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Tier # *
                     </label>
                     <input
@@ -1840,14 +1652,14 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, packageNumber: Number(e.target.value) })}
                       min="1"
                       required
-                      style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Price (₹) *
                     </label>
                     <input
@@ -1856,12 +1668,12 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, price: Number(e.target.value) })}
                       min="0"
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Business Volume (BV) *
                     </label>
                     <input
@@ -1870,14 +1682,14 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, bv: Number(e.target.value) })}
                       min="0"
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Reward Points (RP) *
                     </label>
                     <input
@@ -1886,12 +1698,12 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, rp: e.target.value === '' ? 0 : Number(e.target.value) })}
                       min="0"
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Daily Binary Capping (₹) *
                     </label>
                     <input
@@ -1900,13 +1712,13 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       onChange={(e) => setFormData({ ...formData, dailyCapping: Number(e.target.value) })}
                       min="0"
                       required
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                     />
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '5px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Description
                   </label>
                   <input
@@ -1914,18 +1726,18 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     value={formData.description}
                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     placeholder="Short description of this package"
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
                   />
                 </div>
 
                 {/* Features & Perks Manager */}
                 <div style={{
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '10px',
+                  background: 'var(--surface-subtle)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-md)',
                   padding: '14px',
                 }}>
-                  <label style={{ fontSize: '12px', fontWeight: 800, color: '#0f172a', display: 'block', marginBottom: '8px' }}>
+                  <label style={{ fontSize: 'var(--fs-sm)', fontWeight: 800, color: 'var(--text-main)', display: 'block', marginBottom: '8px' }}>
                     Package Features & Perks ({formData.features.length})
                   </label>
 
@@ -1939,19 +1751,19 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                           justifyContent: 'space-between',
                           background: 'white',
                           padding: '6px 10px',
-                          borderRadius: '6px',
-                          border: '1px solid #e2e8f0',
-                          fontSize: '12px'
+                          borderRadius: 'var(--radius-sm)',
+                          border: '1px solid var(--border-color)',
+                          fontSize: 'var(--fs-sm)'
                         }}
                       >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#334155' }}>
-                          <CheckCircle2 size={14} color="#10b981" />
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-body)' }}>
+                          <CheckCircle2 size={14} color="var(--success)" />
                           <span>{feature}</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveFeature(fIdx)}
-                          style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', padding: '2px' }}
+                          style={{ background: 'none', border: 'none', color: 'var(--text-light)', cursor: 'pointer', padding: '2px' }}
                         >
                           <X size={14} />
                         </button>
@@ -1971,13 +1783,13 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                           handleAddFeature();
                         }
                       }}
-                      style={{ flex: 1, padding: '8px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '12px' }}
+                      style={{ flex: 1, padding: '8px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-sm)' }}
                     />
                     <button
                       type="button"
                       onClick={() => handleAddFeature()}
-                      className="primary-btn"
-                      style={{ padding: '8px 14px', fontSize: '12px', whiteSpace: 'nowrap' }}
+                      className="btn btn-primary btn-sm"
+                      style={{ whiteSpace: 'nowrap' }}
                     >
                       + Add Perk
                     </button>
@@ -1991,20 +1803,20 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                       id="isPopularToggleCreate"
                       checked={formData.isPopular}
                       onChange={(e) => setFormData({ ...formData, isPopular: e.target.checked })}
-                      style={{ width: '16px', height: '16px', accentColor: '#2563eb' }}
+                      style={{ width: '16px', height: '16px', accentColor: 'var(--primary)' }}
                     />
-                    <label htmlFor="isPopularToggleCreate" style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                    <label htmlFor="isPopularToggleCreate" className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Mark as "Most Popular"
                     </label>
                   </div>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
-                <button type="button" onClick={() => setIsCreateOpen(false)} className="outline-btn" disabled={submitting}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
+                <button type="button" onClick={() => setIsCreateOpen(false)} className="btn btn-secondary" disabled={submitting}>
                   Cancel
                 </button>
-                <button type="submit" className="primary-btn" disabled={submitting}>
+                <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? 'Creating Package...' : 'Create Package'}
                 </button>
               </div>
@@ -2015,32 +1827,15 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
       {/* Admin Delete Confirmation Modal */}
       {deletingPkg && (
-        <div style={{
-          position: 'fixed',
-          inset: 0,
-          background: 'rgba(15, 23, 42, 0.65)',
-          backdropFilter: 'blur(4px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 200,
-          padding: '16px',
-        }}>
-          <div style={{
-            background: 'white',
-            borderRadius: '16px',
-            width: '460px',
-            maxWidth: '100%',
-            padding: '28px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)',
-          }}>
+        <div className="modal-backdrop">
+          <div className="modal modal-legacy" style={{ maxWidth: '460px', padding: '28px' }} role="dialog" aria-modal="true">
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
               <div style={{
                 width: '44px',
                 height: '44px',
-                borderRadius: '12px',
-                background: '#fef2f2',
-                color: '#dc2626',
+                borderRadius: 'var(--radius-lg)',
+                background: 'var(--danger-light)',
+                color: 'var(--danger)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -2048,16 +1843,16 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 <ShieldAlert size={24} />
               </div>
               <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                <h3 className="section-title">
                   Delete Package "{deletingPkg.name}"?
                 </h3>
-                <p style={{ fontSize: '13px', color: '#64748b' }}>
+                <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
                   Package ID: {deletingPkg.packageId} (₹{deletingPkg.price.toLocaleString()})
                 </p>
               </div>
             </div>
 
-            <p style={{ fontSize: '13px', color: '#475569', marginBottom: '24px', lineHeight: '1.5' }}>
+            <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-secondary)', marginBottom: '24px', lineHeight: '1.5' }}>
               You can choose to <strong>deactivate</strong> the package (hides it from registration & buy list while preserving history) or <strong>delete permanently</strong> from the database.
             </p>
 
@@ -2065,7 +1860,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
               <button 
                 type="button" 
                 onClick={() => setDeletingPkg(null)} 
-                className="outline-btn" 
+                className="btn btn-secondary" 
                 disabled={submitting}
               >
                 Cancel
@@ -2073,37 +1868,15 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
 
               <button 
                 type="button" 
-                onClick={() => handleDeletePackage(false)} 
-                style={{
-                  background: '#f1f5f9',
-                  color: '#475569',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
-                  padding: '8px 14px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-                disabled={submitting}
-              >
+                onClick={() => handleDeletePackage(false)} className="btn btn-secondary"
+                disabled={submitting}>
                 Deactivate (Soft)
               </button>
 
               <button 
                 type="button" 
-                onClick={() => handleDeletePackage(true)} 
-                style={{
-                  background: '#dc2626',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '8px',
-                  padding: '8px 14px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-                disabled={submitting}
-              >
+                onClick={() => handleDeletePackage(true)} className="btn btn-danger"
+                disabled={submitting}>
                 {submitting ? 'Deleting...' : 'Delete Permanently'}
               </button>
             </div>
@@ -2119,33 +1892,16 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
         const rpDifference = (buyingPkg.rp ?? 0) - (userCurrentPkg?.rp ?? 0);
 
         return (
-          <div style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 200,
-            padding: '16px',
-          }}>
-            <div style={{
-              background: 'white',
-              borderRadius: '20px',
-              width: '490px',
-              maxWidth: '100%',
-              padding: '28px',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            }}>
+          <div className="modal-backdrop">
+            <div className="modal modal-legacy" style={{ maxWidth: '490px', padding: '28px' }} role="dialog" aria-modal="true">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{
                     width: '44px',
                     height: '44px',
-                    borderRadius: '12px',
-                    background: '#eff6ff',
-                    color: '#2563eb',
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'var(--primary-light)',
+                    color: 'var(--primary)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -2153,10 +1909,10 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     {isUpgradeModal ? <TrendingUp size={24} /> : <Package size={24} />}
                   </div>
                   <div>
-                    <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                    <h3 className="section-title">
                       {isUpgradeModal ? 'Confirm Package Upgrade' : 'Confirm Package Purchase'}
                     </h3>
-                    <p style={{ fontSize: '12px', color: '#64748b' }}>
+                    <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                       {isUpgradeModal
                         ? `Upgrade tier to unlock higher daily payout caps & volume benefits.`
                         : 'Verify details before confirming your joining package.'}
@@ -2171,10 +1927,10 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
               {/* Upgrade Visual Comparison */}
               {isUpgradeModal && userCurrentPkg && (
                 <div style={{
-                  background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
-                  borderRadius: '14px',
+                  background: 'var(--surface-subtle)',
+                  borderRadius: 'var(--radius-lg)',
                   padding: '14px 18px',
-                  border: '1px solid #bfdbfe',
+                  border: '1px solid var(--primary-border)',
                   marginBottom: '16px',
                   display: 'flex',
                   alignItems: 'center',
@@ -2182,16 +1938,16 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   gap: '12px',
                 }}>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 800, textTransform: 'uppercase' }}>Current Plan</div>
-                    <strong style={{ fontSize: '14px', color: '#334155' }}>{userCurrentPkg.name}</strong>
-                    <div style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>₹{(userCurrentPkg.dailyCapping ?? 4000).toLocaleString()}/day cap</div>
+                    <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)', fontWeight: 800, textTransform: 'uppercase' }}>Current Plan</div>
+                    <strong style={{ fontSize: 'var(--fs-md)', color: 'var(--text-body)' }}>{userCurrentPkg.name}</strong>
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--success)', fontWeight: 600 }}>₹{(userCurrentPkg.dailyCapping ?? 4000).toLocaleString()}/day cap</div>
                   </div>
 
                   <div style={{
                     width: '32px',
                     height: '32px',
                     borderRadius: '50%',
-                    background: '#2563eb',
+                    background: 'var(--primary)',
                     color: 'white',
                     display: 'flex',
                     alignItems: 'center',
@@ -2202,62 +1958,62 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   </div>
 
                   <div style={{ flex: 1, textAlign: 'right' }}>
-                    <div style={{ fontSize: '10px', color: '#2563eb', fontWeight: 800, textTransform: 'uppercase' }}>Upgraded Tier</div>
-                    <strong style={{ fontSize: '14px', color: '#1e3a8a' }}>{buyingPkg.name}</strong>
-                    <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: 700 }}>₹{(buyingPkg.dailyCapping ?? 4000).toLocaleString()}/day cap</div>
+                    <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--primary)', fontWeight: 800, textTransform: 'uppercase' }}>Upgraded Tier</div>
+                    <strong style={{ fontSize: 'var(--fs-md)', color: 'var(--primary-strong)' }}>{buyingPkg.name}</strong>
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--primary)', fontWeight: 700 }}>₹{(buyingPkg.dailyCapping ?? 4000).toLocaleString()}/day cap</div>
                   </div>
                 </div>
               )}
 
               <div style={{
-                background: '#f8fafc',
-                borderRadius: '14px',
+                background: 'var(--surface-subtle)',
+                borderRadius: 'var(--radius-lg)',
                 padding: '18px',
-                border: '1px solid #e2e8f0',
+                border: '1px solid var(--border-color)',
                 marginBottom: '20px',
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
-                  <span style={{ color: '#64748b' }}>{isUpgradeModal ? 'Upgraded Package:' : 'Selected Package:'}</span>
-                  <strong style={{ color: '#0f172a' }}>{buyingPkg.name} ({buyingPkg.badge || 'TIER'})</strong>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: 'var(--fs-base)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{isUpgradeModal ? 'Upgraded Package:' : 'Selected Package:'}</span>
+                  <strong style={{ color: 'var(--text-main)' }}>{buyingPkg.name} ({buyingPkg.badge || 'TIER'})</strong>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
-                  <span style={{ color: '#64748b' }}>{isUpgradeModal ? 'Upgrade Price:' : 'Package Price:'}</span>
-                  <strong style={{ color: '#0f172a', fontSize: '16px', fontFamily: 'var(--font-display, sans-serif)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: 'var(--fs-base)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>{isUpgradeModal ? 'Upgrade Price:' : 'Package Price:'}</span>
+                  <strong style={{ color: 'var(--text-main)', fontSize: 'var(--fs-lg)', fontFamily: 'var(--font-display, sans-serif)' }}>
                     ₹ {buyingPkg.price.toLocaleString()}
                   </strong>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
-                  <span style={{ color: '#64748b' }}>Business Volume (BV):</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: 'var(--fs-base)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Business Volume (BV):</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <strong style={{ color: '#2563eb' }}>{buyingPkg.bv.toLocaleString()} BV</strong>
+                    <strong style={{ color: 'var(--primary)' }}>{buyingPkg.bv.toLocaleString()} BV</strong>
                     {isUpgradeModal && bvDifference > 0 && (
-                      <span style={{ fontSize: '11px', color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--success)', background: 'var(--success-light)', padding: '1px 6px', borderRadius: 'var(--radius-xs)', fontWeight: 700 }}>
                         +{bvDifference.toLocaleString()} BV
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: '13px' }}>
-                  <span style={{ color: '#64748b' }}>Reward Points (RP):</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '10px', fontSize: 'var(--fs-base)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Reward Points (RP):</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <strong style={{ color: '#d97706' }}>{buyingPkg.rp ?? 0} RP</strong>
+                    <strong style={{ color: 'var(--warning)' }}>{buyingPkg.rp ?? 0} RP</strong>
                     {isUpgradeModal && rpDifference > 0 && (
-                      <span style={{ fontSize: '11px', color: '#b45309', background: '#fffbeb', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--warning-hover)', background: 'var(--warning-light)', padding: '1px 6px', borderRadius: 'var(--radius-xs)', fontWeight: 700 }}>
                         +{rpDifference} RP
                       </span>
                     )}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
-                  <span style={{ color: '#64748b' }}>Daily Binary Capping:</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-base)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Daily Binary Capping:</span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <strong style={{ color: '#0f172a' }}>₹ {(buyingPkg.dailyCapping ?? 4000).toLocaleString()} / Day</strong>
+                    <strong style={{ color: 'var(--text-main)' }}>₹ {(buyingPkg.dailyCapping ?? 4000).toLocaleString()} / Day</strong>
                     {isUpgradeModal && capDifference > 0 && (
-                      <span style={{ fontSize: '11px', color: '#059669', background: '#ecfdf5', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--success)', background: 'var(--success-light)', padding: '1px 6px', borderRadius: 'var(--radius-xs)', fontWeight: 700 }}>
                         +₹{capDifference.toLocaleString()}/Day Boost
                       </span>
                     )}
@@ -2265,7 +2021,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                 </div>
 
                 {buyingPkg.description && (
-                  <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b', lineHeight: '1.4' }}>
+                  <div style={{ marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-color)', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', lineHeight: '1.4' }}>
                     {buyingPkg.description}
                   </div>
                 )}
@@ -2276,7 +2032,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                   onChange={setPaymentMethod}
                   disabled={buyingLoading}
                 />
-                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#0369a1' }}>
+                <div style={{ background: 'var(--info-light)', border: '1px solid var(--info-border)', borderRadius: 'var(--radius-md)', padding: '10px 14px', marginBottom: '16px', fontSize: 'var(--fs-sm)', color: 'var(--info-strong)' }}>
                   <Send size={14} style={{ display: 'inline', marginRight: '6px', verticalAlign: 'text-bottom' }} />
                   {paymentMethod === 'BV_WALLET'
                     ? 'The BV is deducted from your BV Wallet now. Super Admin will verify and activate your package; if the request is rejected, the BV comes back to your wallet.'
@@ -2285,12 +2041,12 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button onClick={() => setBuyingPkg(null)} className="outline-btn" disabled={buyingLoading}>
+                <button onClick={() => setBuyingPkg(null)} className="btn btn-secondary" disabled={buyingLoading}>
                   Cancel
                 </button>
                 <button 
                   onClick={handleBuyPackage} 
-                  className="primary-btn" 
+                  className="btn btn-primary" 
                   disabled={buyingLoading}
                   style={{ 
                     display: 'flex', 
@@ -2298,7 +2054,7 @@ export const PackagesPage: React.FC<PackagesPageProps> = ({ user: propUser, toke
                     gap: '8px',
                     fontWeight: 800,
                     padding: '10px 18px',
-                    background: isUpgradeModal ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : undefined 
+                    background: isUpgradeModal ? 'var(--primary)' : undefined 
                   }}
                 >
                   <Send size={16} />

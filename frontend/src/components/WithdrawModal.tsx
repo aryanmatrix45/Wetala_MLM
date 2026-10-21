@@ -1,16 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  X, 
-  ArrowDownRight, 
-  Wallet, 
-  AlertCircle, 
-  CheckCircle2, 
-  ShieldCheck, 
-  Lock, 
-  ShoppingBag, 
-  Package, 
-  AlertTriangle
-} from 'lucide-react';
+import { AlertCircle, CheckCircle2, Package, ShieldCheck, ShoppingBag, Wallet, X } from 'lucide-react';
+import { Alert } from './ui';
 import { api } from '../services/api';
 
 interface WithdrawModalProps {
@@ -151,91 +141,18 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
     const progressPercent = Math.min(100, Math.round((bvInfo.lifetimePersonalBV / bvInfo.minWithdrawalBVRequired) * 100));
 
     return (
-      <div
-        style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          backgroundColor: 'rgba(15, 23, 42, 0.75)',
-          backdropFilter: 'blur(6px)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          zIndex: 1000,
-          padding: '16px',
-          animation: 'fadeIn 0.2s ease-out',
-        }}
+      <div className="modal-backdrop"
         onClick={(e) => {
           if (e.target === e.currentTarget) onClose();
-        }}
-      >
-        <div
-          style={{
-            background: '#ffffff',
-            borderRadius: '20px',
-            width: '100%',
-            maxWidth: '520px',
-            boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)',
-            border: '1px solid #fed7aa',
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
-          <div
-            style={{
-              padding: '22px 24px',
-              background: 'linear-gradient(135deg, #7c2d12 0%, #c2410c 100%)',
-              color: '#ffffff',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  borderRadius: '12px',
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
-                }}
-              >
-                <Lock size={22} color="#ffffff" />
-              </div>
-              <div>
-                <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, letterSpacing: '-0.01em' }}>
-                  Withdrawal Requirement Not Met
-                </h2>
-                <p style={{ fontSize: '12px', color: '#fed7aa', margin: '3px 0 0' }}>
-                  Minimum 1,250 Lifetime Business Volume (BV) Required
-                </p>
-              </div>
+        }}>
+        <div className="modal modal-legacy" style={{ maxWidth: '520px', display: 'flex', flexDirection: 'column' }}
+          onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+          <div className="modal-header">
+            <div style={{ minWidth: 0 }}>
+              <h2 className="modal-title">Withdrawal not available yet</h2>
+              <p className="modal-subtitle">At least 1,250 lifetime personal BV is required</p>
             </div>
-
-            <button
-              onClick={onClose}
-              style={{
-                background: 'rgba(255, 255, 255, 0.15)',
-                border: 'none',
-                color: '#ffffff',
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                cursor: 'pointer',
-              }}
-            >
+            <button type="button" className="modal-close" onClick={onClose} aria-label="Close">
               <X size={18} />
             </button>
           </div>
@@ -243,55 +160,38 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
           {/* Modal Body */}
           <div style={{ padding: '24px' }}>
             {/* Warning Message Box */}
-            <div
-              style={{
-                background: '#fff7ed',
-                border: '1px solid #ffedd5',
-                borderRadius: '12px',
-                padding: '16px',
-                marginBottom: '20px',
-                display: 'flex',
-                gap: '12px',
-              }}
-            >
-              <AlertTriangle size={22} color="#ea580c" style={{ flexShrink: 0, marginTop: '2px' }} />
-              <div>
-                <p style={{ fontSize: '13.5px', color: '#9a3412', fontWeight: 600, margin: 0, lineHeight: 1.55 }}>
-                  Your lifetime business volume that you have bought by a product or by a package has not reached <strong>1,250 BV</strong>.
-                </p>
-                <p style={{ fontSize: '12.5px', color: '#c2410c', margin: '6px 0 0', lineHeight: 1.5 }}>
-                  You cannot send a withdrawal request to the super admin until your lifetime personal purchases reach at least <strong>1,250 BV</strong>. For that, please buy a product or buy any package.
-                </p>
-              </div>
-            </div>
+            <Alert tone="warning" style={{ marginBottom: 'var(--space-5)' }}>
+              <p style={{ fontWeight: 600 }}>Your lifetime business volume that you have bought by a product or by a package has not reached <strong>1,250 BV</strong>.</p>
+              <p style={{ marginTop: 6 }}>You cannot send a withdrawal request to the super admin until your lifetime personal purchases reach at least <strong>1,250 BV</strong>. For that, please buy a product or buy any package.</p>
+            </Alert>
 
             {/* Lifetime BV Progress Card */}
             <div
               style={{
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '14px',
+                background: 'var(--surface-subtle)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
                 padding: '18px',
                 marginBottom: '20px',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '12px', color: '#475569', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.4px' }}>
                   Lifetime Personal Purchases
                 </span>
-                <span style={{ fontSize: '13px', fontWeight: 800, color: '#ea580c' }}>
+                <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--warning-hover)' }}>
                   {progressPercent}% Completed
                 </span>
               </div>
 
               {/* Progress Bar */}
-              <div style={{ height: '10px', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden', marginBottom: '14px' }}>
+              <div style={{ height: '10px', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-full)', overflow: 'hidden', marginBottom: '14px' }}>
                 <div
                   style={{
                     height: '100%',
                     width: `${progressPercent}%`,
-                    background: 'linear-gradient(90deg, #ea580c 0%, #f97316 100%)',
-                    borderRadius: '9999px',
+                    background: 'var(--warning)',
+                    borderRadius: 'var(--radius-full)',
                     transition: 'width 0.5s ease',
                   }}
                 />
@@ -299,29 +199,29 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
               {/* Stats Split Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', textAlign: 'center' }}>
-                <div style={{ padding: '8px', background: '#ffffff', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>Your BV</div>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                <div style={{ padding: '8px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Your BV</div>
+                  <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)', marginTop: '2px' }}>
                     {bvInfo.lifetimePersonalBV.toLocaleString()}
                   </div>
                 </div>
 
-                <div style={{ padding: '8px', background: '#ffffff', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>Required</div>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#059669', marginTop: '2px' }}>
+                <div style={{ padding: '8px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Required</div>
+                  <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--success)', marginTop: '2px' }}>
                     {bvInfo.minWithdrawalBVRequired.toLocaleString()}
                   </div>
                 </div>
 
-                <div style={{ padding: '8px', background: '#ffffff', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: '11px', color: '#64748b' }}>Needed</div>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#dc2626', marginTop: '2px' }}>
+                <div style={{ padding: '8px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Needed</div>
+                  <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--danger)', marginTop: '2px' }}>
                     {bvInfo.shortfallBV.toLocaleString()}
                   </div>
                 </div>
               </div>
 
-              <div style={{ fontSize: '11.5px', color: '#64748b', marginTop: '12px', lineHeight: 1.4 }}>
+              <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: '12px', lineHeight: 1.4 }}>
                 ℹ All Business Volume from any package purchases or product repurchases accumulates across your lifetime.
               </div>
             </div>
@@ -330,46 +230,14 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
               <button
                 type="button"
-                onClick={() => handleActionNavigate('member-products')}
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)',
-                }}
-              >
+                onClick={() => handleActionNavigate('member-products')} className="btn btn-success">
                 <ShoppingBag size={16} />
                 <span>Buy Products</span>
               </button>
 
               <button
                 type="button"
-                onClick={() => handleActionNavigate('packages')}
-                style={{
-                  padding: '12px 14px',
-                  borderRadius: '12px',
-                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                  color: '#ffffff',
-                  border: 'none',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
-                }}
-              >
+                onClick={() => handleActionNavigate('packages')} className="btn btn-primary">
                 <Package size={16} />
                 <span>Buy Package</span>
               </button>
@@ -377,19 +245,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
             <button
               type="button"
-              onClick={onClose}
-              style={{
-                width: '100%',
-                padding: '10px',
-                borderRadius: '10px',
-                background: '#f1f5f9',
-                color: '#475569',
-                border: 'none',
-                fontSize: '12.5px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
+              onClick={onClose} className="btn btn-secondary btn-sm" style={{ width: '100%' }}>
               Close
             </button>
           </div>
@@ -402,94 +258,20 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
   // VIEW 2: ELIGIBLE FORM (Lifetime BV >= 1,250 BV or Privileged Admin)
   // =========================================================================
   return (
-    <div
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(5px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1000,
-        padding: '16px',
-        animation: 'fadeIn 0.2s ease-out',
-      }}
+    <div className="modal-backdrop"
       onClick={(e) => {
         if (e.target === e.currentTarget && !loading) onClose();
-      }}
-    >
-      <div
-        style={{
-          background: '#ffffff',
-          borderRadius: '20px',
-          width: '100%',
-          maxWidth: '520px',
-          boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.25)',
-          border: '1px solid #e2e8f0',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          maxHeight: '92vh',
-        }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* Header */}
-        <div
-          style={{
-            padding: '20px 24px',
-            background: 'linear-gradient(135deg, #0b1329 0%, #1e293b 100%)',
-            color: '#ffffff',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div
-              style={{
-                width: '42px',
-                height: '42px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)',
-              }}
-            >
-              <ArrowDownRight size={22} color="#ffffff" />
-            </div>
-            <div>
-              <h2 style={{ fontSize: '18px', fontWeight: 800, margin: 0, letterSpacing: '-0.02em' }}>
-                Request Payout Withdrawal
-              </h2>
-              <p style={{ fontSize: '12px', color: '#94a3b8', margin: '2px 0 0' }}>
-                {user?.name || 'Member'} • ID: <strong>{user?.memberId || 'MEM0001'}</strong>
-              </p>
-            </div>
+      }}>
+      <div className="modal modal-legacy" style={{ maxWidth: '520px', display: 'flex', flexDirection: 'column' }}
+        onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+        <div className="modal-header">
+          <div style={{ minWidth: 0 }}>
+            <h2 className="modal-title">Request withdrawal</h2>
+            <p className="modal-subtitle">
+              {user?.name || 'Member'} · ID <strong>{user?.memberId || 'MEM0001'}</strong>
+            </p>
           </div>
-
-          <button
-            onClick={onClose}
-            disabled={loading}
-            style={{
-              background: 'rgba(255, 255, 255, 0.1)',
-              border: 'none',
-              color: '#ffffff',
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer',
-              transition: 'background 0.2s',
-            }}
-          >
+          <button type="button" className="modal-close" onClick={onClose} disabled={loading} aria-label="Close">
             <X size={18} />
           </button>
         </div>
@@ -498,9 +280,9 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
         <div style={{ padding: '20px 24px 10px' }}>
           <div
             style={{
-              background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
-              border: '1px solid #dbeafe',
-              borderRadius: '14px',
+              background: 'var(--surface-subtle)',
+              border: '1px solid var(--primary-soft)',
+              borderRadius: 'var(--radius-lg)',
               padding: '16px 18px',
               display: 'grid',
               gridTemplateColumns: '1fr 1fr',
@@ -508,33 +290,33 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             }}
           >
             <div>
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Available for Withdrawal
               </span>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#1d4ed8', marginTop: '2px' }}>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--primary-hover)', marginTop: '2px' }}>
                 ₹ {availablePayout.toLocaleString()}
               </div>
-              <span style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--success)', fontWeight: 600 }}>
                 Instant Requestable
               </span>
             </div>
 
             <div>
-              <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                 Total Payout (Lifetime)
               </span>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-main)', marginTop: '2px' }}>
                 ₹ {totalPayout.toLocaleString()}
               </div>
-              <span style={{ fontSize: '11px', color: '#64748b' }}>
+              <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
                 Cumulative Earnings
               </span>
             </div>
           </div>
 
           {/* Qualified Badge */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px', fontSize: '11.5px', color: '#059669', fontWeight: 600 }}>
-            <ShieldCheck size={15} color="#10b981" />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '10px', fontSize: 'var(--fs-sm)', color: 'var(--success)', fontWeight: 600 }}>
+            <ShieldCheck size={15} color="var(--success)" />
             <span>Lifetime Purchase Qualified ({bvInfo.lifetimePersonalBV.toLocaleString()} BV / 1,250 BV)</span>
           </div>
 
@@ -543,17 +325,17 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               style={{
                 marginTop: '10px',
                 padding: '10px 14px',
-                background: '#fffbeb',
-                border: '1px solid #fef3c7',
-                borderRadius: '10px',
+                background: 'var(--warning-light)',
+                border: '1px solid var(--warning-soft)',
+                borderRadius: 'var(--radius-md)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                fontSize: '12px',
-                color: '#b45309',
+                fontSize: 'var(--fs-sm)',
+                color: 'var(--warning-hover)',
               }}
             >
-              <AlertCircle size={15} color="#d97706" style={{ flexShrink: 0 }} />
+              <AlertCircle size={15} color="var(--warning)" style={{ flexShrink: 0 }} />
               <span>
                 Pending requests: <strong>₹ {pendingAmount.toLocaleString()}</strong>. Remaining allowed: <strong>₹ {maxAllowed.toLocaleString()}</strong>
               </span>
@@ -567,11 +349,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             <div
               style={{
                 padding: '12px 14px',
-                background: '#fef2f2',
-                border: '1px solid #fecaca',
-                borderRadius: '10px',
-                color: '#b91c1c',
-                fontSize: '13px',
+                background: 'var(--danger-light)',
+                border: '1px solid var(--danger-border)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--danger-hover)',
+                fontSize: 'var(--fs-base)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
@@ -587,11 +369,11 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
             <div
               style={{
                 padding: '12px 14px',
-                background: '#ecfdf5',
-                border: '1px solid #a7f3d0',
-                borderRadius: '10px',
-                color: '#059669',
-                fontSize: '13px',
+                background: 'var(--success-light)',
+                border: '1px solid var(--success-border)',
+                borderRadius: 'var(--radius-md)',
+                color: 'var(--success)',
+                fontSize: 'var(--fs-base)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
@@ -606,10 +388,10 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
           {/* Amount Field */}
           <div style={{ marginBottom: '18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-              <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b' }}>
-                Withdrawal Amount <span style={{ color: '#ef4444' }}>*</span>
+              <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                Withdrawal Amount <span style={{ color: 'var(--danger)' }}>*</span>
               </label>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>
+              <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                 Max: <strong>₹ {maxAllowed.toLocaleString()}</strong>
               </span>
             </div>
@@ -622,8 +404,8 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                   top: '50%',
                   transform: 'translateY(-50%)',
                   fontWeight: 700,
-                  fontSize: '16px',
-                  color: '#64748b',
+                  fontSize: 'var(--fs-lg)',
+                  color: 'var(--text-muted)',
                 }}
               >
                 ₹
@@ -643,14 +425,14 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                 style={{
                   width: '100%',
                   padding: '12px 14px 12px 34px',
-                  fontSize: '16px',
+                  fontSize: 'var(--fs-lg)',
                   fontWeight: 700,
-                  color: '#0f172a',
-                  border: isOverLimit ? '2px solid #ef4444' : '1px solid #cbd5e1',
-                  borderRadius: '12px',
+                  color: 'var(--text-main)',
+                  border: isOverLimit ? '2px solid var(--danger)' : '1px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-lg)',
                   outline: 'none',
                   transition: 'border-color 0.2s',
-                  background: '#ffffff',
+                  background: 'var(--surface)',
                 }}
               />
             </div>
@@ -662,28 +444,15 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                   type="button"
                   key={pct}
                   onClick={() => handleQuickPercent(pct)}
-                  disabled={loading || maxAllowed <= 0}
-                  style={{
-                    flex: 1,
-                    padding: '6px 0',
-                    fontSize: '11px',
-                    fontWeight: 700,
-                    borderRadius: '8px',
-                    border: '1px solid #e2e8f0',
-                    background: '#f8fafc',
-                    color: '#334155',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
+                  disabled={loading || maxAllowed <= 0} className="btn btn-secondary btn-sm" style={{ flex: 1 }}
                   onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#eff6ff';
-                    e.currentTarget.style.borderColor = '#93c5fd';
+                    e.currentTarget.style.background = 'var(--primary-light)';
+                    e.currentTarget.style.borderColor = 'var(--primary-border)';
                   }}
                   onMouseLeave={(e) => {
-                    e.currentTarget.style.background = '#f8fafc';
-                    e.currentTarget.style.borderColor = '#e2e8f0';
-                  }}
-                >
+                    e.currentTarget.style.background = 'var(--surface-subtle)';
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                  }}>
                   {pct}%
                 </button>
               ))}
@@ -692,8 +461,8 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
 
           {/* Optional Note Field */}
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ fontSize: '13px', fontWeight: 700, color: '#1e293b', display: 'block', marginBottom: '6px' }}>
-              Remarks / Transaction Note <span style={{ fontSize: '11.5px', color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
+            <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+              Remarks / Transaction Note <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-light)', fontWeight: 400 }}>(Optional)</span>
             </label>
             <textarea
               rows={2}
@@ -704,51 +473,40 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
               style={{
                 width: '100%',
                 padding: '10px 12px',
-                fontSize: '13px',
-                color: '#0f172a',
-                border: '1px solid #cbd5e1',
-                borderRadius: '10px',
+                fontSize: 'var(--fs-base)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--border-strong)',
+                borderRadius: 'var(--radius-md)',
                 outline: 'none',
                 resize: 'none',
-                background: '#ffffff',
+                background: 'var(--surface)',
               }}
             />
           </div>
 
           {/* Actions */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: 'auto', paddingTop: '16px', borderTop: '1px solid var(--border-light)' }}>
             <button
               type="button"
               onClick={onClose}
-              disabled={loading}
-              style={{
-                padding: '10px 18px',
-                fontSize: '13px',
-                fontWeight: 600,
-                color: '#64748b',
-                background: '#f1f5f9',
-                border: 'none',
-                borderRadius: '10px',
-                cursor: 'pointer',
-              }}
-            >
+              disabled={loading} className="btn btn-secondary">
               Cancel
             </button>
 
             <button
               type="submit"
               disabled={loading || isInvalid || maxAllowed <= 0}
-              className="primary-btn"
+              className="btn btn-primary"
               style={{
                 padding: '10px 24px',
-                fontSize: '13px',
+                fontSize: 'var(--fs-base)',
                 fontWeight: 700,
-                background: isInvalid || maxAllowed <= 0 ? '#cbd5e1' : 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
+                background: isInvalid || maxAllowed <= 0 ? 'var(--border-strong)' : 'var(--primary)',
                 cursor: isInvalid || maxAllowed <= 0 ? 'not-allowed' : 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                boxShadow: isInvalid || maxAllowed <= 0 ? 'none' : '0 4px 12px rgba(37, 99, 235, 0.35)',
+                boxShadow: isInvalid || maxAllowed <= 0 ? 'none' : 'none',
               }}
             >
               {loading ? (
@@ -757,7 +515,7 @@ export const WithdrawModal: React.FC<WithdrawModalProps> = ({
                     style={{
                       width: '14px',
                       height: '14px',
-                      border: '2px solid #ffffff',
+                      border: '2px solid var(--surface)',
                       borderTopColor: 'transparent',
                       borderRadius: '50%',
                       animation: 'spin 0.8s linear infinite',

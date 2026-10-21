@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Mail, Phone, Calendar, CalendarDays, MapPin, Lock, UserRound, LayoutGrid, FileCheck2, Share2,
-  ShieldCheck, ArrowRight, Award, Package, Network, Users,
-} from 'lucide-react';
+import { ArrowRight, Award, Calendar, CalendarDays, FileCheck2, LayoutGrid, Lock, Mail, MapPin, Network, Package, Phone, Share2, ShieldCheck, UserRound, Users } from 'lucide-react';
 import { api, type KycDetails, type KycStatus } from '../services/api';
 import { KycSection } from '../components/KycSection';
 import { KycDocumentImage } from '../components/KycDocumentImage';

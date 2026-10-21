@@ -1,28 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { Alert, PageHeader } from '../components/ui';
 import {
   api,
   type FooterConfig,
   type FooterLinkItem,
   normalizeGoogleDriveUrl,
 } from '../services/api';
-import {
-  Building2,
-  Save,
-  RotateCcw,
-  Plus,
-  Trash2,
-  ArrowUp,
-  ArrowDown,
-  CheckCircle2,
-  AlertCircle,
-  ExternalLink,
-  Share2,
-  Info,
-  HelpCircle,
-  Shield,
-  Phone,
-  RefreshCw,
-} from 'lucide-react';
+import { ArrowDown, ArrowUp, Building2, ExternalLink, HelpCircle, Info, Phone, Plus, RefreshCw, RotateCcw, Save, Share2, Shield, Trash2 } from 'lucide-react';
 
 interface AdminFooterPageProps {
   user?: any;
@@ -282,164 +266,32 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
   }
 
   return (
-    <div className="admin-footer-page">
-      <style>{`
-        .admin-footer-header {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          flex-wrap: wrap;
-          gap: 16px;
-          margin-bottom: 24px;
+    <div className="page-body admin-footer-page">
+      <PageHeader
+        title="Footer & Company Info"
+        subtitle="Brand logo, about text, help links, customer-care policies, contact details and business hours."
+        actions={
+          <>
+            <button
+              type="button"
+              className="btn btn-danger-outline"
+              onClick={handleReset}
+              disabled={resetting || saving}
+              title="Reset footer to default configuration"
+            >
+              <RotateCcw size={16} />
+              <span>{resetting ? 'Resetting…' : 'Reset to default'}</span>
+            </button>
+            <button type="button" className="btn btn-primary" onClick={handleSave} disabled={saving || resetting}>
+              <Save size={16} />
+              <span>{saving ? 'Saving…' : 'Save changes'}</span>
+            </button>
+          </>
         }
+      />
 
-        .admin-footer-tabs {
-          display: flex;
-          gap: 8px;
-          overflow-x: auto;
-          padding-bottom: 6px;
-          margin-bottom: 20px;
-          border-bottom: 1px solid var(--border-color);
-        }
-
-        .admin-footer-tab-btn {
-          padding: 10px 18px;
-          border-radius: 8px;
-          border: 1px solid transparent;
-          background: #f1f5f9;
-          color: #475569;
-          font-weight: 600;
-          font-size: 13.5px;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          white-space: nowrap;
-          transition: all 0.2s ease;
-        }
-
-        .admin-footer-tab-btn.active {
-          background: var(--primary);
-          color: #ffffff;
-          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
-        }
-
-        .footer-form-card {
-          background: #ffffff;
-          border: 1px solid var(--border-color);
-          border-radius: 12px;
-          padding: 24px;
-          margin-bottom: 24px;
-        }
-
-        .footer-field-group {
-          margin-bottom: 18px;
-        }
-
-        .footer-field-label {
-          display: block;
-          font-weight: 600;
-          font-size: 13px;
-          color: var(--text-main);
-          margin-bottom: 6px;
-        }
-
-        .footer-field-input, .footer-field-textarea {
-          width: 100%;
-          padding: 10px 14px;
-          border-radius: 8px;
-          border: 1px solid var(--border-color);
-          font-size: 14px;
-          outline: none;
-          transition: border-color 0.2s;
-          background: #fafbfc;
-        }
-
-        .footer-field-input:focus, .footer-field-textarea:focus {
-          border-color: var(--primary);
-          background: #ffffff;
-        }
-
-        .footer-links-table {
-          width: 100%;
-          border-collapse: collapse;
-          margin-top: 14px;
-        }
-
-        .footer-links-table th {
-          text-align: left;
-          padding: 10px 12px;
-          background: #f8fafc;
-          border-bottom: 2px solid var(--border-color);
-          font-size: 12.5px;
-          color: #64748b;
-          font-weight: 600;
-        }
-
-        .footer-links-table td {
-          padding: 10px 12px;
-          border-bottom: 1px solid #f1f5f9;
-          font-size: 13.5px;
-        }
-      `}</style>
-
-      {/* Header */}
-      <div className="admin-footer-header">
-        <div>
-          <h2 style={{ margin: 0, fontSize: 24, fontWeight: 800, color: 'var(--text-main)' }}>
-            Footer & Company Info Manager
-          </h2>
-          <p style={{ margin: '4px 0 0', fontSize: 14, color: 'var(--text-muted)' }}>
-            Manage the brand logo, About bio, Help links, Customer Care policies, contact addresses, and business hours.
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-          <button
-            type="button"
-            className="btn-secondary"
-            onClick={handleReset}
-            disabled={resetting || saving}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#ef4444' }}
-            title="Reset footer to default configuration"
-          >
-            <RotateCcw size={15} />
-            <span>{resetting ? 'Resetting...' : 'Reset Default'}</span>
-          </button>
-
-          <button
-            type="button"
-            className="btn-primary"
-            onClick={handleSave}
-            disabled={saving || resetting}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 140, justifyContent: 'center' }}
-          >
-            <Save size={16} />
-            <span>{saving ? 'Saving...' : 'Save Changes'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Toast Alert */}
       {message && (
-        <div
-          style={{
-            padding: '12px 16px',
-            borderRadius: 8,
-            marginBottom: 20,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            background: message.type === 'success' ? '#ecfdf5' : '#fef2f2',
-            color: message.type === 'success' ? '#065f46' : '#991b1b',
-            border: `1px solid ${message.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-            fontSize: 14,
-            fontWeight: 500,
-          }}
-        >
-          {message.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span>{message.text}</span>
-        </div>
+        <Alert tone={message.type === 'success' ? 'success' : 'error'}>{message.text}</Alert>
       )}
 
       {/* Tabs */}
@@ -493,7 +345,7 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
       {/* TAB 1: Brand & About */}
       {activeTab === 'brand' && (
         <div className="footer-form-card">
-          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700 }}>Brand Identity & About Description</h3>
+          <h3 className="section-title" style={{ margin: '0 0 16px' }}>Brand Identity & About Description</h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 0.8fr 1fr', gap: 16 }}>
             <div className="footer-field-group">
@@ -542,8 +394,8 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
               placeholder="https://drive.google.com/file/d/... or direct image URL"
             />
             {logoUrl && (
-              <div style={{ marginTop: 10, padding: 12, background: '#1e293b', borderRadius: 8, display: 'inline-block' }}>
-                <span style={{ fontSize: 11, color: '#94a3b8', display: 'block', marginBottom: 4 }}>Logo Preview on Dark Footer:</span>
+              <div style={{ marginTop: 10, padding: 12, background: 'var(--text-strong)', borderRadius: 'var(--radius-md)', display: 'inline-block' }}>
+                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-light)', display: 'block', marginBottom: 4 }}>Logo Preview on Dark Footer:</span>
                 <img
                   src={normalizeGoogleDriveUrl(logoUrl)}
                   alt="Logo preview"
@@ -572,8 +424,8 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
         <div className="footer-form-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Column 2: Help Links</h3>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
+              <h3 className="section-title" style={{ margin: 0 }}>Column 2: Help Links</h3>
+              <p style={{ margin: '4px 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
                 Navigational links for user help, documentation, and support tickets.
               </p>
             </div>
@@ -592,9 +444,9 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
           <div
             style={{
               padding: 16,
-              background: '#f8fafc',
-              borderRadius: 8,
-              border: '1px dashed #cbd5e1',
+              background: 'var(--surface-subtle)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px dashed var(--border-strong)',
               display: 'flex',
               gap: 12,
               alignItems: 'flex-end',
@@ -628,13 +480,13 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                 checked={newHelpNewTab}
                 onChange={(e) => setNewHelpNewTab(e.target.checked)}
               />
-              <label htmlFor="newHelpNewTab" style={{ fontSize: 13, cursor: 'pointer' }}>
+              <label htmlFor="newHelpNewTab" style={{ fontSize: 'var(--fs-base)', cursor: 'pointer' }}>
                 Open in new tab
               </label>
             </div>
             <button
               type="button"
-              className="btn-primary"
+              className="btn btn-primary"
               onClick={addHelpLink}
               style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42 }}
             >
@@ -658,12 +510,12 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
             <tbody>
               {helpLinks.map((item, idx) => (
                 <tr key={idx}>
-                  <td style={{ color: '#94a3b8' }}>{idx + 1}</td>
+                  <td style={{ color: 'var(--text-light)' }}>{idx + 1}</td>
                   <td>
                     <input
                       type="text"
                       className="footer-field-input"
-                      style={{ padding: '6px 10px', fontSize: 13 }}
+                      style={{ padding: '6px 10px', fontSize: 'var(--fs-base)' }}
                       value={item.label}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -675,7 +527,7 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                     <input
                       type="text"
                       className="footer-field-input"
-                      style={{ padding: '6px 10px', fontSize: 13 }}
+                      style={{ padding: '6px 10px', fontSize: 'var(--fs-base)' }}
                       value={item.url}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -689,13 +541,13 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                       onClick={() => toggleHelpLinkActive(idx)}
                       style={{
                         padding: '4px 8px',
-                        borderRadius: 6,
+                        borderRadius: 'var(--radius-sm)',
                         border: 'none',
                         cursor: 'pointer',
-                        fontSize: 12,
+                        fontSize: 'var(--fs-sm)',
                         fontWeight: 600,
-                        background: item.isActive ? '#ecfdf5' : '#f1f5f9',
-                        color: item.isActive ? '#059669' : '#64748b',
+                        background: item.isActive ? 'var(--success-light)' : 'var(--surface-muted)',
+                        color: item.isActive ? 'var(--success)' : 'var(--text-muted)',
                       }}
                     >
                       {item.isActive ? 'Active' : 'Disabled'}
@@ -706,17 +558,13 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                       <button
                         type="button"
                         onClick={() => moveHelpLink(idx, 'up')}
-                        disabled={idx === 0}
-                        style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
-                      >
+                        disabled={idx === 0} className="btn btn-secondary">
                         <ArrowUp size={13} />
                       </button>
                       <button
                         type="button"
                         onClick={() => moveHelpLink(idx, 'down')}
-                        disabled={idx === helpLinks.length - 1}
-                        style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
-                      >
+                        disabled={idx === helpLinks.length - 1} className="btn btn-secondary">
                         <ArrowDown size={13} />
                       </button>
                     </div>
@@ -725,7 +573,7 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                     <button
                       type="button"
                       onClick={() => removeHelpLink(idx)}
-                      style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', padding: 4 }}
+                      style={{ border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', padding: 4 }}
                       title="Delete link"
                     >
                       <Trash2 size={16} />
@@ -743,8 +591,8 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
         <div className="footer-form-card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
             <div>
-              <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700 }}>Column 3: Customer Care & Policies</h3>
-              <p style={{ margin: '4px 0 0', fontSize: 13, color: 'var(--text-muted)' }}>
+              <h3 className="section-title" style={{ margin: 0 }}>Column 3: Customer Care & Policies</h3>
+              <p style={{ margin: '4px 0 0', fontSize: 'var(--fs-base)', color: 'var(--text-muted)' }}>
                 Refund, privacy, terms & conditions, cancellation, and earning disclaimers.
               </p>
             </div>
@@ -763,9 +611,9 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
           <div
             style={{
               padding: 16,
-              background: '#f8fafc',
-              borderRadius: 8,
-              border: '1px dashed #cbd5e1',
+              background: 'var(--surface-subtle)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px dashed var(--border-strong)',
               display: 'flex',
               gap: 12,
               alignItems: 'flex-end',
@@ -799,13 +647,13 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                 checked={newCareNewTab}
                 onChange={(e) => setNewCareNewTab(e.target.checked)}
               />
-              <label htmlFor="newCareNewTab" style={{ fontSize: 13, cursor: 'pointer' }}>
+              <label htmlFor="newCareNewTab" style={{ fontSize: 'var(--fs-base)', cursor: 'pointer' }}>
                 Open in new tab
               </label>
             </div>
             <button
               type="button"
-              className="btn-primary"
+              className="btn btn-primary"
               onClick={addCareLink}
               style={{ display: 'flex', alignItems: 'center', gap: 6, height: 42 }}
             >
@@ -829,12 +677,12 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
             <tbody>
               {customerCareLinks.map((item, idx) => (
                 <tr key={idx}>
-                  <td style={{ color: '#94a3b8' }}>{idx + 1}</td>
+                  <td style={{ color: 'var(--text-light)' }}>{idx + 1}</td>
                   <td>
                     <input
                       type="text"
                       className="footer-field-input"
-                      style={{ padding: '6px 10px', fontSize: 13 }}
+                      style={{ padding: '6px 10px', fontSize: 'var(--fs-base)' }}
                       value={item.label}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -846,7 +694,7 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                     <input
                       type="text"
                       className="footer-field-input"
-                      style={{ padding: '6px 10px', fontSize: 13 }}
+                      style={{ padding: '6px 10px', fontSize: 'var(--fs-base)' }}
                       value={item.url}
                       onChange={(e) => {
                         const val = e.target.value;
@@ -860,13 +708,13 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                       onClick={() => toggleCareLinkActive(idx)}
                       style={{
                         padding: '4px 8px',
-                        borderRadius: 6,
+                        borderRadius: 'var(--radius-sm)',
                         border: 'none',
                         cursor: 'pointer',
-                        fontSize: 12,
+                        fontSize: 'var(--fs-sm)',
                         fontWeight: 600,
-                        background: item.isActive ? '#ecfdf5' : '#f1f5f9',
-                        color: item.isActive ? '#059669' : '#64748b',
+                        background: item.isActive ? 'var(--success-light)' : 'var(--surface-muted)',
+                        color: item.isActive ? 'var(--success)' : 'var(--text-muted)',
                       }}
                     >
                       {item.isActive ? 'Active' : 'Disabled'}
@@ -877,17 +725,13 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                       <button
                         type="button"
                         onClick={() => moveCareLink(idx, 'up')}
-                        disabled={idx === 0}
-                        style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
-                      >
+                        disabled={idx === 0} className="btn btn-secondary">
                         <ArrowUp size={13} />
                       </button>
                       <button
                         type="button"
                         onClick={() => moveCareLink(idx, 'down')}
-                        disabled={idx === customerCareLinks.length - 1}
-                        style={{ padding: '4px 8px', borderRadius: 4, border: '1px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
-                      >
+                        disabled={idx === customerCareLinks.length - 1} className="btn btn-secondary">
                         <ArrowDown size={13} />
                       </button>
                     </div>
@@ -896,7 +740,7 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                     <button
                       type="button"
                       onClick={() => removeCareLink(idx)}
-                      style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', padding: 4 }}
+                      style={{ border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', padding: 4 }}
                       title="Delete link"
                     >
                       <Trash2 size={16} />
@@ -912,7 +756,7 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
       {/* TAB 4: Contact & Office Details */}
       {activeTab === 'contact' && (
         <div className="footer-form-card">
-          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700 }}>Column 4: Contact Us Details</h3>
+          <h3 className="section-title" style={{ margin: '0 0 16px' }}>Column 4: Contact Us Details</h3>
 
           {/* Emails & Phones */}
           <div style={{ display: 'grid', gridTemplateColumns: '0.8fr 1.2fr', gap: 16, marginBottom: 16 }}>
@@ -1002,15 +846,15 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
       {/* TAB 5: Social Media & Copyright */}
       {activeTab === 'legal' && (
         <div className="footer-form-card">
-          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700 }}>Social Media Integration & Legal Bar</h3>
+          <h3 className="section-title" style={{ margin: '0 0 16px' }}>Social Media Integration & Legal Bar</h3>
 
           {/* Social Links Banner */}
           <div
             style={{
               padding: 18,
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-              border: '1px solid #bfdbfe',
+              borderRadius: 'var(--radius-md)',
+              background: 'var(--primary-light)',
+              border: '1px solid var(--primary-border)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -1024,9 +868,9 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                 style={{
                   width: 40,
                   height: 40,
-                  borderRadius: 8,
+                  borderRadius: 'var(--radius-md)',
                   background: 'var(--primary)',
-                  color: '#fff',
+                  color: 'var(--text-inverse)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -1035,10 +879,10 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
                 <Share2 size={20} />
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1e3a8a' }}>
+                <h4 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--primary-strong)' }}>
                   Live Social Media Channels Integration
                 </h4>
-                <p style={{ margin: '2px 0 0', fontSize: 13, color: '#3b82f6' }}>
+                <p style={{ margin: '2px 0 0', fontSize: 'var(--fs-base)', color: 'var(--primary)' }}>
                   The footer automatically renders active YouTube, Facebook, WhatsApp, Instagram, Telegram, and X links from your existing Social Links module.
                 </p>
               </div>
@@ -1047,15 +891,15 @@ export const AdminFooterPage: React.FC<AdminFooterPageProps> = ({
             <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
               <button
                 type="button"
-                className="btn-secondary"
+                className="btn btn-secondary"
                 onClick={() => onNavigate && onNavigate('manage-social-links')}
-                style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#fff' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--surface)' }}
               >
                 <ExternalLink size={14} />
                 <span>Manage Social Media Links</span>
               </button>
 
-              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, fontWeight: 600, color: '#1e3a8a', cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--primary-strong)', cursor: 'pointer' }}>
                 <input
                   type="checkbox"
                   checked={showSocialLinks}

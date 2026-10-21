@@ -1,20 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  UserCheck, 
-  UserX, 
-  Clock, 
-  Search, 
-  CheckCircle2, 
-  AlertCircle, 
-  RefreshCw, 
-  ShieldCheck, 
-  UserPlus, 
-  ArrowRight,
-  Package,
-  Calendar,
-  Phone,
-  Mail
-} from 'lucide-react';
+import { Alert, Badge, EmptyState, LoadingState, PageHeader } from '../components/ui';
+import { ArrowRight, CheckCircle2, Mail, Package, Phone, RefreshCw, Search, UserCheck, UserX } from 'lucide-react';
 import { api } from '../services/api';
 
 interface MemberRequestItem {
@@ -135,276 +121,120 @@ export const MemberRequestsPage: React.FC<MemberRequestsPageProps> = ({ token, o
 
   return (
     <div className="page-body">
-      {/* Header */}
-      <div className="welcome-header">
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h1 className="page-title">Member Requests & Approvals</h1>
-            <span style={{
-              background: '#fef3c7',
-              color: '#d97706',
-              padding: '4px 10px',
-              borderRadius: '20px',
-              fontSize: '12px',
-              fontWeight: 600,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '4px'
-            }}>
-              <Clock size={13} /> {requests.length} Pending
-            </span>
-          </div>
-          <p className="page-subtitle">
-            Review and accept new member registrations. Once accepted, members can immediately log in. Binary income tree participation will activate when their account accumulates minimum 100 BV.
-          </p>
-        </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            onClick={fetchRequests} 
-            className="secondary-btn" 
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 16px', borderRadius: '8px' }}
-            disabled={loading}
-          >
-            <RefreshCw size={16} className={loading ? 'spin-anim' : ''} />
-            <span>Refresh</span>
-          </button>
-          {onNavigate && (
-            <button 
-              onClick={() => onNavigate('members')} 
-              className="primary-btn" 
-              style={{ display: 'flex', alignItems: 'center', gap: '6px', padding: '10px 18px', borderRadius: '8px' }}
-            >
-              <span>View All Members</span>
-              <ArrowRight size={16} />
+      <PageHeader
+        title={
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--space-3)', flexWrap: 'wrap' }}>
+            Member Requests
+            {requests.length > 0 && <Badge tone="warning" size="lg">{requests.length} pending</Badge>}
+          </span>
+        }
+        subtitle="Accepted members can log in immediately. Binary tree participation starts once they reach 100 BV."
+        actions={
+          <>
+            <button type="button" onClick={fetchRequests} className="btn btn-secondary" disabled={loading}>
+              <RefreshCw size={16} className={loading ? 'spin-anim' : ''} />
+              <span>Refresh</span>
             </button>
-          )}
-        </div>
-      </div>
+            {onNavigate && (
+              <button type="button" onClick={() => onNavigate('members')} className="btn btn-secondary">
+                <span>All Members</span>
+                <ArrowRight size={16} />
+              </button>
+            )}
+          </>
+        }
+      />
 
-      {/* Alert Notice */}
       {feedbackMessage && (
-        <div style={{
-          padding: '12px 18px',
-          borderRadius: '8px',
-          marginBottom: '20px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '10px',
-          background: feedbackMessage.type === 'success' ? '#ecfdf5' : '#fef2f2',
-          border: `1px solid ${feedbackMessage.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-          color: feedbackMessage.type === 'success' ? '#065f46' : '#991b1b',
-          fontSize: '14px',
-          fontWeight: 500
-        }}>
-          {feedbackMessage.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span>{feedbackMessage.text}</span>
-        </div>
+        <Alert tone={feedbackMessage.type === 'success' ? 'success' : 'error'}>{feedbackMessage.text}</Alert>
       )}
 
-      {/* KPI Cards */}
-      <div className="kpi-grid">
-        <div className="kpi-card">
-          <div className="kpi-icon-box" style={{ background: '#fef3c7', color: '#d97706' }}>
-            <Clock size={24} />
-          </div>
-          <div className="kpi-content">
-            <div className="kpi-label">Pending Approval</div>
-            <div className="kpi-value" style={{ color: '#d97706' }}>{requests.length}</div>
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-icon-box" style={{ background: '#ecfdf5', color: '#059669' }}>
-            <ShieldCheck size={24} />
-          </div>
-          <div className="kpi-content">
-            <div className="kpi-label">Binary Qualification</div>
-            <div className="kpi-value" style={{ fontSize: '18px', color: '#059669' }}>Min. 100 BV</div>
-          </div>
-        </div>
-
-        <div className="kpi-card">
-          <div className="kpi-icon-box" style={{ background: '#eff6ff', color: '#2563eb' }}>
-            <UserPlus size={24} />
-          </div>
-          <div className="kpi-content">
-            <div className="kpi-label">Submission Mode</div>
-            <div className="kpi-value" style={{ fontSize: '18px', color: '#2563eb' }}>Member Direct</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter / Search Bar */}
-      <div className="table-filter-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '15px', marginBottom: '20px' }}>
-        <div style={{ position: 'relative', flex: 1, maxWidth: '420px' }}>
-          <Search size={18} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+      <div className="table-filter-bar">
+        <div className="filter-search-box">
+          <Search size={16} className="search-icon" aria-hidden="true" />
           <input
             type="text"
-            placeholder="Search by name, ID, phone, sponsor, or added by..."
+            aria-label="Search requests"
+            placeholder="Search name, ID, phone, sponsor or added by"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '10px 14px 10px 38px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '8px',
-              fontSize: '14px',
-              outline: 'none',
-              background: '#ffffff'
-            }}
           />
         </div>
       </div>
 
-      {/* Requests Table */}
       <div className="dashboard-card" style={{ padding: 0, overflow: 'hidden' }}>
         {loading ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
-            <div style={{ width: '36px', height: '36px', border: '3px solid #e2e8f0', borderTopColor: '#1d72fe', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
-            <p>Loading member requests...</p>
-          </div>
+          <LoadingState label="Loading member requests…" />
         ) : filteredRequests.length === 0 ? (
-          <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-            <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
-              <CheckCircle2 size={30} />
-            </div>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', marginBottom: '6px' }}>
-              No Pending Member Requests
-            </h3>
-            <p style={{ color: '#64748b', fontSize: '14px', maxWidth: '400px', margin: '0 auto' }}>
-              {searchTerm 
-                ? 'No requests match your current search query.' 
-                : 'All member registration requests have been reviewed and approved. Great job!'}
-            </p>
-          </div>
+          <EmptyState
+            icon={<CheckCircle2 size={22} />}
+            title={searchTerm ? 'No matching requests' : 'No pending requests'}
+            text={searchTerm ? 'No requests match your search.' : 'All registration requests have been reviewed.'}
+          />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
+          <div className="table-responsive">
+            <table className="data-table">
               <thead>
-                <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', textAlign: 'left', color: '#475569', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  <th style={{ padding: '14px 18px' }}>Candidate Member</th>
-                  <th style={{ padding: '14px 18px' }}>Contact Details</th>
-                  <th style={{ padding: '14px 18px' }}>Added By</th>
-                  <th style={{ padding: '14px 18px' }}>Sponsor & Leg</th>
-                  <th style={{ padding: '14px 18px' }}>Package / BV</th>
-                  <th style={{ padding: '14px 18px' }}>Request Date</th>
-                  <th style={{ padding: '14px 18px', textAlign: 'center' }}>Actions</th>
+                <tr>
+                  <th>Candidate</th>
+                  <th>Contact</th>
+                  <th>Added By</th>
+                  <th>Sponsor & Leg</th>
+                  <th>Package</th>
+                  <th>Requested</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRequests.map((reqItem) => {
                   const isActionLoading = actionLoadingId === (reqItem.id || reqItem.memberId);
                   return (
-                    <tr key={reqItem.id || reqItem.memberId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      {/* Candidate Member */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ fontWeight: 600, color: '#0f172a' }}>{reqItem.name}</div>
-                        <div style={{ fontSize: '12px', color: '#64748b', fontFamily: 'monospace', fontWeight: 600 }}>
-                          ID: {reqItem.memberId}
+                    <tr key={reqItem.id || reqItem.memberId}>
+                      <td>
+                        <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{reqItem.name}</div>
+                        <div className="text-mono" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{reqItem.memberId}</div>
+                      </td>
+                      <td>
+                        <div className="icon-text"><Phone size={13} aria-hidden="true" /> {reqItem.mobile}</div>
+                        <div className="icon-text" style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+                          <Mail size={13} aria-hidden="true" /> {reqItem.email}
                         </div>
                       </td>
-
-                      {/* Contact Details */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: '#334155' }}>
-                          <Phone size={13} style={{ color: '#94a3b8' }} /> {reqItem.mobile}
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                          <Mail size={13} style={{ color: '#94a3b8' }} /> {reqItem.email}
+                      <td style={{ color: 'var(--text-muted)' }}>{reqItem.addedBy || 'Direct'}</td>
+                      <td>
+                        <div>Sponsor <strong className="text-mono">{reqItem.sponsorId}</strong></div>
+                        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+                          Parent {reqItem.parentId || 'Auto'} · {reqItem.position || 'LEFT'} leg
                         </div>
                       </td>
-
-                      {/* Added By */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <span style={{
-                          background: '#f1f5f9',
-                          color: '#334155',
-                          padding: '3px 8px',
-                          borderRadius: '6px',
-                          fontSize: '12px',
-                          fontWeight: 600
-                        }}>
-                          {reqItem.addedBy || 'Direct'}
-                        </span>
+                      <td>
+                        <div className="icon-text"><Package size={13} aria-hidden="true" /> {reqItem.packageName || 'No package'}</div>
+                        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{reqItem.packageBv ? `${reqItem.packageBv} BV` : '0 BV'}</div>
                       </td>
-
-                      {/* Sponsor & Leg */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ fontSize: '13px', fontWeight: 500, color: '#1e293b' }}>
-                          Sponsor: <strong>{reqItem.sponsorId}</strong>
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                          Parent: {reqItem.parentId || 'Auto'} | Leg: <span style={{ fontWeight: 600, color: reqItem.position === 'RIGHT' ? '#0284c7' : '#10b981' }}>{reqItem.position || 'LEFT'}</span>
-                        </div>
+                      <td className="nowrap" style={{ color: 'var(--text-muted)' }}>
+                        {reqItem.joinDate || new Date(reqItem.createdAt).toLocaleDateString('en-GB')}
                       </td>
-
-                      {/* Package / BV */}
-                      <td style={{ padding: '14px 18px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <Package size={14} style={{ color: '#64748b' }} />
-                          <span style={{ fontWeight: 500, color: '#0f172a', fontSize: '13px' }}>
-                            {reqItem.packageName || 'No Package'}
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '2px' }}>
-                          {reqItem.packageBv ? `${reqItem.packageBv} BV` : '0 BV'}
-                        </div>
-                      </td>
-
-                      {/* Request Date */}
-                      <td style={{ padding: '14px 18px', fontSize: '12px', color: '#64748b' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                          <Calendar size={13} />
-                          <span>{reqItem.joinDate || new Date(reqItem.createdAt).toLocaleDateString('en-GB')}</span>
-                        </div>
-                      </td>
-
-                      {/* Actions */}
-                      <td style={{ padding: '14px 18px', textAlign: 'center' }}>
-                        <div style={{ display: 'inline-flex', gap: '8px' }}>
+                      <td>
+                        <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
                           <button
+                            type="button"
                             onClick={() => handleApprove(reqItem)}
                             disabled={isActionLoading}
-                            style={{
-                              background: '#10b981',
-                              color: '#ffffff',
-                              border: 'none',
-                              borderRadius: '6px',
-                              padding: '7px 12px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              cursor: isActionLoading ? 'not-allowed' : 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '5px',
-                              boxShadow: '0 1px 2px rgba(16, 185, 129, 0.2)'
-                            }}
-                            title="Accept & Activate Member into Binary Tree"
+                            className="btn btn-sm btn-success"
+                            title="Accept and activate member"
                           >
                             <UserCheck size={14} />
-                            <span>Accept</span>
+                            Accept
                           </button>
-
                           <button
+                            type="button"
                             onClick={() => handleReject(reqItem)}
                             disabled={isActionLoading}
-                            style={{
-                              background: '#fee2e2',
-                              color: '#dc2626',
-                              border: '1px solid #fecaca',
-                              borderRadius: '6px',
-                              padding: '7px 12px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              cursor: isActionLoading ? 'not-allowed' : 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '5px'
-                            }}
-                            title="Reject Member Request"
+                            className="btn btn-sm btn-danger-outline"
+                            title="Reject request"
                           >
                             <UserX size={14} />
-                            <span>Reject</span>
+                            Reject
                           </button>
                         </div>
                       </td>

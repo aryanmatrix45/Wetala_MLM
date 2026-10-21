@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Menu, Bell, ChevronDown, LogOut, Zap, Search, ShieldCheck, AlertTriangle, X, User } from 'lucide-react';
+import { Menu, Bell, ChevronDown, LogOut, AlertTriangle, X, User } from 'lucide-react';
 import { api } from '../services/api';
 import { NotificationList } from './NotificationList';
 import { isCappingNotification } from '../hooks/useNotifications';
+import { findNavItem } from './navigation';
 
 interface TopNavbarProps {
   user?: {
@@ -37,6 +38,7 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   const notifDropdownRef = useRef<HTMLDivElement>(null);
 
   const isAdmin = user?.role === 'superadmin';
+  const isHome = activeTab === 'home';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -47,10 +49,18 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
         setIsNotifOpen(false);
       }
     };
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsDropdownOpen(false);
+        setIsNotifOpen(false);
+      }
+    };
 
     document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
     };
   }, []);
 
@@ -58,195 +68,102 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
     ? user.name
     : user?.firstName
       ? `${user.firstName} ${user.lastName || ''}`.trim()
-      : 'Rohit Sharma';
+      : isAdmin
+        ? 'Super Admin'
+        : 'Member';
 
   const initials = (() => {
-    if (user?.name) {
-      const parts = user.name.trim().split(' ');
-      if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-      return parts[0].slice(0, 2).toUpperCase();
-    }
-    if (user?.firstName && user?.lastName) {
-      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
-    }
-    return user?.firstName ? user.firstName.slice(0, 2).toUpperCase() : 'RS';
+    const parts = displayName.trim().split(/\s+/);
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return parts[0].slice(0, 2).toUpperCase();
   })();
 
-  const subLabel = user?.memberId
-    ? `ID: ${user.memberId}`
-    : user?.role === 'superadmin'
-      ? 'Super Admin'
-      : 'Member';
+  const subLabel = user?.memberId ? user.memberId : isAdmin ? 'Super Admin' : 'Member';
+  const context = activeTab ? findNavItem(user, activeTab) : null;
+  const capNotif = onNavigate ? liveNotifs.find(isCappingNotification) : undefined;
 
   return (
     <header className="top-header">
       <div className="header-left">
-        <button 
-          onClick={onToggleSidebar} 
-          className={`toggle-btn ${activeTab === 'home' ? 'toggle-btn-home' : ''}`}
-          aria-label="Toggle Navigation"
-          title="Open Navigation Menu"
+        <button
+          type="button"
+          onClick={onToggleSidebar}
+          className="toggle-btn"
+          aria-label="Open navigation menu"
         >
           <Menu size={20} />
-          {activeTab === 'home' && <span className="toggle-btn-label">Menu</span>}
         </button>
 
-        {activeTab === 'home' && (
-          <div 
-            className="header-brand-home" 
-            onClick={() => onNavigate?.('home')}
-            style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}
-            title="Panchveda Wellness Home"
-          >
-            <img
-              src="/logo.png"
-              alt="Panchveda"
-              style={{
-                width: 34,
-                height: 34,
-                borderRadius: '50%',
-                objectFit: 'contain',
-                background: '#ffffff',
-                padding: '1.5px',
-                border: '1.5px solid rgba(234, 179, 8, 0.45)',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
-              }}
-            />
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.15 }}>
-              <span style={{ fontWeight: 800, fontSize: '15px', color: '#0f172a', letterSpacing: '-0.02em' }}>
-                Panchveda
-              </span>
-              <span style={{ fontSize: '10px', fontWeight: 700, color: '#eab308', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                Wellness
-              </span>
+        {isHome ? (
+          <button type="button" className="header-brand-home" onClick={() => onNavigate?.('home')}>
+            <img src="/logo.png" alt="" className="header-brand-logo" />
+            <span className="header-brand-text">
+              <span className="header-brand-name">Panchveda</span>
+              <span className="header-brand-tag">Wellness</span>
+            </span>
+          </button>
+        ) : (
+          context && (
+            <div className="header-context">
+              {context.section && (
+                <>
+                  <span className="header-context-section">{context.section}</span>
+                  <span className="header-context-sep" aria-hidden="true">/</span>
+                </>
+              )}
+              <span className="header-context-page">{context.label}</span>
             </div>
-          </div>
+          )
         )}
-
-        {/* Global Search Bar */}
-        <div className="header-search-bar">
-          <Search size={16} color="#94a3b8" />
-          <input
-            type="text"
-            placeholder="Search Member ID, Leg BV, Transactions..."
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                onNavigate?.('members');
-              }
-            }}
-          />
-        </div>
       </div>
 
       <div className="header-right">
-        {/* Quick Simulator CTA */}
-        {onNavigate && (
-          <button 
-            className="header-pill-btn"
-            onClick={() => onNavigate('income-settings')}
-            title="Open Compensation Simulator"
+        {capNotif && (
+          <button
+            type="button"
+            className="capping-alert-pill"
+            onClick={() => {
+              if (capNotif._id || capNotif.notificationId) {
+                api.markNotificationRead(capNotif._id || capNotif.notificationId).catch(() => {});
+              }
+              onNavigate?.('packages');
+            }}
+            title="Daily capping exceeded — upgrade your package"
           >
-            <Zap size={15} color="#2563eb" />
-            <span>Simulate Payout</span>
+            <AlertTriangle size={14} />
+            <span className="capping-alert-text">Capping exceeded · Upgrade</span>
           </button>
         )}
 
-        {/* Live Engine Badge */}
-        <div className="header-live-badge" style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '6px',
-          fontSize: '12px',
-          fontWeight: 600,
-          color: '#059669',
-          background: '#ecfdf5',
-          padding: '6px 12px',
-          borderRadius: '9999px',
-          border: '1px solid rgba(16, 185, 129, 0.2)'
-        }}>
-          <ShieldCheck size={14} color="#10b981" />
-          <span>MongoDB Live</span>
-        </div>
-
-        {/* Capping Exceeded Alert Pill in Topbar */}
-        {(() => {
-          const capNotif = liveNotifs.find(isCappingNotification);
-          if (!capNotif || !onNavigate) return null;
-          return (
-            <button 
-              className="capping-alert-pill"
-              onClick={() => {
-                if (capNotif._id || capNotif.notificationId) {
-                  api.markNotificationRead(capNotif._id || capNotif.notificationId).catch(() => {});
-                }
-                onNavigate('packages');
-              }}
-              title="Capping limits exceeded! Click to upgrade your package."
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                fontSize: '11.5px',
-                fontWeight: 700,
-                color: '#b91c1c',
-                background: '#fef2f2',
-                padding: '5px 12px',
-                borderRadius: '9999px',
-                border: '1.5px solid #fca5a5',
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(239, 68, 68, 0.12)',
-              }}
-            >
-              <AlertTriangle size={14} color="#dc2626" />
-              <span className="capping-alert-text">Capping Exceeded • Upgrade Package</span>
-            </button>
-          );
-        })()}
-
-        {/* Notification Bell */}
-        <div className="header-notif-wrap" style={{ position: 'relative' }} ref={notifDropdownRef}>
-          <button 
-            className="notification-badge-btn" 
-            aria-label="Notifications"
+        <div className="header-notif-wrap" ref={notifDropdownRef}>
+          <button
+            type="button"
+            className="notification-badge-btn"
+            aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+            aria-expanded={isNotifOpen}
             onClick={() => {
               setIsNotifOpen((prev) => !prev);
               setIsDropdownOpen(false);
             }}
           >
             <Bell size={19} />
-            {unreadCount > 0 && <span className="notif-count">{unreadCount}</span>}
+            {unreadCount > 0 && <span className="notif-count">{unreadCount > 99 ? '99+' : unreadCount}</span>}
           </button>
 
           {isNotifOpen && (
-            <div className="notification-dropdown-menu">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
-                    {isAdmin ? 'Admin Alerts & Requests' : 'Account Notifications'}
-                  </span>
-                  <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 700, background: '#eff6ff', padding: '2px 7px', borderRadius: '12px' }}>
-                    {unreadCount > 0 ? `${unreadCount} New` : 'Up to date'}
-                  </span>
+            <div className="notification-dropdown-menu" role="dialog" aria-label="Notifications">
+              <div className="dropdown-head">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                  <span className="dropdown-title">{isAdmin ? 'Alerts & Requests' : 'Notifications'}</span>
+                  {unreadCount > 0 && <span className="badge badge-primary">{unreadCount} new</span>}
                 </div>
                 <button
                   type="button"
+                  className="modal-close"
                   onClick={() => setIsNotifOpen(false)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: '24px',
-                    height: '24px',
-                    borderRadius: '50%',
-                    background: '#f1f5f9',
-                    color: '#64748b',
-                    cursor: 'pointer',
-                    border: 'none',
-                    padding: 0
-                  }}
-                  title="Close notifications"
+                  aria-label="Close notifications"
                 >
-                  <X size={14} />
+                  <X size={16} />
                 </button>
               </div>
               <NotificationList
@@ -254,80 +171,64 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
                 onNavigate={onNavigate}
                 onItemClick={() => setIsNotifOpen(false)}
               />
-
-              <div style={{ marginTop: '12px', paddingTop: '8px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
+              <div className="dropdown-foot">
                 <button
+                  type="button"
+                  className="link-btn"
                   onClick={() => {
                     setIsNotifOpen(false);
                     onNavigate?.('withdrawals');
                   }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#2563eb',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    cursor: 'pointer'
-                  }}
                 >
-                  View All in Payout Center →
+                  View all in Payout Center
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Profile Dropdown Container */}
         <div className="profile-dropdown-container" ref={profileDropdownRef}>
-          <div
+          <button
+            type="button"
             className={`profile-pill ${isDropdownOpen ? 'active' : ''}`}
             onClick={() => {
               setIsDropdownOpen((prev) => !prev);
               setIsNotifOpen(false);
             }}
-            role="button"
-            tabIndex={0}
             aria-expanded={isDropdownOpen}
-            aria-label="User profile menu"
+            aria-haspopup="menu"
+            aria-label="Account menu"
           >
-            <div className="avatar-circle">{initials}</div>
-            <div className="profile-info">
+            <span className="avatar-circle">{initials}</span>
+            <span className="profile-info">
               <span className="profile-name">{displayName}</span>
               <span className="profile-role">{subLabel}</span>
-            </div>
+            </span>
             <ChevronDown
               size={14}
-              color="#64748b"
-              style={{
-                transition: 'transform 0.2s ease',
-                transform: isDropdownOpen ? 'rotate(180deg)' : 'none'
-              }}
+              color="var(--text-muted)"
+              style={{ transition: 'transform 0.2s ease', transform: isDropdownOpen ? 'rotate(180deg)' : 'none' }}
             />
-          </div>
+          </button>
 
-          {/* Floating Dropdown Menu (Positioned Below) */}
           {isDropdownOpen && (
-            <div className="profile-dropdown-menu">
+            <div className="profile-dropdown-menu" role="menu">
               <div className="profile-dropdown-header">
                 <div className="profile-dropdown-user-row">
-                  <div className="avatar-circle-sm">{initials}</div>
+                  <span className="avatar-circle-sm">{initials}</span>
                   <div className="profile-dropdown-user-text">
                     <div className="profile-dropdown-name">{displayName}</div>
-                    <div className="profile-dropdown-email">{user?.email || 'superadmin@wetala.com'}</div>
+                    {user?.email && <div className="profile-dropdown-email">{user.email}</div>}
+                    {user?.memberId && <div className="profile-dropdown-email">Member ID {user.memberId}</div>}
                   </div>
                 </div>
-                {user?.memberId && (
-                  <div className="profile-dropdown-badge">
-                    <span className="badge-label">Member ID:</span>
-                    <span className="badge-value">{user.memberId}</span>
-                  </div>
-                )}
               </div>
 
               <div className="profile-dropdown-divider" />
 
               <button
                 type="button"
+                role="menuitem"
                 className="profile-dropdown-item"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -336,11 +237,12 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
                 }}
               >
                 <User size={16} />
-                <span>My Profile & Referrals</span>
+                <span>{isAdmin ? 'Profile & Referrals' : 'Profile & KYC'}</span>
               </button>
 
               <button
                 type="button"
+                role="menuitem"
                 className="profile-dropdown-item danger"
                 onClick={(e) => {
                   e.stopPropagation();

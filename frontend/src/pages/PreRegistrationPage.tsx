@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowRight, ArrowLeft, AlertCircle, CheckCircle2, ShieldCheck, Users, Lock } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Lock, ShieldCheck } from 'lucide-react';
 import { api } from '../services/api';
+import { AuthLayout } from '../components/AuthLayout';
+import { Alert, Badge, Field } from '../components/ui';
 
 interface PreRegistrationPageProps {
   onProceed: (data: { sponsorId: string; sponsorName: string; position: 'LEFT' | 'RIGHT' }) => void;
@@ -84,302 +86,123 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #090e1a 0%, #0f172a 50%, #1e293b 100%)',
-      padding: '24px',
-      position: 'relative'
-    }}>
-      <div style={{
-        background: '#ffffff',
-        borderRadius: '20px',
-        width: '520px',
-        maxWidth: '100%',
-        padding: '36px',
-        boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.45)',
-        position: 'relative',
-        border: '1px solid rgba(255, 255, 255, 0.1)'
-      }}>
-        {/* Top Brand Logo & Header */}
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
-          <div style={{
-            width: '64px',
-            height: '64px',
-            borderRadius: '16px',
-            background: '#eff6ff',
-            color: '#1d72fe',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 16px',
-            boxShadow: '0 8px 16px -4px rgba(29, 114, 254, 0.2)'
-          }}>
-            <Users size={32} />
-          </div>
-          <span style={{
-            background: '#e0f2fe',
-            color: '#0369a1',
-            padding: '4px 12px',
-            borderRadius: '20px',
-            fontSize: '11.5px',
-            fontWeight: 700,
-            letterSpacing: '0.5px',
-            textTransform: 'uppercase',
-            display: 'inline-block',
-            marginBottom: '8px'
-          }}>
-            Member Referral Invitation
-          </span>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: '4px 0 6px 0' }}>
-            Pre-Registration
-          </h1>
-          <p style={{ fontSize: '13.5px', color: '#64748b', margin: 0 }}>
-            Confirm your Sponsor and select your binary placement leg to continue.
-          </p>
-        </div>
+    <AuthLayout
+      eyebrow="Step 1 of 2"
+      title="Join Panchveda"
+      subtitle="Confirm your sponsor and choose your placement leg."
+      footer={
+        <>
+          Already a member?{' '}
+          <button type="button" className="link-btn" onClick={onGoToLogin}>
+            Sign in
+          </button>
+        </>
+      }
+    >
+      {error && (
+        <Alert tone="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
-        {/* Error Alert */}
-        {error && (
-          <div style={{
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#b91c1c',
-            borderRadius: '10px',
-            padding: '12px 14px',
-            fontSize: '13px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '20px'
-          }}>
-            <AlertCircle size={18} style={{ flexShrink: 0 }} />
-            <span>{error}</span>
+      <form onSubmit={handleSubmit} className="auth-form">
+        <Field
+          label="Sponsor ID"
+          required
+          htmlFor="prereg-sponsor"
+          hint={isReferralLink ? 'Set by your referral link.' : undefined}
+        >
+          <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+            <div className="input-with-icon" style={{ flex: 1 }}>
+              <input
+                id="prereg-sponsor"
+                type="text"
+                required
+                placeholder="e.g. MEM0001"
+                value={sponsorId}
+                readOnly={isReferralLink}
+                aria-readonly={isReferralLink}
+                onChange={(e) => {
+                  if (isReferralLink) return;
+                  setSponsorId(e.target.value.toUpperCase());
+                  setIsVerified(false);
+                  setSponsorName(null);
+                }}
+                className="form-input has-trailing"
+                style={{ fontWeight: 600, letterSpacing: '0.04em', borderColor: isVerified ? 'var(--success)' : undefined }}
+              />
+              {isVerified ? (
+                <CheckCircle2 size={18} aria-label="Verified" style={{ position: 'absolute', right: 12, color: 'var(--success)' }} />
+              ) : isReferralLink && (
+                <Lock size={16} aria-hidden="true" style={{ position: 'absolute', right: 12, color: 'var(--text-light)' }} />
+              )}
+            </div>
+
+            {!isVerified && !isReferralLink && (
+              <button
+                type="button"
+                onClick={handleManualVerify}
+                disabled={loading || !sponsorId.trim()}
+                className="btn btn-secondary btn-lg"
+              >
+                {loading ? 'Verifying…' : 'Verify'}
+              </button>
+            )}
+          </div>
+        </Field>
+
+        {isVerified && sponsorName && (
+          <div className="verified-card">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', minWidth: 0 }}>
+              <ShieldCheck size={20} aria-hidden="true" />
+              <div style={{ minWidth: 0 }}>
+                <div className="verified-card-label">Verified sponsor</div>
+                <div className="verified-card-name">{sponsorName}</div>
+              </div>
+            </div>
+            <Badge tone="success">{sponsorId}</Badge>
           </div>
         )}
 
-        {/* Main Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Sponsor ID Input / Status */}
-          <div>
-            <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '8px' }}>
-              Sponsor ID *
-            </label>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. MEM0001 (Member ID)"
-                  value={sponsorId}
-                  readOnly={isReferralLink}
-                  aria-readonly={isReferralLink}
-                  onChange={(e) => {
-                    if (isReferralLink) return;
-                    setSponsorId(e.target.value.toUpperCase());
-                    setIsVerified(false);
-                    setSponsorName(null);
-                  }}
-                  style={{
-                    cursor: isReferralLink ? 'not-allowed' : 'text',
-                    width: '100%',
-                    padding: '11px 14px',
-                    borderRadius: '10px',
-                    border: isVerified ? '2px solid #10b981' : '1px solid #cbd5e1',
-                    fontSize: '14px',
-                    fontWeight: 700,
-                    outline: 'none',
-                    letterSpacing: '0.5px',
-                    background: isVerified ? '#f0fdf4' : '#fff'
-                  }}
-                />
-                {isVerified ? (
-                  <CheckCircle2 size={18} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#10b981' }} />
-                ) : isReferralLink && (
-                  <Lock size={16} aria-hidden="true" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                )}
-              </div>
-
-              {!isVerified && !isReferralLink && (
-                <button
-                  type="button"
-                  onClick={handleManualVerify}
-                  disabled={loading || !sponsorId.trim()}
-                  style={{
-                    padding: '0 16px',
-                    background: '#1d72fe',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '10px',
-                    fontWeight: 600,
-                    fontSize: '13px',
-                    cursor: sponsorId.trim() ? 'pointer' : 'not-allowed',
-                    opacity: sponsorId.trim() ? 1 : 0.6
-                  }}
-                >
-                  {loading ? 'Verifying...' : 'Verify'}
-                </button>
-              )}
-            </div>
-            {isReferralLink && (
-              <p style={{ fontSize: '12px', color: '#64748b', margin: '6px 0 0 0' }}>
-                Sponsor ID is set by your referral link.
-              </p>
-            )}
-          </div>
-
-          {/* Verified Sponsor Name Card */}
-          {isVerified && sponsorName && (
-            <div style={{
-              background: '#f0fdf4',
-              border: '1px solid #bbf7d0',
-              borderRadius: '12px',
-              padding: '14px 16px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  background: '#dcfce7',
-                  color: '#16a34a',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <ShieldCheck size={20} />
-                </div>
-                <div>
-                  <span style={{ fontSize: '11px', color: '#15803d', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                    Verified Sponsor
-                  </span>
-                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#14532d' }}>
-                    {sponsorName}
-                  </div>
-                </div>
-              </div>
-              <span style={{ fontSize: '12px', color: '#166534', background: '#dcfce7', padding: '3px 9px', borderRadius: '20px', fontWeight: 700 }}>
-                {sponsorId}
-              </span>
-            </div>
-          )}
-
-          {/* Placement Direction (Left / Right Leg) */}
-          <div>
-            <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '8px' }}>
-              {isLegLocked ? 'Placement Leg (set by your referral link)' : 'Select Placement Leg *'}
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <Field
+          label={isLegLocked ? 'Placement leg (set by your referral link)' : 'Placement leg'}
+          required={!isLegLocked}
+          hint={
+            <>
+              You will be placed on the extreme {position.toLowerCase()} branch of sponsor{' '}
+              <strong>{sponsorId || 'selected'}</strong>.
+            </>
+          }
+        >
+          <div className="choice-grid" role="radiogroup" aria-label="Placement leg">
+            {(['LEFT', 'RIGHT'] as const).map((leg) => (
               <button
+                key={leg}
                 type="button"
-                onClick={() => setPosition('LEFT')}
-                disabled={isLegLocked && position !== 'LEFT'}
-                aria-pressed={position === 'LEFT'}
-                style={{
-                  opacity: isLegLocked && position !== 'LEFT' ? 0.45 : 1,
-                  padding: '14px 16px',
-                  borderRadius: '12px',
-                  border: position === 'LEFT' ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                  background: position === 'LEFT' ? '#eff6ff' : '#f8fafc',
-                  color: position === 'LEFT' ? '#1d4ed8' : '#64748b',
-                  fontWeight: 800,
-                  fontSize: '14px',
-                  cursor: isLegLocked ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.15s ease'
-                }}
+                role="radio"
+                aria-checked={position === leg}
+                onClick={() => setPosition(leg)}
+                disabled={isLegLocked && position !== leg}
+                className={`choice-card${position === leg ? ' is-selected' : ''}`}
               >
-                <ArrowLeft size={18} />
-                <span>LEFT Leg</span>
+                {leg === 'LEFT' && <ArrowLeft size={18} aria-hidden="true" />}
+                <span>{leg === 'LEFT' ? 'Left leg' : 'Right leg'}</span>
+                {leg === 'RIGHT' && <ArrowRight size={18} aria-hidden="true" />}
               </button>
-
-              <button
-                type="button"
-                onClick={() => setPosition('RIGHT')}
-                disabled={isLegLocked && position !== 'RIGHT'}
-                aria-pressed={position === 'RIGHT'}
-                style={{
-                  opacity: isLegLocked && position !== 'RIGHT' ? 0.45 : 1,
-                  padding: '14px 16px',
-                  borderRadius: '12px',
-                  border: position === 'RIGHT' ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                  background: position === 'RIGHT' ? '#eff6ff' : '#f8fafc',
-                  color: position === 'RIGHT' ? '#1d4ed8' : '#64748b',
-                  fontWeight: 800,
-                  fontSize: '14px',
-                  cursor: isLegLocked ? 'not-allowed' : 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                <span>RIGHT Leg</span>
-                <ArrowRight size={18} />
-              </button>
-            </div>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '8px 0 0 0' }}>
-              You will be placed along the extreme {position.toLowerCase()} team branch of sponsor <strong>{sponsorId || 'selected'}</strong>.
-            </p>
+            ))}
           </div>
+        </Field>
 
-          {/* Submit Action */}
-          <button
-            type="submit"
-            disabled={!isVerified || loading}
-            style={{
-              padding: '14px',
-              borderRadius: '12px',
-              background: isVerified ? 'linear-gradient(135deg, #1d72fe 0%, #155dfc 100%)' : '#cbd5e1',
-              color: '#ffffff',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: '14.5px',
-              cursor: isVerified ? 'pointer' : 'not-allowed',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '10px',
-              boxShadow: isVerified ? '0 10px 20px -5px rgba(29, 114, 254, 0.4)' : 'none',
-              transition: 'all 0.2s ease',
-              marginTop: '4px'
-            }}
-          >
-            <span>Proceed to Registration Form</span>
-            <ArrowRight size={18} />
-          </button>
-        </form>
-
-        {/* Existing Member / Login Link */}
-        <div style={{ textAlign: 'center', marginTop: '22px', paddingTop: '18px', borderTop: '1px solid #f1f5f9' }}>
-          <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-            Already a registered member?{' '}
-            <button
-              onClick={onGoToLogin}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#1d72fe',
-                fontWeight: 700,
-                cursor: 'pointer',
-                padding: 0,
-                textDecoration: 'underline'
-              }}
-            >
-              Sign In Here
-            </button>
-          </p>
-        </div>
-      </div>
-    </div>
+        <button
+          type="submit"
+          disabled={!isVerified || loading}
+          className="btn btn-primary btn-lg btn-block"
+          style={{ marginTop: 'var(--space-2)' }}
+        >
+          Continue to registration
+          <ArrowRight size={18} aria-hidden="true" />
+        </button>
+      </form>
+    </AuthLayout>
   );
 };

@@ -1,22 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import {
-  BarChart3,
-  Layers,
-  CheckCircle2,
-  AlertTriangle,
-  RefreshCw,
-  Search,
-  Zap,
-  ShieldCheck,
-  ArrowDownLeft,
-  ArrowDownRight,
-  AlertCircle,
-  CalendarDays,
-  Flame,
-  IndianRupee,
-  Clock,
-} from 'lucide-react';
+import { AlertTriangle, ArrowDownLeft, ArrowDownRight, CalendarDays, CheckCircle2, Clock, Flame, IndianRupee, Layers, RefreshCw, Search, ShieldCheck, Zap } from 'lucide-react';
 import { api } from '../services/api';
+import { Alert, Badge, EmptyState as SharedEmptyState, PageHeader, StatusBadge } from '../components/ui';
 
 interface BinaryLedgerPageProps {
   user?: any;
@@ -30,9 +15,9 @@ const bv = (n: number | null | undefined) => `${(n || 0).toLocaleString('en-IN')
 const formatDate = (d: string) =>
   d ? new Date(`${d}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
 
-const card: React.CSSProperties = { padding: '20px', borderRadius: '14px', background: '#ffffff', border: '1px solid #e2e8f0' };
-const th: React.CSSProperties = { padding: '10px 12px', whiteSpace: 'nowrap' };
-const td: React.CSSProperties = { padding: '10px 12px', whiteSpace: 'nowrap' };
+const card: React.CSSProperties = { padding: 'var(--space-5)', borderRadius: 'var(--radius-lg)', background: 'var(--surface)', border: '1px solid var(--border-color)' };
+const th: React.CSSProperties = { whiteSpace: 'nowrap' };
+const td: React.CSSProperties = { whiteSpace: 'nowrap' };
 const tdNum: React.CSSProperties = { ...td, textAlign: 'right' };
 
 const StatCard: React.FC<{
@@ -42,39 +27,35 @@ const StatCard: React.FC<{
   icon: React.ReactNode;
   tone: { fg: string; bg: string; border: string };
 }> = ({ label, value, footer, icon, tone }) => (
-  <div className="dashboard-card" style={{ padding: '18px', borderRadius: '14px', background: `linear-gradient(135deg, #ffffff 0%, ${tone.bg} 100%)`, border: `1px solid ${tone.border}` }}>
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-      <span style={{ fontSize: '11.5px', fontWeight: 800, color: tone.fg, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</span>
-      <div style={{ width: '30px', height: '30px', borderRadius: '8px', background: tone.bg, color: tone.fg, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        {icon}
-      </div>
+  <div className="kpi-card" style={{ flexDirection: 'column', gap: 'var(--space-2)' }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+      <span className="kpi-label">{label}</span>
+      <span className="icon-tile" style={{ width: 30, height: 30, background: tone.bg, color: tone.fg }}>{icon}</span>
     </div>
-    <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a' }}>{value}</div>
-    {footer && (
-      <div style={{ fontSize: '11.5px', color: '#64748b', borderTop: `1px solid ${tone.border}`, paddingTop: '8px', marginTop: '8px' }}>{footer}</div>
-    )}
+    <div className="kpi-value" style={{ marginTop: 0 }}>{value}</div>
+    {footer && <div className="kpi-sub" style={{ borderTop: '1px solid var(--border-light)', paddingTop: 'var(--space-2)', width: '100%' }}>{footer}</div>}
   </div>
 );
 
 const TONES = {
-  blue: { fg: '#1d4ed8', bg: '#eff6ff', border: '#bfdbfe' },
-  green: { fg: '#047857', bg: '#ecfdf5', border: '#a7f3d0' },
-  amber: { fg: '#b45309', bg: '#fffbeb', border: '#fde68a' },
-  purple: { fg: '#86198f', bg: '#fdf4ff', border: '#f5d0fe' },
-  red: { fg: '#b91c1c', bg: '#fef2f2', border: '#fecaca' },
+  blue: { fg: 'var(--primary-hover)', bg: 'var(--primary-light)', border: 'var(--primary-border)' },
+  green: { fg: 'var(--success-hover)', bg: 'var(--success-light)', border: 'var(--success-border)' },
+  amber: { fg: 'var(--warning-hover)', bg: 'var(--warning-light)', border: 'var(--warning-border)' },
+  purple: { fg: 'var(--accent-hover)', bg: 'var(--accent-light)', border: 'var(--accent-border)' },
+  red: { fg: 'var(--danger-hover)', bg: 'var(--danger-light)', border: 'var(--danger-border)' },
 };
 
 const Pager: React.FC<{ pagination: any; onPage: (p: number) => void; noun: string }> = ({ pagination, onPage, noun }) =>
   pagination.pages > 1 ? (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', paddingTop: '12px', borderTop: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b', flexWrap: 'wrap', gap: '8px' }}>
+    <div className="pager">
       <div>
         Page <strong>{pagination.page}</strong> of <strong>{pagination.pages}</strong> ({pagination.total} {noun})
       </div>
-      <div style={{ display: 'flex', gap: '6px' }}>
-        <button disabled={pagination.page <= 1} onClick={() => onPage(pagination.page - 1)} className="secondary-btn" style={{ fontSize: '11.5px', padding: '5px 10px', opacity: pagination.page <= 1 ? 0.5 : 1 }}>
+      <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+        <button type="button" disabled={pagination.page <= 1} onClick={() => onPage(pagination.page - 1)} className="btn btn-secondary btn-sm">
           Previous
         </button>
-        <button disabled={pagination.page >= pagination.pages} onClick={() => onPage(pagination.page + 1)} className="secondary-btn" style={{ fontSize: '11.5px', padding: '5px 10px', opacity: pagination.page >= pagination.pages ? 0.5 : 1 }}>
+        <button type="button" disabled={pagination.page >= pagination.pages} onClick={() => onPage(pagination.page + 1)} className="btn btn-secondary btn-sm">
           Next
         </button>
       </div>
@@ -82,32 +63,23 @@ const Pager: React.FC<{ pagination: any; onPage: (p: number) => void; noun: stri
   ) : null;
 
 const EmptyState: React.FC<{ title: string; text: string }> = ({ title, text }) => (
-  <div style={{ padding: '44px 16px', textAlign: 'center', color: '#64748b', background: '#f8fafc', borderRadius: '10px' }}>
-    <Layers size={34} color="#94a3b8" style={{ margin: '0 auto 10px' }} />
-    <p style={{ fontSize: '14px', fontWeight: 700, color: '#334155', margin: 0 }}>{title}</p>
-    <p style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>{text}</p>
-  </div>
+  <SharedEmptyState icon={<Layers size={22} />} title={title} text={text} compact />
 );
 
 const ErrorBox: React.FC<{ message: string }> = ({ message }) => (
-  <div style={{ padding: '24px', textAlign: 'center', color: '#b91c1c', background: '#fef2f2', borderRadius: '10px' }}>
-    <AlertCircle size={22} style={{ margin: '0 auto 8px' }} />
-    <p style={{ fontSize: '13px', fontWeight: 600, margin: 0 }}>{message}</p>
-  </div>
+  <Alert tone="error" style={{ marginBottom: 0 }}>{message}</Alert>
 );
 
-const StatusPill: React.FC<{ status: string }> = ({ status }) => {
-  const map: Record<string, { label: string; fg: string; bg: string }> = {
-    PAID: { label: 'Paid', fg: '#15803d', bg: '#dcfce7' },
-    NO_MATCH: { label: 'No match', fg: '#475569', bg: '#f1f5f9' },
-    NOT_QUALIFIED: { label: 'Not qualified', fg: '#b45309', bg: '#fef3c7' },
-    COMPLETED: { label: 'Completed', fg: '#15803d', bg: '#dcfce7' },
-    RUNNING: { label: 'Running', fg: '#1d4ed8', bg: '#dbeafe' },
-    FAILED: { label: 'Failed', fg: '#b91c1c', bg: '#fee2e2' },
-  };
-  const s = map[status] || { label: status, fg: '#475569', bg: '#f1f5f9' };
-  return <span style={{ fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '9999px', background: s.bg, color: s.fg }}>{s.label}</span>;
+const STATUS_LABELS: Record<string, string> = {
+  PAID: 'Paid', NO_MATCH: 'No match', NOT_QUALIFIED: 'Not qualified', COMPLETED: 'Completed', RUNNING: 'Running', FAILED: 'Failed',
 };
+
+const StatusPill: React.FC<{ status: string }> = ({ status }) => (
+  <StatusBadge
+    status={status === 'RUNNING' ? 'PROCESSING' : status === 'NOT_QUALIFIED' ? 'PENDING' : status}
+    label={STATUS_LABELS[status] || status}
+  />
+);
 
 export const BinaryLedgerPage: React.FC<BinaryLedgerPageProps> = ({ user: propUser, token: propToken }) => {
   const savedToken = propToken || localStorage.getItem('wetala_token') || '';
@@ -159,72 +131,58 @@ export const BinaryLedgerPage: React.FC<BinaryLedgerPageProps> = ({ user: propUs
   ];
 
   return (
-    <div className="page-body" style={{ maxWidth: '1440px', margin: '0 auto', width: '100%', boxSizing: 'border-box' }}>
-      {/* Header */}
-      <div className="welcome-header" style={{ marginBottom: '20px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '14px', flexWrap: 'wrap', flex: 1 }}>
-          <div style={{ width: '46px', height: '46px', borderRadius: '12px', background: 'linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)' }}>
-            <BarChart3 size={24} />
-          </div>
-          <div>
-            <h1 className="page-title" style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Binary Income</h1>
-            <p className="page-subtitle" style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-              Team BV is matched once a day. Each day's income is credited to your wallet after midnight (IST).
-            </p>
-          </div>
-        </div>
+    <div className="page-body">
+      <PageHeader
+        title="Binary Income"
+        subtitle="Team BV is matched once a day. Each day's income is credited to your wallet after midnight (IST)."
+        actions={
+          <>
+            {isAdmin && (
+              <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                <div className="filter-search-box" style={{ minWidth: 0, width: 180 }}>
+                  <Search size={14} className="search-icon" aria-hidden="true" />
+                  <input
+                    type="text"
+                    aria-label="Member ID"
+                    placeholder="Member ID"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                  />
+                </div>
+                <button type="submit" className="btn btn-secondary">View</button>
+              </form>
+            )}
+            <button type="button" onClick={loadToday} className="btn btn-secondary btn-icon" title="Refresh" aria-label="Refresh">
+              <RefreshCw size={16} className={todayLoading ? 'animate-spin' : ''} />
+            </button>
+          </>
+        }
+      />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap', marginTop: '8px' }}>
-          {isAdmin && (
-            <form onSubmit={handleSearchSubmit} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ position: 'relative' }}>
-                <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input
-                  type="text"
-                  placeholder="Enter Member ID..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  style={{ padding: '8px 12px 8px 30px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12.5px', width: '170px', outline: 'none', fontWeight: 600 }}
-                />
-              </div>
-              <button type="submit" className="secondary-btn" style={{ fontSize: '12px', padding: '8px 12px' }}>
-                View
-              </button>
-            </form>
-          )}
-          <button onClick={loadToday} className="secondary-btn" style={{ fontSize: '12px', padding: '8px 12px' }} title="Refresh">
-            <RefreshCw size={14} className={todayLoading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
+      {todayError && <ErrorBox message={todayError} />}
 
-      {todayError && <div style={{ marginBottom: '16px' }}><ErrorBox message={todayError} /></div>}
-
-      {/* Qualification */}
       {q && (
-        <div style={{ background: qualified ? '#f0fdf4' : '#fffbeb', border: `1px solid ${qualified ? '#bbf7d0' : '#fde68a'}`, borderRadius: '12px', padding: '14px 18px', marginBottom: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '10px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <ShieldCheck size={18} color={qualified ? '#16a34a' : '#d97706'} />
-              <span style={{ fontSize: '13.5px', fontWeight: 800, color: qualified ? '#15803d' : '#92400e' }}>
+        <div className={`card qualification-card ${qualified ? 'is-ok' : 'is-pending'}`}>
+          <div className="card-header-row" style={{ marginBottom: 'var(--space-3)' }}>
+            <div className="card-title-group">
+              <ShieldCheck size={18} color={qualified ? 'var(--success)' : 'var(--warning)'} />
+              <h2 className="section-title">
                 {isAdmin && activeMemberId !== user?.memberId ? `${activeMemberId}: ` : ''}Binary income eligibility
-              </span>
+              </h2>
             </div>
-            <span style={{ fontSize: '11px', fontWeight: 800, padding: '3px 10px', borderRadius: '9999px', background: qualified ? '#dcfce7' : '#fef3c7', color: qualified ? '#15803d' : '#b45309', textTransform: 'uppercase' }}>
-              {qualified ? 'Qualified' : 'Not qualified yet'}
-            </span>
+            <Badge tone={qualified ? 'success' : 'warning'}>{qualified ? 'Qualified' : 'Not qualified yet'}</Badge>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '10px' }}>
+          <div className="stat-panel-grid" style={{ marginBottom: 0, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
             {[
-              { ok: q.isSelfActive, title: '1. Binary activated (100 BV locked)', yes: 'Active', no: 'Needs 100 BV' },
-              { ok: q.hasLeftSponsor, title: '2. Your sponsored member on the left (any level)', yes: q.leftSponsorMembers?.[0]?.name || 'Found', no: 'None yet' },
-              { ok: q.hasRightSponsor, title: '3. Your sponsored member on the right (any level)', yes: q.rightSponsorMembers?.[0]?.name || 'Found', no: 'None yet' },
+              { ok: q.isSelfActive, title: 'Binary activated (100 BV locked)', yes: 'Active', no: 'Needs 100 BV' },
+              { ok: q.hasLeftSponsor, title: 'Sponsored member on your left (any level)', yes: q.leftSponsorMembers?.[0]?.name || 'Found', no: 'None yet' },
+              { ok: q.hasRightSponsor, title: 'Sponsored member on your right (any level)', yes: q.rightSponsorMembers?.[0]?.name || 'Found', no: 'None yet' },
             ].map((c) => (
-              <div key={c.title} style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700 }}>{c.title}</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                  {c.ok ? <CheckCircle2 size={14} color="#16a34a" /> : <AlertTriangle size={14} color="#d97706" />}
-                  <span style={{ fontSize: '12.5px', fontWeight: 700, color: c.ok ? '#16a34a' : '#d97706' }}>{c.ok ? c.yes : c.no}</span>
+              <div key={c.title} className="stat-panel" style={{ padding: 'var(--space-3)' }}>
+                <div className="stat-panel-label" style={{ fontSize: 'var(--fs-xs)' }}>{c.title}</div>
+                <div className="icon-text" style={{ marginTop: 'var(--space-1)', fontWeight: 600, color: c.ok ? 'var(--success)' : 'var(--warning-hover)' }}>
+                  {c.ok ? <CheckCircle2 size={14} color="var(--success)" /> : <AlertTriangle size={14} color="var(--warning)" />}
+                  {c.ok ? c.yes : c.no}
                 </div>
               </div>
             ))}
@@ -232,23 +190,15 @@ export const BinaryLedgerPage: React.FC<BinaryLedgerPageProps> = ({ user: propUs
         </div>
       )}
 
-      {/* Tabs */}
-      <div style={{ display: 'flex', gap: '6px', marginBottom: '16px', overflowX: 'auto', paddingBottom: '2px' }}>
+      <div className="tabs" role="tablist" aria-label="Binary income views">
         {tabs.map((t) => (
           <button
             key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            style={{
-              fontSize: '12.5px',
-              fontWeight: 700,
-              padding: '8px 14px',
-              borderRadius: '8px',
-              border: '1px solid #cbd5e1',
-              background: tab === t.id ? '#0f172a' : '#ffffff',
-              color: tab === t.id ? '#ffffff' : '#475569',
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-            }}
+            className={`tab-btn${tab === t.id ? ' is-active' : ''}`}
           >
             {t.label}
           </button>
@@ -270,7 +220,7 @@ export const BinaryLedgerPage: React.FC<BinaryLedgerPageProps> = ({ user: propUs
 // ---------------------------------------------------------------------------
 
 const TodayTab: React.FC<{ data: any; loading: boolean }> = ({ data, loading }) => {
-  if (!data) return loading ? <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Loading...</div> : null;
+  if (!data) return loading ? <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>Loading...</div> : null;
   const o = data.opening;
   const c = data.closing;
   const capLabel = data.dailyCap > 0 ? inr(data.dailyCap) : 'No cap';
@@ -279,7 +229,7 @@ const TodayTab: React.FC<{ data: any; loading: boolean }> = ({ data, loading }) 
 
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '12.5px', color: '#475569', marginBottom: '12px', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginBottom: '12px', flexWrap: 'wrap' }}>
         <Clock size={14} />
         <span>
           Estimate for <strong>{formatDate(data.businessDate)}</strong>. Paid after midnight IST. Stage: <strong>{stage}</strong>
@@ -296,27 +246,27 @@ const TodayTab: React.FC<{ data: any; loading: boolean }> = ({ data, loading }) 
 
       {data.dailyCap > 0 && (
         <div style={{ ...card, marginBottom: '18px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12.5px', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-body)', marginBottom: '8px' }}>
             <span>Daily cap used</span>
             <span>{inr(Math.min(data.generatedAmount, data.dailyCap))} / {inr(data.dailyCap)}</span>
           </div>
-          <div style={{ height: '10px', borderRadius: '9999px', background: '#f1f5f9', overflow: 'hidden' }}>
-            <div style={{ width: `${capPct}%`, height: '100%', background: capPct >= 100 ? '#dc2626' : '#2563eb' }} />
+          <div style={{ height: '10px', borderRadius: 'var(--radius-full)', background: 'var(--surface-muted)', overflow: 'hidden' }}>
+            <div style={{ width: `${capPct}%`, height: '100%', background: capPct >= 100 ? 'var(--danger)' : 'var(--primary)' }} />
           </div>
         </div>
       )}
 
       <div style={{ ...card, marginBottom: '18px' }}>
-        <h2 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: '0 0 10px' }}>Matches expected today</h2>
+        <h2 className="section-title" style={{ margin: '0 0 10px' }}>Matches expected today</h2>
         {data.cycles.length === 0 ? (
-          <p style={{ fontSize: '12.5px', color: '#64748b', margin: 0 }}>
+          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: 0 }}>
             No match yet. Left {bv(o.left + data.newLeftBV)} : Right {bv(o.right + data.newRightBV)} available.
           </p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+          <div className="table-responsive">
+            <table className="data-table">
               <thead>
-                <tr style={{ background: '#f8fafc', color: '#475569', fontSize: '11px', textTransform: 'uppercase', textAlign: 'left' }}>
+                <tr>
                   <th style={th}>Payout #</th>
                   <th style={th}>Stage</th>
                   <th style={{ ...th, textAlign: 'right' }}>Left BV used</th>
@@ -326,7 +276,7 @@ const TodayTab: React.FC<{ data: any; loading: boolean }> = ({ data, loading }) 
               </thead>
               <tbody>
                 {data.cycles.map((cy: any) => (
-                  <tr key={cy.payoutSequence} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <tr key={cy.payoutSequence}>
                     <td style={td}>#{cy.payoutSequence}</td>
                     <td style={td}>
                       {cy.stage === 'FIRST_PAYOUT' ? `1st payout (${cy.ratio}, 2,500 kept ${cy.reservedSide})` : cy.stage === 'SECOND_PAYOUT' ? `2nd payout (kept 2,500 ${cy.reservedSide} released)` : '1 : 1'}
@@ -340,15 +290,15 @@ const TodayTab: React.FC<{ data: any; loading: boolean }> = ({ data, loading }) 
             </table>
           </div>
         )}
-        <p style={{ fontSize: '12px', color: '#64748b', margin: '10px 0 0' }}>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '10px 0 0' }}>
           After today: carry forward Left <strong>{bv(c.left)}</strong> · Right <strong>{bv(c.right)}</strong>
           {c.reservedBV > 0 ? <> · Kept for 2nd payout <strong>{bv(c.reservedBV)} ({c.reservedSide})</strong></> : null}
         </p>
       </div>
 
       <div style={card}>
-        <h2 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: '0 0 10px' }}>How binary income works</h2>
-        <ul style={{ fontSize: '12.5px', color: '#475569', lineHeight: 1.7, margin: 0, paddingLeft: '18px' }}>
+        <h2 className="section-title" style={{ margin: '0 0 10px' }}>How binary income works</h2>
+        <ul style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', lineHeight: 1.7, margin: 0, paddingLeft: '18px' }}>
           <li>Reaching 100 BV (from any source) activates binary income. 100 BV is locked for it and used once in binary.</li>
           <li>You need a member you sponsored somewhere in your left team and one in your right team (any level).</li>
           <li><strong>1st payout:</strong> 2,500 BV on one side and 1,250 BV on the other pays ₹250. The 2,500 is kept.</li>
@@ -410,10 +360,10 @@ const HistoryTab: React.FC<{ memberId: string; token: string }> = ({ memberId, t
 
       <div style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
-          <h2 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Day-by-day binary income</h2>
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: '12px', color: '#475569', flexWrap: 'wrap' }}>
-            From <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
-            To <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: '6px', borderRadius: '6px', border: '1px solid #cbd5e1' }} />
+          <h2 className="section-title" style={{ margin: 0 }}>Day-by-day binary income</h2>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center', fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
+            From <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={{ padding: '6px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-strong)' }} />
+            To <input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: '6px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-strong)' }} />
           </div>
         </div>
 
@@ -422,10 +372,10 @@ const HistoryTab: React.FC<{ memberId: string; token: string }> = ({ memberId, t
         ) : !loading && rows.length === 0 ? (
           <EmptyState title="No settled days yet" text="Each day appears here after it is settled at midnight (IST)." />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px' }}>
+          <div className="table-responsive">
+            <table className="data-table">
               <thead>
-                <tr style={{ background: '#f8fafc', color: '#475569', fontSize: '11px', textTransform: 'uppercase', textAlign: 'left', borderBottom: '2px solid #e2e8f0' }}>
+                <tr>
                   <th style={th}>Date</th>
                   <th style={{ ...th, textAlign: 'right' }}>Left new</th>
                   <th style={{ ...th, textAlign: 'right' }}>Right new</th>
@@ -441,15 +391,15 @@ const HistoryTab: React.FC<{ memberId: string; token: string }> = ({ memberId, t
               </thead>
               <tbody>
                 {rows.map((r) => (
-                  <tr key={r.closingId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                  <tr key={r.closingId}>
                     <td style={{ ...td, fontWeight: 700 }}>{formatDate(r.businessDate)}</td>
-                    <td style={{ ...tdNum, color: '#1d4ed8' }}>{(r.newLeftBV || 0).toLocaleString('en-IN')}</td>
-                    <td style={{ ...tdNum, color: '#047857' }}>{(r.newRightBV || 0).toLocaleString('en-IN')}</td>
+                    <td style={{ ...tdNum, color: 'var(--primary-hover)' }}>{(r.newLeftBV || 0).toLocaleString('en-IN')}</td>
+                    <td style={{ ...tdNum, color: 'var(--success-hover)' }}>{(r.newRightBV || 0).toLocaleString('en-IN')}</td>
                     <td style={tdNum}>{r.matches}</td>
                     <td style={tdNum}>{inr(r.generatedAmount)}</td>
-                    <td style={{ ...tdNum, color: '#64748b' }}>{r.dailyCap > 0 ? inr(r.dailyCap) : '-'}</td>
-                    <td style={{ ...tdNum, fontWeight: 800, color: '#15803d' }}>{inr(r.creditedAmount)}</td>
-                    <td style={{ ...tdNum, color: r.flushedAmount > 0 ? '#dc2626' : '#94a3b8' }}>{inr(r.flushedAmount)}</td>
+                    <td style={{ ...tdNum, color: 'var(--text-muted)' }}>{r.dailyCap > 0 ? inr(r.dailyCap) : '-'}</td>
+                    <td style={{ ...tdNum, fontWeight: 800, color: 'var(--success-hover)' }}>{inr(r.creditedAmount)}</td>
+                    <td style={{ ...tdNum, color: r.flushedAmount > 0 ? 'var(--danger)' : 'var(--text-light)' }}>{inr(r.flushedAmount)}</td>
                     <td style={tdNum}>{(r.closing?.left || 0).toLocaleString('en-IN')}</td>
                     <td style={tdNum}>{(r.closing?.right || 0).toLocaleString('en-IN')}</td>
                     <td style={td}><StatusPill status={r.status} /></td>
@@ -518,13 +468,13 @@ const MovementsTab: React.FC<{ memberId: string; token: string }> = ({ memberId,
 
       <div style={card}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <h2 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: 0 }}>BV movements</h2>
+          <h2 className="section-title" style={{ margin: 0 }}>BV movements</h2>
           <div style={{ display: 'flex', gap: '6px' }}>
             {(['ALL', 'LEFT', 'RIGHT'] as const).map((l) => (
               <button
                 key={l}
                 onClick={() => setLeg(l)}
-                style={{ fontSize: '12px', fontWeight: 700, padding: '6px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', background: leg === l ? '#0f172a' : '#ffffff', color: leg === l ? '#ffffff' : '#475569', cursor: 'pointer' }}
+                style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, padding: '6px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', background: leg === l ? 'var(--surface-inverse)' : 'var(--surface)', color: leg === l ? 'var(--text-inverse)' : 'var(--text-secondary)', cursor: 'pointer' }}
               >
                 {l === 'ALL' ? 'All' : l === 'LEFT' ? 'Left' : 'Right'}
               </button>
@@ -537,10 +487,10 @@ const MovementsTab: React.FC<{ memberId: string; token: string }> = ({ memberId,
         ) : !loading && rows.length === 0 ? (
           <EmptyState title="No BV movements yet" text="Team BV, activation BV and daily matching appear here." />
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
+          <div className="table-responsive">
+            <table className="data-table">
               <thead>
-                <tr style={{ background: '#f8fafc', color: '#475569', fontSize: '11px', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>
+                <tr>
                   <th style={th}>Date & time</th>
                   <th style={th}>Leg</th>
                   <th style={th}>Type</th>
@@ -553,22 +503,22 @@ const MovementsTab: React.FC<{ memberId: string; token: string }> = ({ memberId,
               </thead>
               <tbody>
                 {rows.map((e) => {
-                  const legColor = e.position === 'LEFT' ? '#2563eb' : e.position === 'RIGHT' ? '#059669' : '#64748b';
+                  const legColor = e.position === 'LEFT' ? 'var(--primary)' : e.position === 'RIGHT' ? 'var(--success)' : 'var(--text-muted)';
                   return (
-                    <tr key={e.ledgerId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ ...td, color: '#334155' }}>
+                    <tr key={e.ledgerId}>
+                      <td style={{ ...td, color: 'var(--text-body)' }}>
                         {new Date(e.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                       </td>
                       <td style={{ ...td, fontWeight: 800, color: legColor }}>{e.position || '-'}</td>
                       <td style={td}>{typeLabel(e)}</td>
-                      <td style={{ ...tdNum, color: e.earnedBV > 0 ? '#15803d' : '#94a3b8', fontWeight: e.earnedBV > 0 ? 700 : 400 }}>{e.earnedBV > 0 ? `+${e.earnedBV.toLocaleString('en-IN')}` : '0'}</td>
-                      <td style={{ ...tdNum, color: e.consumedBV > 0 ? '#dc2626' : '#94a3b8', fontWeight: e.consumedBV > 0 ? 700 : 400 }}>{e.consumedBV > 0 ? `-${e.consumedBV.toLocaleString('en-IN')}` : '0'}</td>
-                      <td style={{ ...tdNum, color: e.reservedBV > 0 ? '#d97706' : '#94a3b8' }}>{e.reservedBV > 0 ? e.reservedBV.toLocaleString('en-IN') : '-'}</td>
+                      <td style={{ ...tdNum, color: e.earnedBV > 0 ? 'var(--success-hover)' : 'var(--text-light)', fontWeight: e.earnedBV > 0 ? 700 : 400 }}>{e.earnedBV > 0 ? `+${e.earnedBV.toLocaleString('en-IN')}` : '0'}</td>
+                      <td style={{ ...tdNum, color: e.consumedBV > 0 ? 'var(--danger)' : 'var(--text-light)', fontWeight: e.consumedBV > 0 ? 700 : 400 }}>{e.consumedBV > 0 ? `-${e.consumedBV.toLocaleString('en-IN')}` : '0'}</td>
+                      <td style={{ ...tdNum, color: e.reservedBV > 0 ? 'var(--warning)' : 'var(--text-light)' }}>{e.reservedBV > 0 ? e.reservedBV.toLocaleString('en-IN') : '-'}</td>
                       <td style={td}>
                         {e.businessDate ? formatDate(e.businessDate) : '-'}
-                        {e.settlementStatus === 'PENDING' && <span style={{ marginLeft: '6px', fontSize: '10.5px', fontWeight: 800, color: '#1d4ed8' }}>WAITING</span>}
+                        {e.settlementStatus === 'PENDING' && <span style={{ marginLeft: '6px', fontSize: 'var(--fs-xs)', fontWeight: 800, color: 'var(--primary-hover)' }}>WAITING</span>}
                       </td>
-                      <td style={{ ...td, whiteSpace: 'normal', color: '#475569', fontSize: '12px', minWidth: '240px' }}>{e.description}</td>
+                      <td style={{ ...td, whiteSpace: 'normal', color: 'var(--text-secondary)', minWidth: '240px' }}>{e.description}</td>
                     </tr>
                   );
                 })}
@@ -652,36 +602,34 @@ const SettlementsTab: React.FC<{ token: string; onViewMember: (memberId: string)
       <div style={{ ...card, marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
           <div>
-            <h2 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Run a settlement</h2>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0' }}>
+            <h2 className="section-title" style={{ margin: 0 }}>Run a settlement</h2>
+            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '4px 0 0' }}>
               Runs automatically at 00:05 IST for the previous day. Use this to settle or retry a finished day manually.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-            <input type="date" value={settleDate} max={lastSettleableDate} onChange={(e) => setSettleDate(e.target.value)} style={{ padding: '7px', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
-            <button onClick={runSettlement} disabled={settling || !settleDate} className="primary-btn" style={{ fontSize: '12px', padding: '8px 14px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)' }}>
+            <input type="date" value={settleDate} max={lastSettleableDate} onChange={(e) => setSettleDate(e.target.value)} style={{ padding: '7px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)' }} />
+            <button onClick={runSettlement} disabled={settling || !settleDate} className="btn btn-success btn-sm">
               <Zap size={14} className={settling ? 'animate-spin' : ''} />
               <span>{settling ? 'Settling...' : 'Settle day'}</span>
             </button>
           </div>
         </div>
         {message && (
-          <div style={{ marginTop: '12px', padding: '10px 14px', borderRadius: '8px', fontSize: '12.5px', fontWeight: 600, background: message.type === 'success' ? '#ecfdf5' : '#fef2f2', color: message.type === 'success' ? '#065f46' : '#991b1b' }}>
-            {message.text}
-          </div>
-        )}
+        <Alert tone={message.type === 'success' ? 'success' : 'error'}>{message.text}</Alert>
+      )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: '16px' }}>
         <div style={card}>
-          <h2 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: '0 0 12px' }}>Settlement days</h2>
+          <h2 className="section-title" style={{ margin: '0 0 12px' }}>Settlement days</h2>
           {runs.length === 0 ? (
             <EmptyState title="No settlements yet" text="The first settlement runs after the next midnight (IST)." />
           ) : (
-            <div style={{ overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
+            <div className="table-responsive">
+              <table className="data-table">
                 <thead>
-                  <tr style={{ background: '#f8fafc', color: '#475569', fontSize: '11px', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>
+                  <tr>
                     <th style={th}>Date</th>
                     <th style={th}>Status</th>
                     <th style={{ ...th, textAlign: 'right' }}>Earners</th>
@@ -698,7 +646,7 @@ const SettlementsTab: React.FC<{ token: string; onViewMember: (memberId: string)
                     <tr
                       key={r.businessDate}
                       onClick={() => setSelectedDate(r.businessDate)}
-                      style={{ borderBottom: '1px solid #f1f5f9', cursor: 'pointer', background: r.businessDate === selectedDate ? '#eff6ff' : 'transparent' }}
+                      style={{ borderBottom: '1px solid var(--border-light)', cursor: 'pointer', background: r.businessDate === selectedDate ? 'var(--primary-light)' : 'transparent' }}
                     >
                       <td style={{ ...td, fontWeight: 700 }}>{formatDate(r.businessDate)}</td>
                       <td style={td}><StatusPill status={r.status} /></td>
@@ -706,9 +654,9 @@ const SettlementsTab: React.FC<{ token: string; onViewMember: (memberId: string)
                       <td style={tdNum}>{r.totals?.matches || 0}</td>
                       <td style={tdNum}>{(r.totals?.newLeftBV || 0).toLocaleString('en-IN')}</td>
                       <td style={tdNum}>{(r.totals?.newRightBV || 0).toLocaleString('en-IN')}</td>
-                      <td style={{ ...tdNum, fontWeight: 800, color: '#15803d' }}>{inr(r.totals?.creditedAmount)}</td>
-                      <td style={{ ...tdNum, color: '#dc2626' }}>{inr(r.totals?.flushedAmount)}</td>
-                      <td style={{ ...tdNum, color: r.failures?.length ? '#dc2626' : '#94a3b8' }}>{r.failures?.length || 0}</td>
+                      <td style={{ ...tdNum, fontWeight: 800, color: 'var(--success-hover)' }}>{inr(r.totals?.creditedAmount)}</td>
+                      <td style={{ ...tdNum, color: 'var(--danger)' }}>{inr(r.totals?.flushedAmount)}</td>
+                      <td style={{ ...tdNum, color: r.failures?.length ? 'var(--danger)' : 'var(--text-light)' }}>{r.failures?.length || 0}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -720,17 +668,17 @@ const SettlementsTab: React.FC<{ token: string; onViewMember: (memberId: string)
         {selectedDate && (
           <div style={card}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px', marginBottom: '12px' }}>
-              <h2 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: 0 }}>Members for {formatDate(selectedDate)}</h2>
+              <h2 className="section-title" style={{ margin: 0 }}>Members for {formatDate(selectedDate)}</h2>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <input type="text" placeholder="Member ID or name" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: '7px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '12.5px' }} />
-                <label style={{ fontSize: '12px', color: '#475569', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <input type="text" placeholder="Member ID or name" value={search} onChange={(e) => setSearch(e.target.value)} style={{ padding: '7px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-sm)' }} />
+                <label style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <input type="checkbox" checked={earnersOnly} onChange={(e) => setEarnersOnly(e.target.checked)} /> Earners only
                 </label>
               </div>
             </div>
             {t && (
-              <p style={{ fontSize: '12.5px', color: '#475569', margin: '0 0 12px' }}>
-                {t.closings} member(s) closed · {t.qualifiedMembers} qualified · {t.earners} earner(s) · {t.matches} matches · Earned {inr(t.generatedAmount)} · Credited <strong style={{ color: '#15803d' }}>{inr(t.creditedAmount)}</strong> · Flushed <strong style={{ color: '#dc2626' }}>{inr(t.flushedAmount)}</strong>
+              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
+                {t.closings} member(s) closed · {t.qualifiedMembers} qualified · {t.earners} earner(s) · {t.matches} matches · Earned {inr(t.generatedAmount)} · Credited <strong style={{ color: 'var(--success-hover)' }}>{inr(t.creditedAmount)}</strong> · Flushed <strong style={{ color: 'var(--danger)' }}>{inr(t.flushedAmount)}</strong>
               </p>
             )}
             {detail?.run?.failures?.length > 0 && (
@@ -741,10 +689,10 @@ const SettlementsTab: React.FC<{ token: string; onViewMember: (memberId: string)
             {!detail?.closings?.length ? (
               <EmptyState title="No members to show" text="Nobody matches this filter for the selected day." />
             ) : (
-              <div style={{ overflowX: 'auto' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12.5px', textAlign: 'left' }}>
+              <div className="table-responsive">
+                <table className="data-table">
                   <thead>
-                    <tr style={{ background: '#f8fafc', color: '#475569', fontSize: '11px', textTransform: 'uppercase', borderBottom: '2px solid #e2e8f0' }}>
+                    <tr>
                       <th style={th}>Member</th>
                       <th style={{ ...th, textAlign: 'right' }}>Left new</th>
                       <th style={{ ...th, textAlign: 'right' }}>Right new</th>
@@ -758,20 +706,20 @@ const SettlementsTab: React.FC<{ token: string; onViewMember: (memberId: string)
                   </thead>
                   <tbody>
                     {detail.closings.map((c: any) => (
-                      <tr key={c.closingId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                      <tr key={c.closingId}>
                         <td style={td}>
-                          <button onClick={() => onViewMember(c.memberId)} style={{ background: 'none', border: 'none', padding: 0, color: '#1d4ed8', fontWeight: 700, cursor: 'pointer' }}>
+                          <button onClick={() => onViewMember(c.memberId)} className="link-btn">
                             {c.memberId}
                           </button>
-                          <span style={{ color: '#64748b', marginLeft: '6px' }}>{c.memberName}</span>
+                          <span style={{ color: 'var(--text-muted)', marginLeft: '6px' }}>{c.memberName}</span>
                         </td>
                         <td style={tdNum}>{(c.newLeftBV || 0).toLocaleString('en-IN')}</td>
                         <td style={tdNum}>{(c.newRightBV || 0).toLocaleString('en-IN')}</td>
                         <td style={tdNum}>{c.matches}</td>
-                        <td style={{ ...tdNum, color: '#64748b' }}>{c.dailyCap > 0 ? inr(c.dailyCap) : '-'}</td>
-                        <td style={{ ...tdNum, fontWeight: 800, color: '#15803d' }}>{inr(c.creditedAmount)}</td>
-                        <td style={{ ...tdNum, color: c.flushedAmount > 0 ? '#dc2626' : '#94a3b8' }}>{inr(c.flushedAmount)}</td>
-                        <td style={td}>{c.creditedAmount > 0 ? (c.walletCredited ? 'Credited' : <span style={{ color: '#dc2626', fontWeight: 700 }}>Pending</span>) : '-'}</td>
+                        <td style={{ ...tdNum, color: 'var(--text-muted)' }}>{c.dailyCap > 0 ? inr(c.dailyCap) : '-'}</td>
+                        <td style={{ ...tdNum, fontWeight: 800, color: 'var(--success-hover)' }}>{inr(c.creditedAmount)}</td>
+                        <td style={{ ...tdNum, color: c.flushedAmount > 0 ? 'var(--danger)' : 'var(--text-light)' }}>{inr(c.flushedAmount)}</td>
+                        <td style={td}>{c.creditedAmount > 0 ? (c.walletCredited ? 'Credited' : <span style={{ color: 'var(--danger)', fontWeight: 700 }}>Pending</span>) : '-'}</td>
                         <td style={td}><StatusPill status={c.status} /></td>
                       </tr>
                     ))}

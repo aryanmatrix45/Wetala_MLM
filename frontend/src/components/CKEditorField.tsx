@@ -161,11 +161,11 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
       aria-pressed={mode === target}
       style={{
         padding: '3px 10px',
-        borderRadius: '6px',
-        border: '1px solid ' + (mode === target ? '#2563eb' : '#cbd5e1'),
-        background: mode === target ? '#2563eb' : '#ffffff',
-        color: mode === target ? '#ffffff' : '#334155',
-        fontSize: '11px',
+        borderRadius: 'var(--radius-sm)',
+        border: '1px solid ' + (mode === target ? 'var(--primary)' : 'var(--border-strong)'),
+        background: mode === target ? 'var(--primary)' : 'var(--surface)',
+        color: mode === target ? 'var(--text-inverse)' : 'var(--text-body)',
+        fontSize: 'var(--fs-xs)',
         fontWeight: 700,
         cursor: 'pointer',
       }}
@@ -183,17 +183,17 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           padding: '6px 10px',
-          background: '#f8fafc',
-          border: '1px solid #e2e8f0',
+          background: 'var(--surface-subtle)',
+          border: '1px solid var(--border-color)',
           borderBottom: 'none',
           borderRadius: '8px 8px 0 0',
-          fontSize: '11px',
-          color: '#64748b',
+          fontSize: 'var(--fs-xs)',
+          color: 'var(--text-muted)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Sparkles size={13} color="#2563eb" />
-          <span style={{ fontWeight: 600, color: '#334155' }}>CKEditor 5 Classic</span>
+          <Sparkles size={13} color="var(--primary)" />
+          <span style={{ fontWeight: 600, color: 'var(--text-body)' }}>CKEditor 5 Classic</span>
           <span>• Rich Text Description</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
@@ -215,7 +215,7 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
         ref={editorContainerRef}
         style={{
           display: loadError || mode === 'html' ? 'none' : 'block',
-          border: '1px solid #e2e8f0',
+          border: '1px solid var(--border-color)',
           borderRadius: '0 0 8px 8px',
           overflow: 'hidden',
         }}
@@ -234,10 +234,10 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
             width: '100%',
             boxSizing: 'border-box',
             padding: '12px',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--border-color)',
             borderRadius: '0 0 8px 8px',
             fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-            fontSize: '13px',
+            fontSize: 'var(--fs-base)',
             lineHeight: 1.55,
             minHeight,
             resize: 'vertical',
@@ -247,8 +247,8 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
 
       {/* Fallback Textarea if script fails to load from CDN */}
       {loadError && (
-        <div style={{ padding: '8px', background: '#fff' }}>
-          <p style={{ fontSize: '12px', color: '#dc2626', marginBottom: '6px' }}>
+        <div style={{ padding: '8px', background: 'var(--surface)' }}>
+          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--danger)', marginBottom: '6px' }}>
             {loadError}
           </p>
           <textarea
@@ -259,10 +259,10 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
             style={{
               width: '100%',
               padding: '12px',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
+              border: '1px solid var(--border-strong)',
+              borderRadius: 'var(--radius-sm)',
               fontFamily: 'monospace',
-              fontSize: '13px',
+              fontSize: 'var(--fs-base)',
               minHeight,
             }}
           />
@@ -280,8 +280,8 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
             alignItems: 'center',
             justifyContent: 'center',
             gap: '8px',
-            fontSize: '13px',
-            color: '#64748b',
+            fontSize: 'var(--fs-base)',
+            color: 'var(--text-muted)',
             zIndex: 2,
           }}
         >
@@ -289,8 +289,8 @@ export const CKEditorField: React.FC<CKEditorFieldProps> = ({
             style={{
               width: '16px',
               height: '16px',
-              border: '2px solid #cbd5e1',
-              borderTopColor: '#2563eb',
+              border: '2px solid var(--border-strong)',
+              borderTopColor: 'var(--primary)',
               borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
             }}

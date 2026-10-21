@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { ArrowLeft } from 'lucide-react';
 import { Sidebar } from './components/Sidebar';
 import { TopNavbar } from './components/TopNavbar';
 import { DashboardPage } from './pages/DashboardPage';
@@ -30,6 +31,7 @@ import { AdminVideosPage } from './pages/AdminVideosPage';
 import { AdminFooterPage } from './pages/AdminFooterPage';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { PublicTopNavbar } from './components/PublicTopNavbar';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { useNotifications } from './hooks/useNotifications';
 import { api } from './services/api';
 
@@ -228,16 +230,10 @@ export function App() {
 
   if (loading) {
     return (
-      <div style={{ height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0b1120' }}>
-        <div style={{ textAlign: 'center' }}>
-          <img 
-            src="/logo.png" 
-            alt="Panchveda Wellness" 
-            style={{ width: '68px', height: '68px', borderRadius: '50%', marginBottom: '16px', border: '2px solid rgba(234, 179, 8, 0.4)', boxShadow: '0 8px 24px rgba(0,0,0,0.4)' }} 
-          />
-          <div style={{ width: '32px', height: '32px', border: '3px solid rgba(255,255,255,0.1)', borderTopColor: '#10b981', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <p style={{ color: '#94a3b8', fontSize: '14px', fontWeight: 500 }}>Connecting to Panchveda Wellness...</p>
-        </div>
+      <div className="app-boot" role="status">
+        <img src="/logo.png" alt="Panchveda Wellness" className="app-boot-logo" />
+        <span className="spinner spinner-lg" aria-hidden="true" />
+        <span className="sr-only">Loading</span>
       </div>
     );
   }
@@ -286,7 +282,8 @@ export function App() {
 
     const backToHome = (
       <button type="button" className="auth-back-home" onClick={goToPublicHome}>
-        ← Back to Home
+        <ArrowLeft size={16} aria-hidden="true" />
+        Back to Home
       </button>
     );
 
@@ -364,6 +361,7 @@ export function App() {
         />
 
         {/* Tab Routing */}
+        <ErrorBoundary resetKey={activeTab}>
         {activeTab === 'home' && (
           <MemberHomePage
             user={user}
@@ -494,21 +492,7 @@ export function App() {
           />
         )}
 
-        {(activeTab === 'reports' || activeTab === 'cms-content' || activeTab === 'settings') && (
-          <div className="page-body">
-            <div className="welcome-header">
-              <div>
-                <h1 className="page-title">{activeTab.toUpperCase()}</h1>
-                <p className="page-subtitle">Module is active and configured.</p>
-              </div>
-            </div>
-            <div className="dashboard-card">
-              <p style={{ color: '#64748b' }}>
-                All calculations and live stats for {activeTab} are linked with the backend binary calculation engine.
-              </p>
-            </div>
-          </div>
-        )}
+        </ErrorBoundary>
       </div>
 
       {/* Mobile bottom navigation (hidden on desktop) */}

@@ -1,25 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  ZoomIn,
-  ZoomOut,
-  RotateCcw,
-  User,
-  Search,
-  GitFork,
-  Users2,
-  ArrowDownLeft,
-  ArrowDownRight,
-  ArrowDown,
-  Maximize2,
-  ArrowLeft,
-  ArrowRight,
-  ChevronUp,
-  Home,
-  ChevronRight,
-  Layers,
-  ArrowDownCircle,
-  BarChart3,
-} from 'lucide-react';
+import { PageHeader, SegmentedControl } from '../components/ui';
+import { ArrowDown, ArrowDownCircle, ArrowDownLeft, ArrowDownRight, ArrowLeft, ArrowRight, BarChart3, ChevronRight, ChevronUp, GitFork, Home, Layers, Maximize2, RotateCcw, Search, User, Users2, ZoomIn, ZoomOut } from 'lucide-react';
 import { api } from '../services/api';
 
 interface GenealogyPageProps {
@@ -316,8 +297,8 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
             marginTop: '2px'
           }}>
             <span className="node-rank-badge" style={{
-              background: node.packageName === 'Elite' ? '#fdf2f8' : node.packageName === 'Premium' ? '#f5f3ff' : '#eff6ff',
-              color: node.packageName === 'Elite' ? '#db2777' : node.packageName === 'Premium' ? '#7c3aed' : '#2563eb'
+              background: node.packageName === 'Elite' ? '#fdf2f8' : node.packageName === 'Premium' ? 'var(--accent-light)' : 'var(--primary-light)',
+              color: node.packageName === 'Elite' ? '#db2777' : node.packageName === 'Premium' ? 'var(--accent)' : 'var(--primary)'
             }}>
               {node.packageName || 'Basic'}
             </span>
@@ -328,8 +309,8 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
 
               if (!isActive) {
                 return (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', fontWeight: 700, color: '#dc2626' }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#ef4444' }} />
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--danger)' }}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--danger)' }} />
                     Inactive
                   </span>
                 );
@@ -337,16 +318,16 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
 
               if (isBinActive) {
                 return (
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10.5px', fontWeight: 700, color: '#059669' }} title={`Binary Qualified with ${pBv} BV`}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#10b981' }} />
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--success)' }} title={`Binary Qualified with ${pBv} BV`}>
+                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--success)' }} />
                     Binary Active
                   </span>
                 );
               }
 
               return (
-                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '10px', fontWeight: 700, color: '#d97706' }} title={`Pending 100 BV requirement (${pBv}/100 BV)`}>
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b' }} />
+                <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--fs-2xs)', fontWeight: 700, color: 'var(--warning)' }} title={`Pending 100 BV requirement (${pBv}/100 BV)`}>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--warning)' }} />
                   Needs 100 BV
                 </span>
               );
@@ -358,21 +339,21 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
             width: '40px',
             height: '40px',
             borderRadius: '50%',
-            background: isActive ? 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)' : '#e2e8f0',
+            background: isActive ? 'var(--primary)' : 'var(--surface-sunken)',
             color: 'white',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             margin: '0 auto 6px',
-            boxShadow: isActive ? '0 4px 10px rgba(37, 99, 235, 0.3)' : 'none'
+            boxShadow: isActive ? 'none' : 'none'
           }}>
             <User size={19} />
           </div>
 
-          <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0f172a', lineHeight: 1.2 }}>{node.name}</div>
-          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 600, marginTop: '2px' }}>{node.memberId}</div>
+          <div style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.2 }}>{node.name}</div>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 600, marginTop: '2px' }}>{node.memberId}</div>
           {node.sponsorId && (
-            <div style={{ fontSize: '10px', color: '#4f46e5', fontWeight: 700, marginTop: '1px' }} title={`Direct Sponsor: ${node.sponsorId}`}>
+            <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--accent)', fontWeight: 700, marginTop: '1px' }} title={`Direct Sponsor: ${node.sponsorId}`}>
               Sp: {node.sponsorId}
             </div>
           )}
@@ -381,11 +362,11 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
           <div className="node-leg-bar">
             <div className="node-leg-left">
               <div>L: {node.leftBv || 0}</div>
-              <div style={{ fontSize: '9px', opacity: 0.8 }}>BV</div>
+              <div style={{ fontSize: 'var(--fs-2xs)', opacity: 0.8 }}>BV</div>
             </div>
             <div className="node-leg-right">
               <div>R: {node.rightBv || 0}</div>
-              <div style={{ fontSize: '9px', opacity: 0.8 }}>BV</div>
+              <div style={{ fontSize: 'var(--fs-2xs)', opacity: 0.8 }}>BV</div>
             </div>
           </div>
 
@@ -481,11 +462,11 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
           onClick={() => drillToNode(node.memberId, node.name)}
           style={{
             background: 'white',
-            border: '2px solid #10b981',
-            borderRadius: '16px',
+            border: '2px solid var(--success)',
+            borderRadius: 'var(--radius-lg)',
             padding: '16px 20px',
             width: '200px',
-            boxShadow: '0 10px 25px -5px rgba(16, 185, 129, 0.1)',
+            boxShadow: 'none',
             textAlign: 'center',
             cursor: 'pointer',
             transition: 'all 0.2s'
@@ -493,28 +474,28 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
           title="Click to view referrals"
         >
           <div style={{
-            fontSize: '11px',
+            fontSize: 'var(--fs-xs)',
             fontWeight: 800,
-            color: '#059669',
-            background: '#ecfdf5',
+            color: 'var(--success)',
+            background: 'var(--success-light)',
             padding: '2px 8px',
-            borderRadius: '9999px',
+            borderRadius: 'var(--radius-full)',
             display: 'inline-block',
             marginBottom: '8px'
           }}>
             Generation Level {level}
           </div>
-          <div style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>{node.name}</div>
-          <div style={{ fontSize: '11px', color: '#64748b' }}>{node.memberId}</div>
+          <div style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--text-main)' }}>{node.name}</div>
+          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{node.memberId}</div>
           <div style={{
-            fontSize: '11.5px',
-            color: '#10b981',
+            fontSize: 'var(--fs-sm)',
+            color: 'var(--success)',
             fontWeight: 700,
             marginTop: '8px',
             paddingTop: '6px',
-            borderTop: '1px solid #f1f5f9'
+            borderTop: '1px solid var(--border-light)'
           }}>
-            👥 {node.directReferralsCount || 0} Direct Sponsors
+            {node.directReferralsCount || 0} Direct Sponsors
           </div>
         </div>
 
@@ -526,7 +507,7 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
               left: '50%',
               width: '2px',
               height: '24px',
-              background: '#cbd5e1',
+              background: 'var(--border-strong)',
               transform: 'translateX(-50%)',
             }} />
             {node.referrals.map((child: any) => (
@@ -540,73 +521,31 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
 
   return (
     <div className="page-body">
-      {/* Header with Tree Type Switcher */}
-      <div className="welcome-header">
-        <div>
-          <h1 className="page-title">{treeType === 'binary' ? 'Binary Placement Tree' : 'Sponsor Genealogy Tree'}</h1>
-          <p className="page-subtitle">
-            {treeType === 'binary'
-              ? 'Complete multi-tier binary hierarchy: view full tree till bottom, navigate extreme left & right legs, with decimal-safe BV tracking.'
-              : 'Unilevel sponsor hierarchy: Direct sponsor relationships, team depth, and generational lines.'}
-          </p>
-        </div>
-
-        <div style={{
-          display: 'flex',
-          background: '#f1f5f9',
-          padding: '4px',
-          borderRadius: '12px',
-          border: '1px solid #e2e8f0'
-        }}>
-          <button
-            onClick={() => setTreeType('binary')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              borderRadius: '9px',
-              fontSize: '13px',
-              fontWeight: 700,
-              border: 'none',
-              cursor: 'pointer',
-              background: treeType === 'binary' ? '#ffffff' : 'transparent',
-              color: treeType === 'binary' ? '#2563eb' : '#64748b',
-              boxShadow: treeType === 'binary' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
-            }}
-          >
-            <GitFork size={16} />
-            <span>BINARY TREE</span>
-          </button>
-
-          <button
-            onClick={() => setTreeType('sponsor')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              padding: '8px 16px',
-              borderRadius: '9px',
-              fontSize: '13px',
-              fontWeight: 700,
-              border: 'none',
-              cursor: 'pointer',
-              background: treeType === 'sponsor' ? '#ffffff' : 'transparent',
-              color: treeType === 'sponsor' ? '#10b981' : '#64748b',
-              boxShadow: treeType === 'sponsor' ? '0 2px 6px rgba(0,0,0,0.06)' : 'none'
-            }}
-          >
-            <Users2 size={16} />
-            <span>SPONSOR TREE</span>
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title={treeType === 'binary' ? 'Binary Placement Tree' : 'Sponsor Tree'}
+        subtitle={
+          treeType === 'binary'
+            ? 'Browse the full binary hierarchy and both legs with BV totals.'
+            : 'Direct sponsor relationships and team depth by generation.'
+        }
+        actions={
+          <SegmentedControl
+            ariaLabel="Tree type"
+            value={treeType}
+            onChange={(v) => setTreeType(v as 'binary' | 'sponsor')}
+            options={[
+              { value: 'binary', label: 'Binary Tree', icon: <GitFork size={15} /> },
+              { value: 'sponsor', label: 'Sponsor Tree', icon: <Users2 size={15} /> },
+            ]}
+          />
+        }
+      />
 
       {/* Floating HUD Toolbar & Search */}
       <div className="filter-bar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '12px' }}>
         <form onSubmit={handleSearch} style={{ display: 'flex', gap: '10px', flex: 1, maxWidth: '440px' }}>
           <div className="search-input-box" style={{ flex: 1 }}>
-            <Search size={16} color="#94a3b8" />
+            <Search size={16} color="var(--text-light)" />
             <input
               type="text"
               placeholder={isRegularMember ? `Search downline team (e.g. ${user?.memberId})...` : "Search Member ID (e.g. MEM0001)..."}
@@ -614,14 +553,14 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
               onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
-          <button type="submit" className="primary-btn">
+          <button type="submit" className="btn btn-primary">
             Locate Node
           </button>
         </form>
 
         {/* Depth Selector Buttons */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+          <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <Layers size={14} /> Tree Depth:
           </span>
           <div className="tree-depth-group">
@@ -712,67 +651,61 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
         {/* Viewport Canvas Pan & Zoom Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
           <button
-            className="outline-btn"
+            className="btn btn-sm btn-secondary"
             onClick={scrollToFarLeft}
             title="Scroll to Extreme Left"
-            style={{ padding: '6px 10px', fontSize: '12px' }}
           >
             <ArrowLeft size={14} /> Left
           </button>
           <button
-            className="outline-btn"
+            className="btn btn-sm btn-secondary"
             onClick={scrollToCenter}
             title="Scroll to Center"
-            style={{ padding: '6px 10px', fontSize: '12px' }}
           >
             Center
           </button>
           <button
-            className="outline-btn"
+            className="btn btn-sm btn-secondary"
             onClick={scrollToFarRight}
             title="Scroll to Extreme Right"
-            style={{ padding: '6px 10px', fontSize: '12px' }}
           >
             Right <ArrowRight size={14} />
           </button>
           <button
-            className="outline-btn"
+            className="btn btn-sm btn-secondary"
             onClick={scrollToTop}
             title="Scroll to Top (Root)"
-            style={{ padding: '6px 10px', fontSize: '12px' }}
           >
             Top
           </button>
           <button
-            className="outline-btn"
+            className="btn btn-sm btn-secondary"
             onClick={scrollToBottom}
             title="Scroll to Bottom Leaves"
-            style={{ padding: '6px 10px', fontSize: '12px' }}
           >
             <ArrowDownCircle size={14} /> Bottom
           </button>
 
-          <div style={{ width: '1px', height: '22px', background: '#cbd5e1', margin: '0 4px' }} />
+          <span className="toolbar-divider" aria-hidden="true" />
 
           <button
-            className="outline-btn"
+            className="btn btn-sm btn-soft"
             onClick={handleAutoFit}
             title="Auto-Fit Entire Tree to Screen"
-            style={{ padding: '6px 10px', fontSize: '12px', fontWeight: 700, color: '#2563eb' }}
           >
             <Maximize2 size={14} /> Fit Screen
           </button>
 
-          <button className="outline-btn" onClick={() => setZoom((z) => Math.min(1.6, z + 0.1))} title="Zoom In">
+          <button type="button" className="btn btn-sm btn-icon btn-secondary" onClick={() => setZoom((z) => Math.min(1.6, z + 0.1))} title="Zoom In" aria-label="Zoom In">
             <ZoomIn size={15} />
           </button>
-          <span style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', minWidth: '38px', textAlign: 'center' }}>
+          <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-main)', minWidth: '38px', textAlign: 'center' }}>
             {Math.round(zoom * 100)}%
           </span>
-          <button className="outline-btn" onClick={() => setZoom((z) => Math.max(0.4, z - 0.1))} title="Zoom Out">
+          <button type="button" className="btn btn-sm btn-icon btn-secondary" onClick={() => setZoom((z) => Math.max(0.4, z - 0.1))} title="Zoom Out" aria-label="Zoom Out">
             <ZoomOut size={15} />
           </button>
-          <button className="outline-btn" onClick={handleReset} title="Reset Tree to Default">
+          <button type="button" className="btn btn-sm btn-icon btn-secondary" onClick={handleReset} title="Reset Tree to Default" aria-label="Reset Tree to Default">
             <RotateCcw size={15} />
           </button>
         </div>
@@ -781,7 +714,7 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
       {/* Interactive Breadcrumb Path */}
       {breadcrumbs.length > 0 && (
         <div className="tree-breadcrumbs-bar">
-          <span style={{ color: '#64748b', fontSize: '12px', marginRight: '4px' }}>Drill Path:</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', marginRight: '4px' }}>Drill Path:</span>
           {breadcrumbs.map((crumb, idx) => (
             <React.Fragment key={crumb.memberId + idx}>
               <button
@@ -789,15 +722,15 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
                 onClick={() => handleBreadcrumbClick(crumb, idx)}
                 title={`Drill to ${crumb.name} (${crumb.memberId})`}
                 style={{
-                  color: idx === breadcrumbs.length - 1 ? '#2563eb' : '#334155',
-                  borderColor: idx === breadcrumbs.length - 1 ? '#93c5fd' : '#cbd5e1',
-                  background: idx === breadcrumbs.length - 1 ? '#eff6ff' : '#ffffff',
+                  color: idx === breadcrumbs.length - 1 ? 'var(--primary)' : 'var(--text-body)',
+                  borderColor: idx === breadcrumbs.length - 1 ? 'var(--primary-border)' : 'var(--border-strong)',
+                  background: idx === breadcrumbs.length - 1 ? 'var(--primary-light)' : 'var(--surface)',
                 }}
               >
                 {idx === 0 && <Home size={12} />}
                 <span>{crumb.name} ({crumb.memberId})</span>
               </button>
-              {idx < breadcrumbs.length - 1 && <ChevronRight size={13} color="#94a3b8" />}
+              {idx < breadcrumbs.length - 1 && <ChevronRight size={13} color="var(--text-light)" />}
             </React.Fragment>
           ))}
         </div>
@@ -807,30 +740,30 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
       {treeData && (
         <div className="tree-stats-strip">
           <div className="tree-stat-item">
-            <BarChart3 size={16} color="#2563eb" />
-            <span style={{ color: '#64748b' }}>Network in View:</span>
-            <span className="tree-stat-badge" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
+            <BarChart3 size={16} color="var(--primary)" />
+            <span style={{ color: 'var(--text-muted)' }}>Network in View:</span>
+            <span className="tree-stat-badge" style={{ background: 'var(--primary-light)', color: 'var(--primary-hover)' }}>
               {treeStats.totalCount} Members
             </span>
           </div>
 
           <div className="tree-stat-item">
-            <span style={{ color: '#64748b' }}>Tree Levels:</span>
-            <span className="tree-stat-badge" style={{ background: '#f1f5f9', color: '#334155' }}>
+            <span style={{ color: 'var(--text-muted)' }}>Tree Levels:</span>
+            <span className="tree-stat-badge" style={{ background: 'var(--surface-muted)', color: 'var(--text-body)' }}>
               {treeStats.maxDepth} Levels Deep
             </span>
           </div>
 
           <div className="tree-stat-item">
-            <span style={{ color: '#2563eb', fontWeight: 700 }}>Left Leg:</span>
-            <span className="tree-stat-badge" style={{ background: '#eff6ff', color: '#2563eb' }}>
+            <span style={{ color: 'var(--primary)', fontWeight: 700 }}>Left Leg:</span>
+            <span className="tree-stat-badge" style={{ background: 'var(--primary-light)', color: 'var(--primary)' }}>
               {treeStats.leftCount} Nodes • {treeStats.leftBv.toLocaleString()} BV
             </span>
           </div>
 
           <div className="tree-stat-item">
-            <span style={{ color: '#059669', fontWeight: 700 }}>Right Leg:</span>
-            <span className="tree-stat-badge" style={{ background: '#ecfdf5', color: '#059669' }}>
+            <span style={{ color: 'var(--success)', fontWeight: 700 }}>Right Leg:</span>
+            <span className="tree-stat-badge" style={{ background: 'var(--success-light)', color: 'var(--success)' }}>
               {treeStats.rightCount} Nodes • {treeStats.rightBv.toLocaleString()} BV
             </span>
           </div>
@@ -851,33 +784,33 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
             <div style={{
               width: '42px',
               height: '42px',
-              border: '3px solid #e2e8f0',
-              borderTopColor: '#2563eb',
+              border: '3px solid var(--border-color)',
+              borderTopColor: 'var(--primary)',
               borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
               margin: '0 auto 16px'
             }} />
-            <p style={{ color: '#64748b', fontWeight: 700, fontSize: '14px' }}>
+            <p style={{ color: 'var(--text-muted)', fontWeight: 700, fontSize: 'var(--fs-md)' }}>
               Loading complete {treeType} hierarchy till bottom...
             </p>
           </div>
         ) : errorMessage ? (
           <div style={{ textAlign: 'center', padding: '60px 24px', maxWidth: '520px', margin: '0 auto' }}>
             <div style={{
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: '16px',
+              background: 'var(--danger-light)',
+              border: '1px solid var(--danger-border)',
+              borderRadius: 'var(--radius-lg)',
               padding: '24px',
-              color: '#991b1b',
-              boxShadow: '0 4px 14px rgba(239, 68, 68, 0.08)'
+              color: 'var(--danger-strong)',
+              boxShadow: 'none'
             }}>
-              <div style={{ fontSize: '15px', fontWeight: 800, marginBottom: '6px' }}>Tree Access Notice</div>
-              <p style={{ fontSize: '13px', color: '#b91c1c', marginBottom: '16px', lineHeight: 1.4 }}>{errorMessage}</p>
+              <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, marginBottom: '6px' }}>Tree Access Notice</div>
+              <p style={{ fontSize: 'var(--fs-base)', color: 'var(--danger-hover)', marginBottom: '16px', lineHeight: 1.4 }}>{errorMessage}</p>
               <button
                 type="button"
-                className="primary-btn"
+                className="btn btn-primary"
                 onClick={handleReset}
-                style={{ padding: '8px 18px', fontSize: '12.5px' }}
+                style={{ padding: '8px 18px', fontSize: 'var(--fs-sm)' }}
               >
                 Return to My Tree ({defaultRoot})
               </button>
@@ -896,7 +829,7 @@ export const GenealogyPage: React.FC<GenealogyPageProps> = ({ user, token }) => 
             {treeType === 'binary' ? renderBinaryNode(treeData) : renderSponsorNode(treeData)}
           </div>
         ) : (
-          <div style={{ textAlign: 'center', padding: '80px', color: '#94a3b8' }}>
+          <div style={{ textAlign: 'center', padding: '80px', color: 'var(--text-light)' }}>
             No tree records found for node <strong>{rootId}</strong>.
           </div>
         )}

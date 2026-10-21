@@ -1,20 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Video,
-  Plus,
-  Save,
-  RefreshCw,
-  Edit2,
-  Trash2,
-  Eye,
-  CheckCircle2,
-  AlertCircle,
-  ExternalLink,
-  Film,
-  Sparkles,
-  Play,
-  Palette,
-} from 'lucide-react';
+import { Alert, PageHeader } from '../components/ui';
+import { Edit2, ExternalLink, Eye, Film, Palette, Play, Plus, RefreshCw, Save, Sparkles, Trash2, Video } from 'lucide-react';
 import {
   api,
   type HomeVideoItem,
@@ -30,7 +16,7 @@ interface AdminVideosPageProps {
 
 export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
   const [settings, setSettings] = useState<HomeVideoSettings>({
-    headerTitle: '<span style="color: #dc2626">Featured</span> Official Presentation',
+    headerTitle: '<span style="color: var(--danger)">Featured</span> Official Presentation',
     headerSubtitle: 'Watch our curated video presentations, compensation overview, and wellness guides.',
     isActive: true,
   });
@@ -207,137 +193,37 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
   const parsedCurrentVideoId = extractYouTubeId(formYoutubeUrl);
 
   return (
-    <div style={{ maxWidth: 1240, margin: '0 auto', padding: '24px 16px' }}>
-      {/* Top Banner */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 16,
-          marginBottom: 24,
-          background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
-          padding: '20px 24px',
-          borderRadius: 16,
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div
-            style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
-              color: '#dc2626',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.2)',
-            }}
-          >
-            <Video size={24} />
-          </div>
-          <div>
-            <h1 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#0f172a' }}>
-              Home Video Showcase Manager
-            </h1>
-            <p style={{ margin: '4px 0 0 0', fontSize: 13, color: '#64748b' }}>
-              Manage the dedicated YouTube video section shown to members right before the Products section.
-            </p>
-          </div>
-        </div>
+    <div className="page-body">
+      <PageHeader
+        title="Home Videos"
+        subtitle="YouTube videos shown on the home page, just before the Products section."
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => setShowLivePreview(!showLivePreview)}
+              className={`btn ${showLivePreview ? 'btn-soft' : 'btn-secondary'}`}
+              aria-pressed={showLivePreview}
+            >
+              <Eye size={16} />
+              <span>{showLivePreview ? 'Hide preview' : 'Preview'}</span>
+            </button>
+            <button type="button" onClick={fetchData} disabled={loading} className="btn btn-secondary">
+              <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+              <span>Refresh</span>
+            </button>
+            <button type="button" onClick={openCreateModal} className="btn btn-primary">
+              <Plus size={16} />
+              <span>Add video</span>
+            </button>
+          </>
+        }
+      />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button
-            type="button"
-            onClick={() => setShowLivePreview(!showLivePreview)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 16px',
-              borderRadius: 10,
-              border: '1px solid #cbd5e1',
-              background: showLivePreview ? '#f1f5f9' : '#ffffff',
-              color: '#334155',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <Eye size={16} />
-            <span>{showLivePreview ? 'Hide Member View' : 'Live Member View'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={fetchData}
-            disabled={loading}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 16px',
-              borderRadius: 10,
-              border: '1px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#334155',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-            }}
-          >
-            <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
-            <span>Refresh</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={openCreateModal}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '9px 18px',
-              borderRadius: 10,
-              background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
-              color: '#ffffff',
-              fontSize: 13,
-              fontWeight: 600,
-              border: 'none',
-              cursor: 'pointer',
-              boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)',
-            }}
-          >
-            <Plus size={16} />
-            <span>Add YouTube Video</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Feedback Alert */}
       {feedback && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '12px 18px',
-            borderRadius: 10,
-            marginBottom: 20,
-            fontSize: 14,
-            fontWeight: 500,
-            background: feedback.type === 'success' ? '#ecfdf5' : '#fef2f2',
-            color: feedback.type === 'success' ? '#065f46' : '#991b1b',
-            border: `1px solid ${feedback.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-          }}
-        >
-          {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-          <span>{feedback.message}</span>
-        </div>
+        <Alert tone={feedback.type === 'success' ? 'success' : 'error'} onClose={() => setFeedback(null)}>
+          {feedback.message}
+        </Alert>
       )}
 
       {/* Live Member Preview Strip (if enabled) */}
@@ -346,14 +232,14 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
           style={{
             marginBottom: 24,
             padding: 20,
-            background: '#ffffff',
-            borderRadius: 16,
-            border: '2px dashed #93c5fd',
+            background: 'var(--surface)',
+            borderRadius: 'var(--radius-lg)',
+            border: '2px dashed var(--primary-border)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 16 }}>
-            <Sparkles size={18} color="#2563eb" />
-            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: '#1e293b' }}>
+            <Sparkles size={18} color="var(--primary)" />
+            <h3 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-strong)' }}>
               Live Preview (How Members See This On Home Page)
             </h3>
           </div>
@@ -361,19 +247,19 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
           <div
             style={{
               padding: 20,
-              background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
-              borderRadius: 16,
-              border: '1px solid #e2e8f0',
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-color)',
             }}
           >
             <div style={{ marginBottom: 16 }}>
               <div
-                style={{ fontSize: 20, fontWeight: 800, color: '#0f172a' }}
+                style={{ fontSize: 'var(--fs-2xl)', fontWeight: 800, color: 'var(--text-main)' }}
                 dangerouslySetInnerHTML={{ __html: settings.headerTitle }}
               />
               {settings.headerSubtitle && (
                 <div
-                  style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}
+                  style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', marginTop: 4 }}
                   dangerouslySetInnerHTML={{ __html: settings.headerSubtitle }}
                 />
               )}
@@ -390,9 +276,9 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                 <div
                   key={v._id}
                   style={{
-                    background: '#ffffff',
-                    borderRadius: 12,
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--surface)',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--border-color)',
                     overflow: 'hidden',
                   }}
                 >
@@ -404,11 +290,11 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                     />
                   </div>
                   <div style={{ padding: 14 }}>
-                    <h4 style={{ margin: '0 0 6px 0', fontSize: 14, fontWeight: 700, color: '#0f172a' }}>
+                    <h4 style={{ margin: '0 0 6px 0', fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-main)' }}>
                       {v.title}
                     </h4>
                     <div
-                      style={{ fontSize: 12.5, color: '#64748b' }}
+                      style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}
                       dangerouslySetInnerHTML={{ __html: v.description }}
                     />
                   </div>
@@ -422,9 +308,9 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
       {/* Grid: 1. Section Header Settings (Managed by Super Admin with CKEditor) */}
       <div
         style={{
-          background: '#ffffff',
-          borderRadius: 16,
-          border: '1px solid #e2e8f0',
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border-color)',
           padding: '22px 24px',
           marginBottom: 24,
           boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
@@ -436,9 +322,9 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
               style={{
                 width: 32,
                 height: 32,
-                borderRadius: 8,
-                background: '#fef2f2',
-                color: '#dc2626',
+                borderRadius: 'var(--radius-md)',
+                background: 'var(--danger-light)',
+                color: 'var(--danger)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -447,10 +333,10 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
               <Palette size={16} />
             </div>
             <div>
-              <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a' }}>
+              <h2 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)' }}>
                 Section Header & Typography Settings
               </h2>
-              <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
+              <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                 Admin-controlled title and subtitle with CKEditor rich text formatting and color customization.
               </p>
             </div>
@@ -462,16 +348,16 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
               alignItems: 'center',
               gap: 8,
               cursor: 'pointer',
-              fontSize: 13,
+              fontSize: 'var(--fs-base)',
               fontWeight: 600,
-              color: settings.isActive ? '#059669' : '#dc2626',
+              color: settings.isActive ? 'var(--success)' : 'var(--danger)',
             }}
           >
             <input
               type="checkbox"
               checked={settings.isActive}
               onChange={(e) => setSettings({ ...settings, isActive: e.target.checked })}
-              style={{ width: 18, height: 18, cursor: 'pointer', accentColor: '#059669' }}
+              style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--success)' }}
             />
             <span>{settings.isActive ? 'Section Visible on Member Home' : 'Section Hidden'}</span>
           </label>
@@ -480,24 +366,24 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
         <form onSubmit={handleSaveSettings}>
           {/* Quick Color Presets */}
           <div style={{ marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <span style={{ fontSize: 12, fontWeight: 600, color: '#475569' }}>Quick Color Presets:</span>
+            <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 600, color: 'var(--text-secondary)' }}>Quick Color Presets:</span>
             {[
-              { label: 'Crimson Red', color: '#dc2626' },
-              { label: 'Royal Blue', color: '#2563eb' },
-              { label: 'Emerald Green', color: '#059669' },
-              { label: 'Purple Violet', color: '#7c3aed' },
-              { label: 'Amber Orange', color: '#d97706' },
+              { label: 'Crimson Red', color: 'var(--danger)' },
+              { label: 'Royal Blue', color: 'var(--primary)' },
+              { label: 'Emerald Green', color: 'var(--success)' },
+              { label: 'Purple Violet', color: 'var(--accent)' },
+              { label: 'Amber Orange', color: 'var(--warning)' },
             ].map((p) => (
               <button
                 key={p.label}
                 type="button"
                 onClick={() => applyColorPreset(p.color, p.label)}
                 style={{
-                  fontSize: 11,
+                  fontSize: 'var(--fs-xs)',
                   padding: '4px 8px',
-                  borderRadius: 6,
+                  borderRadius: 'var(--radius-sm)',
                   border: `1px solid ${p.color}`,
-                  background: '#ffffff',
+                  background: 'var(--surface)',
                   color: p.color,
                   fontWeight: 600,
                   cursor: 'pointer',
@@ -510,7 +396,7 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
 
           {/* Title with CKEditor */}
           <div style={{ marginBottom: 16 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+            <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
               Section Title (Rich Text & Color Text via CKEditor) *
             </label>
             <CKEditorField
@@ -523,7 +409,7 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
 
           {/* Subtitle with CKEditor */}
           <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+            <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
               Section Subtitle (Rich Text via CKEditor)
             </label>
             <CKEditorField
@@ -537,22 +423,7 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <button
               type="submit"
-              disabled={savingSettings}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '10px 22px',
-                borderRadius: 10,
-                background: '#0f172a',
-                color: '#ffffff',
-                fontSize: 13,
-                fontWeight: 600,
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 2px 6px rgba(15, 23, 42, 0.2)',
-              }}
-            >
+              disabled={savingSettings} className="btn btn-primary">
               <Save size={16} />
               <span>{savingSettings ? 'Saving Settings...' : 'Save Header Settings'}</span>
             </button>
@@ -563,9 +434,9 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
       {/* 2. Videos List / CRUD Table */}
       <div
         style={{
-          background: '#ffffff',
-          borderRadius: 16,
-          border: '1px solid #e2e8f0',
+          background: 'var(--surface)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border-color)',
           padding: '22px 24px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
         }}
@@ -581,31 +452,17 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
           }}
         >
           <div>
-            <h2 style={{ margin: 0, fontSize: 17, fontWeight: 700, color: '#0f172a' }}>
+            <h2 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)' }}>
               YouTube Videos ({videos.length})
             </h2>
-            <p style={{ margin: '4px 0 0 0', fontSize: 12, color: '#64748b' }}>
+            <p style={{ margin: '4px 0 0 0', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
               Videos are shown in the grid on Member Home, ordered by sequence number.
             </p>
           </div>
 
           <button
             type="button"
-            onClick={openCreateModal}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 8,
-              padding: '8px 16px',
-              borderRadius: 8,
-              background: '#dc2626',
-              color: '#ffffff',
-              fontSize: 13,
-              fontWeight: 600,
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
+            onClick={openCreateModal} className="btn btn-danger">
             <Plus size={16} />
             <span>Add Video</span>
           </button>
@@ -613,44 +470,30 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
 
         {/* Video Cards Grid */}
         {loading ? (
-          <div style={{ padding: '40px 0', textAlign: 'center', color: '#64748b' }}>
+          <div style={{ padding: '40px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
             <RefreshCw size={24} className="animate-spin" style={{ margin: '0 auto 8px' }} />
-            <p style={{ fontSize: 14 }}>Loading videos...</p>
+            <p style={{ fontSize: 'var(--fs-md)' }}>Loading videos...</p>
           </div>
         ) : videos.length === 0 ? (
           <div
             style={{
               padding: '48px 24px',
               textAlign: 'center',
-              border: '2px dashed #cbd5e1',
-              borderRadius: 14,
-              background: '#f8fafc',
+              border: '2px dashed var(--border-strong)',
+              borderRadius: 'var(--radius-lg)',
+              background: 'var(--surface-subtle)',
             }}
           >
-            <Video size={42} style={{ color: '#94a3b8', margin: '0 auto 12px' }} />
-            <h3 style={{ margin: '0 0 6px 0', fontSize: 16, fontWeight: 700, color: '#334155' }}>
+            <Video size={42} style={{ color: 'var(--text-light)', margin: '0 auto 12px' }} />
+            <h3 style={{ margin: '0 0 6px 0', fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-body)' }}>
               No Videos Added Yet
             </h3>
-            <p style={{ margin: '0 0 16px 0', fontSize: 13, color: '#64748b', maxWidth: 420 }}>
+            <p style={{ margin: '0 0 16px 0', fontSize: 'var(--fs-base)', color: 'var(--text-muted)', maxWidth: 420 }}>
               Paste any YouTube video link along with a description to showcase presentations on the member homepage.
             </p>
             <button
               type="button"
-              onClick={openCreateModal}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 8,
-                padding: '9px 18px',
-                borderRadius: 8,
-                background: '#dc2626',
-                color: '#ffffff',
-                fontSize: 13,
-                fontWeight: 600,
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
+              onClick={openCreateModal} className="btn btn-danger">
               <Plus size={16} />
               <span>Add First Video</span>
             </button>
@@ -667,9 +510,9 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
               <div
                 key={vid._id}
                 style={{
-                  background: '#ffffff',
-                  borderRadius: 14,
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--surface)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-color)',
                   overflow: 'hidden',
                   display: 'flex',
                   flexDirection: 'column',
@@ -705,14 +548,14 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                         height: 48,
                         borderRadius: '50%',
                         background: 'rgba(220, 38, 38, 0.9)',
-                        color: '#fff',
+                        color: 'var(--text-inverse)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
                       }}
                     >
-                      <Play size={22} fill="#ffffff" style={{ marginLeft: 2 }} />
+                      <Play size={22} fill="var(--text-inverse)" style={{ marginLeft: 2 }} />
                     </div>
                   </div>
 
@@ -721,11 +564,11 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                     <span
                       style={{
                         background: 'rgba(15, 23, 42, 0.85)',
-                        color: '#fff',
-                        fontSize: 11,
+                        color: 'var(--text-inverse)',
+                        fontSize: 'var(--fs-xs)',
                         fontWeight: 700,
                         padding: '3px 8px',
-                        borderRadius: 6,
+                        borderRadius: 'var(--radius-sm)',
                         backdropFilter: 'blur(4px)',
                       }}
                     >
@@ -739,12 +582,12 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                       onClick={() => handleToggleStatus(vid)}
                       style={{
                         background: vid.status === 'ACTIVE' ? 'rgba(5, 150, 105, 0.9)' : 'rgba(220, 38, 38, 0.9)',
-                        color: '#ffffff',
+                        color: 'var(--text-inverse)',
                         border: 'none',
-                        fontSize: 11,
+                        fontSize: 'var(--fs-xs)',
                         fontWeight: 700,
                         padding: '3px 8px',
-                        borderRadius: 6,
+                        borderRadius: 'var(--radius-sm)',
                         cursor: 'pointer',
                         backdropFilter: 'blur(4px)',
                       }}
@@ -759,9 +602,9 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                   <h3
                     style={{
                       margin: '0 0 6px 0',
-                      fontSize: 15,
+                      fontSize: 'var(--fs-lg)',
                       fontWeight: 700,
-                      color: '#0f172a',
+                      color: 'var(--text-main)',
                       lineHeight: 1.35,
                     }}
                   >
@@ -769,15 +612,15 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                   </h3>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 12 }}>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>Video ID:</span>
-                    <code style={{ fontSize: 11, background: '#f1f5f9', padding: '2px 6px', borderRadius: 4 }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Video ID:</span>
+                    <code style={{ fontSize: 'var(--fs-xs)', background: 'var(--surface-muted)', padding: '2px 6px', borderRadius: 'var(--radius-xs)' }}>
                       {vid.videoId}
                     </code>
                     <a
                       href={vid.youtubeUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ color: '#2563eb', display: 'inline-flex', alignItems: 'center', marginLeft: 'auto' }}
+                      style={{ color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', marginLeft: 'auto' }}
                       title="Open on YouTube"
                     >
                       <ExternalLink size={13} />
@@ -787,17 +630,17 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                   {/* Description below video */}
                   <div
                     style={{
-                      fontSize: 13,
-                      color: '#475569',
+                      fontSize: 'var(--fs-base)',
+                      color: 'var(--text-secondary)',
                       lineHeight: 1.5,
                       marginBottom: 16,
                       flex: 1,
                       maxHeight: 120,
                       overflowY: 'auto',
                       padding: '8px 10px',
-                      background: '#f8fafc',
-                      borderRadius: 8,
-                      border: '1px solid #f1f5f9',
+                      background: 'var(--surface-subtle)',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-light)',
                     }}
                     dangerouslySetInnerHTML={{ __html: vid.description || '<em>No description provided</em>' }}
                   />
@@ -808,7 +651,7 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      borderTop: '1px solid #f1f5f9',
+                      borderTop: '1px solid var(--border-light)',
                       paddingTop: 12,
                       marginTop: 'auto',
                     }}
@@ -819,9 +662,9 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                       style={{
                         background: 'none',
                         border: 'none',
-                        fontSize: 12,
+                        fontSize: 'var(--fs-sm)',
                         fontWeight: 600,
-                        color: vid.status === 'ACTIVE' ? '#dc2626' : '#059669',
+                        color: vid.status === 'ACTIVE' ? 'var(--danger)' : 'var(--success)',
                         cursor: 'pointer',
                         padding: 0,
                       }}
@@ -832,42 +675,14 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                     <div style={{ display: 'flex', gap: 8 }}>
                       <button
                         type="button"
-                        onClick={() => openEditModal(vid)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '6px 12px',
-                          borderRadius: 6,
-                          border: '1px solid #cbd5e1',
-                          background: '#ffffff',
-                          color: '#334155',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
+                        onClick={() => openEditModal(vid)} className="btn btn-secondary btn-sm">
                         <Edit2 size={13} />
                         <span>Edit</span>
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => handleDeleteVideo(vid)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          padding: '6px 10px',
-                          borderRadius: 6,
-                          border: '1px solid #fecaca',
-                          background: '#fff5f5',
-                          color: '#dc2626',
-                          fontSize: 12,
-                          fontWeight: 600,
-                          cursor: 'pointer',
-                        }}
-                      >
+                        onClick={() => handleDeleteVideo(vid)} className="btn btn-danger-outline btn-sm">
                         <Trash2 size={13} />
                         <span>Delete</span>
                       </button>
@@ -882,40 +697,16 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
 
       {/* Add / Edit Video Modal */}
       {isModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1050,
-            padding: 16,
-            backdropFilter: 'blur(3px)',
-          }}
+        <div className="modal-backdrop"
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsModalOpen(false);
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: '#ffffff',
-              borderRadius: 18,
-              width: '100%',
-              maxWidth: 720,
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-          >
+          }}>
+          <div className="modal modal-legacy" style={{ maxWidth: 720, display: 'flex', flexDirection: 'column' }} role="dialog" aria-modal="true">
             {/* Modal Header */}
             <div
               style={{
                 padding: '20px 24px',
-                borderBottom: '1px solid #e2e8f0',
+                borderBottom: '1px solid var(--border-color)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -926,9 +717,9 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                   style={{
                     width: 36,
                     height: 36,
-                    borderRadius: 10,
-                    background: '#fee2e2',
-                    color: '#dc2626',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--danger-soft)',
+                    color: 'var(--danger)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -937,10 +728,10 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                   <Film size={18} />
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: '#0f172a' }}>
+                  <h3 style={{ margin: 0, fontSize: 'var(--fs-xl)', fontWeight: 700, color: 'var(--text-main)' }}>
                     {editingVideo ? 'Edit YouTube Video' : 'Add New YouTube Video'}
                   </h3>
-                  <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
+                  <p style={{ margin: 0, fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                     Paste your YouTube link and provide video details with rich text.
                   </p>
                 </div>
@@ -952,8 +743,8 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                 style={{
                   background: 'none',
                   border: 'none',
-                  fontSize: 22,
-                  color: '#94a3b8',
+                  fontSize: '22px',
+                  color: 'var(--text-light)',
                   cursor: 'pointer',
                   padding: 4,
                 }}
@@ -966,7 +757,7 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
             <form onSubmit={handleSaveVideo} style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: 18 }}>
               {/* YouTube Link Field */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                   YouTube Video Link / URL *
                 </label>
                 <input
@@ -978,13 +769,13 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 14,
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-strong)',
+                    fontSize: 'var(--fs-md)',
                     outline: 'none',
                   }}
                 />
-                <span style={{ fontSize: 11, color: '#64748b', marginTop: 4, display: 'block' }}>
+                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: 4, display: 'block' }}>
                   Supports standard watch links, youtu.be, shorts, and embed URLs. The video ID is auto-extracted.
                 </span>
 
@@ -994,9 +785,9 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                     style={{
                       marginTop: 10,
                       padding: 10,
-                      background: '#f8fafc',
-                      borderRadius: 10,
-                      border: '1px solid #e2e8f0',
+                      background: 'var(--surface-subtle)',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-color)',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 12,
@@ -1005,13 +796,13 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                     <img
                       src={`https://img.youtube.com/vi/${parsedCurrentVideoId}/hqdefault.jpg`}
                       alt="Thumbnail preview"
-                      style={{ width: 90, height: 50, objectFit: 'cover', borderRadius: 6 }}
+                      style={{ width: 90, height: 50, objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
                     />
                     <div>
-                      <span style={{ fontSize: 11, fontWeight: 700, color: '#059669', display: 'block' }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--success)', display: 'block' }}>
                         ✓ Valid YouTube Link Detected
                       </span>
-                      <span style={{ fontSize: 11, color: '#64748b' }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
                         Video ID: <strong>{parsedCurrentVideoId}</strong>
                       </span>
                     </div>
@@ -1021,7 +812,7 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
 
               {/* Title */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                   Video Title *
                 </label>
                 <input
@@ -1033,9 +824,9 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                   style={{
                     width: '100%',
                     padding: '10px 14px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    fontSize: 14,
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-strong)',
+                    fontSize: 'var(--fs-md)',
                     outline: 'none',
                   }}
                 />
@@ -1043,7 +834,7 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
 
               {/* Description via CKEditor */}
               <div>
-                <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                   Video Description (Displayed directly below the video) *
                 </label>
                 <CKEditorField
@@ -1057,7 +848,7 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
               {/* Order & Status row */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Display Order
                   </label>
                   <input
@@ -1068,15 +859,15 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 14,
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-md)',
                     }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 6 }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Status
                   </label>
                   <select
@@ -1085,10 +876,10 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      borderRadius: 8,
-                      border: '1px solid #cbd5e1',
-                      fontSize: 14,
-                      background: '#fff',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-md)',
+                      background: 'var(--surface)',
                     }}
                   >
                     <option value="ACTIVE">ACTIVE (Visible on Home)</option>
@@ -1104,44 +895,18 @@ export const AdminVideosPage: React.FC<AdminVideosPageProps> = ({ token }) => {
                   justifyContent: 'flex-end',
                   gap: 12,
                   marginTop: 10,
-                  borderTop: '1px solid #e2e8f0',
+                  borderTop: '1px solid var(--border-color)',
                   paddingTop: 16,
                 }}
               >
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  style={{
-                    padding: '10px 18px',
-                    borderRadius: 8,
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: '#475569',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
+                  onClick={() => setIsModalOpen(false)} className="btn btn-secondary">
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={savingVideo}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '10px 22px',
-                    borderRadius: 8,
-                    background: '#dc2626',
-                    color: '#ffffff',
-                    fontSize: 13,
-                    fontWeight: 600,
-                    border: 'none',
-                    cursor: 'pointer',
-                    boxShadow: '0 2px 8px rgba(220, 38, 38, 0.25)',
-                  }}
-                >
+                  disabled={savingVideo} className="btn btn-danger">
                   <Save size={16} />
                   <span>{savingVideo ? 'Saving Video...' : editingVideo ? 'Update Video' : 'Add Video'}</span>
                 </button>

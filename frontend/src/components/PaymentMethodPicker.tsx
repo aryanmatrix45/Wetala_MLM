@@ -52,9 +52,9 @@ export const PaymentMethodPicker: React.FC<PaymentMethodPickerProps> = ({ amount
           alignItems: 'flex-start',
           gap: '10px',
           padding: '12px 14px',
-          borderRadius: '12px',
-          border: `1.5px solid ${selected ? '#2563eb' : '#e2e8f0'}`,
-          background: selected ? '#eff6ff' : '#ffffff',
+          borderRadius: 'var(--radius-lg)',
+          border: `1.5px solid ${selected ? 'var(--primary)' : 'var(--border-color)'}`,
+          background: selected ? 'var(--primary-light)' : 'var(--surface)',
           cursor: disabled || optionDisabled ? 'not-allowed' : 'pointer',
           opacity: optionDisabled ? 0.6 : 1,
         }}
@@ -67,10 +67,10 @@ export const PaymentMethodPicker: React.FC<PaymentMethodPickerProps> = ({ amount
           onChange={() => onChange(method)}
           style={{ marginTop: '3px' }}
         />
-        <span style={{ color: selected ? '#2563eb' : '#64748b', marginTop: '1px' }}>{icon}</span>
+        <span style={{ color: selected ? 'var(--primary)' : 'var(--text-muted)', marginTop: '1px' }}>{icon}</span>
         <span style={{ flex: 1 }}>
-          <span style={{ display: 'block', fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>{title}</span>
-          <span style={{ display: 'block', color: '#64748b', fontSize: '12px', marginTop: '2px' }}>{detail}</span>
+          <span style={{ display: 'block', fontWeight: 700, color: 'var(--text-main)', fontSize: 'var(--fs-base)' }}>{title}</span>
+          <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: 'var(--fs-sm)', marginTop: '2px' }}>{detail}</span>
         </span>
       </label>
     );
@@ -90,7 +90,7 @@ export const PaymentMethodPicker: React.FC<PaymentMethodPickerProps> = ({ amount
         ) : canPayWithBV ? (
           `You have ${availableBV.toLocaleString('en-IN')} BV. BV is deducted now and returned if the order is rejected.`
         ) : (
-          <span style={{ color: '#b45309' }}>
+          <span style={{ color: 'var(--warning-hover)' }}>
             You have {availableBV.toLocaleString('en-IN')} BV; {(bvPrice - availableBV).toLocaleString('en-IN')} BV more needed
           </span>
         ),

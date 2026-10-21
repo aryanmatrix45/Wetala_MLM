@@ -1,30 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import {
-  Package,
-  Plus,
-  Search,
-  Edit3,
-  Trash2,
-  Eye,
-  CheckCircle2,
-  XCircle,
-  UploadCloud,
-  Image as ImageIcon,
-  Star,
-  ArrowLeft,
-  MoveLeft,
-  MoveRight,
-  RefreshCw,
-  AlertCircle,
-  Tag,
-  DollarSign,
-  Layers,
-  ChevronLeft,
-  ChevronRight,
-  X,
-  Sparkles,
-  Check,
-} from 'lucide-react';
+import { AlertCircle, ArrowLeft, Check, CheckCircle2, ChevronLeft, ChevronRight, DollarSign, Edit3, Eye, ImageIcon, Layers, MoveLeft, MoveRight, Package, Plus, RefreshCw, Search, Sparkles, Star, Tag, Trash2, UploadCloud, X, XCircle } from 'lucide-react';
 import { api, type ProductItem, type ProductImage, type CategoryItem, type SubcategoryItem, getAssetUrl, retryWithImageFallback } from '../services/api';
 import { CKEditorField } from '../components/CKEditorField';
 import { htmlToPlainText } from '../utils/text';
@@ -118,8 +93,8 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
       .toLowerCase()
       .trim()
       .replace(/\s+/g, '-')
-      .replace(/[^\w\-]+/g, '')
-      .replace(/\-\-+/g, '-')
+      .replace(/[^\w-]+/g, '')
+      .replace(/--+/g, '-')
       .replace(/^-+/, '')
       .replace(/-+$/, '');
   };
@@ -624,26 +599,6 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
       {/* Header Banner */}
       <div className="welcome-header" style={{ marginBottom: '24px' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-            <span
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #0284c7 100%)',
-                color: 'white',
-                padding: '3px 10px',
-                borderRadius: '20px',
-                fontSize: '11px',
-                fontWeight: 800,
-                letterSpacing: '0.5px',
-                textTransform: 'uppercase',
-              }}
-            >
-              SUPERADMIN MODULE
-            </span>
-            <span style={{ color: '#64748b', fontSize: '13px' }}>
-              Panchveda Wellness • Direct Selling E-Commerce
-            </span>
-          </div>
-
           <h1 className="page-title">
             {viewMode === 'list' && 'Product Management'}
             {viewMode === 'create' && 'Add New Product'}
@@ -668,20 +623,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
           {viewMode === 'list' ? (
             <button
               onClick={openCreateForm}
-              className="btn-primary"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: '#1d72fe',
-                color: '#fff',
-                padding: '10px 18px',
-                borderRadius: '8px',
-                fontWeight: 600,
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 2px 4px rgba(29, 114, 254, 0.2)',
-              }}
+              className="btn btn-primary"
             >
               <Plus size={18} />
               <span>Add Product</span>
@@ -689,19 +631,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
           ) : (
             <button
               onClick={() => setViewMode('list')}
-              className="btn-secondary"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                background: '#f1f5f9',
-                color: '#334155',
-                padding: '10px 16px',
-                borderRadius: '8px',
-                fontWeight: 600,
-                border: '1px solid #cbd5e1',
-                cursor: 'pointer',
-              }}
+              className="btn btn-secondary"
             >
               <ArrowLeft size={16} />
               <span>Back to Products</span>
@@ -716,18 +646,18 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
           style={{
             padding: '12px 16px',
             marginBottom: '20px',
-            borderRadius: '8px',
+            borderRadius: 'var(--radius-md)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: feedback.type === 'success' ? '#ecfdf5' : '#fef2f2',
-            border: `1px solid ${feedback.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-            color: feedback.type === 'success' ? '#065f46' : '#991b1b',
+            background: feedback.type === 'success' ? 'var(--success-light)' : 'var(--danger-light)',
+            border: `1px solid ${feedback.type === 'success' ? 'var(--success-border)' : 'var(--danger-border)'}`,
+            color: feedback.type === 'success' ? 'var(--success-strong)' : 'var(--danger-strong)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-            <span style={{ fontSize: '14px', fontWeight: 500 }}>{feedback.message}</span>
+            <span style={{ fontSize: 'var(--fs-md)', fontWeight: 500 }}>{feedback.message}</span>
           </div>
           <button
             onClick={() => setFeedback(null)}
@@ -742,7 +672,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
       {/* 1. PRODUCT LIST VIEW                                      */}
       {/* ======================================================== */}
       {viewMode === 'list' && (
-        <div className="dashboard-card" style={{ padding: '24px' }}>
+        <div className="dashboard-card">
           {/* Search & Filters Bar */}
           <div
             style={{
@@ -758,7 +688,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
             <div style={{ position: 'relative', minWidth: '280px', flex: 1, maxWidth: '400px' }}>
               <Search
                 size={16}
-                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}
+                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
               />
               <input
                 type="text"
@@ -768,9 +698,9 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                 style={{
                   width: '100%',
                   padding: '9px 12px 9px 36px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '13px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  fontSize: 'var(--fs-base)',
                   outline: 'none',
                 }}
               />
@@ -784,11 +714,11 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                 onChange={(e) => setStatusFilter(e.target.value as any)}
                 style={{
                   padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '13px',
-                  background: '#fff',
-                  color: '#334155',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  fontSize: 'var(--fs-base)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-body)',
                 }}
               >
                 <option value="ALL">All Statuses</option>
@@ -805,11 +735,11 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                 }}
                 style={{
                   padding: '8px 12px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '13px',
-                  background: '#fff',
-                  color: '#334155',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  fontSize: 'var(--fs-base)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-body)',
                 }}
               >
                 <option value="ALL">All Categories</option>
@@ -827,11 +757,11 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                   onChange={(e) => setSubcategoryFilter(e.target.value)}
                   style={{
                     padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '13px',
-                    background: '#fff',
-                    color: '#334155',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-strong)',
+                    fontSize: 'var(--fs-base)',
+                    background: 'var(--surface)',
+                    color: 'var(--text-body)',
                   }}
                 >
                   <option value="ALL">All Subcategories</option>
@@ -846,20 +776,8 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
               {/* Refresh Button */}
               <button
                 onClick={() => loadProducts(pagination.page)}
-                className="btn-icon"
+                className="btn btn-secondary"
                 title="Refresh table"
-                style={{
-                  padding: '8px 12px',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
-                  background: '#fff',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  fontSize: '13px',
-                  color: '#475569',
-                }}
               >
                 <RefreshCw size={14} className={loading ? 'spin' : ''} />
                 <span>Refresh</span>
@@ -868,36 +786,36 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
           </div>
 
           {/* Table Container */}
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+          <div className="table-responsive">
+            <table className="data-table">
               <thead>
-                <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b', textTransform: 'uppercase', fontSize: '11px', letterSpacing: '0.5px' }}>
-                  <th style={{ padding: '12px 10px', width: '70px' }}>Image</th>
-                  <th style={{ padding: '12px 10px' }}>Product Name</th>
-                  <th style={{ padding: '12px 10px' }}>SKU</th>
-                  <th style={{ padding: '12px 10px' }}>BV</th>
-                  <th style={{ padding: '12px 10px' }}>Price</th>
-                  <th style={{ padding: '12px 10px' }}>Stock</th>
-                  <th style={{ padding: '12px 10px' }}>Status</th>
-                  <th style={{ padding: '12px 10px', textAlign: 'center' }}>Home Showcase</th>
-                  <th style={{ padding: '12px 10px', textAlign: 'right' }}>Actions</th>
+                <tr>
+                  <th style={{ width: '70px' }}>Image</th>
+                  <th>Product Name</th>
+                  <th>SKU</th>
+                  <th>BV</th>
+                  <th>Price</th>
+                  <th>Stock</th>
+                  <th>Status</th>
+                  <th style={{ textAlign: 'center' }}>Home Showcase</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {loading && products.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-                      <div style={{ width: '24px', height: '24px', border: '2px solid #cbd5e1', borderTopColor: '#1d72fe', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
+                    <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-light)' }}>
+                      <div style={{ width: '24px', height: '24px', border: '2px solid var(--border-strong)', borderTopColor: 'var(--primary)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 12px' }} />
                       Loading products...
                     </td>
                   </tr>
                 ) : products.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ padding: '48px', textAlign: 'center', color: '#64748b' }}>
-                      <Package size={40} style={{ color: '#cbd5e1', margin: '0 auto 12px' }} />
-                      <p style={{ fontWeight: 600, fontSize: '15px', color: '#334155', marginBottom: '4px' }}>No products found</p>
-                      <p style={{ fontSize: '13px', color: '#94a3b8', marginBottom: '16px' }}>Try adjusting your search criteria or add your first product.</p>
-                      <button onClick={openCreateForm} className="btn-primary" style={{ padding: '8px 16px', fontSize: '13px' }}>
+                    <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <Package size={40} style={{ color: 'var(--text-disabled)', margin: '0 auto 12px' }} />
+                      <p style={{ fontWeight: 600, fontSize: 'var(--fs-lg)', color: 'var(--text-body)', marginBottom: '4px' }}>No products found</p>
+                      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-light)', marginBottom: '16px' }}>Try adjusting your search criteria or add your first product.</p>
+                      <button onClick={openCreateForm} className="btn btn-primary">
                         + Add First Product
                       </button>
                     </td>
@@ -912,25 +830,25 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       <tr
                         key={prod.productId || (prod as any)._id}
                         style={{
-                          borderBottom: '1px solid #f1f5f9',
+                          borderBottom: '1px solid var(--border-light)',
                           transition: 'background 0.15s ease',
                         }}
-                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#f8fafc')}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--surface-subtle)')}
                         onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                       >
                         {/* Image Thumbnail */}
-                        <td style={{ padding: '12px 10px' }}>
+                        <td>
                           <div
                             style={{
                               width: '48px',
                               height: '48px',
-                              borderRadius: '8px',
-                              background: '#f1f5f9',
+                              borderRadius: 'var(--radius-md)',
+                              background: 'var(--surface-muted)',
                               overflow: 'hidden',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
-                              border: '1px solid #e2e8f0',
+                              border: '1px solid var(--border-color)',
                             }}
                           >
                             {primaryImg?.url ? (
@@ -945,17 +863,17 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                                 }}
                               />
                             ) : (
-                              <ImageIcon size={20} style={{ color: '#94a3b8' }} />
+                              <ImageIcon size={20} style={{ color: 'var(--text-light)' }} />
                             )}
                           </div>
                         </td>
 
                         {/* Title & Category / Subcategory */}
-                        <td style={{ padding: '12px 10px' }}>
-                          <div style={{ fontWeight: 600, color: '#1e293b', fontSize: '14px', marginBottom: '2px' }}>
+                        <td>
+                          <div style={{ fontWeight: 600, color: 'var(--text-strong)', fontSize: 'var(--fs-md)', marginBottom: '2px' }}>
                             {prod.title || prod.name}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                             {(() => {
                               const catName = typeof prod.categoryId === 'object' && prod.categoryId?.name
                                 ? prod.categoryId.name
@@ -965,11 +883,11 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                                 : prod.subcategory;
                               return (
                                 <>
-                                  <span style={{ background: '#f1f5f9', color: '#334155', padding: '1px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                                  <span style={{ background: 'var(--surface-muted)', color: 'var(--text-body)', padding: '1px 6px', borderRadius: 'var(--radius-xs)', fontWeight: 600 }}>
                                     {catName}
                                   </span>
                                   {subcatName && (
-                                    <span style={{ background: '#eff6ff', color: '#2563eb', padding: '1px 6px', borderRadius: '4px', fontWeight: 500 }}>
+                                    <span style={{ background: 'var(--primary-light)', color: 'var(--primary)', padding: '1px 6px', borderRadius: 'var(--radius-xs)', fontWeight: 500 }}>
                                       › {subcatName}
                                     </span>
                                   )}
@@ -981,21 +899,21 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                         </td>
 
                         {/* SKU */}
-                        <td style={{ padding: '12px 10px', fontFamily: 'monospace', fontWeight: 600, color: '#475569' }}>
+                        <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--text-secondary)' }}>
                           {prod.sku}
                         </td>
 
                         {/* Business Volume (BV) */}
-                        <td style={{ padding: '12px 10px' }}>
+                        <td>
                           <span
                             style={{
-                              background: '#eff6ff',
-                              color: '#1d4ed8',
+                              background: 'var(--primary-light)',
+                              color: 'var(--primary-hover)',
                               fontWeight: 700,
                               padding: '3px 8px',
-                              borderRadius: '6px',
-                              fontSize: '12px',
-                              border: '1px solid #bfdbfe',
+                              borderRadius: 'var(--radius-sm)',
+                              fontSize: 'var(--fs-sm)',
+                              border: '1px solid var(--primary-border)',
                             }}
                           >
                             {(prod.businessVolume ?? prod.bv ?? 0).toLocaleString()} BV
@@ -1003,17 +921,17 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                         </td>
 
                         {/* Price & MRP */}
-                        <td style={{ padding: '12px 10px' }}>
-                          <div style={{ fontWeight: 700, color: '#0f172a' }}>₹{prod.price?.toLocaleString()}</div>
+                        <td>
+                          <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>₹{prod.price?.toLocaleString()}</div>
                           {prod.mrp && prod.mrp > prod.price && (
-                            <div style={{ fontSize: '11px', color: '#94a3b8', textDecoration: 'line-through' }}>
+                            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-light)', textDecoration: 'line-through' }}>
                               MRP ₹{prod.mrp?.toLocaleString()}
                             </div>
                           )}
                         </td>
 
                         {/* Stock Quantity */}
-                        <td style={{ padding: '12px 10px' }}>
+                        <td>
                           {(() => {
                             const stockCount = prod.stock ?? prod.stockQuantity ?? 0;
                             const isLow = stockCount <= 10;
@@ -1024,9 +942,9 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                                   display: 'inline-flex',
                                   alignItems: 'center',
                                   gap: '4px',
-                                  fontSize: '12px',
+                                  fontSize: 'var(--fs-sm)',
                                   fontWeight: 600,
-                                  color: isOut ? '#dc2626' : isLow ? '#d97706' : '#16a34a',
+                                  color: isOut ? 'var(--danger)' : isLow ? 'var(--warning)' : 'var(--success)',
                                 }}
                               >
                                 {isOut ? 'Out of Stock' : `${stockCount} units`}
@@ -1036,21 +954,21 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                         </td>
 
                         {/* Status (Active / Inactive) */}
-                        <td style={{ padding: '12px 10px' }}>
+                        <td>
                           <span
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',
                               gap: '5px',
                               padding: '3px 9px',
-                              borderRadius: '20px',
-                              fontSize: '11px',
+                              borderRadius: 'var(--radius-xl)',
+                              fontSize: 'var(--fs-xs)',
                               fontWeight: 700,
                               textTransform: 'uppercase',
                               letterSpacing: '0.3px',
-                              background: isActive ? '#ecfdf5' : '#fef2f2',
-                              color: isActive ? '#059669' : '#dc2626',
-                              border: `1px solid ${isActive ? '#a7f3d0' : '#fecaca'}`,
+                              background: isActive ? 'var(--success-light)' : 'var(--danger-light)',
+                              color: isActive ? 'var(--success)' : 'var(--danger)',
+                              border: `1px solid ${isActive ? 'var(--success-border)' : 'var(--danger-border)'}`,
                             }}
                           >
                             <span
@@ -1058,7 +976,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                                 width: '6px',
                                 height: '6px',
                                 borderRadius: '50%',
-                                background: isActive ? '#059669' : '#dc2626',
+                                background: isActive ? 'var(--success)' : 'var(--danger)',
                               }}
                             />
                             {effectiveStatus}
@@ -1066,7 +984,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                         </td>
 
                         {/* Home Showcase Toggle */}
-                        <td style={{ padding: '12px 10px', textAlign: 'center' }}>
+                        <td style={{ textAlign: 'center' }}>
                           <button
                             type="button"
                             onClick={() => handleToggleShowOnHome(prod)}
@@ -1077,53 +995,35 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                               alignItems: 'center',
                               gap: '5px',
                               padding: '4px 10px',
-                              borderRadius: '20px',
-                              fontSize: '11px',
+                              borderRadius: 'var(--radius-xl)',
+                              fontSize: 'var(--fs-xs)',
                               fontWeight: 700,
                               cursor: 'pointer',
-                              border: prod.showOnHome ? '1px solid #fde68a' : '1px solid #e2e8f0',
+                              border: prod.showOnHome ? '1px solid var(--warning-border)' : '1px solid var(--border-color)',
                               transition: 'all 0.15s ease',
-                              background: prod.showOnHome ? '#fef3c7' : '#f8fafc',
-                              color: prod.showOnHome ? '#b45309' : '#64748b',
+                              background: prod.showOnHome ? 'var(--warning-soft)' : 'var(--surface-subtle)',
+                              color: prod.showOnHome ? 'var(--warning-hover)' : 'var(--text-muted)',
                             }}
                           >
-                            <Star size={13} fill={prod.showOnHome ? '#f59e0b' : 'none'} color={prod.showOnHome ? '#f59e0b' : '#94a3b8'} />
+                            <Star size={13} fill={prod.showOnHome ? 'var(--warning)' : 'none'} color={prod.showOnHome ? 'var(--warning)' : 'var(--text-light)'} />
                             <span>{prod.showOnHome ? 'On Home' : 'Standard'}</span>
                           </button>
                         </td>
 
                         {/* Actions */}
-                        <td style={{ padding: '12px 10px', textAlign: 'right' }}>
+                        <td style={{ textAlign: 'right' }}>
                           <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                             {/* View Details */}
                             <button
                               onClick={() => openDetailsView(prod)}
-                              title="View Product Details"
-                              style={{
-                                padding: '6px 8px',
-                                background: '#f8fafc',
-                                border: '1px solid #cbd5e1',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                color: '#475569',
-                              }}
-                            >
+                              title="View Product Details" className="btn btn-secondary">
                               <Eye size={15} />
                             </button>
 
                             {/* Edit */}
                             <button
                               onClick={() => openEditForm(prod)}
-                              title="Edit Product"
-                              style={{
-                                padding: '6px 8px',
-                                background: '#eff6ff',
-                                border: '1px solid #bfdbfe',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                color: '#2563eb',
-                              }}
-                            >
+                              title="Edit Product" className="btn btn-soft">
                               <Edit3 size={15} />
                             </button>
 
@@ -1134,11 +1034,11 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                               title={isActive ? 'Deactivate Product' : 'Activate Product'}
                               style={{
                                 padding: '6px 8px',
-                                background: isActive ? '#fef2f2' : '#ecfdf5',
-                                border: `1px solid ${isActive ? '#fecaca' : '#a7f3d0'}`,
-                                borderRadius: '6px',
+                                background: isActive ? 'var(--danger-light)' : 'var(--success-light)',
+                                border: `1px solid ${isActive ? 'var(--danger-border)' : 'var(--success-border)'}`,
+                                borderRadius: 'var(--radius-sm)',
                                 cursor: 'pointer',
-                                color: isActive ? '#dc2626' : '#16a34a',
+                                color: isActive ? 'var(--danger)' : 'var(--success)',
                               }}
                             >
                               {isActive ? <XCircle size={15} /> : <CheckCircle2 size={15} />}
@@ -1148,16 +1048,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                             <button
                               onClick={() => handleDeleteProduct(prod)}
                               disabled={deletingId === (prod.productId || (prod as any)._id)}
-                              title="Delete Product"
-                              style={{
-                                padding: '6px 8px',
-                                background: '#fff',
-                                border: '1px solid #cbd5e1',
-                                borderRadius: '6px',
-                                cursor: 'pointer',
-                                color: '#ef4444',
-                              }}
-                            >
+                              title="Delete Product" className="btn btn-secondary">
                               <Trash2 size={15} />
                             </button>
                           </div>
@@ -1179,9 +1070,9 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                 alignItems: 'center',
                 marginTop: '20px',
                 paddingTop: '16px',
-                borderTop: '1px solid #e2e8f0',
-                fontSize: '13px',
-                color: '#64748b',
+                borderTop: '1px solid var(--border-color)',
+                fontSize: 'var(--fs-base)',
+                color: 'var(--text-muted)',
               }}
             >
               <div>
@@ -1193,10 +1084,10 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                   onClick={() => loadProducts(pagination.page - 1)}
                   style={{
                     padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: pagination.page <= 1 ? '#f1f5f9' : '#fff',
-                    color: pagination.page <= 1 ? '#94a3b8' : '#334155',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-strong)',
+                    background: pagination.page <= 1 ? 'var(--surface-muted)' : 'var(--surface)',
+                    color: pagination.page <= 1 ? 'var(--text-light)' : 'var(--text-body)',
                     cursor: pagination.page <= 1 ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -1211,10 +1102,10 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                   onClick={() => loadProducts(pagination.page + 1)}
                   style={{
                     padding: '6px 12px',
-                    borderRadius: '6px',
-                    border: '1px solid #cbd5e1',
-                    background: pagination.page >= pagination.totalPages ? '#f1f5f9' : '#fff',
-                    color: pagination.page >= pagination.totalPages ? '#94a3b8' : '#334155',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border-strong)',
+                    background: pagination.page >= pagination.totalPages ? 'var(--surface-muted)' : 'var(--surface)',
+                    color: pagination.page >= pagination.totalPages ? 'var(--text-light)' : 'var(--text-body)',
                     cursor: pagination.page >= pagination.totalPages ? 'not-allowed' : 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -1239,17 +1130,17 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
             {/* Left Column: Core Fields & Rich Text */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Card 1: Basic Information */}
-              <div className="dashboard-card" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Tag size={18} color="#2563eb" />
+              <div className="dashboard-card">
+                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Tag size={18} color="var(--primary)" />
                   <span>Basic Information</span>
                 </h3>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
                   {/* Product Title */}
                   <div style={{ gridColumn: 'span 2' }}>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                      Product Title / Name <span style={{ color: '#ef4444' }}>*</span>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                      Product Title / Name <span style={{ color: 'var(--danger)' }}>*</span>
                     </label>
                     <input
                       type="text"
@@ -1260,17 +1151,17 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       style={{
                         width: '100%',
                         padding: '10px 14px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '14px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-strong)',
+                        fontSize: 'var(--fs-md)',
                       }}
                     />
                   </div>
 
                   {/* Product Slug */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                      URL Slug <span style={{ color: '#ef4444' }}>*</span>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                      URL Slug <span style={{ color: 'var(--danger)' }}>*</span>
                     </label>
                     <input
                       type="text"
@@ -1281,26 +1172,24 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       style={{
                         width: '100%',
                         padding: '10px 14px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-strong)',
+                        fontSize: 'var(--fs-base)',
                         fontFamily: 'monospace',
                       }}
                     />
-                    <span style={{ fontSize: '11px', color: '#64748b' }}>Used for clean URLs (/api/products/:slug)</span>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Used for clean URLs (/api/products/:slug)</span>
                   </div>
 
                   {/* SKU */}
                   <div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                      <label style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
-                        SKU <span style={{ color: '#ef4444' }}>*</span>
+                      <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                        SKU <span style={{ color: 'var(--danger)' }}>*</span>
                       </label>
                       <button
                         type="button"
-                        onClick={generateSKU}
-                        style={{ fontSize: '11px', color: '#2563eb', background: 'none', border: 'none', cursor: 'pointer', fontWeight: 600 }}
-                      >
+                        onClick={generateSKU} className="link-btn">
                         Auto-generate
                       </button>
                     </div>
@@ -1313,9 +1202,9 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       style={{
                         width: '100%',
                         padding: '10px 14px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-strong)',
+                        fontSize: 'var(--fs-base)',
                         fontFamily: 'monospace',
                         fontWeight: 600,
                       }}
@@ -1324,8 +1213,8 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
 
                   {/* Category (Required) */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                      Category <span style={{ color: '#ef4444' }}>*</span>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                      Category <span style={{ color: 'var(--danger)' }}>*</span>
                     </label>
                     <select
                       required
@@ -1334,11 +1223,11 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       style={{
                         width: '100%',
                         padding: '10px 14px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
-                        background: '#fff',
-                        color: '#1e293b',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-strong)',
+                        fontSize: 'var(--fs-base)',
+                        background: 'var(--surface)',
+                        color: 'var(--text-strong)',
                       }}
                     >
                       <option value="">Select Category *</option>
@@ -1352,8 +1241,8 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
 
                   {/* Subcategory (Optional, dependent on Category) */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                      Subcategory <span style={{ color: '#94a3b8', fontWeight: 400 }}>(Optional)</span>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                      Subcategory <span style={{ color: 'var(--text-light)', fontWeight: 400 }}>(Optional)</span>
                     </label>
                     <select
                       value={formData.subcategoryId}
@@ -1362,11 +1251,11 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       style={{
                         width: '100%',
                         padding: '10px 14px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
-                        background: (!formData.categoryId || formSubcategories.length === 0) ? '#f8fafc' : '#fff',
-                        color: (!formData.categoryId || formSubcategories.length === 0) ? '#94a3b8' : '#1e293b',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-strong)',
+                        fontSize: 'var(--fs-base)',
+                        background: (!formData.categoryId || formSubcategories.length === 0) ? 'var(--surface-subtle)' : 'var(--surface)',
+                        color: (!formData.categoryId || formSubcategories.length === 0) ? 'var(--text-light)' : 'var(--text-strong)',
                       }}
                     >
                       {!formData.categoryId ? (
@@ -1387,7 +1276,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       )}
                     </select>
                     {formData.categoryId && !loadingSubcategories && formSubcategories.length === 0 && (
-                      <span style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                         No subcategories available. Product can still be saved.
                       </span>
                     )}
@@ -1395,7 +1284,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
 
                   {/* Brand */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Brand
                     </label>
                     <input
@@ -1406,9 +1295,9 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       style={{
                         width: '100%',
                         padding: '10px 14px',
-                        borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-strong)',
+                        fontSize: 'var(--fs-base)',
                       }}
                     />
                   </div>
@@ -1416,7 +1305,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
 
                 {/* Short Description */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Short Summary / Tagline
                   </label>
                   <textarea
@@ -1427,21 +1316,21 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-base)',
                     }}
                   />
                 </div>
               </div>
 
               {/* Card 2: CKEditor Rich Description */}
-              <div className="dashboard-card" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Sparkles size={18} color="#2563eb" />
+              <div className="dashboard-card">
+                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={18} color="var(--primary)" />
                   <span>Product Description (CKEditor)</span>
                 </h3>
-                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
+                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: '16px' }}>
                   Use headings, lists, tables, bold, italic, and formatting. The output is safely sanitized and stored in MongoDB.
                 </p>
 
@@ -1453,14 +1342,14 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
               </div>
 
               {/* Card 3: Images Management */}
-              <div className="dashboard-card" style={{ padding: '24px' }}>
+              <div className="dashboard-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                   <div>
-                    <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <ImageIcon size={18} color="#2563eb" />
+                    <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ImageIcon size={18} color="var(--primary)" />
                       <span>Product Images Gallery</span>
                     </h3>
-                    <p style={{ fontSize: '12px', color: '#64748b' }}>
+                    <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                       Manage multiple images. Set primary image, reorder, and replace images.
                     </p>
                   </div>
@@ -1473,21 +1362,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                         replaceIndexRef.current = null;
                         if (fileInputRef.current) fileInputRef.current.click();
                       }}
-                      disabled={uploadingImage}
-                      style={{
-                        padding: '8px 14px',
-                        background: '#1d72fe',
-                        color: '#fff',
-                        borderRadius: '6px',
-                        border: 'none',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                      }}
-                    >
+                      disabled={uploadingImage} className="btn btn-primary btn-sm">
                       <UploadCloud size={15} />
                       <span>{uploadingImage ? 'Uploading...' : 'Upload Image'}</span>
                     </button>
@@ -1495,18 +1370,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                     {/* Direct URL Button */}
                     <button
                       type="button"
-                      onClick={() => setIsUrlModalOpen(true)}
-                      style={{
-                        padding: '8px 12px',
-                        background: '#f8fafc',
-                        color: '#334155',
-                        borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '12px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
+                      onClick={() => setIsUrlModalOpen(true)} className="btn btn-secondary btn-sm">
                       + Image URL
                     </button>
                   </div>
@@ -1520,19 +1384,19 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       if (fileInputRef.current) fileInputRef.current.click();
                     }}
                     style={{
-                      border: '2px dashed #cbd5e1',
-                      borderRadius: '8px',
+                      border: '2px dashed var(--border-strong)',
+                      borderRadius: 'var(--radius-md)',
                       padding: '36px',
                       textAlign: 'center',
-                      background: '#f8fafc',
+                      background: 'var(--surface-subtle)',
                       cursor: 'pointer',
                     }}
                   >
-                    <UploadCloud size={36} color="#94a3b8" style={{ margin: '0 auto 10px' }} />
-                    <p style={{ fontWeight: 600, fontSize: '14px', color: '#334155', marginBottom: '4px' }}>
+                    <UploadCloud size={36} color="var(--text-light)" style={{ margin: '0 auto 10px' }} />
+                    <p style={{ fontWeight: 600, fontSize: 'var(--fs-md)', color: 'var(--text-body)', marginBottom: '4px' }}>
                       No images added yet
                     </p>
-                    <p style={{ fontSize: '12px', color: '#64748b' }}>
+                    <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                       Click here to upload PNG, JPG, or WebP images from your computer.
                     </p>
                   </div>
@@ -1542,10 +1406,10 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       <div
                         key={img.key || idx}
                         style={{
-                          border: img.isPrimary ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                          borderRadius: '8px',
+                          border: img.isPrimary ? '2px solid var(--primary)' : '1px solid var(--border-color)',
+                          borderRadius: 'var(--radius-md)',
                           overflow: 'hidden',
-                          background: '#fff',
+                          background: 'var(--surface)',
                           boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                           position: 'relative',
                         }}
@@ -1557,24 +1421,24 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                               position: 'absolute',
                               top: '8px',
                               left: '8px',
-                              background: '#2563eb',
-                              color: '#fff',
-                              fontSize: '10px',
+                              background: 'var(--primary)',
+                              color: 'var(--text-inverse)',
+                              fontSize: 'var(--fs-2xs)',
                               fontWeight: 800,
                               padding: '2px 8px',
-                              borderRadius: '12px',
+                              borderRadius: 'var(--radius-lg)',
                               zIndex: 2,
                               display: 'flex',
                               alignItems: 'center',
                               gap: '3px',
                             }}
                           >
-                            <Star size={10} fill="#fff" /> PRIMARY
+                            <Star size={10} fill="var(--text-inverse)" /> PRIMARY
                           </div>
                         )}
 
                         {/* Image Preview */}
-                        <div style={{ height: '130px', background: '#f8fafc', overflow: 'hidden' }}>
+                        <div style={{ height: '130px', background: 'var(--surface-subtle)', overflow: 'hidden' }}>
                           <img
                             src={getAssetUrl(img.url)}
                             referrerPolicy="no-referrer"
@@ -1593,19 +1457,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                           {!img.isPrimary && (
                             <button
                               type="button"
-                              onClick={() => handleSetPrimaryImage(idx)}
-                              style={{
-                                width: '100%',
-                                padding: '5px',
-                                background: '#f1f5f9',
-                                border: '1px solid #cbd5e1',
-                                borderRadius: '4px',
-                                fontSize: '11px',
-                                fontWeight: 600,
-                                color: '#334155',
-                                cursor: 'pointer',
-                              }}
-                            >
+                              onClick={() => handleSetPrimaryImage(idx)} className="btn btn-secondary btn-sm" style={{ width: '100%' }}>
                               Set as Primary
                             </button>
                           )}
@@ -1617,32 +1469,14 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                                 type="button"
                                 disabled={idx === 0}
                                 onClick={() => handleMoveImage(idx, 'left')}
-                                title="Move Left"
-                                style={{
-                                  padding: '4px 6px',
-                                  background: '#f8fafc',
-                                  border: '1px solid #cbd5e1',
-                                  borderRadius: '4px',
-                                  cursor: idx === 0 ? 'not-allowed' : 'pointer',
-                                  opacity: idx === 0 ? 0.4 : 1,
-                                }}
-                              >
+                                title="Move Left" className="btn btn-secondary">
                                 <MoveLeft size={12} />
                               </button>
                               <button
                                 type="button"
                                 disabled={idx === formData.images.length - 1}
                                 onClick={() => handleMoveImage(idx, 'right')}
-                                title="Move Right"
-                                style={{
-                                  padding: '4px 6px',
-                                  background: '#f8fafc',
-                                  border: '1px solid #cbd5e1',
-                                  borderRadius: '4px',
-                                  cursor: idx === formData.images.length - 1 ? 'not-allowed' : 'pointer',
-                                  opacity: idx === formData.images.length - 1 ? 0.4 : 1,
-                                }}
-                              >
+                                title="Move Right" className="btn btn-secondary">
                                 <MoveRight size={12} />
                               </button>
                             </div>
@@ -1652,17 +1486,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                               <button
                                 type="button"
                                 onClick={() => handleReplaceImage(idx)}
-                                title="Replace image"
-                                style={{
-                                  padding: '4px 6px',
-                                  background: '#f8fafc',
-                                  border: '1px solid #cbd5e1',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  fontSize: '11px',
-                                  color: '#2563eb',
-                                }}
-                              >
+                                title="Replace image" className="btn btn-secondary btn-sm">
                                 Replace
                               </button>
 
@@ -1670,16 +1494,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                               <button
                                 type="button"
                                 onClick={() => handleDeleteImage(idx)}
-                                title="Remove image"
-                                style={{
-                                  padding: '4px 6px',
-                                  background: '#fef2f2',
-                                  border: '1px solid #fecaca',
-                                  borderRadius: '4px',
-                                  cursor: 'pointer',
-                                  color: '#dc2626',
-                                }}
-                              >
+                                title="Remove image" className="btn btn-danger-outline">
                                 <Trash2 size={12} />
                               </button>
                             </div>
@@ -1695,16 +1510,16 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
             {/* Right Column: Pricing, MLM BV, Inventory, Status, Save */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Card 4: Pricing & Business Volume (BV) */}
-              <div className="dashboard-card" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <DollarSign size={18} color="#16a34a" />
+              <div className="dashboard-card">
+                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <DollarSign size={18} color="var(--success)" />
                   <span>Pricing & MLM BV</span>
                 </h3>
 
                 {/* Selling Price */}
                 <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                    Selling Price (₹) <span style={{ color: '#ef4444' }}>*</span>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                    Selling Price (₹) <span style={{ color: 'var(--danger)' }}>*</span>
                   </label>
                   <input
                     type="number"
@@ -1717,9 +1532,9 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '14px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-md)',
                       fontWeight: 600,
                     }}
                   />
@@ -1727,8 +1542,8 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
 
                 {/* MRP */}
                 <div style={{ marginBottom: '14px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
-                    MRP (₹) <span style={{ fontSize: '11px', color: '#64748b' }}>(Optional)</span>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                    MRP (₹) <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>(Optional)</span>
                   </label>
                   <input
                     type="number"
@@ -1740,9 +1555,9 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '13px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-base)',
                     }}
                   />
                 </div>
@@ -1750,10 +1565,10 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                 {/* Business Volume (BV) */}
                 <div style={{ marginBottom: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <label style={{ fontSize: '13px', fontWeight: 700, color: '#1d4ed8' }}>
-                      Business Volume (BV) <span style={{ color: '#ef4444' }}>*</span>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                      Business Volume (BV) <span style={{ color: 'var(--danger)' }}>*</span>
                     </label>
-                    <span style={{ fontSize: '10px', background: '#dbeafe', color: '#1e40af', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                    <span style={{ fontSize: 'var(--fs-2xs)', background: 'var(--primary-soft)', color: 'var(--primary-strong)', padding: '1px 6px', borderRadius: 'var(--radius-xs)', fontWeight: 700 }}>
                       INDEPENDENT
                     </span>
                   </div>
@@ -1768,30 +1583,30 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '2px solid #93c5fd',
-                      background: '#eff6ff',
-                      fontSize: '14px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '2px solid var(--primary-border)',
+                      background: 'var(--primary-light)',
+                      fontSize: 'var(--fs-md)',
                       fontWeight: 700,
-                      color: '#1e3a8a',
+                      color: 'var(--primary-strong)',
                     }}
                   />
-                  <div style={{ marginTop: '8px', background: '#f8fafc', padding: '8px 10px', borderRadius: '6px', border: '1px solid #e2e8f0', fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
-                    💡 <strong>MLM Rule:</strong> BV is credited to binary matching & repurchase commissions independently of price. When ordered, snapshot is preserved.
+                  <div style={{ marginTop: '8px', background: 'var(--surface-subtle)', padding: '8px 10px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-color)', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', lineHeight: 1.4 }}>
+                    <strong>MLM Rule:</strong> BV is credited to binary matching & repurchase commissions independently of price. When ordered, snapshot is preserved.
                   </div>
                 </div>
               </div>
 
               {/* Card 5: Inventory & Status */}
-              <div className="dashboard-card" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Layers size={18} color="#0284c7" />
+              <div className="dashboard-card">
+                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Layers size={18} color="var(--info)" />
                   <span>Inventory & Status</span>
                 </h3>
 
                 {/* Stock Quantity */}
                 <div style={{ marginBottom: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Available Stock Quantity
                   </label>
                   <input
@@ -1805,9 +1620,9 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                     style={{
                       width: '100%',
                       padding: '10px 14px',
-                      borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      fontSize: '14px',
+                      borderRadius: 'var(--radius-md)',
+                      border: '1px solid var(--border-strong)',
+                      fontSize: 'var(--fs-md)',
                       fontWeight: 600,
                     }}
                   />
@@ -1815,7 +1630,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
 
                 {/* Status Toggle */}
                 <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: '#334155', marginBottom: '8px' }}>
+                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                     Product Visibility Status
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1824,12 +1639,12 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       onClick={() => setFormData({ ...formData, status: 'ACTIVE' })}
                       style={{
                         padding: '10px',
-                        borderRadius: '6px',
-                        border: formData.status === 'ACTIVE' ? '2px solid #10b981' : '1px solid #cbd5e1',
-                        background: formData.status === 'ACTIVE' ? '#ecfdf5' : '#fff',
-                        color: formData.status === 'ACTIVE' ? '#065f46' : '#64748b',
+                        borderRadius: 'var(--radius-sm)',
+                        border: formData.status === 'ACTIVE' ? '2px solid var(--success)' : '1px solid var(--border-strong)',
+                        background: formData.status === 'ACTIVE' ? 'var(--success-light)' : 'var(--surface)',
+                        color: formData.status === 'ACTIVE' ? 'var(--success-strong)' : 'var(--text-muted)',
                         fontWeight: 700,
-                        fontSize: '12px',
+                        fontSize: 'var(--fs-sm)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1844,12 +1659,12 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       onClick={() => setFormData({ ...formData, status: 'INACTIVE' })}
                       style={{
                         padding: '10px',
-                        borderRadius: '6px',
-                        border: formData.status === 'INACTIVE' ? '2px solid #ef4444' : '1px solid #cbd5e1',
-                        background: formData.status === 'INACTIVE' ? '#fef2f2' : '#fff',
-                        color: formData.status === 'INACTIVE' ? '#991b1b' : '#64748b',
+                        borderRadius: 'var(--radius-sm)',
+                        border: formData.status === 'INACTIVE' ? '2px solid var(--danger)' : '1px solid var(--border-strong)',
+                        background: formData.status === 'INACTIVE' ? 'var(--danger-light)' : 'var(--surface)',
+                        color: formData.status === 'INACTIVE' ? 'var(--danger-strong)' : 'var(--text-muted)',
                         fontWeight: 700,
-                        fontSize: '12px',
+                        fontSize: 'var(--fs-sm)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1860,19 +1675,19 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       <XCircle size={16} /> INACTIVE
                     </button>
                   </div>
-                  <span style={{ display: 'block', fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                  <span style={{ display: 'block', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: '6px' }}>
                     Only ACTIVE products are shown in member portal and purchasable.
                   </span>
                 </div>
               </div>
 
               {/* Card 6: Homepage Showcase Placement */}
-              <div className="dashboard-card" style={{ padding: '24px' }}>
-                <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Star size={18} color="#f59e0b" fill={formData.showOnHome ? '#f59e0b' : 'none'} />
+              <div className="dashboard-card">
+                <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-main)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Star size={18} color="var(--warning)" fill={formData.showOnHome ? 'var(--warning)' : 'none'} />
                   <span>Homepage Showcase</span>
                 </h3>
-                <p style={{ fontSize: '12px', color: '#64748b', marginBottom: '16px' }}>
+                <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: '16px' }}>
                   Choose whether this product appears on the member home screen directly below the main slider banner.
                 </p>
 
@@ -1884,12 +1699,12 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       onClick={() => setFormData({ ...formData, showOnHome: true })}
                       style={{
                         padding: '10px',
-                        borderRadius: '6px',
-                        border: formData.showOnHome ? '2px solid #f59e0b' : '1px solid #cbd5e1',
-                        background: formData.showOnHome ? '#fffbeb' : '#fff',
-                        color: formData.showOnHome ? '#b45309' : '#64748b',
+                        borderRadius: 'var(--radius-sm)',
+                        border: formData.showOnHome ? '2px solid var(--warning)' : '1px solid var(--border-strong)',
+                        background: formData.showOnHome ? 'var(--warning-light)' : 'var(--surface)',
+                        color: formData.showOnHome ? 'var(--warning-hover)' : 'var(--text-muted)',
                         fontWeight: 700,
-                        fontSize: '12px',
+                        fontSize: 'var(--fs-sm)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1897,7 +1712,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                         gap: '6px',
                       }}
                     >
-                      <Star size={14} fill={formData.showOnHome ? '#f59e0b' : 'none'} />
+                      <Star size={14} fill={formData.showOnHome ? 'var(--warning)' : 'none'} />
                       <span>Show on Home</span>
                     </button>
                     <button
@@ -1905,12 +1720,12 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       onClick={() => setFormData({ ...formData, showOnHome: false })}
                       style={{
                         padding: '10px',
-                        borderRadius: '6px',
-                        border: !formData.showOnHome ? '2px solid #94a3b8' : '1px solid #cbd5e1',
-                        background: !formData.showOnHome ? '#f1f5f9' : '#fff',
-                        color: !formData.showOnHome ? '#334155' : '#64748b',
+                        borderRadius: 'var(--radius-sm)',
+                        border: !formData.showOnHome ? '2px solid var(--text-light)' : '1px solid var(--border-strong)',
+                        background: !formData.showOnHome ? 'var(--surface-muted)' : 'var(--surface)',
+                        color: !formData.showOnHome ? 'var(--text-body)' : 'var(--text-muted)',
                         fontWeight: 700,
-                        fontSize: '12px',
+                        fontSize: 'var(--fs-sm)',
                         cursor: 'pointer',
                         display: 'flex',
                         alignItems: 'center',
@@ -1926,7 +1741,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                 {/* Display Priority Order */}
                 {formData.showOnHome && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                       Showcase Priority / Sort Order (Lower numbers appear first)
                     </label>
                     <input
@@ -1939,9 +1754,9 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       style={{
                         width: '100%',
                         padding: '9px 12px',
-                        borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
-                        fontSize: '13px',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--border-strong)',
+                        fontSize: 'var(--fs-base)',
                       }}
                     />
                   </div>
@@ -1952,24 +1767,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 <button
                   type="submit"
-                  disabled={submitting}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    background: '#1d72fe',
-                    color: '#fff',
-                    borderRadius: '8px',
-                    fontSize: '14px',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: submitting ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 2px 6px rgba(29, 114, 254, 0.3)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                  }}
-                >
+                  disabled={submitting} className="btn btn-primary" style={{ width: '100%' }}>
                   <Check size={18} />
                   <span>{submitting ? 'Saving Product...' : viewMode === 'create' ? 'Create Product' : 'Save Changes'}</span>
                 </button>
@@ -1977,19 +1775,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                 <button
                   type="button"
                   onClick={() => setViewMode('list')}
-                  disabled={submitting}
-                  style={{
-                    width: '100%',
-                    padding: '10px',
-                    background: '#f8fafc',
-                    color: '#475569',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 600,
-                    border: '1px solid #cbd5e1',
-                    cursor: 'pointer',
-                  }}
-                >
+                  disabled={submitting} className="btn btn-secondary" style={{ width: '100%' }}>
                   Cancel
                 </button>
               </div>
@@ -2002,7 +1788,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
       {/* 3. PRODUCT DETAILS VIEW                                  */}
       {/* ======================================================== */}
       {viewMode === 'details' && selectedProduct && (
-        <div className="dashboard-card" style={{ padding: '28px' }}>
+        <div className="dashboard-card">
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))', gap: '32px' }}>
             {/* Left: Images Carousel / Gallery */}
             <div>
@@ -2014,10 +1800,10 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                     style={{
                       width: '100%',
                       height: '320px',
-                      borderRadius: '12px',
+                      borderRadius: 'var(--radius-lg)',
                       overflow: 'hidden',
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
+                      background: 'var(--surface-subtle)',
+                      border: '1px solid var(--border-color)',
                       marginBottom: '12px',
                       display: 'flex',
                       alignItems: 'center',
@@ -2035,7 +1821,7 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                         }}
                       />
                     ) : (
-                      <ImageIcon size={48} color="#cbd5e1" />
+                      <ImageIcon size={48} color="var(--text-disabled)" />
                     )}
                   </div>
                 );
@@ -2050,9 +1836,9 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                       style={{
                         width: '60px',
                         height: '60px',
-                        borderRadius: '6px',
+                        borderRadius: 'var(--radius-sm)',
                         overflow: 'hidden',
-                        border: img.isPrimary ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                        border: img.isPrimary ? '2px solid var(--primary)' : '1px solid var(--border-color)',
                         flexShrink: 0,
                       }}
                     >
@@ -2075,11 +1861,11 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                     : selectedProduct.subcategory;
                   return (
                     <>
-                      <span style={{ background: '#f1f5f9', color: '#475569', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>
+                      <span style={{ background: 'var(--surface-muted)', color: 'var(--text-secondary)', padding: '3px 8px', borderRadius: 'var(--radius-xs)', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>
                         Category: {catName}
                       </span>
                       {subcatName && (
-                        <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '3px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 600 }}>
+                        <span style={{ background: 'var(--primary-light)', color: 'var(--primary-hover)', padding: '3px 8px', borderRadius: 'var(--radius-xs)', fontSize: 'var(--fs-xs)', fontWeight: 600 }}>
                           Subcategory: {subcatName}
                         </span>
                       )}
@@ -2089,22 +1875,22 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                 <span
                   style={{
                     padding: '2px 8px',
-                    borderRadius: '12px',
-                    fontSize: '11px',
+                    borderRadius: 'var(--radius-lg)',
+                    fontSize: 'var(--fs-xs)',
                     fontWeight: 700,
-                    background: (selectedProduct.status || (selectedProduct.isActive ? 'ACTIVE' : 'INACTIVE')) === 'ACTIVE' ? '#ecfdf5' : '#fef2f2',
-                    color: (selectedProduct.status || (selectedProduct.isActive ? 'ACTIVE' : 'INACTIVE')) === 'ACTIVE' ? '#059669' : '#dc2626',
+                    background: (selectedProduct.status || (selectedProduct.isActive ? 'ACTIVE' : 'INACTIVE')) === 'ACTIVE' ? 'var(--success-light)' : 'var(--danger-light)',
+                    color: (selectedProduct.status || (selectedProduct.isActive ? 'ACTIVE' : 'INACTIVE')) === 'ACTIVE' ? 'var(--success)' : 'var(--danger)',
                   }}
                 >
                   {selectedProduct.status || (selectedProduct.isActive ? 'ACTIVE' : 'INACTIVE')}
                 </span>
               </div>
 
-              <h2 style={{ fontSize: '22px', fontWeight: 800, color: '#0f172a', marginBottom: '8px' }}>
+              <h2 className="section-title" style={{ marginBottom: '8px' }}>
                 {selectedProduct.title || selectedProduct.name}
               </h2>
 
-              <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
+              <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', marginBottom: '16px' }}>
                 {htmlToPlainText(selectedProduct.shortDescription) || 'No short description provided.'}
               </p>
 
@@ -2114,37 +1900,37 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                   display: 'grid',
                   gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
                   gap: '12px',
-                  background: '#f8fafc',
+                  background: 'var(--surface-subtle)',
                   padding: '16px',
-                  borderRadius: '10px',
-                  border: '1px solid #e2e8f0',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-color)',
                   marginBottom: '24px',
                 }}
               >
                 <div>
-                  <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>SKU</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', fontFamily: 'monospace' }}>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>SKU</div>
+                  <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-strong)', fontFamily: 'monospace' }}>
                     {selectedProduct.sku}
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Price</div>
-                  <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Price</div>
+                  <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)' }}>
                     ₹{selectedProduct.price?.toLocaleString()}
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Business Volume</div>
-                  <div style={{ fontSize: '15px', fontWeight: 800, color: '#1d4ed8' }}>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Business Volume</div>
+                  <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--primary-hover)' }}>
                     {(selectedProduct.businessVolume ?? selectedProduct.bv ?? 0).toLocaleString()} BV
                   </div>
                 </div>
 
                 <div>
-                  <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase' }}>Inventory</div>
-                  <div style={{ fontSize: '14px', fontWeight: 700, color: (selectedProduct.stock ?? selectedProduct.stockQuantity ?? 0) > 0 ? '#16a34a' : '#dc2626' }}>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Inventory</div>
+                  <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: (selectedProduct.stock ?? selectedProduct.stockQuantity ?? 0) > 0 ? 'var(--success)' : 'var(--danger)' }}>
                     {(selectedProduct.stock ?? selectedProduct.stockQuantity ?? 0)} in stock
                   </div>
                 </div>
@@ -2152,18 +1938,18 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
 
               {/* Formatted Rich Description */}
               <div>
-                <h4 style={{ fontSize: '14px', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
+                <h4 style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-body)', marginBottom: '8px' }}>
                   Full Description
                 </h4>
                 <div
                   style={{
                     padding: '16px',
-                    borderRadius: '8px',
-                    background: '#fff',
-                    border: '1px solid #e2e8f0',
-                    fontSize: '14px',
+                    borderRadius: 'var(--radius-md)',
+                    background: 'var(--surface)',
+                    border: '1px solid var(--border-color)',
+                    fontSize: 'var(--fs-md)',
                     lineHeight: '1.6',
-                    color: '#334155',
+                    color: 'var(--text-body)',
                   }}
                   dangerouslySetInnerHTML={{ __html: selectedProduct.description || '<em>No description provided.</em>' }}
                 />
@@ -2173,21 +1959,13 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
               <div style={{ marginTop: '24px', display: 'flex', gap: '12px' }}>
                 <button
                   onClick={() => openEditForm(selectedProduct)}
-                  className="btn-primary"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '10px 18px',
-                    fontSize: '13px',
-                  }}
+                  className="btn btn-primary"
                 >
                   <Edit3 size={16} /> Edit Product
                 </button>
                 <button
                   onClick={() => setViewMode('list')}
-                  className="btn-secondary"
-                  style={{ padding: '10px 18px', fontSize: '13px' }}
+                  className="btn btn-secondary"
                 >
                   Back to List
                 </button>
@@ -2199,39 +1977,20 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
 
       {/* Manual URL Modal */}
       {isUrlModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              background: '#fff',
-              borderRadius: '12px',
-              padding: '24px',
-              width: '420px',
-              maxWidth: '90%',
-              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-            }}
-          >
+        <div className="modal-backdrop">
+          <div className="modal modal-legacy" style={{ maxWidth: 420, padding: 'var(--space-6)' }} role="dialog" aria-modal="true">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#0f172a' }}>Add Image via URL</h3>
+              <h3 className="section-title">Add Image via URL</h3>
               <button
                 onClick={() => setIsUrlModalOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 <X size={18} />
               </button>
             </div>
 
             <div style={{ marginBottom: '12px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+              <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                 Image Web URL
               </label>
               <input
@@ -2239,12 +1998,12 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                 placeholder="https://example.com/product.jpg"
                 value={manualImageUrl}
                 onChange={(e) => setManualImageUrl(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
               />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#334155', marginBottom: '4px' }}>
+              <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                 Alt Description / Caption
               </label>
               <input
@@ -2252,23 +2011,19 @@ export const AdminProductsPage: React.FC<AdminProductsPageProps> = ({ token: pro
                 placeholder="Product packaging view"
                 value={manualImageAlt}
                 onChange={(e) => setManualImageAlt(e.target.value)}
-                style={{ width: '100%', padding: '9px 12px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                style={{ width: '100%', padding: '9px 12px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-strong)', fontSize: 'var(--fs-base)' }}
               />
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
               <button
                 type="button"
-                onClick={() => setIsUrlModalOpen(false)}
-                style={{ padding: '8px 14px', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#fff', fontSize: '13px' }}
-              >
+                onClick={() => setIsUrlModalOpen(false)} className="btn btn-secondary">
                 Cancel
               </button>
               <button
                 type="button"
-                onClick={handleAddManualUrl}
-                style={{ padding: '8px 14px', borderRadius: '6px', background: '#1d72fe', color: '#fff', border: 'none', fontWeight: 600, fontSize: '13px' }}
-              >
+                onClick={handleAddManualUrl} className="btn btn-primary">
                 Add Image
               </button>
             </div>

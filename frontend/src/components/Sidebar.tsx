@@ -1,36 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Home, 
-  LayoutDashboard,
-  Sliders,
-  Users, 
-  GitFork, 
-  Package, 
-  IndianRupee, 
-  Users2, 
-  Sparkles, 
-  Trophy, 
-  Wallet, 
-  BarChart3, 
-  Settings, 
-  LogOut,
-  Gift,
-  ArrowDownToLine,
-  UserCheck,
-  ShoppingBag,
-  FolderTree,
-  Layers,
-  Landmark,
-  ShoppingCart,
-  Share2,
-  UserRound,
-  Info,
-  Video,
-  LayoutTemplate,
-  Coins,
-  X
-} from 'lucide-react';
+import { LogOut, X, ChevronDown } from 'lucide-react';
 import { api } from '../services/api';
+import { getNavSections } from './navigation';
 
 interface SidebarProps {
   activeTab: string;
@@ -41,11 +12,24 @@ interface SidebarProps {
   onClose?: () => void;
 }
 
+const COLLAPSED_KEY = 'wetala_sidebar_collapsed';
+// Matches the backend DEFAULT_DAILY_CAP used when a member has no package-specific cap
+const DEFAULT_DAILY_CAP = 4000;
+
+const readCollapsed = (): string[] => {
+  try {
+    return JSON.parse(localStorage.getItem(COLLAPSED_KEY) || '[]');
+  } catch {
+    return [];
+  }
+};
+
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLogout, user, isOpen, onClose }) => {
   const isAdmin = user?.role?.toLowerCase() === 'superadmin';
   const [pendingWithdrawals, setPendingWithdrawals] = useState<number>(0);
   const [pendingMemberRequests, setPendingMemberRequests] = useState<number>(0);
   const [pendingPurchaseRequests, setPendingPurchaseRequests] = useState<number>(0);
+  const [collapsed, setCollapsed] = useState<string[]>(readCollapsed);
 
   useEffect(() => {
     if (isAdmin) {
@@ -96,227 +80,112 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, onLog
     }
   }, [isAdmin, user?.memberId]);
 
-  const sections = [
-    {
-      title: 'Overview',
-      items: [
-        ...(!isAdmin ? [
-          { id: 'home', label: 'Home', icon: Home }
-        ] : []),
-        { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-        { id: 'profile', label: isAdmin ? 'Profile & Referrals' : 'My Profile & KYC', icon: UserRound }
-      ]
-    },
-    {
-      title: 'Network & Genealogy',
-      items: [
-        { 
-          id: 'members', 
-          label: isAdmin ? 'All Members' : 'My Registered Members', 
-          icon: Users 
-        },
-        ...(isAdmin ? [
-          {
-            id: 'member-requests',
-            label: 'Member Requests',
-            icon: UserCheck,
-            badge: pendingMemberRequests > 0 ? `${pendingMemberRequests} New` : undefined
-          }
-        ] : []),
-        { id: 'genealogy', label: 'Binary & Sponsor Tree', icon: GitFork, badge: 'Live' }
-      ]
-    },
-    {
-      title: 'Finance & Compensation',
-      items: [
-        { id: 'welcome-bonus', label: 'Welcome Bonus', icon: Gift, badge: isAdmin ? '4% Pool' : 'BV' },
-        { id: 'binary-ledger', label: 'Binary Income', icon: BarChart3, badge: 'Daily' },
-        { id: 'sponsor-income', label: 'Sponsor Income', icon: Users, badge: '20%' },
-        { id: 'binary-leaderboard', label: 'Binary Leaderboard', icon: Trophy },
-        { 
-          id: 'withdrawals', 
-          label: isAdmin ? 'Withdrawal Requests' : 'My Withdrawals', 
-          icon: ArrowDownToLine, 
-          badge: pendingWithdrawals > 0 ? (isAdmin ? `${pendingWithdrawals} New` : `${pendingWithdrawals} Pending`) : undefined 
-        },
-        { id: 'wallet-payouts', label: 'Wallet & Payouts', icon: Wallet },
-        { id: 'bv-wallet', label: 'BV Wallet', icon: Coins },
-        { id: 'income-settings', label: 'Income & Simulator', icon: IndianRupee, badge: 'Engine' },
-        { id: 'team-bonus', label: 'Team Bonus Slabs', icon: Users2 },
-        { id: 'direct-royalty', label: 'Royalty & Consultancy', icon: Sparkles },
-        { id: 'rank-rewards', label: 'Lifetime Rewards', icon: Trophy }
-      ]
-    },
-    {
-      title: isAdmin ? 'Platform Administration' : 'Member Services',
-      items: [
-        ...(isAdmin ? [
-          {
-            id: 'manage-sliders',
-            label: 'Manage Sliders',
-            icon: Sliders,
-          },
-          {
-            id: 'manage-social-links',
-            label: 'Social Media Links',
-            icon: Share2,
-          },
-          {
-            id: 'manage-about',
-            label: 'About Us Section',
-            icon: Info,
-          },
-          {
-            id: 'manage-footer',
-            label: 'Footer & Company Info',
-            icon: LayoutTemplate,
-          },
-          {
-            id: 'manage-videos',
-            label: 'Video Showcase',
-            icon: Video,
-          },
-          {
-            id: 'manage-categories',
-            label: 'Manage Categories',
-            icon: FolderTree,
-          },
-          {
-            id: 'manage-subcategories',
-            label: 'Manage Subcategories',
-            icon: Layers,
-          },
-          {
-            id: 'manage-products',
-            label: 'Manage Products',
-            icon: ShoppingBag,
-          },
-        ] : [
-          {
-            id: 'member-products',
-            label: 'Products & Repurchase',
-            icon: ShoppingBag,
-            badge: 'Store',
-          },
-        ]),
-        { 
-          id: 'company-account', 
-          label: isAdmin ? 'Company Account & QR' : 'Company Bank & QR', 
-          icon: Landmark, 
-          badge: isAdmin ? undefined : 'Pay'
-        },
-        { 
-          id: 'packages', 
-          label: isAdmin ? 'Package Management' : (user?.packageName || user?.joiningPackageId ? 'Packages & Upgrade' : 'Buy Joining Package'), 
-          icon: Package, 
-          badge: isAdmin ? undefined : (user?.packageName || user?.joiningPackageId ? 'Upgrade' : 'Buy') 
-        },
-        { 
-          id: 'purchase-requests', 
-          label: isAdmin ? 'Purchase & Package Requests' : 'My Orders & Purchases', 
-          icon: ShoppingCart, 
-          badge: pendingPurchaseRequests > 0 ? (isAdmin ? `${pendingPurchaseRequests} New` : `${pendingPurchaseRequests} Active`) : undefined,
-        },
-        ...(isAdmin ? [
-          { id: 'reports', label: 'Financial Reports', icon: BarChart3 },
-          { id: 'settings', label: 'System Settings', icon: Settings }
-        ] : [])
-      ]
-    }
-  ];
+  const sections = getNavSections(user, {
+    withdrawals: pendingWithdrawals,
+    memberRequests: pendingMemberRequests,
+    purchases: pendingPurchaseRequests,
+  });
+
+  const toggleSection = (id: string) => {
+    setCollapsed((prev) => {
+      const next = prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id];
+      try {
+        localStorage.setItem(COLLAPSED_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const hasActivePackage = Boolean(user?.packageName);
+  const dailyCap = user?.dailyCapping > 0 ? user.dailyCapping : DEFAULT_DAILY_CAP;
 
   return (
-    <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`}>
-      {/* Brand Logo */}
+    <aside className={`sidebar ${isOpen ? 'sidebar-open' : ''}`} aria-label="Main navigation">
       <div className="sidebar-logo">
         <div className="logo-brand-wrap">
-          <img 
-            src="/logo.png" 
-            alt="Panchveda Wellness" 
-            className="sidebar-brand-img"
-          />
+          <img src="/logo.png" alt="" className="sidebar-brand-img" />
           <div className="logo-text-group">
-            <span className="logo-text" style={{ fontSize: '15px' }}>Panchveda Wellness</span>
-            <span className="logo-badge">Direct Selling</span>
+            <span className="logo-text">Panchveda Wellness</span>
+            <span className="logo-badge">{isAdmin ? 'Admin Console' : 'Member Portal'}</span>
           </div>
         </div>
         {onClose && (
-          <button
-            type="button"
-            onClick={onClose}
-            className="sidebar-close-btn"
-            aria-label="Close navigation"
-          >
+          <button type="button" onClick={onClose} className="sidebar-close-btn" aria-label="Close navigation">
             <X size={18} />
           </button>
         )}
       </div>
 
-      {/* Navigation Menu */}
       <nav className="sidebar-menu">
-        {sections.map((section, sIdx) => (
-          <div key={sIdx} style={{ display: 'flex', flexDirection: 'column' }}>
-            <div className="sidebar-section-label">{section.title}</div>
-            {section.items.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
+        {sections.map((section) => {
+          // The group holding the current page always stays open
+          const containsActive = section.items.some((item) => item.id === activeTab);
+          const isCollapsed = Boolean(section.title) && collapsed.includes(section.id) && !containsActive;
+          return (
+            <div key={section.id} className={`sidebar-group${isCollapsed ? ' is-collapsed' : ''}`}>
+              {section.title && (
                 <button
-                  key={item.id}
-                  onClick={() => {
-                    setActiveTab(item.id);
-                    onClose?.();
-                  }}
-                  className={`menu-item ${isActive ? 'active' : ''}`}
+                  type="button"
+                  className="sidebar-section-label"
+                  onClick={() => toggleSection(section.id)}
+                  aria-expanded={!isCollapsed}
                 >
-                  <Icon size={18} style={{ color: isActive ? '#ffffff' : '#94a3b8' }} />
-                  <span>{item.label}</span>
-                  {item.badge && (
-                    <span className="menu-item-badge">
-                      {item.badge}
-                    </span>
-                  )}
+                  <span>{section.title}</span>
+                  <ChevronDown size={14} aria-hidden="true" />
                 </button>
-              );
-            })}
-          </div>
-        ))}
-
-        <div style={{ paddingTop: '14px', paddingBottom: '6px' }}>
-          <button 
-            onClick={() => {
-              onClose?.();
-              if (onLogout) onLogout();
-              else alert('Logging out...');
-            }} 
-            className="menu-item" 
-            style={{ color: '#f87171' }}
-          >
-            <LogOut size={18} />
-            <span>Sign Out</span>
-          </button>
-        </div>
+              )}
+              {!isCollapsed &&
+                section.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.id;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      data-tab={item.id}
+                      onClick={() => {
+                        setActiveTab(item.id);
+                        onClose?.();
+                      }}
+                      className={`menu-item ${isActive ? 'active' : ''}`}
+                      aria-current={isActive ? 'page' : undefined}
+                    >
+                      <Icon size={18} aria-hidden="true" />
+                      <span>{item.label}</span>
+                      {!!item.count && (
+                        <span className="menu-item-badge" aria-label={`${item.count} pending`}>
+                          {item.count > 99 ? '99+' : item.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+            </div>
+          );
+        })}
       </nav>
 
-      {/* Bottom Live System Indicator */}
-      <div className="sidebar-footer-card">
-        <div className="system-status-indicator">
-          <div className="pulse-dot" style={!isAdmin && !user?.packageName ? { background: '#94a3b8' } : undefined}></div>
-          <span>{isAdmin ? 'System Engine Active' : (user?.packageName ? 'Binary Engine Active' : 'No Active Package')}</span>
-        </div>
-        <div style={{ fontSize: '11px', color: '#64748b', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          {isAdmin ? (
-            <>
-              <span style={{ color: '#64748b', fontWeight: 700 }}>Admin account · earns no income</span>
-              <span>v2.4.0</span>
-            </>
-          ) : (
-            <>
-              <span>Daily Cap: ₹{(user?.dailyCapping && user.dailyCapping > 0 ? user.dailyCapping : 4000).toLocaleString()}</span>
-              <span>v2.4.0</span>
-            </>
-          )}
-        </div>
+      <div className="sidebar-footer">
+        {!isAdmin && (
+          <div className="sidebar-footer-card">
+            <strong>
+              <span className={`status-dot${hasActivePackage ? ' is-on' : ''}`} aria-hidden="true" />
+              {hasActivePackage ? `${user.packageName} package` : 'No active package'}
+            </strong>
+            {hasActivePackage && <span>Daily cap ₹{Number(dailyCap).toLocaleString('en-IN')}</span>}
+          </div>
+        )}
+        <button
+          type="button"
+          onClick={() => {
+            onClose?.();
+            onLogout?.();
+          }}
+          className="menu-item is-danger"
+        >
+          <LogOut size={18} aria-hidden="true" />
+          <span>Sign Out</span>
+        </button>
       </div>
     </aside>
   );

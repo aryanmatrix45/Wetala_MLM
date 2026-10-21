@@ -1,37 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { api, type DashboardStats, type BVSummary } from '../services/api';
-import { 
-  Users, 
-  UserPlus, 
-  IndianRupee, 
-  Wallet, 
-  Calendar, 
-  TrendingUp, 
-  ShoppingBag, 
-  ShoppingCart, 
-  Award,
-  Package,
-  ArrowUpRight,
-  GitMerge,
-  Zap,
-  Gift,
-  CheckCircle2,
-  XCircle,
-  Sparkles,
-  ExternalLink,
-  Search,
-  X,
-  AlertCircle,
-  PlusCircle,
-  CreditCard,
-  Check,
-  ArrowDownRight,
-  Coins,
-  BarChart3
-} from 'lucide-react';
+import { AlertCircle, ArrowDownRight, Award, BarChart3, Calendar, Check, CheckCircle2, Coins, CreditCard, ExternalLink, Gift, GitMerge, IndianRupee, Package, PlusCircle, Search, ShoppingBag, ShoppingCart, Sparkles, UserPlus, Users, Wallet, XCircle, Zap } from 'lucide-react';
 import { WithdrawModal } from '../components/WithdrawModal';
 import { AdminWithdrawalActionModal, type AdminActionType } from '../components/AdminWithdrawalActionModal';
 import { type WithdrawalRequestItem } from '../services/api';
+import { Alert, Badge, Modal, PageHeader, StatusBadge } from '../components/ui';
 
 interface DashboardPageProps {
   user?: any;
@@ -57,7 +30,6 @@ const SkeletonText: React.FC<{ width?: string | number; height?: string | number
 );
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, initialSection }) => {
-  const [trendRange, setTrendRange] = useState('30');
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [statsLoading, setStatsLoading] = useState(true);
   const [welcomeBonus, setWelcomeBonus] = useState<any>(null);
@@ -258,147 +230,73 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
   return (
     <div className="page-body">
       {/* Welcome Banner */}
-      <div className="welcome-header">
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{ 
-              fontSize: '11px', 
-              fontWeight: 800, 
-              background: '#dbeafe', 
-              color: '#1d4ed8', 
-              padding: '3px 10px', 
-              borderRadius: '9999px',
-              letterSpacing: '0.5px'
-            }}>
-              COMPENSATION PORTAL ACTIVE
-            </span>
-          </div>
-          <h1 className="page-title">{isAdmin ? 'Executive Dashboard' : 'Distributor Dashboard'}</h1>
-          <p className="page-subtitle">
-            {isAdmin 
-              ? 'Real-time company performance analytics, binary volumes, and automated payout ledger.' 
-              : `Welcome back, ${user?.name || 'Distributor'}! Track your personal volume, binary matching, and welcome bonus.`}
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div className="date-pill">
-            <Calendar size={15} color="#64748b" />
-            <span>Today, {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          </div>
-
-          {!isAdmin && (
-            <button
-              onClick={() => setIsWithdrawModalOpen(true)}
-              className="primary-btn"
-              style={{
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                boxShadow: '0 4px 12px rgba(16, 185, 129, 0.35)',
-              }}
-            >
-              <ArrowDownRight size={16} />
-              <span>Withdraw Payout</span>
-            </button>
-          )}
-        </div>
-      </div>
+      <PageHeader
+        title={isAdmin ? 'Dashboard' : `Welcome back${user?.name ? `, ${user.name.split(' ')[0]}` : ''}`}
+        subtitle={isAdmin ? 'Company performance, binary volume and payouts.' : 'Your volume, binary matching and earnings at a glance.'}
+        actions={
+          <>
+            <div className="date-pill">
+              <Calendar size={15} aria-hidden="true" />
+              <span>{new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            </div>
+            {!isAdmin && (
+              <button type="button" onClick={() => setIsWithdrawModalOpen(true)} className="btn btn-success">
+                <ArrowDownRight size={16} />
+                <span>Withdraw</span>
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* 100 BV Binary Income Tree Participation Banner for Distributors */}
       {/* Live status when loaded; falls back to the profile from login */}
       {!isAdmin && !(bvSummary ? bvSummary.binary.isActive : (user?.personalBv || 0) >= 100) && (
-        <div style={{
-          background: 'linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)',
-          border: '1px solid #fde68a',
-          borderRadius: '12px',
-          padding: '16px 20px',
-          marginBottom: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: '16px',
-          boxShadow: '0 2px 8px rgba(245, 158, 11, 0.1)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-            <div style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '10px',
-              background: '#fef3c7',
-              color: '#d97706',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0
-            }}>
-              <AlertCircle size={24} />
-            </div>
-            <div>
-              <div style={{ fontWeight: 800, fontSize: '15px', color: '#92400e' }}>
-                Binary Tree Income Participation: Pending ({statusBV.toLocaleString()} / 100 BV)
-              </div>
-              <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#b45309' }}>
-                Your account is active for login! To participate in the binary income tree and earn matching bonuses, your account requires a minimum of <strong>100 Business Volume (BV)</strong> (personal BV plus BV Wallet balance). Purchase products or receive BV in your BV Wallet to activate binary participation.
-              </p>
-            </div>
+        <Alert tone="warning" title={`Binary income not active yet · ${statusBV.toLocaleString()} / 100 BV`}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+            <span style={{ flex: '1 1 320px' }}>
+              You need at least <strong>100 BV</strong> (personal BV plus BV Wallet balance) to join the binary tree and
+              earn matching income. Purchase products or receive BV in your BV Wallet to activate.
+            </span>
+            <button type="button" onClick={() => onNavigate('member-products')} className="btn btn-sm btn-secondary">
+              <ShoppingCart size={14} />
+              Shop products
+            </button>
           </div>
-          <button
-            onClick={() => onNavigate('products')}
-            className="primary-btn"
-            style={{
-              background: '#d97706',
-              color: '#fff',
-              border: 'none',
-              padding: '10px 18px',
-              borderRadius: '8px',
-              fontWeight: 700,
-              fontSize: '13px',
-              flexShrink: 0,
-              boxShadow: '0 4px 12px rgba(217, 119, 6, 0.25)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <ShoppingCart size={15} />
-            <span>Shop for 100 BV</span>
-          </button>
-        </div>
+        </Alert>
       )}
 
       {/* Top KPI Metrics */}
-      <div className={`kpi-grid ${isAdmin ? 'kpi-grid-6' : ''}`}>
+      <div className={`kpi-grid ${isAdmin ? 'kpi-grid-6' : 'kpi-grid-5'}`}>
         {isAdmin ? (
           <>
             {/* Total Distributors (Admin) */}
             <div className="kpi-card kpi-card-blue">
               <div className="kpi-icon-box kpi-icon-blue">
-                <Users size={26} />
+                <Users size={20} />
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">Total Distributors</div>
                 <div className="kpi-value">
                   {statsLoading ? <SkeletonText width="60px" height="28px" /> : (stats?.totalMembers ?? 0).toLocaleString()}
                 </div>
-                <div className="kpi-trend-pill kpi-trend-up">
-                  <ArrowUpRight size={13} />
-                  <span>
+                <div className="kpi-sub">
                     {statsLoading ? <SkeletonText width="70px" height="12px" /> : `${stats?.quickStats?.activePercent ?? 100}% Active Network`}
-                  </span>
-                </div>
+                  </div>
               </div>
             </div>
 
             {/* New Registrations (Admin) */}
             <div className="kpi-card kpi-card-green">
               <div className="kpi-icon-box kpi-icon-green">
-                <UserPlus size={26} />
+                <UserPlus size={20} />
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">New Registrations</div>
                 <div className="kpi-value">
                   {statsLoading ? <SkeletonText width="60px" height="28px" /> : (stats?.newRegistrations ?? 0).toLocaleString()}
                 </div>
-                <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
+                <div className="kpi-sub">
                   {statsLoading ? (
                     <SkeletonText width="90px" height="12px" />
                   ) : stats?.registrationsToday ? (
@@ -413,7 +311,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             {/* Total Gross Value (Admin) */}
             <div className="kpi-card kpi-card-gold">
               <div className="kpi-icon-box kpi-icon-gold">
-                <IndianRupee size={26} />
+                <IndianRupee size={20} />
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">Total Gross Value</div>
@@ -424,29 +322,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                     (stats?.totalGrossValue || stats?.totalJoiningRevenue || stats?.totalPackagePrice || 0).toLocaleString()
                   )}
                 </div>
-                <div className="kpi-trend-pill kpi-trend-up">
-                  <ArrowUpRight size={13} />
-                  <span>All-Time Turnover</span>
-                </div>
+                <div className="kpi-sub">All-time turnover</div>
               </div>
             </div>
 
             {/* Weekly Gross Volume (Admin) */}
-            <div className="kpi-card" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', border: '1px solid #a7f3d0' }}>
-              <div className="kpi-icon-box" style={{ background: '#d1fae5', color: '#059669' }}>
-                <Gift size={26} />
+            <div className="kpi-card">
+              <div className="kpi-icon-box kpi-icon-green">
+                <Gift size={20} />
               </div>
               <div className="kpi-content">
-                <div className="kpi-label" style={{ color: '#065f46', fontWeight: 700 }}>Weekly Gross Volume</div>
-                <div className="kpi-value" style={{ color: '#047857' }}>
+                <div className="kpi-label">Weekly Gross Volume</div>
+                <div className="kpi-value">
                   {statsLoading ? (
                     <SkeletonText width="80px" height="28px" />
                   ) : (
                     (stats?.weeklyGrossBusinessVolume ?? stats?.weeklyGrossValue ?? welcomeBonus?.currentWeeklyCompanyGBV ?? 0).toLocaleString()
                   )}{' '}
-                  <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                  <span className="kpi-unit">BV</span>
                 </div>
-                <div style={{ fontSize: '11px', color: '#059669', fontWeight: 700, marginTop: '3px' }}>
+                <div className="kpi-sub">
                   {welcomeBonus?.activeRules?.ratePercent ?? 4}% Pool: {statsLoading ? '...' : Math.round(((stats?.weeklyGrossBusinessVolume ?? stats?.weeklyGrossValue ?? welcomeBonus?.currentWeeklyCompanyGBV ?? 0) * ((welcomeBonus?.activeRules?.ratePercent ?? 4) / 100))).toLocaleString()} BV / week
                 </div>
               </div>
@@ -455,21 +350,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             {/* Total Business Volume Generated (Admin) */}
             <div className="kpi-card kpi-card-purple">
               <div className="kpi-icon-box kpi-icon-purple">
-                <Zap size={26} />
+                <Zap size={20} />
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">Total Business Volume</div>
-                <div className="kpi-value" style={{ color: '#7c3aed' }}>
+                <div className="kpi-value">
                   {statsLoading ? (
                     <SkeletonText width="80px" height="28px" />
                   ) : (
                     (stats?.totalBusinessVolume ?? stats?.totalBV ?? 0).toLocaleString()
                   )}{' '}
-                  <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
-                </div>
-                <div className="kpi-trend-pill" style={{ background: '#f5f3ff', color: '#7c3aed' }}>
-                  <ArrowUpRight size={13} />
-                  <span>Generated BV</span>
+                  <span className="kpi-unit">BV</span>
                 </div>
               </div>
             </div>
@@ -477,7 +368,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             {/* Total Joining Package Value (Admin) */}
             <div className="kpi-card kpi-card-coral">
               <div className="kpi-icon-box kpi-icon-coral">
-                <Wallet size={26} />
+                <Wallet size={20} />
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">Total Joining Price</div>
@@ -488,9 +379,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                     (stats?.totalPackagePrice || stats?.totalJoiningRevenue || 0).toLocaleString()
                   )}
                 </div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                <div className="kpi-sub">
                   Price Total of{' '}
-                  <strong style={{ color: '#059669' }}>
+                  <strong style={{ color: 'var(--success)' }}>
                     {statsLoading ? '...' : (stats?.totalMembers ?? 0)} Joined Members
                   </strong>
                 </div>
@@ -502,14 +393,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             {/* Member Card 1: Membership Status */}
             <div className="kpi-card kpi-card-blue">
               <div className="kpi-icon-box kpi-icon-blue">
-                <Award size={26} />
+                <Award size={20} />
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">Distributor Status</div>
-                <div className="kpi-value" style={{ fontSize: '18px', color: binaryActive ? '#10b981' : '#d97706' }}>
+                <div className="kpi-value" style={{ fontSize: 'var(--fs-xl)', color: binaryActive ? 'var(--success)' : 'var(--warning)' }}>
                   {binaryActive ? 'Binary Active' : 'Login Active'}
                 </div>
-                <div style={{ fontSize: '12px', color: binaryActive ? '#059669' : '#b45309', fontWeight: 700, marginTop: '4px' }}>
+                <div className="kpi-sub" style={{ color: binaryActive ? 'var(--success)' : 'var(--warning-hover)' }}>
                   {binaryActive
                     ? bvSummary?.binary.lockedBV
                       ? `${bvSummary.binary.lockedBV} BV locked for binary activation`
@@ -524,21 +415,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             {/* Member Card: Total Business Volume (earned personal BV + spendable BV Wallet) */}
             <div className="kpi-card kpi-card-purple">
               <div className="kpi-icon-box kpi-icon-purple">
-                <Coins size={26} />
+                <Coins size={20} />
               </div>
               <div className="kpi-content" style={{ width: '100%' }}>
                 <div className="kpi-label">Total Business Volume</div>
-                <div className="kpi-value" style={{ color: '#6d28d9' }}>
+                <div className="kpi-value">
                   {bvSummary ? bvSummary.totalBV.toLocaleString('en-IN') : <SkeletonText width="60px" height="28px" />}{' '}
-                  <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                  <span className="kpi-unit">BV</span>
                 </div>
                 {bvSummary && (
-                  <div style={{ fontSize: '11px', color: '#475569', marginTop: '6px', display: 'grid', gap: '2px' }}>
+                  <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', marginTop: '6px', display: 'grid', gap: '2px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
                       <span>Personal BV (earned)</span>
-                      <strong style={{ color: '#0f172a' }}>{bvSummary.personal.total.toLocaleString('en-IN')}</strong>
+                      <strong style={{ color: 'var(--text-main)' }}>{bvSummary.personal.total.toLocaleString('en-IN')}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', paddingLeft: '8px', color: '#64748b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', paddingLeft: '8px', color: 'var(--text-muted)' }}>
                       <span>Package · Products</span>
                       <span>
                         {bvSummary.personal.package.toLocaleString('en-IN')} · {bvSummary.personal.purchases.toLocaleString('en-IN')}
@@ -546,20 +437,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                     </div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
                       <span>BV Wallet (spendable)</span>
-                      <strong style={{ color: '#0f172a' }}>{bvSummary.wallet.available.toLocaleString('en-IN')}</strong>
+                      <strong style={{ color: 'var(--text-main)' }}>{bvSummary.wallet.available.toLocaleString('en-IN')}</strong>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', paddingLeft: '8px', color: '#64748b' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', paddingLeft: '8px', color: 'var(--text-muted)' }}>
                       <span>incl. welcome bonus</span>
                       <span>{bvSummary.wallet.welcomeBonus.toLocaleString('en-IN')}</span>
                     </div>
                     {bvSummary.binary.lockedBV > 0 && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', color: '#b45309' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px', color: 'var(--warning-hover)' }}>
                         <span>Locked for binary activation (used once)</span>
                         <strong>−{bvSummary.binary.lockedBV.toLocaleString('en-IN')}</strong>
                       </div>
                     )}
                     {bvSummary.wallet.pendingOrderBV > 0 && (
-                      <div style={{ color: '#b45309', fontWeight: 600 }}>
+                      <div style={{ color: 'var(--warning-hover)', fontWeight: 600 }}>
                         {bvSummary.wallet.pendingOrderBV.toLocaleString('en-IN')} BV paid on {bvSummary.wallet.pendingOrders} order(s) awaiting approval
                       </div>
                     )}
@@ -568,31 +459,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 <button
                   type="button"
                   onClick={() => onNavigate('bv-wallet')}
-                  className="primary-btn"
-                  style={{ marginTop: '8px', fontSize: '11.5px', padding: '5px 12px', width: '100%', justifyContent: 'center' }}
+                  className="btn btn-sm btn-soft btn-block"
+                  style={{ marginTop: 'var(--space-3)' }}
                 >
-                  <Coins size={13} />
+                  <Coins size={14} />
                   <span>Open BV Wallet</span>
                 </button>
               </div>
             </div>
 
             {/* Member Card 2: Welcome Bonus Earned (Business Volume) */}
-            <div className="kpi-card kpi-card-green" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #ecfdf5 100%)', border: '1px solid #a7f3d0' }}>
-              <div className="kpi-icon-box kpi-icon-green" style={{ background: '#d1fae5', color: '#059669' }}>
-                <Gift size={26} />
+            <div className="kpi-card kpi-card-green">
+              <div className="kpi-icon-box kpi-icon-green">
+                <Gift size={20} />
               </div>
               <div className="kpi-content">
-                <div className="kpi-label" style={{ color: '#065f46', fontWeight: 700 }}>Welcome Bonus Earned</div>
-                <div className="kpi-value" style={{ color: '#047857' }}>
+                <div className="kpi-label">Welcome Bonus Earned</div>
+                <div className="kpi-value">
                   {welcomeBonusLoading ? (
                     <SkeletonText width="60px" height="28px" />
                   ) : (
                     (welcomeBonus?.totalWelcomeBonusEarned || 0).toLocaleString()
                   )}{' '}
-                  <span style={{ fontSize: '15px', fontWeight: 700 }}>BV</span>
+                  <span className="kpi-unit">BV</span>
                 </div>
-                <div style={{ fontSize: '12px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
+                <div className="kpi-sub">
                   Remaining Cap: {welcomeBonusLoading ? '...' : (welcomeBonus?.remainingBonus || 0).toLocaleString()} BV
                 </div>
               </div>
@@ -602,17 +493,17 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             <div
               className="kpi-card"
               onClick={() => onNavigate('sponsor-income')}
-              style={{ background: 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)', border: '1px solid #ddd6fe', cursor: 'pointer' }}
+              style={{ cursor: 'pointer' }}
             >
-              <div className="kpi-icon-box" style={{ background: '#ede9fe', color: '#7c3aed' }}>
-                <Users size={26} />
+              <div className="kpi-icon-box kpi-icon-purple">
+                <Users size={20} />
               </div>
               <div className="kpi-content">
-                <div className="kpi-label" style={{ color: '#5b21b6', fontWeight: 700 }}>Sponsor Income</div>
-                <div className="kpi-value" style={{ color: '#6d28d9' }}>
+                <div className="kpi-label">Sponsor Income</div>
+                <div className="kpi-value">
                   ₹ {sponsorIncome ? sponsorIncome.total.toLocaleString('en-IN') : <SkeletonText width="60px" height="28px" />}
                 </div>
-                <div style={{ fontSize: '12px', color: '#7c3aed', fontWeight: 600, marginTop: '4px' }}>
+                <div className="kpi-sub">
                   This month: ₹ {sponsorIncome ? sponsorIncome.thisMonth.toLocaleString('en-IN') : '...'} • {sponsorIncome?.ratePercent ?? 20}% of directs' binary
                 </div>
               </div>
@@ -620,41 +511,34 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
 
 
             {/* Member Card 4: Total Payout / Available Payout Balance */}
-            <div className="kpi-card kpi-card-coral" style={{ position: 'relative', overflow: 'hidden' }}>
+            <div className="kpi-card kpi-card-coral">
               <div className="kpi-icon-box kpi-icon-coral">
-                <Wallet size={26} />
+                <Wallet size={20} />
               </div>
               <div className="kpi-content">
                 <div className="kpi-label">Available Payout Balance</div>
-                <div className="kpi-value" style={{ color: '#1d4ed8' }}>
+                <div className="kpi-value">
                   ₹ {withdrawalLoading ? (
                     <SkeletonText width="70px" height="28px" />
                   ) : (
                     (memberWithdrawalSummary?.availablePayout ?? user?.walletBalance ?? 0).toLocaleString()
                   )}
                 </div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '3px' }}>
-                  Total Payout: <strong style={{ color: '#0f172a' }}>₹ {withdrawalLoading ? '...' : (memberWithdrawalSummary?.totalPayout ?? user?.totalIncome ?? 0).toLocaleString()}</strong>
+                <div className="kpi-sub">
+                  Total Payout: <strong style={{ color: 'var(--text-main)' }}>₹ {withdrawalLoading ? '...' : (memberWithdrawalSummary?.totalPayout ?? user?.totalIncome ?? 0).toLocaleString()}</strong>
                   {(memberWithdrawalSummary?.pendingAmount > 0 || (memberWithdrawalSummary?.totalPending > 0)) && (
-                    <span style={{ color: '#d97706', display: 'block', fontWeight: 600, fontSize: '11px', marginTop: '1px' }}>
+                    <span style={{ color: 'var(--warning-hover)', display: 'block', fontWeight: 600 }}>
                       Pending: ₹ {(memberWithdrawalSummary?.pendingAmount || memberWithdrawalSummary?.totalPending || 0).toLocaleString()}
                     </span>
                   )}
                 </div>
                 <button
+                  type="button"
                   onClick={() => setIsWithdrawModalOpen(true)}
-                  className="primary-btn"
-                  style={{
-                    marginTop: '8px',
-                    fontSize: '11.5px',
-                    padding: '5px 12px',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                    width: '100%',
-                    justifyContent: 'center',
-                    boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)',
-                  }}
+                  className="btn btn-sm btn-soft btn-block"
+                  style={{ marginTop: 'var(--space-3)' }}
                 >
-                  <ArrowDownRight size={13} />
+                  <ArrowDownRight size={14} />
                   <span>Withdraw Funds</span>
                 </button>
               </div>
@@ -664,44 +548,27 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       </div>
 
       {/* NEW: Binary Volume Live Matching & Capping Strip */}
-      <div className="dashboard-card" style={{ marginBottom: '30px', background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)' }}>
-        <div className="card-header-row" style={{ marginBottom: '16px' }}>
+      <div className="dashboard-card" style={{ marginBottom: 'var(--space-6)' }}>
+        <div className="card-header-row">
           <div className="card-title-group">
-            <div style={{ 
-              width: '36px', 
-              height: '36px', 
-              borderRadius: '10px', 
-              background: '#eff6ff', 
-              color: '#2563eb', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center' 
-            }}>
+            <span className="icon-tile tone-blue">
               <GitMerge size={20} />
-            </div>
+            </span>
             <div>
-              <h2 className="card-title">{isAdmin ? 'Live Binary Volume Matching & Engine' : 'Live Binary Volume Matching & Daily Cap'}</h2>
-              <p style={{ fontSize: '12px', color: '#64748b' }}>
-                {isAdmin ? 'Root Distributor Node: ' : 'Distributor Node: '}
-                <strong>{user?.memberId || 'MEM0001'} ({user?.name || 'Distributor'})</strong>
+              <h2 className="card-title">{isAdmin ? 'Binary Volume Matching' : 'Binary Matching & Daily Cap'}</h2>
+              <p className="card-subtitle">
+                {isAdmin ? 'Root node ' : 'Your node '}
+                <strong>{user?.memberId || 'MEM0001'}{user?.name ? ` · ${user.name}` : ''}</strong>
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button 
-              onClick={() => onNavigate('binary-ledger')} 
-              className="secondary-btn" 
-              style={{ fontSize: '12px', padding: '6px 14px' }}
-            >
-              <BarChart3 size={14} /> View Binary Income
+          <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+            <button type="button" onClick={() => onNavigate('binary-ledger')} className="btn btn-sm btn-secondary">
+              <BarChart3 size={14} /> Binary Income
             </button>
-            <button 
-              onClick={() => onNavigate('income-settings')} 
-              className="primary-btn" 
-              style={{ fontSize: '12px', padding: '6px 14px' }}
-            >
-              <Zap size={14} /> Open Simulator
+            <button type="button" onClick={() => onNavigate('income-settings')} className="btn btn-sm btn-primary">
+              <Zap size={14} /> Simulator
             </button>
           </div>
         </div>
@@ -730,16 +597,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           return (
             <div className="dashboard-binary-banner-grid">
               {/* Leg Balance Meter */}
-              <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+              <div className="stat-panel">
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>
+                  <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--primary)' }}>
                     {binaryLoading ? (
                       <SkeletonText width="120px" height="14px" />
                     ) : (
                       `LEFT LEG: ${leftBV.toLocaleString()} BV (${binaryData?.leftMemberCount ?? 0} M)`
                     )}
                   </span>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#059669' }}>
+                  <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--success)' }}>
                     {binaryLoading ? (
                       <SkeletonText width="120px" height="14px" />
                     ) : (
@@ -752,29 +619,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                 {binaryLoading ? (
                   <SkeletonText width="100%" height="12px" borderRadius="9999px" />
                 ) : (
-                  <div style={{ height: '12px', width: '100%', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden', display: 'flex' }}>
-                    <div style={{ width: `${leftPct}%`, background: '#3b82f6', transition: 'width 0.4s ease' }} title={`Left Leg: ${leftBV.toLocaleString()} BV (${leftPct}%)`} />
-                    <div style={{ width: `${rightPct}%`, background: '#10b981', transition: 'width 0.4s ease' }} title={`Right Leg: ${rightBV.toLocaleString()} BV (${rightPct}%)`} />
+                  <div style={{ height: '12px', width: '100%', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-full)', overflow: 'hidden', display: 'flex' }}>
+                    <div style={{ width: `${leftPct}%`, background: 'var(--primary)', transition: 'width 0.4s ease' }} title={`Left Leg: ${leftBV.toLocaleString()} BV (${leftPct}%)`} />
+                    <div style={{ width: `${rightPct}%`, background: 'var(--success)', transition: 'width 0.4s ease' }} title={`Right Leg: ${rightBV.toLocaleString()} BV (${rightPct}%)`} />
                   </div>
                 )}
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: '6px', flexWrap: 'wrap', gap: '4px' }}>
                   {binaryLoading ? (
                     <SkeletonText width="180px" height="13px" />
                   ) : (
                     <>
-                      <span>Matched: <strong style={{ color: '#0f172a' }}>{matchedBV.toLocaleString()} BV</strong> ({matchedCycles} Cycles)</span>
+                      <span>Matched: <strong style={{ color: 'var(--text-main)' }}>{matchedBV.toLocaleString()} BV</strong> ({matchedCycles} Cycles)</span>
                       {reservedBV > 0 && (
-                        <span style={{ color: '#d97706', fontWeight: 700, background: '#fef3c7', padding: '1px 6px', borderRadius: '4px' }}>
+                        <span style={{ color: 'var(--warning)', fontWeight: 700, background: 'var(--warning-soft)', padding: '1px 6px', borderRadius: 'var(--radius-xs)' }}>
                           Reserved (Stage 2): {reservedBV.toLocaleString()} BV ({reservedSide})
                         </span>
                       )}
                       {carryLeftBV > 0 ? (
-                        <span>Unmatched Left: <strong style={{ color: '#2563eb' }}>{carryLeftBV.toLocaleString()} BV</strong>{carryRightBV > 0 ? <> · Right: <strong style={{ color: '#059669' }}>{carryRightBV.toLocaleString()} BV</strong></> : null}</span>
+                        <span>Unmatched Left: <strong style={{ color: 'var(--primary)' }}>{carryLeftBV.toLocaleString()} BV</strong>{carryRightBV > 0 ? <> · Right: <strong style={{ color: 'var(--success)' }}>{carryRightBV.toLocaleString()} BV</strong></> : null}</span>
                       ) : carryRightBV > 0 ? (
-                        <span>Unmatched Right: <strong style={{ color: '#059669' }}>{carryRightBV.toLocaleString()} BV</strong></span>
+                        <span>Unmatched Right: <strong style={{ color: 'var(--success)' }}>{carryRightBV.toLocaleString()} BV</strong></span>
                       ) : (
-                        <span>Balanced: <strong style={{ color: '#64748b' }}>0 BV Carry</strong></span>
+                        <span>Balanced: <strong style={{ color: 'var(--text-muted)' }}>0 BV Carry</strong></span>
                       )}
                     </>
                   )}
@@ -782,51 +649,51 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
 
               {/* Dynamic Daily Binary Income Box */}
-              <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+              <div className="stat-panel">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: 600 }}>Today's Binary Income (₹{ratePerCycle}/match, paid after midnight)</div>
+                  <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', fontWeight: 600 }}>Today's Binary Income (₹{ratePerCycle}/match, paid after midnight)</div>
                   {binaryLoading ? (
                     <SkeletonText width="60px" height="14px" />
                   ) : (
-                    <span style={{ fontSize: '10.5px', fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '1px 6px', borderRadius: '4px' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-light)', padding: '1px 6px', borderRadius: 'var(--radius-xs)' }}>
                       {matchedCycles} {matchedCycles === 1 ? 'Pair' : 'Pairs'} Matched
                     </span>
                   )}
                 </div>
-                <div style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-display)', margin: '4px 0' }}>
+                <div style={{ fontSize: 'var(--fs-3xl)', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-display)', margin: '4px 0' }}>
                   ₹ {binaryLoading ? <SkeletonText width="80px" height="26px" /> : earnedToday.toLocaleString()}
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#059669', fontWeight: 600 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', color: 'var(--success)', fontWeight: 600 }}>
                   <span>Estimated today: <strong>₹ {binaryLoading ? '...' : earnedToday.toLocaleString()}</strong></span>
-                  <span style={{ color: '#64748b' }}>All-Time: <strong>₹ {binaryLoading ? '...' : totalBinaryIncome.toLocaleString()}</strong></span>
+                  <span style={{ color: 'var(--text-muted)' }}>All-Time: <strong>₹ {binaryLoading ? '...' : totalBinaryIncome.toLocaleString()}</strong></span>
                 </div>
               </div>
 
               {/* Daily Cap / Payout Policy Progress */}
-              <div style={{ background: '#ffffff', padding: '16px 20px', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
+              <div className="stat-panel">
                 {isAdmin && user?.role === 'ADMIN' && !user?.packageName ? (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', fontWeight: 600 }}>
                       <span>Payout Limit Policy</span>
-                      <span style={{ color: '#059669', fontWeight: 700, background: '#ecfdf5', padding: '2px 8px', borderRadius: '9999px', fontSize: '11px' }}>Uncapped</span>
+                      <span style={{ color: 'var(--success)', fontWeight: 700, background: 'var(--success-light)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: 'var(--fs-xs)' }}>Uncapped</span>
                     </div>
-                    <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a', fontFamily: 'var(--font-display)', margin: '8px 0 4px' }}>
+                    <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)', fontFamily: 'var(--font-display)', margin: '8px 0 4px' }}>
                       Super Admin Account
                     </div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
                       Binary capping is disabled for System Admin roles.
                     </div>
                   </>
                 ) : (
                   <>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#64748b', fontWeight: 600 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', fontWeight: 600 }}>
                       <span>Daily Cap Utilization</span>
                       {binaryLoading ? (
                         <SkeletonText width="35px" height="13px" />
                       ) : (
                         <span style={{ 
                           fontWeight: 700, 
-                          color: capUtil >= 90 ? '#ef4444' : capUtil >= 60 ? '#d97706' : '#059669' 
+                          color: capUtil >= 90 ? 'var(--danger)' : capUtil >= 60 ? 'var(--warning)' : 'var(--success)' 
                         }}>
                           {capUtil}%
                         </span>
@@ -837,29 +704,29 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                         <SkeletonText width="100%" height="8px" borderRadius="9999px" />
                       </div>
                     ) : (
-                      <div style={{ height: '8px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden', margin: '8px 0' }}>
+                      <div style={{ height: '8px', background: 'var(--surface-muted)', borderRadius: 'var(--radius-full)', overflow: 'hidden', margin: '8px 0' }}>
                         <div style={{ 
                           width: `${Math.min(100, capUtil)}%`, 
                           height: '100%', 
-                          background: capUtil >= 90 ? '#ef4444' : capUtil >= 60 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 'linear-gradient(90deg, #10b981, #059669)', 
-                          borderRadius: '9999px',
+                          background: capUtil >= 90 ? 'var(--danger)' : capUtil >= 60 ? 'var(--warning)' : 'var(--success)', 
+                          borderRadius: 'var(--radius-full)',
                           transition: 'width 0.4s ease' 
                         }} />
                       </div>
                     )}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#64748b' }}>
-                      <span>Earned Today: <strong style={{ color: '#0f172a' }}>₹ {binaryLoading ? '...' : earnedToday.toLocaleString()}</strong></span>
-                      <span>Cap: <strong style={{ color: '#0f172a' }}>₹ {binaryLoading ? '...' : dailyCap.toLocaleString()}</strong></span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+                      <span>Earned Today: <strong style={{ color: 'var(--text-main)' }}>₹ {binaryLoading ? '...' : earnedToday.toLocaleString()}</strong></span>
+                      <span>Cap: <strong style={{ color: 'var(--text-main)' }}>₹ {binaryLoading ? '...' : dailyCap.toLocaleString()}</strong></span>
                     </div>
                     {!binaryLoading && binaryData?.today && (
-                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px', fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: '4px' }}>
                         <span>
-                          New today: L <strong style={{ color: '#2563eb' }}>{(binaryData.today.newLeftBV || 0).toLocaleString('en-IN')}</strong> · R{' '}
-                          <strong style={{ color: '#059669' }}>{(binaryData.today.newRightBV || 0).toLocaleString('en-IN')}</strong> BV
+                          New today: L <strong style={{ color: 'var(--primary)' }}>{(binaryData.today.newLeftBV || 0).toLocaleString('en-IN')}</strong> · R{' '}
+                          <strong style={{ color: 'var(--success)' }}>{(binaryData.today.newRightBV || 0).toLocaleString('en-IN')}</strong> BV
                         </span>
                         <span>
                           Flushed today:{' '}
-                          <strong style={{ color: binaryData.today.flushedAmount > 0 ? '#dc2626' : '#0f172a' }}>
+                          <strong style={{ color: binaryData.today.flushedAmount > 0 ? 'var(--danger)' : 'var(--text-main)' }}>
                             ₹ {(binaryData.today.flushedAmount || 0).toLocaleString('en-IN')}
                           </strong>
                         </span>
@@ -875,245 +742,162 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
       </div>
 
       {/* Standalone Welcome Bonus Dashboard Section */}
-      <div id="welcome-bonus-section" className="dashboard-card" style={{ marginBottom: '30px', background: 'linear-gradient(135deg, #ffffff 0%, #fdfefe 100%)', border: '1px solid #e2e8f0', borderRadius: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)' }}>
-        <div className="card-header-row" style={{ marginBottom: '18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div id="welcome-bonus-section" className="dashboard-card" style={{ marginBottom: 'var(--space-6)' }}>
+        <div className="card-header-row">
           <div className="card-title-group">
-            <div style={{ 
-              width: '38px', 
-              height: '38px', 
-              borderRadius: '10px', 
-              background: '#ecfdf5', 
-              color: '#059669', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center' 
-            }}>
-              <Gift size={22} />
-            </div>
+            <span className="icon-tile tone-green">
+              <Gift size={20} />
+            </span>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <h2 className="card-title" style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
-                  {isAdmin ? 'Welcome Bonus Pool & Engine' : 'My Welcome Bonus'}
-                </h2>
-                {isAdmin ? (
-                  <span style={{ 
-                    padding: '3px 10px', 
-                    borderRadius: '9999px', 
-                    fontSize: '11px', 
-                    fontWeight: 700,
-                    background: '#ecfdf5',
-                    color: '#059669',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    ● Engine Active & Configured
-                  </span>
-                ) : (
-                  <span style={{ 
-                    padding: '3px 10px', 
-                    borderRadius: '9999px', 
-                    fontSize: '11px', 
-                    fontWeight: 700,
-                    background: (welcomeBonus?.status === 'Eligible' || (!welcomeBonus && true)) ? '#ecfdf5' : welcomeBonus?.status === 'Cap Reached' ? '#fef3c7' : '#fee2e2',
-                    color: (welcomeBonus?.status === 'Eligible' || (!welcomeBonus && true)) ? '#059669' : welcomeBonus?.status === 'Cap Reached' ? '#d97706' : '#dc2626',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px'
-                  }}>
-                    {(welcomeBonus?.status === 'Eligible' || (!welcomeBonus && true)) 
-                      ? '✓ Eligible' 
-                      : welcomeBonus?.status === 'Cap Reached' 
-                        ? `⚡ ${welcomeBonus?.activeRules?.maxMultiplier ?? 2}× Cap Reached` 
-                        : '✗ Ineligible'}
-                  </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                <h2 className="card-title">{isAdmin ? 'Welcome Bonus Pool' : 'My Welcome Bonus'}</h2>
+                {!isAdmin && welcomeBonus && (
+                  welcomeBonus.status === 'Eligible' ? (
+                    <Badge tone="success">Eligible</Badge>
+                  ) : welcomeBonus.status === 'Cap Reached' ? (
+                    <Badge tone="warning">{welcomeBonus?.activeRules?.maxMultiplier ?? 2}× cap reached</Badge>
+                  ) : (
+                    <Badge tone="danger">Not eligible</Badge>
+                  )
                 )}
               </div>
-              <p style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
-                {isAdmin
-                  ? `Weekly ${welcomeBonus?.activeRules?.ratePercent ?? 4}% Company GBV Pool • ${welcomeBonus?.activeRules?.maxMultiplier ?? 2}× Lifetime Cap • Governed by Super Admin`
-                  : `Track your weekly ${welcomeBonus?.activeRules?.ratePercent ?? 4}% pool earnings in Business Volume, lifetime ${welcomeBonus?.activeRules?.maxMultiplier ?? 2}× cap, and eligibility`}
+              <p className="card-subtitle">
+                Weekly {welcomeBonus?.activeRules?.ratePercent ?? 4}% of company GBV · lifetime cap {welcomeBonus?.activeRules?.maxMultiplier ?? 2}× BV
               </p>
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {isAdmin ? (
-              <>
-                {unsettledWeeks.length > 0 ? (
-                  <select
-                    value={selectedSettleWeek?.weekStart || ''}
-                    onChange={(e) => setSettleWeek(e.target.value)}
-                    disabled={settling}
-                    aria-label="Week to settle"
-                    style={{ fontSize: '12px', padding: '6px 10px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a' }}
-                  >
-                    {unsettledWeeks.map((w) => (
-                      <option key={w.weekStart} value={w.weekStart}>
-                        Week {formatWeekDay(w.weekStart)} – {formatWeekDay(w.weekEnd)}
-                      </option>
-                    ))}
-                  </select>
-                ) : (
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>All finished weeks settled</span>
-                )}
-                <button
-                  onClick={handleRunSettlement}
-                  disabled={settling || !selectedSettleWeek}
-                  className="primary-btn"
-                  style={{ fontSize: '12px', padding: '7px 16px', background: '#059669', borderColor: '#059669' }}
+          {isAdmin && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+              {unsettledWeeks.length > 0 ? (
+                <select
+                  value={selectedSettleWeek?.weekStart || ''}
+                  onChange={(e) => setSettleWeek(e.target.value)}
+                  disabled={settling}
+                  aria-label="Week to settle"
+                  className="form-select"
+                  style={{ height: 'var(--control-h-sm)', width: 'auto', fontSize: 'var(--fs-sm)' }}
                 >
-                  <Sparkles size={14} />
-                  {settling ? 'Settling...' : 'Settle Week'}
-                </button>
-                <button 
-                  onClick={() => onNavigate('income-settings')} 
-                  className="secondary-btn" 
-                  style={{ fontSize: '12px', padding: '6px 14px' }}
-                >
-                  Configure Rules
-                </button>
-              </>
-            ) : (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ 
-                  background: '#ecfdf5', 
-                  border: '1px solid #a7f3d0', 
-                  padding: '6px 14px', 
-                  borderRadius: '10px', 
-                  fontSize: '12px', 
-                  color: '#065f46', 
-                  fontWeight: 700 
-                }}>
-                  Earned Till Now: {(welcomeBonus?.totalWelcomeBonusEarned || 0).toLocaleString()} BV
-                </div>
-              </div>
-            )}
-          </div>
+                  {unsettledWeeks.map((w) => (
+                    <option key={w.weekStart} value={w.weekStart}>
+                      Week {formatWeekDay(w.weekStart)} – {formatWeekDay(w.weekEnd)}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="form-hint">All finished weeks settled</span>
+              )}
+              <button
+                type="button"
+                onClick={handleRunSettlement}
+                disabled={settling || !selectedSettleWeek}
+                className="btn btn-sm btn-success"
+              >
+                <Sparkles size={14} />
+                {settling ? 'Settling…' : 'Settle Week'}
+              </button>
+              <button type="button" onClick={() => onNavigate('income-settings')} className="btn btn-sm btn-secondary">
+                Configure Rules
+              </button>
+            </div>
+          )}
         </div>
 
         {settleMsg && (
-          <div style={{ 
-            padding: '10px 16px', 
-            borderRadius: '8px', 
-            fontSize: '13px', 
-            fontWeight: 600, 
-            marginBottom: '16px',
-            background: settleMsg.startsWith('✓') ? '#ecfdf5' : '#fef2f2',
-            color: settleMsg.startsWith('✓') ? '#059669' : '#dc2626',
-            border: `1px solid ${settleMsg.startsWith('✓') ? '#a7f3d0' : '#fecaca'}`
-          }}>
-            {settleMsg}
-          </div>
+          <Alert tone={settleMsg.startsWith('✓') ? 'success' : 'error'} onClose={() => setSettleMsg('')}>
+            {settleMsg.replace(/^[✓⚠]\s*/, '')}
+          </Alert>
         )}
 
         {/* 3-Column Overview: Admin View vs Member View */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+        <div className="stat-panel-grid">
           
           {isAdmin ? (
             /* ADMIN VIEW: Global Pool Governance, Active Rules, & Audit Overview */
             <>
               {/* Admin Card 1: Active Policy & Engine Configuration */}
-              <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div className="stat-panel is-muted" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <span className="stat-panel-title">
                       Active Rules & Governance
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#059669', fontWeight: 700, background: '#ecfdf5', padding: '2px 8px', borderRadius: '9999px' }}>
-                      Super Admin Set
                     </span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
-                    <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Pool Rate</span>
-                      <span style={{ fontSize: '16px', fontWeight: 800, color: '#2563eb' }}>
+                    <div style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Pool Rate</span>
+                      <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--primary)' }}>
                         {welcomeBonus?.activeRules?.ratePercent ?? 4}%
                       </span>
-                      <span style={{ fontSize: '10px', color: '#64748b', display: 'block', marginTop: '2px' }}>of Company Weekly GBV</span>
+                      <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>of Company Weekly GBV</span>
                     </div>
-                    <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Cap Multiplier</span>
-                      <span style={{ fontSize: '16px', fontWeight: 800, color: '#059669' }}>
+                    <div style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Cap Multiplier</span>
+                      <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--success)' }}>
                         {welcomeBonus?.activeRules?.maxMultiplier ?? 2}× Cap
                       </span>
-                      <span style={{ fontSize: '10px', color: '#64748b', display: 'block', marginTop: '2px' }}>Max payout per member</span>
+                      <span style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>Max payout per member</span>
                     </div>
                   </div>
 
-                  <div style={{ fontSize: '12px', color: '#334155', lineHeight: 1.5, background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-body)', lineHeight: 1.5, background: 'var(--surface)', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}>
-                      <CheckCircle2 size={14} color="#059669" /> 
+                      <CheckCircle2 size={14} color="var(--success)" /> 
                       Lifetime BV of at least {(welcomeBonus?.activeRules?.minLifetimeBv ?? 1250).toLocaleString()} BV
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, marginTop: '4px' }}>
-                      <CheckCircle2 size={14} color="#059669" />
+                      <CheckCircle2 size={14} color="var(--success)" />
                       {welcomeBonus?.activeRules?.minSponsoredCount ?? 2} directly sponsored binary-active members (any wing, any level)
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600, marginTop: '4px' }}>
-                      <CheckCircle2 size={14} color="#059669" /> Frequency: {welcomeBonus?.activeRules?.settlementFrequency || 'Weekly'}
+                      <CheckCircle2 size={14} color="var(--success)" /> Frequency: {welcomeBonus?.activeRules?.settlementFrequency || 'Weekly'}
                     </div>
                   </div>
                 </div>
 
                 <div style={{ marginTop: '12px', display: 'flex', justifyContent: 'flex-end' }}>
                   <button 
-                    onClick={() => onNavigate('income-settings')} 
-                    style={{ 
-                      background: 'none', 
-                      border: 'none', 
-                      color: '#2563eb', 
-                      fontSize: '11px', 
-                      fontWeight: 700, 
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      padding: 0
-                    }}
-                  >
+                    onClick={() => onNavigate('income-settings')} className="link-btn">
                     Adjust Rules in Income Settings →
                   </button>
                 </div>
               </div>
 
               {/* Admin Card 2: Current Weekly Settlement Pool */}
-              <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <div className="stat-panel is-muted">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <span className="stat-panel-title">
                     Current Weekly Pool Metrics
                   </span>
-                  <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 700, background: '#eff6ff', padding: '2px 8px', borderRadius: '9999px' }}>
-                    Rate: {welcomeBonus?.activeRules?.ratePercent ?? 4}% Pool
-                  </span>
+                  <Badge tone="primary">{welcomeBonus?.activeRules?.ratePercent ?? 4}% pool</Badge>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Current Weekly Company GBV</span>
-                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Current Weekly Company GBV</span>
+                    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)' }}>
                       {welcomeBonus ? `${(welcomeBonus.currentWeeklyCompanyGBV || 0).toLocaleString()} BV` : '—'}
                     </span>
                   </div>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Welcome Bonus Pool ({welcomeBonus?.activeRules?.ratePercent ?? 4}%)</span>
-                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#2563eb' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Welcome Bonus Pool ({welcomeBonus?.activeRules?.ratePercent ?? 4}%)</span>
+                    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--primary)' }}>
                       {welcomeBonus ? `${(welcomeBonus.welcomeBonusPool || 0).toLocaleString()} BV` : '—'}
                     </span>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Eligible Members</span>
-                    <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Eligible Members</span>
+                    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)' }}>
                       {welcomeBonus ? `${welcomeBonus.eligibleMembersCount ?? welcomeBonus.eligibleMembers ?? 0} members` : '—'}
                     </span>
                   </div>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Projected Member Share</span>
-                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#059669' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Projected Member Share</span>
+                    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--success)' }}>
                       {welcomeBonus ? `${(welcomeBonus.projectedShare ?? welcomeBonus.thisWeeksShare ?? 0).toLocaleString()} BV` : '—'}
                     </span>
                   </div>
@@ -1121,44 +905,37 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
 
               {/* Admin Card 3: Settlement Distribution & Audit Overview */}
-              <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div className="stat-panel is-muted" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <span className="stat-panel-title">
                       Settlement & Payout Audit
-                    </span>
-                    <span style={{ fontSize: '11px', color: '#7c3aed', fontWeight: 700, background: '#f5f3ff', padding: '2px 8px', borderRadius: '9999px' }}>
-                      Engine Ready
                     </span>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                     <div>
-                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Total Distributed Lifetime</span>
-                      <span style={{ fontSize: '16px', fontWeight: 800, color: '#059669' }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Total Distributed Lifetime</span>
+                      <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--success)' }}>
                         {welcomeBonus ? `${(welcomeBonus.totalPaidOutLifetime || 0).toLocaleString()} BV` : '0 BV'}
                       </span>
                     </div>
                     <div>
-                      <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Settlement Cycles</span>
-                      <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Settlement Cycles</span>
+                      <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)' }}>
                         {welcomeBonus ? `${welcomeBonus.totalSettlementsCount || 0} completed` : '0'}
                       </span>
                     </div>
                   </div>
 
-                  <div style={{ background: '#ffffff', padding: '10px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Last Processed Settlement</span>
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a' }}>
+                  <div style={{ background: 'var(--surface)', padding: '10px 12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Last Processed Settlement</span>
+                    <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-main)' }}>
                       {welcomeBonus?.lastSettlement 
                         ? `${welcomeBonus.lastSettlement.settlementId} (${(welcomeBonus.lastSettlement.totalAmountDistributed || 0).toLocaleString()} BV to ${welcomeBonus.lastSettlement.eligibleMemberCount || 0} members)` 
                         : 'No past settlements recorded yet'}
                     </span>
                   </div>
-                </div>
-
-                <div style={{ marginTop: '12px', fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
-                  Super Admin oversees pool volumes, sets policies (multiplier & pool rate), and executes weekly disbursements.
                 </div>
               </div>
             </>
@@ -1166,26 +943,26 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
             /* MEMBER VIEW: Personal Capping, Wings Qualification, & Weekly Pool Share */
             <>
               {/* Member Card 1: Dynamic Multiplier Cap & Lifetime Earned */}
-              <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <div className="stat-panel is-muted">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <span className="stat-panel-title">
                     Lifetime {welcomeBonus?.activeRules?.maxMultiplier ?? 2}× Capping
                   </span>
-                  <span style={{ fontSize: '11px', color: '#64748b', fontWeight: 600 }}>
+                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 600 }}>
                     Multiplier: {welcomeBonus?.activeRules?.maxMultiplier ?? 2}×
                   </span>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Lifetime Business Volume</span>
-                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Lifetime Business Volume</span>
+                    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)' }}>
                       {welcomeBonus ? `${(welcomeBonus.qualifyingBusinessVolume || 0).toLocaleString()} BV` : '—'}
                     </span>
                   </div>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Maximum Welcome Bonus</span>
-                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#059669' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Maximum Welcome Bonus</span>
+                    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--success)' }}>
                       {welcomeBonus ? `${(welcomeBonus.maximumWelcomeBonus || 0).toLocaleString()} BV` : '—'}
                     </span>
                   </div>
@@ -1193,21 +970,21 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
 
                 {/* Cap Progress Bar */}
                 <div style={{ marginBottom: '8px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', marginBottom: '6px' }}>
-                    <span style={{ color: '#64748b' }}>
-                      Total Welcome Bonus Earned: <strong style={{ color: '#0f172a' }}>{welcomeBonus ? `${(welcomeBonus.totalWelcomeBonusEarned || 0).toLocaleString()} BV` : '0 BV'}</strong>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-sm)', marginBottom: '6px' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>
+                      Total Welcome Bonus Earned: <strong style={{ color: 'var(--text-main)' }}>{welcomeBonus ? `${(welcomeBonus.totalWelcomeBonusEarned || 0).toLocaleString()} BV` : '0 BV'}</strong>
                     </span>
-                    <span style={{ color: '#059669', fontWeight: 700 }}>
+                    <span style={{ color: 'var(--success)', fontWeight: 700 }}>
                       Remaining: {welcomeBonus ? `${(welcomeBonus.remainingBonus || 0).toLocaleString()} BV` : '—'}
                     </span>
                   </div>
-                  <div style={{ height: '8px', width: '100%', background: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
+                  <div style={{ height: '8px', width: '100%', background: 'var(--surface-sunken)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
                     <div 
                       style={{ 
                         height: '100%', 
                         width: `${welcomeBonus && welcomeBonus.maximumWelcomeBonus ? Math.min(100, Math.round(((welcomeBonus.totalWelcomeBonusEarned || 0) / welcomeBonus.maximumWelcomeBonus) * 100)) : 0}%`, 
-                        background: 'linear-gradient(90deg, #10b981, #059669)', 
-                        borderRadius: '9999px' 
+                        background: 'var(--success)', 
+                        borderRadius: 'var(--radius-full)' 
                       }} 
                     />
                   </div>
@@ -1215,41 +992,39 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
 
               {/* Member Card 2: Current Weekly Settlement Pool */}
-              <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+              <div className="stat-panel is-muted">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <span className="stat-panel-title">
                     Current Weekly Pool Metrics
                   </span>
-                  <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: 700, background: '#eff6ff', padding: '2px 8px', borderRadius: '9999px' }}>
-                    Rate: {welcomeBonus?.activeRules?.ratePercent ?? 4}% Pool
-                  </span>
+                  <Badge tone="primary">{welcomeBonus?.activeRules?.ratePercent ?? 4}% pool</Badge>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '14px' }}>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Current Weekly Company GBV</span>
-                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Current Weekly Company GBV</span>
+                    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)' }}>
                       {welcomeBonus ? `${(welcomeBonus.currentWeeklyCompanyGBV || 0).toLocaleString()} BV` : '—'}
                     </span>
                   </div>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Welcome Bonus Pool ({welcomeBonus?.activeRules?.ratePercent ?? 4}%)</span>
-                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#2563eb' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Welcome Bonus Pool ({welcomeBonus?.activeRules?.ratePercent ?? 4}%)</span>
+                    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--primary)' }}>
                       {welcomeBonus ? `${(welcomeBonus.welcomeBonusPool || 0).toLocaleString()} BV` : '—'}
                     </span>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '10px', borderTop: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', paddingTop: '10px', borderTop: '1px solid var(--border-color)' }}>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>Eligible Members</span>
-                    <span style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>Eligible Members</span>
+                    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)' }}>
                       {welcomeBonus ? `${welcomeBonus.eligibleMembersCount ?? welcomeBonus.eligibleMembers ?? 0} members` : '—'}
                     </span>
                   </div>
                   <div>
-                    <span style={{ fontSize: '11px', color: '#64748b', display: 'block' }}>This Week's Share</span>
-                    <span style={{ fontSize: '16px', fontWeight: 800, color: '#059669' }}>
+                    <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', display: 'block' }}>This Week's Share</span>
+                    <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--success)' }}>
                       {welcomeBonus ? `${(welcomeBonus.thisWeeksShare || 0).toLocaleString()} BV` : '—'}
                     </span>
                   </div>
@@ -1257,9 +1032,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
               </div>
 
               {/* Member Card 3: Eligibility Conditions */}
-              <div style={{ background: '#f8fafc', padding: '18px 20px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div className="stat-panel is-muted" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                 <div>
-                  <span style={{ fontSize: '12px', fontWeight: 700, color: '#475569', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '12px' }}>
+                  <span className="stat-panel-title" style={{ display: 'block', marginBottom: 'var(--space-3)' }}>
                     Eligibility Criteria
                   </span>
 
@@ -1276,11 +1051,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                         value: `${welcomeBonus?.sponsoredCount || 0} / ${welcomeBonus?.activeRules?.minSponsoredCount ?? 2}`,
                       },
                     ].map((condition) => (
-                      <div key={condition.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
+                      <div key={condition.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', background: 'var(--surface)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                        <span style={{ fontSize: 'var(--fs-base)', fontWeight: 600, color: 'var(--text-body)' }}>
                           {condition.label}
                         </span>
-                        <span style={{ color: condition.met ? '#059669' : '#dc2626', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '13px' }}>
+                        <span style={{ color: condition.met ? 'var(--success)' : 'var(--danger)', fontWeight: 800, display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--fs-base)' }}>
                           {condition.met ? <CheckCircle2 size={16} /> : <XCircle size={16} />} {condition.value}
                         </span>
                       </div>
@@ -1288,7 +1063,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                   </div>
                 </div>
 
-                <div style={{ marginTop: '12px', fontSize: '11px', color: '#64748b', lineHeight: 1.4 }}>
+                <div style={{ marginTop: '12px', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', lineHeight: 1.4 }}>
                   Condition: at least {(welcomeBonus?.activeRules?.minLifetimeBv ?? 1250).toLocaleString()} BV received in your lifetime (packages, products or transfers) and {welcomeBonus?.activeRules?.minSponsoredCount ?? 2} directly sponsored members on any wing whose binary status is active (100 BV or more). Earnings stop at {welcomeBonus?.activeRules?.maxMultiplier ?? 2}× your lifetime BV.
                 </div>
               </div>
@@ -1297,71 +1072,63 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
         </div>
 
         {/* Welcome Bonus History Table */}
-        <div style={{ marginTop: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '10px' }}>
+        <div>
+          <div className="card-header-row" style={{ marginBottom: 'var(--space-3)' }}>
             <div>
-              <h3 style={{ fontSize: '15px', fontWeight: 700, color: '#1e293b' }}>
-                {isAdmin ? 'Welcome Bonus Network Payout Audit' : 'My Welcome Bonus Payout History'}
+              <h3 className="section-title">
+                {isAdmin ? 'Payout History' : 'My Payout History'}
               </h3>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>
-                {isAdmin 
-                  ? `All distributors credited weekly ${welcomeBonus?.activeRules?.ratePercent ?? 4}% pool business volume` 
-                  : 'Weekly settlement bonuses credited to your business volume'}
-              </span>
+              <p className="card-subtitle">
+                {isAdmin ? 'Members credited from the weekly pool' : 'Weekly settlement bonuses credited to your BV'}
+              </p>
             </div>
             {effectivePayouts && effectivePayouts.length > 0 && (
-              <button
-                onClick={() => setIsFullPayoutModalOpen(true)}
-                className="secondary-btn"
-                style={{ fontSize: '12px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 600 }}
-              >
-                <ExternalLink size={13} />
-                Show More ({effectivePayouts.length})
+              <button type="button" onClick={() => setIsFullPayoutModalOpen(true)} className="btn btn-sm btn-secondary">
+                <ExternalLink size={14} />
+                View all ({effectivePayouts.length})
               </button>
             )}
           </div>
 
-          <div className="table-responsive" style={{ border: '1px solid #e2e8f0', borderRadius: '10px', overflowX: 'auto' }}>
-            <table className="data-table" style={{ margin: 0 }}>
+          <div className="table-responsive table-framed">
+            <table className="data-table">
               <thead>
-                <tr style={{ background: '#f8fafc' }}>
-                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Member</th>
-                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Settlement ID</th>
-                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Date</th>
-                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Company GBV</th>
-                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Total Pool ({welcomeBonus?.activeRules?.ratePercent ?? 4}%)</th>
-                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Paid Business Volume</th>
-                  <th style={{ fontSize: '11px', padding: '10px 14px' }}>Status</th>
+                <tr>
+                  <th>Member</th>
+                  <th>Settlement ID</th>
+                  <th>Date</th>
+                  <th>Company GBV</th>
+                  <th>Total Pool ({welcomeBonus?.activeRules?.ratePercent ?? 4}%)</th>
+                  <th>Paid Business Volume</th>
+                  <th>Status</th>
                 </tr>
               </thead>
               <tbody>
                 {effectivePayouts && effectivePayouts.length > 0 ? (
                   (showAllInline ? effectivePayouts : effectivePayouts.slice(0, 3)).map((row: any, idx: number) => (
                     <tr key={row.transactionId || idx}>
-                      <td style={{ fontSize: '12px', padding: '10px 14px' }}>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.memberName || row.memberId}</div>
-                        <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>{row.memberId}</div>
+                      <td>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{row.memberName || row.memberId}</div>
+                        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--primary)', fontWeight: 600 }}>{row.memberId}</div>
                       </td>
-                      <td style={{ fontSize: '12px', fontWeight: 600, color: '#475569' }}>{row.settlementId}</td>
-                      <td style={{ fontSize: '12px', color: '#64748b' }}>{row.date || 'Recent'}</td>
-                      <td style={{ fontSize: '12px', color: '#0f172a' }}>{(row.companyGrossBusinessVolume || 0).toLocaleString()} BV</td>
-                      <td style={{ fontSize: '12px', fontWeight: 600, color: '#0f172a' }}>{(row.totalBonusPool || 0).toLocaleString()} BV</td>
-                      <td style={{ fontSize: '13px', fontWeight: 800, color: '#059669' }}>
+                      <td style={{ fontWeight: 600, color: 'var(--text-secondary)' }}>{row.settlementId}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{row.date || 'Recent'}</td>
+                      <td style={{ color: 'var(--text-main)' }}>{(row.companyGrossBusinessVolume || 0).toLocaleString()} BV</td>
+                      <td style={{ fontWeight: 600, color: 'var(--text-main)' }}>{(row.totalBonusPool || 0).toLocaleString()} BV</td>
+                      <td style={{ fontWeight: 800, color: 'var(--success)' }}>
                         +{(row.actualPayout || 0).toLocaleString()} BV
                       </td>
-                      <td style={{ fontSize: '12px' }}>
-                        <span style={{ background: '#ecfdf5', color: '#059669', padding: '3px 9px', borderRadius: '9999px', fontSize: '11px', fontWeight: 700 }}>
-                          Credited ✓
-                        </span>
+                      <td>
+                        <Badge tone="success">Credited</Badge>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', padding: '24px', color: '#64748b', fontSize: '13px' }}>
+                    <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                       {isAdmin 
-                        ? 'No settlement transactions recorded yet. Click "Run Weekly Settlement" to process this week\'s pool.'
-                        : 'No settlement bonuses credited to your account yet. Complete 1 Left and 1 Right active wing to qualify.'}
+                        ? 'No settlements recorded yet. Use “Settle Week” to process a finished week.'
+                        : 'No settlement bonuses credited to your account yet. Meet the eligibility criteria above to qualify.'}
                     </td>
                   </tr>
                 )}
@@ -1371,222 +1138,25 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
 
           {/* Footer Bar with "Show More" Button */}
           {effectivePayouts && effectivePayouts.length > 3 && (
-            <div style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between', 
-              padding: '12px 16px', 
-              background: '#f8fafc', 
-              border: '1px solid #e2e8f0', 
-              borderTop: 'none', 
-              borderBottomLeftRadius: '10px', 
-              borderBottomRightRadius: '10px',
-              flexWrap: 'wrap',
-              gap: '10px'
-            }}>
-              <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 500 }}>
-                Showing <strong>{showAllInline ? effectivePayouts.length : Math.min(3, effectivePayouts.length)}</strong> of <strong>{effectivePayouts.length}</strong> paid members
+            <div className="table-footer">
+              <span>
+                Showing <strong>{showAllInline ? effectivePayouts.length : Math.min(3, effectivePayouts.length)}</strong> of <strong>{effectivePayouts.length}</strong>
               </span>
-
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => setShowAllInline(!showAllInline)}
-                  className="secondary-btn"
-                  style={{ fontSize: '12px', padding: '5px 12px' }}
-                >
-                  {showAllInline ? 'Show Less' : `Show More (${effectivePayouts.length - 3} more)`}
-                </button>
-                <button
-                  onClick={() => setIsFullPayoutModalOpen(true)}
-                  className="primary-btn"
-                  style={{ fontSize: '12px', padding: '5px 14px', background: '#059669', borderColor: '#059669', display: 'flex', alignItems: 'center', gap: '5px' }}
-                >
-                  <ExternalLink size={12} />
-                  Open Whole Page
-                </button>
-              </div>
+              <button type="button" onClick={() => setShowAllInline(!showAllInline)} className="btn btn-sm btn-ghost">
+                {showAllInline ? 'Show less' : `Show ${effectivePayouts.length - 3} more`}
+              </button>
             </div>
           )}
         </div>
       </div>
 
-      {/* Middle Grid: Trend Chart & Quick Stats */}
-      <div className="dashboard-grid-2">
-        {/* Registrations Trend Chart */}
-        <div className="dashboard-card">
-          <div className="card-header-row">
-            <div className="card-title-group">
-              <TrendingUp size={20} color="#2563eb" />
-              <div>
-                <h2 className="card-title">Network Growth Trend</h2>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>Daily distributor enrollments & team activations</span>
-              </div>
-            </div>
-            <select 
-              className="pill-select" 
-              value={trendRange}
-              onChange={(e) => setTrendRange(e.target.value)}
-            >
-              <option value="30">Last 30 Days</option>
-              <option value="7">Last 7 Days</option>
-              <option value="90">Last 90 Days</option>
-            </select>
-          </div>
-
-          {/* SVG Trend Graph */}
-          <div style={{ height: '230px', width: '100%', position: 'relative' }}>
-            <svg viewBox="0 0 600 200" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
-              <defs>
-                <linearGradient id="trendGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-
-              {/* Grid Lines */}
-              <line x1="40" y1="20" x2="580" y2="20" stroke="#f1f5f9" strokeDasharray="3 3" />
-              <line x1="40" y1="65" x2="580" y2="65" stroke="#f1f5f9" strokeDasharray="3 3" />
-              <line x1="40" y1="110" x2="580" y2="110" stroke="#f1f5f9" strokeDasharray="3 3" />
-              <line x1="40" y1="155" x2="580" y2="155" stroke="#f1f5f9" strokeDasharray="3 3" />
-
-              {/* Axis labels */}
-              <text x="20" y="24" fontSize="10" fill="#94a3b8" fontWeight="600">50</text>
-              <text x="20" y="69" fontSize="10" fill="#94a3b8" fontWeight="600">40</text>
-              <text x="20" y="114" fontSize="10" fill="#94a3b8" fontWeight="600">30</text>
-              <text x="20" y="159" fontSize="10" fill="#94a3b8" fontWeight="600">10</text>
-
-              {/* Area & Polyline */}
-              <path
-                d="M 50 160 L 110 145 L 170 152 L 230 115 L 290 128 L 350 140 L 410 100 L 470 108 L 530 65 L 560 50 L 560 180 L 50 180 Z"
-                fill="url(#trendGradient)"
-              />
-              <polyline
-                fill="none"
-                stroke="#2563eb"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                points="50,160 110,145 170,152 230,115 290,128 350,140 410,100 470,108 530,65 560,50"
-              />
-
-              {/* Interactive Dots */}
-              {[
-                { cx: 50, cy: 160 }, { cx: 110, cy: 145 }, { cx: 170, cy: 152 },
-                { cx: 230, cy: 115 }, { cx: 290, cy: 128 }, { cx: 350, cy: 140 },
-                { cx: 410, cy: 100 }, { cx: 470, cy: 108 }, { cx: 530, cy: 65 }, { cx: 560, cy: 50 }
-              ].map((pt, i) => (
-                <circle key={i} cx={pt.cx} cy={pt.cy} r="4.5" fill="#ffffff" stroke="#2563eb" strokeWidth="3" />
-              ))}
-
-              {/* Date Markers */}
-              <text x="50" y="195" fontSize="10" fill="#94a3b8" fontWeight="600" textAnchor="middle">13 Aug</text>
-              <text x="170" y="195" fontSize="10" fill="#94a3b8" fontWeight="600" textAnchor="middle">21 Aug</text>
-              <text x="290" y="195" fontSize="10" fill="#94a3b8" fontWeight="600" textAnchor="middle">29 Aug</text>
-              <text x="410" y="195" fontSize="10" fill="#94a3b8" fontWeight="600" textAnchor="middle">06 Sep</text>
-              <text x="540" y="195" fontSize="10" fill="#94a3b8" fontWeight="600" textAnchor="middle">12 Sep</text>
-            </svg>
-          </div>
-        </div>
-
-        {/* Quick Stats Panel */}
-        <div className="dashboard-card">
-          <div className="card-header-row">
-            <h2 className="card-title">Network Vital Stats</h2>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {/* Active Members */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                <span style={{ color: '#64748b', fontWeight: 600 }}>Active Distributors</span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                  {statsLoading ? (
-                    <SkeletonText width="70px" height="14px" />
-                  ) : (
-                    `${stats?.quickStats?.activeMembers ?? stats?.totalMembers ?? 0} (${stats?.quickStats?.activePercent ?? 100}%)`
-                  )}
-                </span>
-              </div>
-              <div style={{ height: '7px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                <div style={{ width: `${statsLoading ? 100 : (stats?.quickStats?.activePercent ?? 100)}%`, height: '100%', background: '#10b981', borderRadius: '9999px', transition: 'width 0.4s ease' }} />
-              </div>
-            </div>
-
-            {/* Inactive Members */}
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
-                <span style={{ color: '#64748b', fontWeight: 600 }}>Inactive Distributors</span>
-                <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                  {statsLoading ? (
-                    <SkeletonText width="70px" height="14px" />
-                  ) : (
-                    `${stats?.quickStats?.inactiveMembers ?? 0} (${100 - (stats?.quickStats?.activePercent ?? 100)}%)`
-                  )}
-                </span>
-              </div>
-              <div style={{ height: '7px', background: '#f1f5f9', borderRadius: '9999px', overflow: 'hidden' }}>
-                <div style={{ width: `${statsLoading ? 0 : (100 - (stats?.quickStats?.activePercent ?? 100))}%`, height: '100%', background: '#ef4444', borderRadius: '9999px', transition: 'width 0.4s ease' }} />
-              </div>
-            </div>
-
-            {/* Total Orders */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <ShoppingBag size={18} color="#8b5cf6" />
-                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Total Package Orders</span>
-              </div>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
-                {statsLoading ? <SkeletonText width="40px" height="16px" /> : (stats?.totalMembers ?? 0).toLocaleString()}
-              </span>
-            </div>
-
-            {/* Total Business Volume Generated */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Zap size={18} color="#7c3aed" />
-                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Total Business Volume (BV)</span>
-              </div>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#7c3aed' }}>
-                {statsLoading ? <SkeletonText width="70px" height="16px" /> : `${(stats?.totalBusinessVolume ?? stats?.totalBV ?? 0).toLocaleString()} BV`}
-              </span>
-            </div>
-
-            {/* Product Sales */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <ShoppingCart size={18} color="#0284c7" />
-                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Repurchase Turnover</span>
-              </div>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
-                {statsLoading ? (
-                  <SkeletonText width="60px" height="16px" />
-                ) : (
-                  `₹ ${(stats?.repurchaseTurnover ?? stats?.quickStats?.repurchaseTurnover ?? 0).toLocaleString()}`
-                )}
-              </span>
-            </div>
-
-            {/* Ranks Achieved */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <Award size={18} color="#f59e0b" />
-                <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Rank Achievers</span>
-              </div>
-              <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
-                {statsLoading ? <SkeletonText width="30px" height="16px" /> : (stats?.rankAchievers ?? stats?.quickStats?.rankAchievers ?? 0)}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Split Tables: Recent Registrations & Recent Payouts */}
+      {/* Recent enrollments & network stats */}
       <div className="dashboard-grid-2">
         {/* Recent Registrations Table */}
         <div className="dashboard-card dashboard-table-card">
           <div className="card-header-row">
             <h2 className="card-title">Recent Enrollments</h2>
-            <button onClick={() => onNavigate('members')} className="primary-btn" style={{ fontSize: '11px', padding: '6px 12px' }}>
+            <button type="button" onClick={() => onNavigate('members')} className="btn btn-secondary btn-sm">
               View All
             </button>
           </div>
@@ -1620,7 +1190,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                   ))
                 ) : recentRegistrations.length === 0 ? (
                   <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '28px 16px', color: '#94a3b8', fontSize: '13px' }}>
+                    <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-light)' }}>
                       No recent enrollments found.
                     </td>
                   </tr>
@@ -1629,30 +1199,30 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
                     <tr key={idx}>
                       <td>{idx + 1}</td>
                       <td>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.name}</div>
-                        <div style={{ fontSize: '11px', color: '#64748b' }}>{row.id}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{row.name}</div>
+                        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{row.id}</div>
                       </td>
                       <td>
                         <span style={{
                           padding: '3px 8px',
-                          borderRadius: '6px',
-                          fontSize: '11px',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: 'var(--fs-xs)',
                           fontWeight: 700,
-                          background: row.package === 'Elite' ? '#fdf2f8' : row.package === 'Premium' ? '#f5f3ff' : '#eff6ff',
-                          color: row.package === 'Elite' ? '#db2777' : row.package === 'Premium' ? '#7c3aed' : '#2563eb'
+                          background: row.package === 'Elite' ? '#fdf2f8' : row.package === 'Premium' ? 'var(--accent-light)' : 'var(--primary-light)',
+                          color: row.package === 'Elite' ? '#db2777' : row.package === 'Premium' ? 'var(--accent)' : 'var(--primary)'
                         }}>
                           {row.package}
                         </span>
                       </td>
-                      <td style={{ fontWeight: 700, color: '#059669' }}>{row.bv}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--success)' }}>{row.bv}</td>
                       <td>
                         <span style={{
-                          fontSize: '11px',
+                          fontSize: 'var(--fs-xs)',
                           fontWeight: 700,
-                          color: row.leg === 'LEFT' ? '#2563eb' : '#10b981',
-                          background: row.leg === 'LEFT' ? '#eff6ff' : '#ecfdf5',
+                          color: row.leg === 'LEFT' ? 'var(--primary)' : 'var(--success)',
+                          background: row.leg === 'LEFT' ? 'var(--primary-light)' : 'var(--success-light)',
                           padding: '2px 8px',
-                          borderRadius: '4px'
+                          borderRadius: 'var(--radius-xs)'
                         }}>
                           {row.leg}
                         </span>
@@ -1668,582 +1238,439 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({ user, onNavigate, 
           </div>
         </div>
 
-        {/* Live Withdrawal Requests & Action Hub */}
-        <div className="dashboard-card dashboard-table-card">
+        {/* Quick Stats Panel */}
+        <div className="dashboard-card">
           <div className="card-header-row">
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <h2 className="card-title">{isAdmin ? 'Withdrawal Requests & Actions' : 'My Withdrawal Requests'}</h2>
-                {isAdmin && dashboardWithdrawalKpis?.pendingCount > 0 && (
-                  <span style={{ fontSize: '11px', fontWeight: 800, background: '#fef3c7', color: '#b45309', padding: '2px 8px', borderRadius: '9999px' }}>
-                    {dashboardWithdrawalKpis.pendingCount} Pending
-                  </span>
-                )}
-              </div>
-              <p style={{ fontSize: '11.5px', color: '#64748b', margin: '2px 0 0' }}>
-                {isAdmin 
-                  ? 'Real-time member withdrawal requests awaiting review & disbursement.' 
-                  : 'Track your requested payout disbursements and clearance status.'}
-              </p>
-            </div>
-
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {!isAdmin && (
-                <button
-                  onClick={() => setIsWithdrawModalOpen(true)}
-                  className="primary-btn"
-                  style={{
-                    fontSize: '11px',
-                    padding: '5px 12px',
-                    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                  }}
-                >
-                  <PlusCircle size={13} />
-                  <span>Withdraw</span>
-                </button>
-              )}
-              <button
-                onClick={() => onNavigate('withdrawals')}
-                className="primary-btn"
-                style={{ fontSize: '11px', padding: '5px 12px' }}
-              >
-                View All
-              </button>
-            </div>
+            <h2 className="card-title">Network Vital Stats</h2>
           </div>
 
-          <div className="table-responsive">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Req ID</th>
-                  <th>{isAdmin ? 'Member' : 'Requested'}</th>
-                  <th>{isAdmin ? 'Requested' : 'Paid / Ref'}</th>
-                  <th>Date</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: 'center' }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {withdrawalLoading ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
-                      <div className="spin" style={{ width: '20px', height: '20px', border: '2px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%', margin: '0 auto 8px' }} />
-                      Loading withdrawal requests...
-                    </td>
-                  </tr>
-                ) : dashboardWithdrawalRequests.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ textAlign: 'center', padding: '32px 20px', color: '#64748b' }}>
-                      <AlertCircle size={22} color="#94a3b8" style={{ margin: '0 auto 6px', display: 'block' }} />
-                      {isAdmin 
-                        ? 'No withdrawal requests recorded yet.' 
-                        : 'No withdrawal requests submitted yet. Use the "Withdraw" button to request payout.'}
-                    </td>
-                  </tr>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {/* Active Members */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-base)', marginBottom: '6px' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Active Distributors</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                  {statsLoading ? (
+                    <SkeletonText width="70px" height="14px" />
+                  ) : (
+                    `${stats?.quickStats?.activeMembers ?? stats?.totalMembers ?? 0} (${stats?.quickStats?.activePercent ?? 100}%)`
+                  )}
+                </span>
+              </div>
+              <div style={{ height: '7px', background: 'var(--surface-muted)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                <div style={{ width: `${statsLoading ? 100 : (stats?.quickStats?.activePercent ?? 100)}%`, height: '100%', background: 'var(--success)', borderRadius: 'var(--radius-full)', transition: 'width 0.4s ease' }} />
+              </div>
+            </div>
+
+            {/* Inactive Members */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-base)', marginBottom: '6px' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Inactive Distributors</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
+                  {statsLoading ? (
+                    <SkeletonText width="70px" height="14px" />
+                  ) : (
+                    `${stats?.quickStats?.inactiveMembers ?? 0} (${100 - (stats?.quickStats?.activePercent ?? 100)}%)`
+                  )}
+                </span>
+              </div>
+              <div style={{ height: '7px', background: 'var(--surface-muted)', borderRadius: 'var(--radius-full)', overflow: 'hidden' }}>
+                <div style={{ width: `${statsLoading ? 0 : (100 - (stats?.quickStats?.activePercent ?? 100))}%`, height: '100%', background: 'var(--danger)', borderRadius: 'var(--radius-full)', transition: 'width 0.4s ease' }} />
+              </div>
+            </div>
+
+            {/* Total Orders */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid var(--border-light)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <ShoppingBag size={18} color="var(--accent)" />
+                <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', fontWeight: 500 }}>Total Package Orders</span>
+              </div>
+              <span style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--text-main)' }}>
+                {statsLoading ? <SkeletonText width="40px" height="16px" /> : (stats?.totalMembers ?? 0).toLocaleString()}
+              </span>
+            </div>
+
+            {/* Total Business Volume Generated */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Zap size={18} color="var(--accent)" />
+                <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', fontWeight: 500 }}>Total Business Volume (BV)</span>
+              </div>
+              <span style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--accent)' }}>
+                {statsLoading ? <SkeletonText width="70px" height="16px" /> : `${(stats?.totalBusinessVolume ?? stats?.totalBV ?? 0).toLocaleString()} BV`}
+              </span>
+            </div>
+
+            {/* Product Sales */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <ShoppingCart size={18} color="var(--info)" />
+                <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', fontWeight: 500 }}>Repurchase Turnover</span>
+              </div>
+              <span style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--text-main)' }}>
+                {statsLoading ? (
+                  <SkeletonText width="60px" height="16px" />
                 ) : (
-                  dashboardWithdrawalRequests.slice(0, 5).map((row) => (
-                    <tr key={row._id || row.requestId}>
-                      {/* Req ID */}
-                      <td>
-                        <span style={{ fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '2px 7px', borderRadius: '6px', fontSize: '11px' }}>
-                          {row.requestId}
-                        </span>
-                      </td>
-
-                      {/* Col 2 */}
-                      <td>
-                        {isAdmin ? (
-                          <div>
-                            <div style={{ fontWeight: 700, color: '#0f172a', fontSize: '12.5px' }}>{row.memberName || row.memberId}</div>
-                            <div style={{ fontSize: '10.5px', color: '#64748b' }}>{row.memberId}</div>
-                          </div>
-                        ) : (
-                          <div style={{ fontWeight: 800, color: '#0f172a', fontSize: '13px' }}>
-                            ₹ {row.requestedAmount.toLocaleString()}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Col 3 */}
-                      <td>
-                        {isAdmin ? (
-                          <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '13px' }}>
-                            ₹ {row.requestedAmount.toLocaleString()}
-                          </span>
-                        ) : (
-                          <div>
-                            {row.status === 'PAID' ? (
-                              <>
-                                <span style={{ fontWeight: 800, color: '#059669', fontSize: '13px' }}>
-                                  ₹ {(row.paidAmount || row.requestedAmount).toLocaleString()}
-                                </span>
-                                {row.paymentReference && (
-                                  <div style={{ fontSize: '10px', color: '#64748b' }}>
-                                    Ref: {row.paymentReference}
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <span style={{ color: '#94a3b8' }}>—</span>
-                            )}
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Date */}
-                      <td style={{ fontSize: '11.5px', color: '#64748b' }}>
-                        {row.requestedAt ? new Date(row.requestedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'Recent'}
-                      </td>
-
-                      {/* Status */}
-                      <td>
-                        <span
-                          className={`status-pill ${
-                            row.status === 'PAID'
-                              ? 'status-paid'
-                              : row.status === 'APPROVED'
-                              ? 'status-approved'
-                              : row.status === 'REJECTED'
-                              ? 'status-rejected'
-                              : 'status-pending'
-                          }`}
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: '9999px',
-                            fontSize: '10.5px',
-                            fontWeight: 700,
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            background:
-                              row.status === 'PAID'
-                                ? '#ecfdf5'
-                                : row.status === 'APPROVED'
-                                ? '#eff6ff'
-                                : row.status === 'REJECTED'
-                                ? '#fef2f2'
-                                : '#fffbeb',
-                            color:
-                              row.status === 'PAID'
-                                ? '#059669'
-                                : row.status === 'APPROVED'
-                                ? '#2563eb'
-                                : row.status === 'REJECTED'
-                                ? '#dc2626'
-                                : '#d97706',
-                          }}
-                        >
-                          {row.status}
-                        </span>
-                      </td>
-
-                      {/* Action */}
-                      <td style={{ textAlign: 'center' }}>
-                        {isAdmin ? (
-                          <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                            {row.status === 'PENDING' && (
-                              <>
-                                <button
-                                  onClick={() => {
-                                    setSelectedWithdrawalRequest(row);
-                                    setAdminModalAction('APPROVE');
-                                    setIsAdminModalOpen(true);
-                                  }}
-                                  className="primary-btn"
-                                  style={{ fontSize: '10.5px', padding: '4px 8px', background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' }}
-                                  title="Approve"
-                                >
-                                  <Check size={12} /> Approve
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    setSelectedWithdrawalRequest(row);
-                                    setAdminModalAction('REJECT');
-                                    setIsAdminModalOpen(true);
-                                  }}
-                                  style={{
-                                    fontSize: '10.5px',
-                                    padding: '4px 6px',
-                                    background: '#fef2f2',
-                                    color: '#dc2626',
-                                    border: '1px solid #fecaca',
-                                    borderRadius: '6px',
-                                    cursor: 'pointer',
-                                  }}
-                                  title="Reject"
-                                >
-                                  <XCircle size={12} />
-                                </button>
-                              </>
-                            )}
-
-                            {row.status === 'APPROVED' && (
-                              <button
-                                onClick={() => {
-                                  setSelectedWithdrawalRequest(row);
-                                  setAdminModalAction('PAY');
-                                  setIsAdminModalOpen(true);
-                                }}
-                                className="primary-btn"
-                                style={{
-                                  fontSize: '10.5px',
-                                  padding: '4px 10px',
-                                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                }}
-                                title="Mark as Paid"
-                              >
-                                <CreditCard size={12} /> Pay
-                              </button>
-                            )}
-
-                            {(row.status === 'PAID' || row.status === 'REJECTED') && (
-                              <button
-                                onClick={() => {
-                                  setSelectedWithdrawalRequest(row);
-                                  setAdminModalAction('VIEW_DETAILS');
-                                  setIsAdminModalOpen(true);
-                                }}
-                                style={{
-                                  fontSize: '10.5px',
-                                  padding: '3px 8px',
-                                  background: '#f1f5f9',
-                                  color: '#475569',
-                                  border: '1px solid #cbd5e1',
-                                  borderRadius: '6px',
-                                  cursor: 'pointer',
-                                }}
-                              >
-                                Details
-                              </button>
-                            )}
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              setSelectedWithdrawalRequest(row);
-                              setAdminModalAction('VIEW_DETAILS');
-                              setIsAdminModalOpen(true);
-                            }}
-                            style={{
-                              fontSize: '10.5px',
-                              padding: '3px 8px',
-                              background: '#f1f5f9',
-                              color: '#475569',
-                              border: '1px solid #cbd5e1',
-                              borderRadius: '6px',
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Details
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))
+                  `₹ ${(stats?.repurchaseTurnover ?? stats?.quickStats?.repurchaseTurnover ?? 0).toLocaleString()}`
                 )}
-              </tbody>
-            </table>
+              </span>
+            </div>
+
+            {/* Ranks Achieved */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Award size={18} color="var(--warning)" />
+                <span style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', fontWeight: 500 }}>Rank Achievers</span>
+              </div>
+              <span style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--text-main)' }}>
+                {statsLoading ? <SkeletonText width="30px" height="16px" /> : (stats?.rankAchievers ?? stats?.quickStats?.rankAchievers ?? 0)}
+              </span>
+            </div>
           </div>
         </div>
+
       </div>
+
+      {/* Live Withdrawal Requests & Action Hub */}
+      <div className="dashboard-card dashboard-table-card" style={{ marginBottom: 'var(--space-6)' }}>
+        <div className="card-header-row">
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+              <h2 className="card-title">{isAdmin ? 'Withdrawal Requests' : 'My Withdrawal Requests'}</h2>
+              {isAdmin && dashboardWithdrawalKpis?.pendingCount > 0 && (
+                <Badge tone="warning">{dashboardWithdrawalKpis.pendingCount} pending</Badge>
+              )}
+            </div>
+            <p className="card-subtitle">Latest 5 requests</p>
+          </div>
+
+          <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
+            {!isAdmin && (
+              <button type="button" onClick={() => setIsWithdrawModalOpen(true)} className="btn btn-success btn-sm">
+                <PlusCircle size={14} />
+                <span>Withdraw</span>
+              </button>
+            )}
+            <button type="button" onClick={() => onNavigate('withdrawals')} className="btn btn-secondary btn-sm">
+              View all
+            </button>
+          </div>
+        </div>
+
+        <div className="table-responsive">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Req ID</th>
+                <th>{isAdmin ? 'Member' : 'Requested'}</th>
+                <th>{isAdmin ? 'Requested' : 'Paid / Ref'}</th>
+                <th>Date</th>
+                <th>Status</th>
+                <th style={{ textAlign: 'center' }}>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {withdrawalLoading ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <span className="spinner" style={{ display: 'block', margin: '0 auto var(--space-2)' }} aria-hidden="true" />
+                    Loading withdrawal requests...
+                  </td>
+                </tr>
+              ) : dashboardWithdrawalRequests.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <AlertCircle size={22} color="var(--text-light)" style={{ margin: '0 auto 6px', display: 'block' }} />
+                    {isAdmin 
+                      ? 'No withdrawal requests recorded yet.' 
+                      : 'No withdrawal requests submitted yet. Use “Withdraw” to request a payout.'}
+                  </td>
+                </tr>
+              ) : (
+                dashboardWithdrawalRequests.slice(0, 5).map((row) => (
+                  <tr key={row._id || row.requestId}>
+                    {/* Req ID */}
+                    <td>
+                      <span className="text-mono" style={{ fontWeight: 600, color: 'var(--text-main)' }}>{row.requestId}</span>
+                    </td>
+
+                    {/* Col 2 */}
+                    <td>
+                      {isAdmin ? (
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: 'var(--fs-sm)' }}>{row.memberName || row.memberId}</div>
+                          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{row.memberId}</div>
+                        </div>
+                      ) : (
+                        <div style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: 'var(--fs-base)' }}>
+                          ₹ {row.requestedAmount.toLocaleString()}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Col 3 */}
+                    <td>
+                      {isAdmin ? (
+                        <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: 'var(--fs-base)' }}>
+                          ₹ {row.requestedAmount.toLocaleString()}
+                        </span>
+                      ) : (
+                        <div>
+                          {row.status === 'PAID' ? (
+                            <>
+                              <span style={{ fontWeight: 800, color: 'var(--success)', fontSize: 'var(--fs-base)' }}>
+                                ₹ {(row.paidAmount || row.requestedAmount).toLocaleString()}
+                              </span>
+                              {row.paymentReference && (
+                                <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)' }}>
+                                  Ref: {row.paymentReference}
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <span style={{ color: 'var(--text-light)' }}>—</span>
+                          )}
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Date */}
+                    <td style={{ color: 'var(--text-muted)' }}>
+                      {row.requestedAt ? new Date(row.requestedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'Recent'}
+                    </td>
+
+                    {/* Status */}
+                    <td>
+                      <StatusBadge status={row.status} />
+                    </td>
+
+                    {/* Action */}
+                    <td style={{ textAlign: 'center' }}>
+                      {isAdmin ? (
+                        <div className="row-actions" style={{ justifyContent: 'center' }}>
+                          {row.status === 'PENDING' && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setSelectedWithdrawalRequest(row);
+                                  setAdminModalAction('APPROVE');
+                                  setIsAdminModalOpen(true);
+                                }}
+                                className="btn btn-primary btn-sm"
+                                title="Approve"
+                              >
+                                <Check size={12} /> Approve
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setSelectedWithdrawalRequest(row);
+                                  setAdminModalAction('REJECT');
+                                  setIsAdminModalOpen(true);
+                                }}
+                                className="btn btn-sm btn-icon btn-danger-outline"
+                                title="Reject"
+                                aria-label="Reject"
+                              >
+                                <XCircle size={12} />
+                              </button>
+                            </>
+                          )}
+
+                          {row.status === 'APPROVED' && (
+                            <button
+                              onClick={() => {
+                                setSelectedWithdrawalRequest(row);
+                                setAdminModalAction('PAY');
+                                setIsAdminModalOpen(true);
+                              }}
+                              className="btn btn-success btn-sm"
+                              title="Mark as Paid"
+                            >
+                              <CreditCard size={12} /> Pay
+                            </button>
+                          )}
+
+                          {(row.status === 'PAID' || row.status === 'REJECTED') && (
+                            <button
+                              onClick={() => {
+                                setSelectedWithdrawalRequest(row);
+                                setAdminModalAction('VIEW_DETAILS');
+                                setIsAdminModalOpen(true);
+                              }}
+                              className="btn btn-sm btn-secondary"
+                            >
+                              Details
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            setSelectedWithdrawalRequest(row);
+                            setAdminModalAction('VIEW_DETAILS');
+                            setIsAdminModalOpen(true);
+                          }}
+                          className="btn btn-sm btn-secondary"
+                        >
+                          Details
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
 
       {/* Quick Action Strip */}
       <div className="quick-actions-strip">
-        <button onClick={() => onNavigate('genealogy')} className="quick-action-btn">
-          <GitMerge size={20} color="#059669" />
+        <button type="button" onClick={() => onNavigate('genealogy')} className="quick-action-btn">
+          <GitMerge size={18} />
           <span>Genealogy Tree</span>
         </button>
-
-        <button onClick={() => onNavigate('income-settings')} className="quick-action-btn">
-          <Zap size={20} color="#d97706" />
-          <span>Rule Simulator</span>
+        <button type="button" onClick={() => onNavigate('income-settings')} className="quick-action-btn">
+          <Zap size={18} />
+          <span>Income Simulator</span>
         </button>
-
-        <button onClick={() => onNavigate('packages')} className="quick-action-btn">
-          <Package size={20} color="#7c3aed" />
-          <span>Joining Packages</span>
+        <button type="button" onClick={() => onNavigate('packages')} className="quick-action-btn">
+          <Package size={18} />
+          <span>Packages</span>
         </button>
-
-        <button onClick={() => onNavigate('wallet-payouts')} className="quick-action-btn">
-          <Wallet size={20} color="#dc2626" />
-          <span>Process Payouts</span>
+        <button type="button" onClick={() => onNavigate('wallet-payouts')} className="quick-action-btn">
+          <Wallet size={18} />
+          <span>Wallet & Payouts</span>
         </button>
       </div>
 
-      {/* FULL PAGE MODAL: Complete Welcome Bonus Payout Ledger */}
-      {isFullPayoutModalOpen && (
-        <div 
-          style={{
-            position: 'fixed',
-            inset: 0,
-            zIndex: 9999,
-            backgroundColor: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(5px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '20px',
-            animation: 'fadeIn 0.2s ease-out'
-          }}
-          onClick={() => setIsFullPayoutModalOpen(false)}
-        >
-          <div 
-            style={{
-              background: '#ffffff',
-              borderRadius: '18px',
-              width: '100%',
-              maxWidth: '1100px',
-              maxHeight: '90vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              border: '1px solid #e2e8f0',
-              overflow: 'hidden'
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div style={{
-              padding: '20px 24px',
-              borderBottom: '1px solid #f1f5f9',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'linear-gradient(135deg, #f8fafc 0%, #ffffff 100%)'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ 
-                  width: '42px', 
-                  height: '42px', 
-                  borderRadius: '12px', 
-                  background: '#ecfdf5', 
-                  color: '#059669', 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  justifyContent: 'center' 
-                }}>
-                  <Gift size={24} />
-                </div>
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                      {isAdmin ? 'Welcome Bonus Payout History — Whole Page View' : 'My Welcome Bonus Payout History — Whole Page View'}
-                    </h2>
-                    <span style={{ 
-                      padding: '2px 8px', 
-                      borderRadius: '9999px', 
-                      background: '#eff6ff', 
-                      color: '#2563eb', 
-                      fontSize: '11px', 
-                      fontWeight: 700 
-                    }}>
-                      {effectivePayouts.length} {isAdmin ? 'Total Payouts' : 'Settlements Credited'}
-                    </span>
-                  </div>
-                  <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
-                    {isAdmin 
-                      ? 'Complete audit of every distributor who received the weekly 4% pool Business Volume' 
-                      : 'Complete audit of all weekly 4% pool Business Volume bonuses credited to your account'}
-                  </p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsFullPayoutModalOpen(false)}
-                style={{
-                  width: '36px',
-                  height: '36px',
-                  borderRadius: '10px',
-                  border: '1px solid #e2e8f0',
-                  background: '#ffffff',
-                  color: '#64748b',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease'
-                }}
-                title="Close"
-              >
-                <X size={18} />
-              </button>
+      {/* Complete Welcome Bonus payout ledger */}
+      <Modal
+        open={isFullPayoutModalOpen}
+        onClose={() => setIsFullPayoutModalOpen(false)}
+        size="xl"
+        title={isAdmin ? 'Welcome Bonus Payout History' : 'My Welcome Bonus Payout History'}
+        subtitle={
+          isAdmin
+            ? `Every member credited from the weekly ${welcomeBonus?.activeRules?.ratePercent ?? 4}% pool`
+            : `All weekly ${welcomeBonus?.activeRules?.ratePercent ?? 4}% pool bonuses credited to your account`
+        }
+        bodyStyle={{ padding: 0 }}
+        footer={
+          <>
+            <span className="form-hint" style={{ marginRight: 'auto', alignSelf: 'center' }}>
+              {isAdmin ? 'Paid members' : 'Settlements credited'}: <strong>{effectivePayouts.length}</strong>
+            </span>
+            <button type="button" onClick={() => setIsFullPayoutModalOpen(false)} className="btn btn-secondary">
+              Close
+            </button>
+          </>
+        }
+      >
+        <div className="stat-panel-grid" style={{ padding: 'var(--space-4) var(--space-6)', margin: 0, borderBottom: '1px solid var(--border-light)' }}>
+          <div className="stat-panel">
+            <div className="stat-panel-label">{isAdmin ? 'Total distributed BV' : 'My total earned BV'}</div>
+            <div className="stat-panel-value" style={{ color: 'var(--success)' }}>
+              {effectivePayouts.reduce((sum: number, r: any) => sum + (Number(r.actualPayout) || 0), 0).toLocaleString()} BV
             </div>
-
-            {/* Modal KPI Highlights */}
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
-              gap: '12px', 
-              padding: '16px 24px', 
-              background: '#f8fafc', 
-              borderBottom: '1px solid #e2e8f0' 
-            }}>
-              <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>
-                  {isAdmin ? 'TOTAL DISTRIBUTED BV' : 'MY TOTAL EARNED BV'}
-                </span>
-                <span style={{ fontSize: '18px', fontWeight: 800, color: '#059669' }}>
-                  {effectivePayouts.reduce((sum: number, r: any) => sum + (Number(r.actualPayout) || 0), 0).toLocaleString()} BV
-                </span>
-              </div>
-              <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>
-                  {isAdmin ? 'PAID DISTRIBUTORS' : 'MY SETTLEMENTS'}
-                </span>
-                <span style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
-                  {effectivePayouts.length} {isAdmin ? 'members' : 'credited'}
-                </span>
-              </div>
-              <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>
-                  {isAdmin ? 'CURRENT WEEK POOL' : 'LIFETIME CAP LIMIT'}
-                </span>
-                <span style={{ fontSize: '18px', fontWeight: 800, color: '#2563eb' }}>
-                  {isAdmin 
-                    ? `${(welcomeBonus?.welcomeBonusPool || 0).toLocaleString()} BV` 
-                    : `${(welcomeBonus?.maximumWelcomeBonus || (welcomeBonus?.qualifyingBusinessVolume ? welcomeBonus.qualifyingBusinessVolume * (welcomeBonus?.activeRules?.maxMultiplier ?? 2) : 2500)).toLocaleString()} BV`}
-                </span>
-              </div>
-              <div style={{ background: '#ffffff', padding: '12px 16px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                <span style={{ fontSize: '11px', color: '#64748b', display: 'block', fontWeight: 600 }}>LATEST SETTLEMENT</span>
-                <span style={{ fontSize: '16px', fontWeight: 800, color: '#7c3aed' }}>
-                  {effectivePayouts[0]?.settlementId || 'SETTLE-2026-W40'}
-                </span>
-              </div>
+          </div>
+          <div className="stat-panel">
+            <div className="stat-panel-label">{isAdmin ? 'Paid members' : 'My settlements'}</div>
+            <div className="stat-panel-value">{effectivePayouts.length}</div>
+          </div>
+          <div className="stat-panel">
+            <div className="stat-panel-label">{isAdmin ? 'Current week pool' : 'Lifetime cap'}</div>
+            <div className="stat-panel-value">
+              {isAdmin
+                ? `${(welcomeBonus?.welcomeBonusPool || 0).toLocaleString()} BV`
+                : `${(welcomeBonus?.maximumWelcomeBonus || (welcomeBonus?.qualifyingBusinessVolume ? welcomeBonus.qualifyingBusinessVolume * (welcomeBonus?.activeRules?.maxMultiplier ?? 2) : 2500)).toLocaleString()} BV`}
             </div>
-
-            {/* Filter & Search Bar */}
-            <div style={{ 
-              padding: '14px 24px', 
-              borderBottom: '1px solid #f1f5f9', 
-              display: 'flex', 
-              gap: '12px', 
-              alignItems: 'center', 
-              justifyContent: 'space-between',
-              flexWrap: 'wrap'
-            }}>
-              <div style={{ position: 'relative', flex: '1', minWidth: '240px' }}>
-                <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input
-                  type="text"
-                  placeholder="Search by member name, ID or settlement..."
-                  value={payoutSearch}
-                  onChange={(e) => setPayoutSearch(e.target.value)}
-                  style={{
-                    width: '100%',
-                    padding: '8px 12px 8px 34px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '13px'
-                  }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600, color: '#64748b' }}>Settlement:</label>
-                <select
-                  value={payoutFilterSettlement}
-                  onChange={(e) => setPayoutFilterSettlement(e.target.value)}
-                  style={{
-                    padding: '8px 12px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '13px',
-                    background: '#ffffff'
-                  }}
-                >
-                  <option value="ALL">All Settlements</option>
-                  {Array.from(new Set(effectivePayouts.map((r: any) => r.settlementId).filter(Boolean))).map((sId: any) => (
-                    <option key={sId} value={sId}>{sId}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Scrollable Table Area */}
-            <div className="table-responsive" style={{ flex: 1, overflow: 'auto', padding: '0' }}>
-              <table className="data-table" style={{ margin: 0, width: '100%' }}>
-                <thead style={{ position: 'sticky', top: 0, background: '#f8fafc', zIndex: 2 }}>
-                  <tr>
-                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Member</th>
-                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Settlement ID</th>
-                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Settlement Date</th>
-                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Company Weekly GBV</th>
-                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Total Bonus Pool</th>
-                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Paid Business Volume</th>
-                    <th style={{ fontSize: '11px', padding: '12px 16px' }}>Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {effectivePayouts
-                    .filter((row: any) => {
-                      const q = payoutSearch.toLowerCase().trim();
-                      const matchesSearch = !q ||
-                        (row.memberId && String(row.memberId).toLowerCase().includes(q)) ||
-                        (row.memberName && String(row.memberName).toLowerCase().includes(q)) ||
-                        (row.settlementId && String(row.settlementId).toLowerCase().includes(q));
-                      const matchesSettlement = payoutFilterSettlement === 'ALL' || row.settlementId === payoutFilterSettlement;
-                      return matchesSearch && matchesSettlement;
-                    })
-                    .map((row: any, idx: number) => (
-                      <tr key={row.transactionId || idx}>
-                        <td style={{ fontSize: '13px', padding: '12px 16px' }}>
-                          <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.memberName || row.memberId}</div>
-                          <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: 600 }}>{row.memberId}</div>
-                        </td>
-                        <td style={{ fontSize: '13px', fontWeight: 600, color: '#475569' }}>{row.settlementId}</td>
-                        <td style={{ fontSize: '12px', color: '#64748b' }}>{row.date || 'Recent'}</td>
-                        <td style={{ fontSize: '13px', color: '#0f172a' }}>{(row.companyGrossBusinessVolume || 0).toLocaleString()} BV</td>
-                        <td style={{ fontSize: '13px', fontWeight: 600, color: '#0f172a' }}>{(row.totalBonusPool || 0).toLocaleString()} BV</td>
-                        <td style={{ fontSize: '14px', fontWeight: 800, color: '#059669' }}>
-                          +{(row.actualPayout || 0).toLocaleString()} BV
-                        </td>
-                        <td style={{ fontSize: '12px' }}>
-                          <span style={{ background: '#ecfdf5', color: '#059669', padding: '4px 10px', borderRadius: '9999px', fontSize: '11px', fontWeight: 700 }}>
-                            Credited ✓
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  {effectivePayouts.length === 0 && (
-                    <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px', color: '#64748b', fontSize: '13px' }}>
-                        {isAdmin 
-                          ? 'No settlement transactions recorded yet. Click "Run Weekly Settlement" to process this week\'s pool.'
-                          : 'No settlement bonuses credited to your account yet.'}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Modal Footer */}
-            <div style={{
-              padding: '14px 24px',
-              borderTop: '1px solid #f1f5f9',
-              background: '#f8fafc',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between'
-            }}>
-              <span style={{ fontSize: '12px', color: '#64748b' }}>
-                {isAdmin 
-                  ? <>Total Paid Members: <strong>{effectivePayouts.length}</strong></>
-                  : <>My Total Settlements: <strong>{effectivePayouts.length}</strong> (Credited)</>}
-              </span>
-              <button
-                onClick={() => setIsFullPayoutModalOpen(false)}
-                className="secondary-btn"
-                style={{ fontSize: '13px', padding: '6px 18px' }}
-              >
-                Close
-              </button>
+          </div>
+          <div className="stat-panel">
+            <div className="stat-panel-label">Latest settlement</div>
+            <div className="stat-panel-value" style={{ fontSize: 'var(--fs-lg)' }}>
+              {effectivePayouts[0]?.settlementId || '—'}
             </div>
           </div>
         </div>
-      )}
+
+        <div className="filter-group" style={{ padding: 'var(--space-3) var(--space-6)', borderBottom: '1px solid var(--border-light)' }}>
+          <div className="filter-search-box">
+            <Search size={16} className="search-icon" aria-hidden="true" />
+            <input
+              type="text"
+              placeholder="Search member name, ID or settlement"
+              aria-label="Search payouts"
+              value={payoutSearch}
+              onChange={(e) => setPayoutSearch(e.target.value)}
+            />
+          </div>
+          <select
+            value={payoutFilterSettlement}
+            onChange={(e) => setPayoutFilterSettlement(e.target.value)}
+            aria-label="Filter by settlement"
+            className="form-select"
+            style={{ width: 'auto', minWidth: 180 }}
+          >
+            <option value="ALL">All settlements</option>
+            {Array.from(new Set(effectivePayouts.map((r: any) => r.settlementId).filter(Boolean))).map((sId: any) => (
+              <option key={sId} value={sId}>{sId}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="table-responsive">
+          <table className="data-table">
+            <thead style={{ position: 'sticky', top: 0, zIndex: 2 }}>
+              <tr>
+                <th>Member</th>
+                <th>Settlement ID</th>
+                <th>Settlement Date</th>
+                <th>Company Weekly GBV</th>
+                <th>Total Bonus Pool</th>
+                <th>Paid BV</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {effectivePayouts
+                .filter((row: any) => {
+                  const q = payoutSearch.toLowerCase().trim();
+                  const matchesSearch = !q ||
+                    (row.memberId && String(row.memberId).toLowerCase().includes(q)) ||
+                    (row.memberName && String(row.memberName).toLowerCase().includes(q)) ||
+                    (row.settlementId && String(row.settlementId).toLowerCase().includes(q));
+                  const matchesSettlement = payoutFilterSettlement === 'ALL' || row.settlementId === payoutFilterSettlement;
+                  return matchesSearch && matchesSettlement;
+                })
+                .map((row: any, idx: number) => (
+                  <tr key={row.transactionId || idx}>
+                    <td>
+                      <div style={{ fontWeight: 600, color: 'var(--text-main)' }}>{row.memberName || row.memberId}</div>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{row.memberId}</div>
+                    </td>
+                    <td>{row.settlementId}</td>
+                    <td style={{ color: 'var(--text-muted)' }}>{row.date || 'Recent'}</td>
+                    <td>{(row.companyGrossBusinessVolume || 0).toLocaleString()} BV</td>
+                    <td>{(row.totalBonusPool || 0).toLocaleString()} BV</td>
+                    <td style={{ fontWeight: 700, color: 'var(--success)' }}>+{(row.actualPayout || 0).toLocaleString()} BV</td>
+                    <td><Badge tone="success">Credited</Badge></td>
+                  </tr>
+                ))}
+              {effectivePayouts.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="empty-state-text" style={{ textAlign: 'center', padding: 'var(--space-8)', maxWidth: 'none' }}>
+                    {isAdmin
+                      ? 'No settlements recorded yet. Use “Settle Week” to process a finished week.'
+                      : 'No settlement bonuses credited to your account yet.'}
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Modal>
 
       {/* Member Withdrawal Modal */}
       <WithdrawModal

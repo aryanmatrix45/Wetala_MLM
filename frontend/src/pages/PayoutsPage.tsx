@@ -1,20 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Check, 
-  Wallet, 
-  IndianRupee, 
-  Search, 
-  Bell, 
-  Clock, 
-  CheckCircle2, 
-  XCircle, 
-  CreditCard, 
-  FileText,
-  AlertCircle,
-  RefreshCw,
-  Eye,
-  PlusCircle
-} from 'lucide-react';
+import { EmptyState, LoadingState, PageHeader, StatusBadge } from '../components/ui';
+import { AlertCircle, Bell, Check, CheckCircle2, Clock, CreditCard, Eye, FileText, IndianRupee, PlusCircle, RefreshCw, Search, Wallet, XCircle } from 'lucide-react';
+
 import { api, type WithdrawalRequestItem } from '../services/api';
 import { AdminWithdrawalActionModal, type AdminActionType } from '../components/AdminWithdrawalActionModal';
 import { WithdrawModal } from '../components/WithdrawModal';
@@ -158,270 +145,131 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
 
   return (
     <div className="page-body">
-      {/* Top Banner */}
-      <div className="welcome-header">
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span style={{
-              fontSize: '11px',
-              fontWeight: 800,
-              background: '#ecfdf5',
-              color: '#059669',
-              padding: '3px 10px',
-              borderRadius: '9999px',
-              letterSpacing: '0.5px'
-            }}>
-              LIVE WITHDRAWAL SYSTEM
-            </span>
-            {unreadNotifCount > 0 && (
-              <span style={{
-                fontSize: '11px',
-                fontWeight: 700,
-                background: '#eff6ff',
-                color: '#2563eb',
-                padding: '3px 10px',
-                borderRadius: '9999px'
-              }}>
-                {unreadNotifCount} New Message{unreadNotifCount > 1 ? 's' : ''}
-              </span>
-            )}
-          </div>
-          <h1 className="page-title">{isAdmin ? 'Withdrawal Requests & Payout Center' : 'My Payout & Withdrawal Wallet'}</h1>
-          <p className="page-subtitle">
-            {isAdmin 
-              ? 'Review pending member payout requests, authorize payments, and disburse bank transfers with automated balance synchronization.' 
-              : 'Track your real-time available payout balance, submit new withdrawal requests, and audit payment clearance.'}
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button 
-            onClick={loadData} 
-            className="primary-btn" 
-            style={{ fontSize: '12px', padding: '8px 14px', background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1' }}
-            title="Refresh records"
-          >
-            <RefreshCw size={14} className={loading ? 'spin' : ''} />
-            <span>Refresh</span>
-          </button>
-
-          {!isAdmin && (
-            <button
-              onClick={() => setIsWithdrawModalOpen(true)}
-              className="primary-btn"
-              style={{
-                fontSize: '13px',
-                padding: '8px 18px',
-                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.35)',
-              }}
-            >
-              <PlusCircle size={16} />
-              <span>Withdraw Payout</span>
+      <PageHeader
+        title={isAdmin ? 'Withdrawals & Payouts' : 'My Wallet & Withdrawals'}
+        subtitle={
+          isAdmin
+            ? 'Review withdrawal requests, approve them and record bank transfers.'
+            : 'Your available balance, withdrawal requests and commission history.'
+        }
+        actions={
+          <>
+            <button type="button" onClick={loadData} className="btn btn-secondary" title="Refresh records">
+              <RefreshCw size={16} className={loading ? 'spin' : ''} />
+              <span>Refresh</span>
             </button>
-          )}
-        </div>
-      </div>
+            {!isAdmin && (
+              <button type="button" onClick={() => setIsWithdrawModalOpen(true)} className="btn btn-success">
+                <PlusCircle size={16} />
+                <span>Withdraw</span>
+              </button>
+            )}
+          </>
+        }
+      />
 
-      {/* KPI Cards Strip */}
-      <div className="kpi-grid" style={{ marginBottom: '26px' }}>
+      <div className="kpi-grid">
         {isAdmin ? (
           <>
-            <div className="kpi-card kpi-card-blue">
-              <div className="kpi-icon-box kpi-icon-blue">
-                <IndianRupee size={24} />
-              </div>
+            <div className="kpi-card">
+              <div className="kpi-icon-box kpi-icon-blue"><IndianRupee size={20} /></div>
               <div className="kpi-content">
-                <div className="kpi-label">Gross Requested</div>
+                <div className="kpi-label">Gross requested</div>
                 <div className="kpi-value">₹ {kpis.totalRequestedAmount.toLocaleString()}</div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                  {kpis.totalRequests} Requests Logged
-                </div>
+                <div className="kpi-sub">{kpis.totalRequests} requests</div>
               </div>
             </div>
-
-            <div className="kpi-card kpi-card-gold">
-              <div className="kpi-icon-box kpi-icon-gold">
-                <Clock size={24} />
-              </div>
+            <div className="kpi-card">
+              <div className="kpi-icon-box kpi-icon-gold"><Clock size={20} /></div>
               <div className="kpi-content">
-                <div className="kpi-label">Pending Review</div>
-                <div className="kpi-value" style={{ color: '#d97706' }}>
-                  {kpis.pendingCount}
-                </div>
-                <div style={{ fontSize: '11px', color: '#d97706', fontWeight: 600, marginTop: '4px' }}>
-                  ₹ {kpis.totalPendingAmount.toLocaleString()} Awaiting Action
-                </div>
+                <div className="kpi-label">Pending review</div>
+                <div className="kpi-value">{kpis.pendingCount}</div>
+                <div className="kpi-sub">₹ {kpis.totalPendingAmount.toLocaleString()} awaiting action</div>
               </div>
             </div>
-
-            <div className="kpi-card kpi-card-purple">
-              <div className="kpi-icon-box kpi-icon-purple">
-                <Check size={24} />
-              </div>
+            <div className="kpi-card">
+              <div className="kpi-icon-box kpi-icon-purple"><Check size={20} /></div>
               <div className="kpi-content">
-                <div className="kpi-label">Approved in Queue</div>
-                <div className="kpi-value" style={{ color: '#7c3aed' }}>
-                  {kpis.approvedCount}
-                </div>
-                <div style={{ fontSize: '11px', color: '#7c3aed', fontWeight: 600, marginTop: '4px' }}>
-                  Ready for "Mark as Paid"
-                </div>
+                <div className="kpi-label">Approved, unpaid</div>
+                <div className="kpi-value">{kpis.approvedCount}</div>
+                <div className="kpi-sub">Ready to mark as paid</div>
               </div>
             </div>
-
-            <div className="kpi-card kpi-card-green">
-              <div className="kpi-icon-box kpi-icon-green">
-                <Wallet size={24} />
-              </div>
+            <div className="kpi-card">
+              <div className="kpi-icon-box kpi-icon-green"><Wallet size={20} /></div>
               <div className="kpi-content">
-                <div className="kpi-label">Total Paid Disbursed</div>
-                <div className="kpi-value" style={{ color: '#059669' }}>
-                  ₹ {kpis.totalPaidAmount.toLocaleString()}
-                </div>
-                <div style={{ fontSize: '11px', color: '#059669', fontWeight: 700, marginTop: '4px' }}>
-                  {kpis.paidCount} Transfers Settled
-                </div>
+                <div className="kpi-label">Total paid</div>
+                <div className="kpi-value">₹ {kpis.totalPaidAmount.toLocaleString()}</div>
+                <div className="kpi-sub">{kpis.paidCount} transfers settled</div>
               </div>
             </div>
           </>
         ) : (
           <>
-            <div className="kpi-card kpi-card-blue">
-              <div className="kpi-icon-box kpi-icon-blue">
-                <Wallet size={24} />
-              </div>
+            <div className="kpi-card">
+              <div className="kpi-icon-box kpi-icon-blue"><Wallet size={20} /></div>
               <div className="kpi-content">
-                <div className="kpi-label">Available Payout Balance</div>
-                <div className="kpi-value" style={{ color: '#1d4ed8' }}>
-                  ₹ {(memberBalance?.availablePayout ?? user?.walletBalance ?? 0).toLocaleString()}
-                </div>
-                <div style={{ fontSize: '11px', color: '#059669', fontWeight: 700, marginTop: '4px' }}>
-                  Ready for Immediate Withdrawal
-                </div>
+                <div className="kpi-label">Available balance</div>
+                <div className="kpi-value">₹ {(memberBalance?.availablePayout ?? user?.walletBalance ?? 0).toLocaleString()}</div>
+                <div className="kpi-sub">Available to withdraw</div>
               </div>
             </div>
-
-            <div className="kpi-card kpi-card-gold">
-              <div className="kpi-icon-box kpi-icon-gold">
-                <Clock size={24} />
-              </div>
+            <div className="kpi-card">
+              <div className="kpi-icon-box kpi-icon-gold"><Clock size={20} /></div>
               <div className="kpi-content">
-                <div className="kpi-label">Pending / Approved</div>
-                <div className="kpi-value" style={{ color: '#d97706' }}>
-                  ₹ {(memberBalance?.pendingAmount ?? 0).toLocaleString()}
-                </div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                  {requests.filter(r => r.status === 'PENDING' || r.status === 'APPROVED').length} active request(s)
-                </div>
+                <div className="kpi-label">Pending / approved</div>
+                <div className="kpi-value">₹ {(memberBalance?.pendingAmount ?? 0).toLocaleString()}</div>
+                <div className="kpi-sub">{requests.filter(r => r.status === 'PENDING' || r.status === 'APPROVED').length} active request(s)</div>
               </div>
             </div>
-
-            <div className="kpi-card kpi-card-green">
-              <div className="kpi-icon-box kpi-icon-green">
-                <CheckCircle2 size={24} />
-              </div>
+            <div className="kpi-card">
+              <div className="kpi-icon-box kpi-icon-green"><CheckCircle2 size={20} /></div>
               <div className="kpi-content">
-                <div className="kpi-label">Total Withdrawn</div>
-                <div className="kpi-value" style={{ color: '#059669' }}>
-                  ₹ {(memberBalance?.withdrawnAmount ?? 0).toLocaleString()}
-                </div>
-                <div style={{ fontSize: '11px', color: '#059669', fontWeight: 600, marginTop: '4px' }}>
-                  Disbursed to Bank Account
-                </div>
+                <div className="kpi-label">Total withdrawn</div>
+                <div className="kpi-value">₹ {(memberBalance?.withdrawnAmount ?? 0).toLocaleString()}</div>
+                <div className="kpi-sub">Paid to your bank account</div>
               </div>
             </div>
-
-            <div className="kpi-card kpi-card-purple">
-              <div className="kpi-icon-box kpi-icon-purple">
-                <IndianRupee size={24} />
-              </div>
+            <div className="kpi-card">
+              <div className="kpi-icon-box kpi-icon-purple"><IndianRupee size={20} /></div>
               <div className="kpi-content">
-                <div className="kpi-label">Lifetime Total Payout</div>
-                <div className="kpi-value" style={{ color: '#7c3aed' }}>
-                  ₹ {(memberBalance?.totalPayout ?? user?.totalIncome ?? 0).toLocaleString()}
-                </div>
-                <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>
-                  All Commission Income
-                </div>
+                <div className="kpi-label">Lifetime payout</div>
+                <div className="kpi-value">₹ {(memberBalance?.totalPayout ?? user?.totalIncome ?? 0).toLocaleString()}</div>
+                <div className="kpi-sub">All commission income</div>
               </div>
             </div>
           </>
         )}
       </div>
 
-      {/* Sub-tab Navigation */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '8px' }}>
+      <div className="tabs" role="tablist" aria-label="Payout sections">
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeSubTab === 'requests'}
           onClick={() => setActiveSubTab('requests')}
-          style={{
-            padding: '8px 18px',
-            fontSize: '13px',
-            fontWeight: 700,
-            borderRadius: '10px',
-            border: 'none',
-            background: activeSubTab === 'requests' ? '#2563eb' : 'transparent',
-            color: activeSubTab === 'requests' ? '#ffffff' : '#64748b',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s',
-          }}
+          className={`tab-btn${activeSubTab === 'requests' ? ' is-active' : ''}`}
         >
           <Wallet size={16} />
           <span>Withdrawal Requests ({requests.length})</span>
         </button>
-
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeSubTab === 'messages'}
           onClick={() => setActiveSubTab('messages')}
-          style={{
-            padding: '8px 18px',
-            fontSize: '13px',
-            fontWeight: 700,
-            borderRadius: '10px',
-            border: 'none',
-            background: activeSubTab === 'messages' ? '#2563eb' : 'transparent',
-            color: activeSubTab === 'messages' ? '#ffffff' : '#64748b',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s',
-          }}
+          className={`tab-btn${activeSubTab === 'messages' ? ' is-active' : ''}`}
         >
           <Bell size={16} />
-          <span>Messages & Notifications</span>
-          {unreadNotifCount > 0 && (
-            <span style={{
-              background: '#ef4444',
-              color: '#ffffff',
-              fontSize: '10px',
-              padding: '1px 6px',
-              borderRadius: '9999px',
-              fontWeight: 800
-            }}>
-              {unreadNotifCount}
-            </span>
-          )}
+          <span>Messages</span>
+          {unreadNotifCount > 0 && <span className="badge badge-solid-danger">{unreadNotifCount}</span>}
         </button>
-
         <button
+          type="button"
+          role="tab"
+          aria-selected={activeSubTab === 'commissions'}
           onClick={() => setActiveSubTab('commissions')}
-          style={{
-            padding: '8px 18px',
-            fontSize: '13px',
-            fontWeight: 700,
-            borderRadius: '10px',
-            border: 'none',
-            background: activeSubTab === 'commissions' ? '#2563eb' : 'transparent',
-            color: activeSubTab === 'commissions' ? '#ffffff' : '#64748b',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            transition: 'all 0.2s',
-          }}
+          className={`tab-btn${activeSubTab === 'commissions' ? ' is-active' : ''}`}
         >
           <FileText size={16} />
           <span>Commission Ledger</span>
@@ -430,61 +278,30 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
 
       {/* TAB 1: WITHDRAWAL REQUESTS */}
       {activeSubTab === 'requests' && (
-        <div className="dashboard-card" style={{ padding: '0', overflow: 'hidden' }}>
-          {/* Controls: Search and Status Filter */}
-          <div
-            style={{
-              padding: '16px 20px',
-              borderBottom: '1px solid #e2e8f0',
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '12px',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              background: '#f8fafc',
-            }}
-          >
-            {/* Filter Pills */}
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+        <div className="dashboard-card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="card-toolbar">
+            <div className="segmented" role="tablist" aria-label="Filter by status">
               {['ALL', 'PENDING', 'APPROVED', 'PAID', 'REJECTED'].map((st) => (
                 <button
                   key={st}
+                  type="button"
+                  role="tab"
+                  aria-selected={statusFilter === st}
                   onClick={() => setStatusFilter(st)}
-                  style={{
-                    padding: '5px 12px',
-                    fontSize: '11.5px',
-                    fontWeight: 700,
-                    borderRadius: '8px',
-                    border: '1px solid',
-                    borderColor: statusFilter === st ? '#2563eb' : '#cbd5e1',
-                    background: statusFilter === st ? '#eff6ff' : '#ffffff',
-                    color: statusFilter === st ? '#1d4ed8' : '#64748b',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s',
-                  }}
+                  className={`segmented-btn${statusFilter === st ? ' is-active' : ''}`}
                 >
-                  {st}
+                  {st === 'ALL' ? 'All' : st.charAt(0) + st.slice(1).toLowerCase()}
                 </button>
               ))}
             </div>
-
-            {/* Search Box */}
-            <div style={{ position: 'relative', width: '280px' }}>
-              <Search size={14} color="#94a3b8" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+            <div className="filter-search-box" style={{ maxWidth: 300 }}>
+              <Search size={14} className="search-icon" aria-hidden="true" />
               <input
                 type="text"
-                placeholder="Search Req ID, Member ID, Ref..."
+                aria-label="Search withdrawals"
+                placeholder="Search request, member or reference"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '7px 12px 7px 32px',
-                  fontSize: '12.5px',
-                  borderRadius: '10px',
-                  border: '1px solid #cbd5e1',
-                  outline: 'none',
-                  background: '#ffffff',
-                }}
               />
             </div>
           </div>
@@ -508,16 +325,14 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-                      <div className="spin" style={{ width: '24px', height: '24px', border: '2px solid #cbd5e1', borderTopColor: '#2563eb', borderRadius: '50%', margin: '0 auto 10px' }} />
-                      Loading withdrawal requests...
+                    <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <LoadingState compact label="Loading withdrawal requests…" />
                     </td>
                   </tr>
                 ) : filteredRequests.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-                      <AlertCircle size={28} color="#94a3b8" style={{ margin: '0 auto 8px', display: 'block' }} />
-                      No withdrawal requests found matching your filter criteria.
+                    <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <EmptyState compact icon={<AlertCircle size={22} />} title="No withdrawal requests" text="Nothing matches the current filter." />
                     </td>
                   </tr>
                 ) : (
@@ -533,41 +348,23 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
                       <tr key={row._id || row.requestId}>
                         {/* Request ID */}
                         <td>
-                          <span style={{ fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '3px 8px', borderRadius: '6px', fontSize: '11.5px' }}>
-                            {row.requestId}
-                          </span>
+                          <span className="text-mono" style={{ fontWeight: 600, color: 'var(--text-main)' }}>{row.requestId}</span>
                         </td>
 
                         {/* Member Details */}
                         <td>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                            <div
-                              style={{
-                                width: '32px',
-                                height: '32px',
-                                borderRadius: '50%',
-                                background: 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)',
-                                color: 'white',
-                                fontWeight: 700,
-                                fontSize: '11px',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0,
-                              }}
-                            >
-                              {initials}
-                            </div>
+                            <span className="avatar-circle">{initials}</span>
                             <div>
-                              <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.memberName || row.memberId}</div>
-                              <div style={{ fontSize: '11px', color: '#64748b' }}>{row.memberId}</div>
+                              <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{row.memberName || row.memberId}</div>
+                              <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{row.memberId}</div>
                             </div>
                           </div>
                         </td>
 
                         {/* Requested Amount */}
                         <td>
-                          <span style={{ fontWeight: 800, color: '#0f172a', fontSize: '14px' }}>
+                          <span style={{ fontWeight: 800, color: 'var(--text-main)', fontSize: 'var(--fs-md)' }}>
                             ₹ {row.requestedAmount.toLocaleString()}
                           </span>
                         </td>
@@ -575,11 +372,11 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
                         {/* Approved Amount */}
                         <td>
                           {row.approvedAmount !== undefined && row.approvedAmount !== null ? (
-                            <span style={{ fontWeight: 700, color: '#2563eb' }}>
+                            <span style={{ fontWeight: 700, color: 'var(--primary)' }}>
                               ₹ {row.approvedAmount.toLocaleString()}
                             </span>
                           ) : (
-                            <span style={{ color: '#94a3b8' }}>—</span>
+                            <span style={{ color: 'var(--text-light)' }}>—</span>
                           )}
                         </td>
 
@@ -587,136 +384,64 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
                         <td>
                           {row.status === 'PAID' ? (
                             <div>
-                              <span style={{ fontWeight: 800, color: '#059669', fontSize: '13px' }}>
+                              <span style={{ fontWeight: 800, color: 'var(--success)', fontSize: 'var(--fs-base)' }}>
                                 ₹ {(row.paidAmount || row.approvedAmount || row.requestedAmount).toLocaleString()}
                               </span>
                               {row.paymentReference && (
-                                <div style={{ fontSize: '10.5px', color: '#64748b', marginTop: '2px' }}>
-                                  Ref: <strong style={{ color: '#334155' }}>{row.paymentReference}</strong>
+                                <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: '2px' }}>
+                                  Ref: <strong style={{ color: 'var(--text-body)' }}>{row.paymentReference}</strong>
                                 </div>
                               )}
                             </div>
                           ) : (
-                            <span style={{ color: '#94a3b8' }}>—</span>
+                            <span style={{ color: 'var(--text-light)' }}>—</span>
                           )}
                         </td>
 
                         {/* Date */}
-                        <td style={{ fontSize: '12px', color: '#64748b' }}>
+                        <td style={{ color: 'var(--text-muted)' }}>
                           {row.requestedAt ? new Date(row.requestedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : 'Recent'}
                         </td>
 
                         {/* Status */}
                         <td>
-                          <span
-                            className={`status-pill ${
-                              row.status === 'PAID'
-                                ? 'status-paid'
-                                : row.status === 'APPROVED'
-                                ? 'status-approved'
-                                : row.status === 'REJECTED'
-                                ? 'status-rejected'
-                                : 'status-pending'
-                            }`}
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              padding: '4px 10px',
-                              borderRadius: '9999px',
-                              fontSize: '11px',
-                              fontWeight: 700,
-                              background:
-                                row.status === 'PAID'
-                                  ? '#ecfdf5'
-                                  : row.status === 'APPROVED'
-                                  ? '#eff6ff'
-                                  : row.status === 'REJECTED'
-                                  ? '#fef2f2'
-                                  : '#fffbeb',
-                              color:
-                                row.status === 'PAID'
-                                  ? '#059669'
-                                  : row.status === 'APPROVED'
-                                  ? '#2563eb'
-                                  : row.status === 'REJECTED'
-                                  ? '#dc2626'
-                                  : '#d97706',
-                              border:
-                                row.status === 'PAID'
-                                  ? '1px solid #a7f3d0'
-                                  : row.status === 'APPROVED'
-                                  ? '1px solid #bfdbfe'
-                                  : row.status === 'REJECTED'
-                                  ? '1px solid #fecaca'
-                                  : '1px solid #fde68a',
-                            }}
-                          >
-                            <span
-                              style={{
-                                width: '6px',
-                                height: '6px',
-                                borderRadius: '50%',
-                                background:
-                                  row.status === 'PAID'
-                                    ? '#10b981'
-                                    : row.status === 'APPROVED'
-                                    ? '#3b82f6'
-                                    : row.status === 'REJECTED'
-                                    ? '#ef4444'
-                                    : '#f59e0b',
-                              }}
-                            />
-                            {row.status}
-                          </span>
+                          <StatusBadge status={row.status} />
                         </td>
 
                         {/* Notes */}
                         <td style={{ maxWidth: '160px' }}>
                           {row.note && (
-                            <div style={{ fontSize: '11px', color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.note}>
+                            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={row.note}>
                               <span style={{ fontWeight: 600 }}>Note:</span> {row.note}
                             </div>
                           )}
                           {row.adminNote && (
-                            <div style={{ fontSize: '10.5px', color: '#9333ea', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }} title={row.adminNote}>
+                            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--accent)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginTop: '2px' }} title={row.adminNote}>
                               <span style={{ fontWeight: 600 }}>Admin:</span> {row.adminNote}
                             </div>
                           )}
-                          {!row.note && !row.adminNote && <span style={{ color: '#cbd5e1' }}>—</span>}
+                          {!row.note && !row.adminNote && <span style={{ color: 'var(--text-disabled)' }}>—</span>}
                         </td>
 
                         {/* Actions */}
                         <td style={{ textAlign: 'center' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                          <div className="row-actions" style={{ justifyContent: 'center' }}>
                             {isAdmin ? (
                               <>
                                 {row.status === 'PENDING' && (
                                   <>
                                     <button
                                       onClick={() => handleOpenAdminAction(row, 'APPROVE')}
-                                      className="primary-btn"
-                                      style={{
-                                        fontSize: '11px',
-                                        padding: '5px 10px',
-                                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                                      }}
+                                      className="btn btn-primary btn-sm"
                                       title="Approve Request"
                                     >
                                       <Check size={13} /> Approve
                                     </button>
                                     <button
                                       onClick={() => handleOpenAdminAction(row, 'REJECT')}
-                                      style={{
-                                        fontSize: '11px',
-                                        padding: '5px 8px',
-                                        background: '#fef2f2',
-                                        color: '#dc2626',
-                                        border: '1px solid #fecaca',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                      }}
+                                      className="btn btn-sm btn-icon btn-danger-outline"
                                       title="Reject Request"
+                                      aria-label="Reject Request"
                                     >
                                       <XCircle size={13} />
                                     </button>
@@ -727,29 +452,16 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
                                   <>
                                     <button
                                       onClick={() => handleOpenAdminAction(row, 'PAY')}
-                                      className="primary-btn"
-                                      style={{
-                                        fontSize: '11px',
-                                        padding: '5px 12px',
-                                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                                        boxShadow: '0 2px 8px rgba(16, 185, 129, 0.35)',
-                                      }}
+                                      className="btn btn-success btn-sm"
                                       title="Mark as Paid"
                                     >
                                       <CreditCard size={13} /> Mark as Paid
                                     </button>
                                     <button
                                       onClick={() => handleOpenAdminAction(row, 'REJECT')}
-                                      style={{
-                                        fontSize: '11px',
-                                        padding: '5px 8px',
-                                        background: '#fef2f2',
-                                        color: '#dc2626',
-                                        border: '1px solid #fecaca',
-                                        borderRadius: '8px',
-                                        cursor: 'pointer',
-                                      }}
+                                      className="btn btn-sm btn-icon btn-danger-outline"
                                       title="Reject Request"
+                                      aria-label="Reject Request"
                                     >
                                       <XCircle size={13} />
                                     </button>
@@ -758,40 +470,14 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
 
                                 {(row.status === 'PAID' || row.status === 'REJECTED') && (
                                   <button
-                                    onClick={() => handleOpenAdminAction(row, 'VIEW_DETAILS')}
-                                    style={{
-                                      fontSize: '11px',
-                                      padding: '5px 10px',
-                                      background: '#f1f5f9',
-                                      color: '#475569',
-                                      border: '1px solid #cbd5e1',
-                                      borderRadius: '8px',
-                                      cursor: 'pointer',
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: '4px',
-                                    }}
-                                  >
+                                    onClick={() => handleOpenAdminAction(row, 'VIEW_DETAILS')} className="btn btn-secondary btn-sm">
                                     <Eye size={12} /> Audit Details
                                   </button>
                                 )}
                               </>
                             ) : (
                               <button
-                                onClick={() => handleOpenAdminAction(row, 'VIEW_DETAILS')}
-                                style={{
-                                  fontSize: '11px',
-                                  padding: '5px 10px',
-                                  background: '#f1f5f9',
-                                  color: '#475569',
-                                  border: '1px solid #cbd5e1',
-                                  borderRadius: '8px',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                }}
-                              >
+                                onClick={() => handleOpenAdminAction(row, 'VIEW_DETAILS')} className="btn btn-secondary btn-sm">
                                 <Eye size={12} /> Details
                               </button>
                             )}
@@ -812,14 +498,14 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
         <div className="dashboard-card">
           <div className="card-header-row" style={{ marginBottom: '16px' }}>
             <h2 className="card-title">Withdrawal Notifications & Messages</h2>
-            <span style={{ fontSize: '12px', color: '#64748b' }}>
+            <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
               Live real-time message log
             </span>
           </div>
 
           {notifications.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-              <Bell size={32} color="#cbd5e1" style={{ margin: '0 auto 10px', display: 'block' }} />
+            <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)' }}>
+              <Bell size={32} color="var(--text-disabled)" style={{ margin: '0 auto 10px', display: 'block' }} />
               No notifications or messages yet.
             </div>
           ) : (
@@ -829,9 +515,9 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
                   key={notif._id || notif.notificationId}
                   style={{
                     padding: '14px 18px',
-                    borderRadius: '12px',
-                    background: notif.isRead ? '#ffffff' : '#f0f9ff',
-                    border: `1px solid ${notif.isRead ? '#e2e8f0' : '#bae6fd'}`,
+                    borderRadius: 'var(--radius-lg)',
+                    background: notif.isRead ? 'var(--surface)' : 'var(--info-light)',
+                    border: `1px solid ${notif.isRead ? 'var(--border-color)' : 'var(--info-border)'}`,
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
@@ -843,23 +529,23 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
                       style={{
                         width: '36px',
                         height: '36px',
-                        borderRadius: '10px',
+                        borderRadius: 'var(--radius-md)',
                         background:
                           notif.type === 'WITHDRAWAL_PAID'
-                            ? '#ecfdf5'
+                            ? 'var(--success-light)'
                             : notif.type === 'WITHDRAWAL_APPROVED'
-                            ? '#eff6ff'
+                            ? 'var(--primary-light)'
                             : notif.type === 'WITHDRAWAL_REJECTED'
-                            ? '#fef2f2'
-                            : '#fffbeb',
+                            ? 'var(--danger-light)'
+                            : 'var(--warning-light)',
                         color:
                           notif.type === 'WITHDRAWAL_PAID'
-                            ? '#059669'
+                            ? 'var(--success)'
                             : notif.type === 'WITHDRAWAL_APPROVED'
-                            ? '#2563eb'
+                            ? 'var(--primary)'
                             : notif.type === 'WITHDRAWAL_REJECTED'
-                            ? '#dc2626'
-                            : '#d97706',
+                            ? 'var(--danger)'
+                            : 'var(--warning)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -869,18 +555,18 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
                       <Bell size={18} />
                     </div>
                     <div>
-                      <div style={{ fontSize: '13.5px', fontWeight: 800, color: '#0f172a' }}>
+                      <div style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--text-main)' }}>
                         {notif.title}
                         {!notif.isRead && (
-                          <span style={{ fontSize: '10px', background: '#3b82f6', color: '#fff', padding: '1px 6px', borderRadius: '9999px', marginLeft: '8px' }}>
+                          <span style={{ fontSize: 'var(--fs-2xs)', background: 'var(--primary)', color: 'var(--text-inverse)', padding: '1px 6px', borderRadius: 'var(--radius-full)', marginLeft: '8px' }}>
                             New
                           </span>
                         )}
                       </div>
-                      <div style={{ fontSize: '12.5px', color: '#475569', marginTop: '2px' }}>
+                      <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', marginTop: '2px' }}>
                         {notif.message}
                       </div>
-                      <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-light)', marginTop: '4px' }}>
                         {notif.createdAt ? new Date(notif.createdAt).toLocaleString() : ''}
                         {notif.referenceId && ` • Ref: ${notif.referenceId}`}
                       </div>
@@ -889,18 +575,7 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
 
                   {!notif.isRead && (
                     <button
-                      onClick={() => handleMarkNotifRead(notif.notificationId || notif._id)}
-                      style={{
-                        fontSize: '11px',
-                        padding: '4px 10px',
-                        background: '#ffffff',
-                        border: '1px solid #cbd5e1',
-                        borderRadius: '6px',
-                        color: '#475569',
-                        cursor: 'pointer',
-                        flexShrink: 0,
-                      }}
-                    >
+                      onClick={() => handleMarkNotifRead(notif.notificationId || notif._id)} className="btn btn-secondary btn-sm" style={{ flexShrink: 0 }}>
                       Mark Read
                     </button>
                   )}
@@ -914,11 +589,11 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
       {/* TAB 3: COMMISSION LEDGER */}
       {activeSubTab === 'commissions' && (
         <div className="dashboard-card" style={{ padding: '0', overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid var(--border-color)', background: 'var(--surface-subtle)' }}>
+            <h3 className="section-title" style={{ margin: 0 }}>
               Platform Commission Ledger Records
             </h3>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0' }}>
+            <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '2px 0 0' }}>
               Commission payouts. No TDS or admin fee is deducted; older entries may still show past deductions.
             </p>
           </div>
@@ -940,7 +615,7 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
               <tbody>
                 {commissionLedger.length === 0 ? (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: '30px', color: '#64748b' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)' }}>
                       No commission ledger entries available.
                     </td>
                   </tr>
@@ -948,23 +623,23 @@ export const PayoutsPage: React.FC<PayoutsPageProps> = ({ user, token, defaultSu
                   commissionLedger.map((row) => (
                     <tr key={row.id}>
                       <td>
-                        <span style={{ fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '3px 8px', borderRadius: '6px', fontSize: '12px' }}>
+                        <span style={{ fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-light)', padding: '3px 8px', borderRadius: 'var(--radius-sm)', fontSize: 'var(--fs-sm)' }}>
                           {row.id}
                         </span>
                       </td>
                       <td>
-                        <div style={{ fontWeight: 700, color: '#0f172a' }}>{row.memberName}</div>
-                        <div style={{ fontSize: '11px', color: '#64748b' }}>{row.memberId}</div>
+                        <div style={{ fontWeight: 700, color: 'var(--text-main)' }}>{row.memberName}</div>
+                        <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{row.memberId}</div>
                       </td>
                       <td style={{ fontWeight: 700 }}>₹ {row.amount?.toLocaleString()}</td>
-                      <td style={{ color: '#ef4444', fontWeight: 600 }}>- ₹ {row.tdsDeduction}</td>
-                      <td style={{ color: '#ef4444', fontWeight: 600 }}>- ₹ {row.adminFee}</td>
+                      <td style={{ color: 'var(--danger)', fontWeight: 600 }}>- ₹ {row.tdsDeduction}</td>
+                      <td style={{ color: 'var(--danger)', fontWeight: 600 }}>- ₹ {row.adminFee}</td>
                       <td>
-                        <span style={{ fontWeight: 800, color: '#059669', fontSize: '14px', background: '#ecfdf5', padding: '3px 8px', borderRadius: '6px' }}>
+                        <span style={{ fontWeight: 800, color: 'var(--success)', fontSize: 'var(--fs-md)', background: 'var(--success-light)', padding: '3px 8px', borderRadius: 'var(--radius-sm)' }}>
                           ₹ {row.netPayable?.toLocaleString()}
                         </span>
                       </td>
-                      <td style={{ fontSize: '12px', color: '#64748b' }}>{row.requestDate}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{row.requestDate}</td>
                       <td>
                         <span className={`status-pill ${row.status === 'paid' ? 'status-paid' : 'status-pending'}`}>
                           {row.status}

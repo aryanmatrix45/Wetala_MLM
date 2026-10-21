@@ -1,8 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import {
-  Landmark, QrCode, Fingerprint, Upload, Link2, Undo2, AlertCircle, CheckCircle2,
-  ShieldCheck, Clock, XCircle, FileWarning, Loader2, MapPin,
-} from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, FileWarning, Fingerprint, Landmark, Link2, Loader2, MapPin, QrCode, ShieldCheck, Undo2, Upload, XCircle } from 'lucide-react';
 import {
   api,
   type KycDetails,

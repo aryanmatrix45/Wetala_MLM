@@ -1,27 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  ShoppingBag,
-  Search,
-  ShoppingCart,
-  Plus,
-  Minus,
-  Trash2,
-  X,
-  CheckCircle2,
-  AlertCircle,
-  Eye,
-  ArrowRight,
-  ArrowLeft,
-  Image as ImageIcon,
-  ShieldCheck,
-  Package,
-  ChevronRight,
-  Sparkles,
-  FileText,
-  Send,
-  Info,
-  Clock,
-} from 'lucide-react';
+import { AlertCircle, ArrowLeft, ArrowRight, CheckCircle2, ChevronRight, Clock, Eye, FileText, ImageIcon, Info, Minus, Package, Plus, Search, Send, ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, Trash2, X } from 'lucide-react';
 import { api, newRequestKey, type ProductItem, type CategoryItem, type SubcategoryItem, type PaymentMethod, getAssetUrl, retryWithImageFallback } from '../services/api';
 import { PaymentMethodPicker } from '../components/PaymentMethodPicker';
 import { htmlToPlainText } from '../utils/text';
@@ -442,43 +420,28 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
           style={{
             padding: '14px 18px',
             marginBottom: '24px',
-            borderRadius: '10px',
+            borderRadius: 'var(--radius-md)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: feedback.type === 'success' ? '#ecfdf5' : '#fef2f2',
-            border: `1px solid ${feedback.type === 'success' ? '#a7f3d0' : '#fecaca'}`,
-            color: feedback.type === 'success' ? '#065f46' : '#991b1b',
+            background: feedback.type === 'success' ? 'var(--success-light)' : 'var(--danger-light)',
+            border: `1px solid ${feedback.type === 'success' ? 'var(--success-border)' : 'var(--danger-border)'}`,
+            color: feedback.type === 'success' ? 'var(--success-strong)' : 'var(--danger-strong)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {feedback.type === 'success' ? <CheckCircle2 size={20} /> : <AlertCircle size={20} />}
             <div>
-              <div style={{ fontWeight: 700, fontSize: '14px' }}>{feedback.message}</div>
+              <div style={{ fontWeight: 700, fontSize: 'var(--fs-md)' }}>{feedback.message}</div>
               {feedback.purchase && (
-                <div style={{ fontSize: '12px', marginTop: '4px', opacity: 0.9 }}>
+                <div style={{ fontSize: 'var(--fs-sm)', marginTop: '4px', opacity: 0.9 }}>
                   Request ID: {feedback.purchase.purchaseId || feedback.purchase.transactionId} • Total Amount: ₹
                   {feedback.purchase.totalAmount?.toLocaleString()}
                 </div>
               )}
               {feedback.type === 'success' && onNavigate && (
                 <button
-                  onClick={() => onNavigate('purchase-requests')}
-                  style={{
-                    marginTop: '8px',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 12px',
-                    background: '#059669',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
+                  onClick={() => onNavigate('purchase-requests')} className="btn btn-success btn-sm" style={{ marginTop: '8px' }}>
                   <Clock size={13} />
                   <span>Track in Purchase Requests</span>
                   <ArrowRight size={13} />
@@ -499,19 +462,19 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
       {/* VIEW PRODUCT LOADING STATE                               */}
       {/* ======================================================== */}
       {productLoading && (
-        <div style={{ padding: '80px 20px', textAlign: 'center', color: '#64748b' }}>
+        <div style={{ padding: '80px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
           <div
             style={{
               width: '40px',
               height: '40px',
-              border: '3px solid #cbd5e1',
-              borderTopColor: '#1d72fe',
+              border: '3px solid var(--border-strong)',
+              borderTopColor: 'var(--primary)',
               borderRadius: '50%',
               animation: 'spin 0.8s linear infinite',
               margin: '0 auto 16px',
             }}
           />
-          <p style={{ fontWeight: 600, fontSize: '15px', color: '#334155' }}>Loading product details...</p>
+          <p style={{ fontWeight: 600, fontSize: 'var(--fs-lg)', color: 'var(--text-body)' }}>Loading product details...</p>
         </div>
       )}
 
@@ -534,45 +497,29 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
               <button
                 type="button"
-                onClick={handleBackToProducts}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '9px 18px',
-                  background: '#ffffff',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '8px',
-                  color: '#1e293b',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
-                  transition: 'all 0.15s ease',
-                }}
-              >
+                onClick={handleBackToProducts} className="btn btn-secondary">
                 <ArrowLeft size={16} /> Back to Products
               </button>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#64748b', fontSize: '13px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-muted)', fontSize: 'var(--fs-base)' }}>
                 <span
-                  style={{ cursor: 'pointer', color: '#2563eb', fontWeight: 600 }}
+                  style={{ cursor: 'pointer', color: 'var(--primary)', fontWeight: 600 }}
                   onClick={handleBackToProducts}
                 >
                   Store
                 </span>
-                <ChevronRight size={14} color="#94a3b8" />
-                <span style={{ fontWeight: 600, color: '#334155' }}>{productCategoryName}</span>
+                <ChevronRight size={14} color="var(--text-light)" />
+                <span style={{ fontWeight: 600, color: 'var(--text-body)' }}>{productCategoryName}</span>
                 {productSubcategoryName && (
                   <>
-                    <ChevronRight size={14} color="#94a3b8" />
-                    <span style={{ fontWeight: 600, color: '#0284c7' }}>{productSubcategoryName}</span>
+                    <ChevronRight size={14} color="var(--text-light)" />
+                    <span style={{ fontWeight: 600, color: 'var(--info)' }}>{productSubcategoryName}</span>
                   </>
                 )}
-                <ChevronRight size={14} color="#94a3b8" />
+                <ChevronRight size={14} color="var(--text-light)" />
                 <span
                   style={{
-                    color: '#0f172a',
+                    color: 'var(--text-main)',
                     fontWeight: 700,
                     maxWidth: '300px',
                     overflow: 'hidden',
@@ -587,21 +534,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
 
             {/* Quick Cart Trigger */}
             <button
-              onClick={() => setIsCartOpen(true)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                background: '#1d72fe',
-                color: '#fff',
-                padding: '10px 18px',
-                borderRadius: '8px',
-                fontWeight: 700,
-                border: 'none',
-                cursor: 'pointer',
-                boxShadow: '0 2px 8px rgba(29, 114, 254, 0.3)',
-              }}
-            >
+              onClick={() => setIsCartOpen(true)} className="btn btn-primary">
               <ShoppingCart size={18} />
               <span>Cart ({cartItemCount})</span>
               {cartTotalAmount > 0 && (
@@ -609,8 +542,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   style={{
                     background: 'rgba(255,255,255,0.2)',
                     padding: '2px 8px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
+                    borderRadius: 'var(--radius-lg)',
+                    fontSize: 'var(--fs-sm)',
                   }}
                 >
                   ₹{cartTotalAmount.toLocaleString()}
@@ -623,9 +556,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
           <div
             className="dashboard-card"
             style={{
-              background: '#ffffff',
-              borderRadius: '16px',
-              border: '1px solid #e2e8f0',
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-color)',
               padding: '36px',
               boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.06)',
               marginBottom: '32px',
@@ -647,9 +580,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     position: 'relative',
                     width: '100%',
                     height: '420px',
-                    borderRadius: '14px',
-                    background: '#f8fafc',
-                    border: '1px solid #e2e8f0',
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'var(--surface-subtle)',
+                    border: '1px solid var(--border-color)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -669,20 +602,20 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                       }}
                     />
                   ) : (
-                    <ImageIcon size={64} color="#cbd5e1" />
+                    <ImageIcon size={64} color="var(--text-disabled)" />
                   )}
 
                   {/* Floating Top Badges */}
                   <div style={{ position: 'absolute', top: '14px', left: '14px', display: 'flex', gap: '8px' }}>
                     <span
                       style={{
-                        background: '#eff6ff',
-                        color: '#1d4ed8',
+                        background: 'var(--primary-light)',
+                        color: 'var(--primary-hover)',
                         fontWeight: 800,
                         padding: '6px 12px',
-                        borderRadius: '8px',
-                        fontSize: '13px',
-                        border: '1px solid #bfdbfe',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: 'var(--fs-base)',
+                        border: '1px solid var(--primary-border)',
                         boxShadow: '0 2px 6px rgba(0,0,0,0.06)',
                       }}
                     >
@@ -691,13 +624,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     {productSavings > 0 && (
                       <span
                         style={{
-                          background: '#ecfdf5',
-                          color: '#059669',
+                          background: 'var(--success-light)',
+                          color: 'var(--success)',
                           fontWeight: 800,
                           padding: '6px 12px',
-                          borderRadius: '8px',
-                          fontSize: '13px',
-                          border: '1px solid #a7f3d0',
+                          borderRadius: 'var(--radius-md)',
+                          fontSize: 'var(--fs-base)',
+                          border: '1px solid var(--success-border)',
                         }}
                       >
                         SAVE ₹{productSavings.toLocaleString()}
@@ -708,13 +641,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   <div style={{ position: 'absolute', top: '14px', right: '14px' }}>
                     <span
                       style={{
-                        fontSize: '12px',
+                        fontSize: 'var(--fs-sm)',
                         fontWeight: 700,
                         padding: '5px 12px',
-                        borderRadius: '8px',
-                        background: isProductOutOfStock ? '#fef2f2' : '#ecfdf5',
-                        color: isProductOutOfStock ? '#dc2626' : '#16a34a',
-                        border: `1px solid ${isProductOutOfStock ? '#fecaca' : '#a7f3d0'}`,
+                        borderRadius: 'var(--radius-md)',
+                        background: isProductOutOfStock ? 'var(--danger-light)' : 'var(--success-light)',
+                        color: isProductOutOfStock ? 'var(--danger)' : 'var(--success)',
+                        border: `1px solid ${isProductOutOfStock ? 'var(--danger-border)' : 'var(--success-border)'}`,
                       }}
                     >
                       {isProductOutOfStock ? 'Out of Stock' : 'In Stock'}
@@ -733,23 +666,23 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         style={{
                           width: '74px',
                           height: '74px',
-                          borderRadius: '10px',
+                          borderRadius: 'var(--radius-md)',
                           overflow: 'hidden',
-                          border: activeImageIdx === i ? '2.5px solid #2563eb' : '1px solid #cbd5e1',
-                          background: '#fff',
+                          border: activeImageIdx === i ? '2.5px solid var(--primary)' : '1px solid var(--border-strong)',
+                          background: 'var(--surface)',
                           padding: '2px',
                           cursor: 'pointer',
                           flexShrink: 0,
                           transition: 'all 0.15s ease',
                           transform: activeImageIdx === i ? 'scale(1.03)' : 'scale(1)',
-                          boxShadow: activeImageIdx === i ? '0 4px 12px rgba(37, 99, 235, 0.2)' : 'none',
+                          boxShadow: activeImageIdx === i ? 'none' : 'none',
                         }}
                       >
                         <img
                           src={getAssetUrl(img.url)}
                           referrerPolicy="no-referrer"
                           alt={img.alt || ''}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '6px' }}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
                           onError={(e) => {
                             retryWithImageFallback(e.currentTarget);
                           }}
@@ -767,26 +700,26 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     gap: '10px',
                     marginTop: '20px',
                     padding: '16px',
-                    background: '#f8fafc',
-                    borderRadius: '12px',
-                    border: '1px solid #f1f5f9',
+                    background: 'var(--surface-subtle)',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--border-light)',
                     textAlign: 'center',
                   }}
                 >
                   <div>
-                    <ShieldCheck size={20} color="#10b981" style={{ margin: '0 auto 4px' }} />
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>100% Genuine</div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Certified Herbal</div>
+                    <ShieldCheck size={20} color="var(--success)" style={{ margin: '0 auto 4px' }} />
+                    <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-body)' }}>100% Genuine</div>
+                    <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-light)' }}>Certified Herbal</div>
                   </div>
                   <div>
-                    <Sparkles size={20} color="#2563eb" style={{ margin: '0 auto 4px' }} />
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>Instant BV</div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Binary Credited</div>
+                    <Sparkles size={20} color="var(--primary)" style={{ margin: '0 auto 4px' }} />
+                    <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-body)' }}>Instant BV</div>
+                    <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-light)' }}>Binary Credited</div>
                   </div>
                   <div>
-                    <Package size={20} color="#8b5cf6" style={{ margin: '0 auto 4px' }} />
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155' }}>Safe Packaging</div>
-                    <div style={{ fontSize: '10px', color: '#94a3b8' }}>Fast Dispatch</div>
+                    <Package size={20} color="var(--accent)" style={{ margin: '0 auto 4px' }} />
+                    <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-body)' }}>Safe Packaging</div>
+                    <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-light)' }}>Fast Dispatch</div>
                   </div>
                 </div>
               </div>
@@ -797,11 +730,11 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
                   <span
                     style={{
-                      background: '#f1f5f9',
-                      color: '#475569',
+                      background: 'var(--surface-muted)',
+                      color: 'var(--text-secondary)',
                       padding: '4px 10px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: 'var(--fs-sm)',
                       fontWeight: 700,
                     }}
                   >
@@ -810,11 +743,11 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   {productSubcategoryName && (
                     <span
                       style={{
-                        background: '#e0f2fe',
-                        color: '#0369a1',
+                        background: 'var(--info-soft)',
+                        color: 'var(--info-strong)',
                         padding: '4px 10px',
-                        borderRadius: '6px',
-                        fontSize: '12px',
+                        borderRadius: 'var(--radius-sm)',
+                        fontSize: 'var(--fs-sm)',
                         fontWeight: 700,
                       }}
                     >
@@ -823,13 +756,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   )}
                   <span
                     style={{
-                      background: '#faf5ff',
-                      color: '#7e22ce',
+                      background: 'var(--accent-light)',
+                      color: 'var(--accent-hover)',
                       padding: '4px 10px',
-                      borderRadius: '6px',
-                      fontSize: '12px',
+                      borderRadius: 'var(--radius-sm)',
+                      fontSize: 'var(--fs-sm)',
                       fontWeight: 700,
-                      border: '1px solid #f3e8ff',
+                      border: '1px solid var(--accent-light)',
                     }}
                   >
                     SKU: {viewProduct.sku}
@@ -839,9 +772,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 {/* Product Title */}
                 <h1
                   style={{
-                    fontSize: '28px',
+                    fontSize: 'var(--fs-4xl)',
                     fontWeight: 800,
-                    color: '#0f172a',
+                    color: 'var(--text-main)',
                     marginBottom: '10px',
                     lineHeight: '1.3',
                   }}
@@ -851,14 +784,14 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
 
                 {/* Brand name if available */}
                 {viewProduct.brand && (
-                  <div style={{ fontSize: '13px', color: '#64748b', marginBottom: '12px' }}>
-                    Brand: <strong style={{ color: '#1e293b' }}>{viewProduct.brand}</strong>
+                  <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', marginBottom: '12px' }}>
+                    Brand: <strong style={{ color: 'var(--text-strong)' }}>{viewProduct.brand}</strong>
                   </div>
                 )}
 
                 {/* Short description */}
                 {viewProduct.shortDescription && (
-                  <p style={{ fontSize: '14px', color: '#475569', lineHeight: '1.6', marginBottom: '24px' }}>
+                  <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-secondary)', lineHeight: '1.6', marginBottom: '24px' }}>
                     {htmlToPlainText(viewProduct.shortDescription)}
                   </p>
                 )}
@@ -866,10 +799,10 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 {/* Price & Business Volume Highlight Box */}
                 <div
                   style={{
-                    background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
+                    background: 'var(--surface-subtle)',
                     padding: '24px',
-                    borderRadius: '14px',
-                    border: '1px solid #dbeafe',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--primary-soft)',
                     marginBottom: '24px',
                     display: 'flex',
                     justifyContent: 'space-between',
@@ -880,30 +813,30 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 >
                   <div>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '12px' }}>
-                      <span style={{ fontSize: '32px', fontWeight: 900, color: '#0f172a' }}>
+                      <span style={{ fontSize: '32px', fontWeight: 900, color: 'var(--text-main)' }}>
                         ₹{viewProduct.price?.toLocaleString()}
                       </span>
                       {viewProduct.mrp && viewProduct.mrp > viewProduct.price && (
-                        <span style={{ fontSize: '16px', color: '#94a3b8', textDecoration: 'line-through' }}>
+                        <span style={{ fontSize: 'var(--fs-lg)', color: 'var(--text-light)', textDecoration: 'line-through' }}>
                           MRP ₹{viewProduct.mrp?.toLocaleString()}
                         </span>
                       )}
                       {productSavings > 0 && viewProduct.mrp && (
                         <span
                           style={{
-                            background: '#10b981',
-                            color: '#fff',
-                            fontSize: '11px',
+                            background: 'var(--success)',
+                            color: 'var(--text-inverse)',
+                            fontSize: 'var(--fs-xs)',
                             fontWeight: 800,
                             padding: '3px 8px',
-                            borderRadius: '6px',
+                            borderRadius: 'var(--radius-sm)',
                           }}
                         >
                           {Math.round((productSavings / viewProduct.mrp) * 100)}% OFF
                         </span>
                       )}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                    <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: '4px' }}>
                       Inclusive of all applicable taxes
                     </div>
                   </div>
@@ -914,35 +847,35 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         display: 'inline-flex',
                         alignItems: 'center',
                         gap: '6px',
-                        background: '#2563eb',
-                        color: '#ffffff',
+                        background: 'var(--primary)',
+                        color: 'var(--text-inverse)',
                         fontWeight: 800,
                         padding: '6px 14px',
-                        borderRadius: '8px',
-                        fontSize: '16px',
-                        boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: 'var(--fs-lg)',
+                        boxShadow: 'none',
                       }}
                     >
                       <Sparkles size={16} /> {productBV.toLocaleString()} BV
                     </div>
-                    <div style={{ fontSize: '11.5px', color: '#1d4ed8', fontWeight: 600, marginTop: '4px' }}>
+                    <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--primary-hover)', fontWeight: 600, marginTop: '4px' }}>
                       Credited directly to binary volume
                     </div>
                   </div>
                 </div>
 
                 {/* Stock Status */}
-                <div style={{ marginBottom: '24px', fontSize: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span style={{ fontWeight: 600, color: '#334155' }}>Availability:</span>
+                <div style={{ marginBottom: '24px', fontSize: 'var(--fs-md)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontWeight: 600, color: 'var(--text-body)' }}>Availability:</span>
                   {isProductOutOfStock ? (
                     <span
                       style={{
                         fontWeight: 700,
-                        color: '#dc2626',
-                        background: '#fef2f2',
+                        color: 'var(--danger)',
+                        background: 'var(--danger-light)',
                         padding: '3px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #fecaca',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--danger-border)',
                       }}
                     >
                       Currently Out of Stock
@@ -951,11 +884,11 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     <span
                       style={{
                         fontWeight: 700,
-                        color: '#16a34a',
-                        background: '#ecfdf5',
+                        color: 'var(--success)',
+                        background: 'var(--success-light)',
                         padding: '3px 10px',
-                        borderRadius: '6px',
-                        border: '1px solid #a7f3d0',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--success-border)',
                       }}
                     >
                       {productStock} units in stock
@@ -967,36 +900,32 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 {!isProductOutOfStock ? (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '24px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
-                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#334155' }}>Quantity:</div>
+                      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-body)' }}>Quantity:</div>
                       <div
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
-                          border: '1px solid #cbd5e1',
-                          borderRadius: '8px',
+                          border: '1px solid var(--border-strong)',
+                          borderRadius: 'var(--radius-md)',
                           overflow: 'hidden',
-                          background: '#fff',
+                          background: 'var(--surface)',
                         }}
                       >
                         <button
                           type="button"
-                          onClick={() => setDetailQty(Math.max(1, detailQty - 1))}
-                          style={{ padding: '10px 14px', background: '#f8fafc', border: 'none', cursor: 'pointer', color: '#334155' }}
-                        >
+                          onClick={() => setDetailQty(Math.max(1, detailQty - 1))} className="btn btn-secondary">
                           <Minus size={15} />
                         </button>
-                        <span style={{ padding: '10px 20px', fontWeight: 800, fontSize: '15px', color: '#0f172a' }}>
+                        <span style={{ padding: '10px 20px', fontWeight: 800, fontSize: 'var(--fs-lg)', color: 'var(--text-main)' }}>
                           {detailQty}
                         </span>
                         <button
                           type="button"
-                          onClick={() => setDetailQty(Math.min(productStock, detailQty + 1))}
-                          style={{ padding: '10px 14px', background: '#f8fafc', border: 'none', cursor: 'pointer', color: '#334155' }}
-                        >
+                          onClick={() => setDetailQty(Math.min(productStock, detailQty + 1))} className="btn btn-secondary">
                           <Plus size={15} />
                         </button>
                       </div>
-                      <span style={{ fontSize: '12px', color: '#64748b' }}>
+                      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                         Subtotal: <strong>₹{(viewProduct.price * detailQty).toLocaleString()}</strong> (+{(productBV * detailQty).toLocaleString()} BV)
                       </span>
                     </div>
@@ -1004,47 +933,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginTop: '6px' }}>
                       <button
                         type="button"
-                        onClick={() => handleAddToCart(viewProduct, detailQty)}
-                        style={{
-                          padding: '14px 20px',
-                          background: '#1d72fe',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '10px',
-                          fontSize: '14px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                          boxShadow: '0 4px 14px rgba(29, 114, 254, 0.3)',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
+                        onClick={() => handleAddToCart(viewProduct, detailQty)} className="btn btn-primary">
                         <ShoppingCart size={18} /> Add {detailQty} to Cart
                       </button>
 
                       <button
                         type="button"
-                        onClick={() => handleBuyNow(viewProduct, detailQty)}
-                        style={{
-                          padding: '14px 20px',
-                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                          color: '#ffffff',
-                          border: 'none',
-                          borderRadius: '10px',
-                          fontSize: '14px',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          gap: '8px',
-                          boxShadow: '0 4px 14px rgba(16, 185, 129, 0.3)',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
+                        onClick={() => handleBuyNow(viewProduct, detailQty)} className="btn btn-success">
                         <ArrowRight size={18} /> Buy Now
                       </button>
                     </div>
@@ -1053,12 +948,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   <div
                     style={{
                       padding: '16px',
-                      background: '#fef2f2',
-                      border: '1px solid #fecaca',
-                      borderRadius: '10px',
-                      color: '#991b1b',
+                      background: 'var(--danger-light)',
+                      border: '1px solid var(--danger-border)',
+                      borderRadius: 'var(--radius-md)',
+                      color: 'var(--danger-strong)',
                       marginBottom: '24px',
-                      fontSize: '13px',
+                      fontSize: 'var(--fs-base)',
                     }}
                   >
                     This item is currently sold out. Please browse other products in the store.
@@ -1072,9 +967,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
           <div
             className="dashboard-card"
             style={{
-              background: '#ffffff',
-              borderRadius: '16px',
-              border: '1px solid #e2e8f0',
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-color)',
               padding: '32px',
               marginBottom: '32px',
               boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)',
@@ -1082,12 +977,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
           >
             <h3
               style={{
-                fontSize: '18px',
+                fontSize: 'var(--fs-xl)',
                 fontWeight: 800,
-                color: '#0f172a',
+                color: 'var(--text-main)',
                 marginBottom: '16px',
                 paddingBottom: '12px',
-                borderBottom: '1px solid #f1f5f9',
+                borderBottom: '1px solid var(--border-light)',
               }}
             >
               Product Details & Directions
@@ -1095,9 +990,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
 
             <div
               style={{
-                fontSize: '14px',
+                fontSize: 'var(--fs-md)',
                 lineHeight: '1.7',
-                color: '#334155',
+                color: 'var(--text-body)',
               }}
               dangerouslySetInnerHTML={{
                 __html: viewProduct.description || '<em>No additional description provided.</em>',
@@ -1109,9 +1004,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
           <div
             className="dashboard-card"
             style={{
-              background: '#ffffff',
-              borderRadius: '16px',
-              border: '1px solid #e2e8f0',
+              background: 'var(--surface)',
+              borderRadius: 'var(--radius-lg)',
+              border: '1px solid var(--border-color)',
               padding: '32px',
               marginBottom: '32px',
               boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.04)',
@@ -1119,12 +1014,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
           >
             <h3
               style={{
-                fontSize: '18px',
+                fontSize: 'var(--fs-xl)',
                 fontWeight: 800,
-                color: '#0f172a',
+                color: 'var(--text-main)',
                 marginBottom: '18px',
                 paddingBottom: '12px',
-                borderBottom: '1px solid #f1f5f9',
+                borderBottom: '1px solid var(--border-light)',
               }}
             >
               Specifications & Parameters
@@ -1137,36 +1032,36 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 gap: '16px',
               }}
             >
-              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>SKU Code</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>{viewProduct.sku}</div>
+              <div style={{ padding: '14px', background: 'var(--surface-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: 'var(--fs-xs)', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>SKU Code</div>
+                <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-main)', marginTop: '4px' }}>{viewProduct.sku}</div>
               </div>
 
-              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Category</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>{productCategoryName}</div>
+              <div style={{ padding: '14px', background: 'var(--surface-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: 'var(--fs-xs)', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Category</div>
+                <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-main)', marginTop: '4px' }}>{productCategoryName}</div>
               </div>
 
-              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Subcategory</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>{productSubcategoryName || 'General'}</div>
+              <div style={{ padding: '14px', background: 'var(--surface-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: 'var(--fs-xs)', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Subcategory</div>
+                <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-main)', marginTop: '4px' }}>{productSubcategoryName || 'General'}</div>
               </div>
 
-              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Business Volume (BV)</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#2563eb', marginTop: '4px' }}>{productBV.toLocaleString()} BV</div>
+              <div style={{ padding: '14px', background: 'var(--surface-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: 'var(--fs-xs)', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Business Volume (BV)</div>
+                <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--primary)', marginTop: '4px' }}>{productBV.toLocaleString()} BV</div>
               </div>
 
-              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Inventory Status</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: isProductOutOfStock ? '#dc2626' : '#16a34a', marginTop: '4px' }}>
+              <div style={{ padding: '14px', background: 'var(--surface-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: 'var(--fs-xs)', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Inventory Status</div>
+                <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: isProductOutOfStock ? 'var(--danger)' : 'var(--success)', marginTop: '4px' }}>
                   {isProductOutOfStock ? 'Out of Stock' : `${productStock} in stock`}
                 </div>
               </div>
 
-              <div style={{ padding: '14px', background: '#f8fafc', borderRadius: '10px', border: '1px solid #f1f5f9' }}>
-                <div style={{ fontSize: '11px', textTransform: 'uppercase', color: '#64748b', fontWeight: 700 }}>Direct Selling Eligibility</div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '4px' }}>Binary & Repurchase Bonus</div>
+              <div style={{ padding: '14px', background: 'var(--surface-subtle)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-light)' }}>
+                <div style={{ fontSize: 'var(--fs-xs)', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 700 }}>Direct Selling Eligibility</div>
+                <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-main)', marginTop: '4px' }}>Binary & Repurchase Bonus</div>
               </div>
             </div>
           </div>
@@ -1175,21 +1070,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
           {relatedProducts.length > 0 && (
             <div style={{ marginTop: '12px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-                <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#0f172a' }}>
+                <h3 className="section-title">
                   More Products in {productCategoryName}
                 </h3>
                 <button
                   type="button"
-                  onClick={handleBackToProducts}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#2563eb',
-                    fontWeight: 700,
-                    fontSize: '13px',
-                    cursor: 'pointer',
-                  }}
-                >
+                  onClick={handleBackToProducts} className="link-btn">
                   View All Products →
                 </button>
               </div>
@@ -1208,49 +1094,38 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                       style={{
                         padding: 0,
                         overflow: 'hidden',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid var(--border-color)',
                         display: 'flex',
                         flexDirection: 'column',
                       }}
                     >
                       <div
-                        style={{ height: '170px', background: '#f8fafc', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                        style={{ height: '170px', background: 'var(--surface-subtle)', overflow: 'hidden', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                         onClick={() => handleOpenProduct(relProd)}
                       >
                         {relImg?.url ? (
                           <img src={getAssetUrl(relImg.url)} referrerPolicy="no-referrer" alt={relProd.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { retryWithImageFallback(e.currentTarget); }} />
                         ) : (
-                          <ImageIcon size={36} color="#cbd5e1" />
+                          <ImageIcon size={36} color="var(--text-disabled)" />
                         )}
                       </div>
 
                       <div style={{ padding: '14px', flex: 1, display: 'flex', flexDirection: 'column' }}>
                         <h4
                           onClick={() => handleOpenProduct(relProd)}
-                          style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '6px', cursor: 'pointer', lineHeight: '1.3' }}
+                          style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-main)', marginBottom: '6px', cursor: 'pointer', lineHeight: '1.3' }}
                         >
                           {relProd.title || relProd.name}
                         </h4>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginTop: 'auto', paddingTop: '10px' }}>
-                          <span style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>₹{relProd.price?.toLocaleString()}</span>
-                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>+{relBV.toLocaleString()} BV</span>
+                          <span style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)' }}>₹{relProd.price?.toLocaleString()}</span>
+                          <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--primary)' }}>+{relBV.toLocaleString()} BV</span>
                         </div>
 
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '12px' }}>
                           <button
                             type="button"
-                            onClick={() => handleOpenProduct(relProd)}
-                            style={{
-                              padding: '6px 10px',
-                              background: '#f8fafc',
-                              color: '#334155',
-                              border: '1px solid #cbd5e1',
-                              borderRadius: '6px',
-                              fontSize: '12px',
-                              fontWeight: 600,
-                              cursor: 'pointer',
-                            }}
-                          >
+                            onClick={() => handleOpenProduct(relProd)} className="btn btn-secondary btn-sm">
                             Details
                           </button>
                           <button
@@ -1259,11 +1134,11 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                             onClick={() => handleAddToCart(relProd, 1)}
                             style={{
                               padding: '6px 10px',
-                              background: relOutOfStock ? '#e2e8f0' : '#1d72fe',
-                              color: relOutOfStock ? '#94a3b8' : '#fff',
+                              background: relOutOfStock ? 'var(--surface-sunken)' : 'var(--primary)',
+                              color: relOutOfStock ? 'var(--text-light)' : 'var(--text-inverse)',
                               border: 'none',
-                              borderRadius: '6px',
-                              fontSize: '12px',
+                              borderRadius: 'var(--radius-sm)',
+                              fontSize: 'var(--fs-sm)',
                               fontWeight: 700,
                               cursor: relOutOfStock ? 'not-allowed' : 'pointer',
                             }}
@@ -1289,27 +1164,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
           {/* Top Banner */}
           <div className="welcome-header" style={{ marginBottom: '24px' }}>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                <span
-                  style={{
-                    background: 'linear-gradient(135deg, #10b981 0%, #0284c7 100%)',
-                    color: 'white',
-                    padding: '3px 10px',
-                    borderRadius: '20px',
-                    fontSize: '11px',
-                    fontWeight: 800,
-                    letterSpacing: '0.5px',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  MEMBER STORE
-                </span>
-                <span style={{ color: '#64748b', fontSize: '13px' }}>
-                  Panchveda Wellness • Ayurvedic & Health Products
-                </span>
-              </div>
-
-              <h1 className="page-title">Products & Repurchase</h1>
+              <h1 className="page-title">Products</h1>
               <p className="page-subtitle">
                 Browse genuine products, earn independent Business Volume (BV) with every purchase, and qualify for
                 repurchase binary team bonuses.
@@ -1319,22 +1174,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
             {/* Floating Cart Button */}
             <div>
               <button
-                onClick={() => setIsCartOpen(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  background: '#1d72fe',
-                  color: '#fff',
-                  padding: '10px 18px',
-                  borderRadius: '8px',
-                  fontWeight: 700,
-                  border: 'none',
-                  cursor: 'pointer',
-                  boxShadow: '0 2px 8px rgba(29, 114, 254, 0.3)',
-                  position: 'relative',
-                }}
-              >
+                onClick={() => setIsCartOpen(true)} className="btn btn-primary" style={{ position: 'relative' }}>
                 <ShoppingCart size={18} />
                 <span>Cart ({cartItemCount})</span>
                 {cartTotalAmount > 0 && (
@@ -1342,8 +1182,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     style={{
                       background: 'rgba(255,255,255,0.2)',
                       padding: '2px 8px',
-                      borderRadius: '12px',
-                      fontSize: '12px',
+                      borderRadius: 'var(--radius-lg)',
+                      fontSize: 'var(--fs-sm)',
                     }}
                   >
                     ₹{cartTotalAmount.toLocaleString()}
@@ -1368,7 +1208,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
             <div style={{ position: 'relative', flex: 1, minWidth: '260px', maxWidth: '420px' }}>
               <Search
                 size={16}
-                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }}
+                style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }}
               />
               <input
                 type="text"
@@ -1378,10 +1218,10 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 style={{
                   width: '100%',
                   padding: '10px 14px 10px 38px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '13px',
-                  background: '#fff',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  fontSize: 'var(--fs-base)',
+                  background: 'var(--surface)',
                 }}
               />
             </div>
@@ -1395,13 +1235,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 }}
                 style={{
                   padding: '6px 14px',
-                  borderRadius: '20px',
-                  fontSize: '12px',
+                  borderRadius: 'var(--radius-xl)',
+                  fontSize: 'var(--fs-sm)',
                   fontWeight: 600,
                   cursor: 'pointer',
-                  border: selectedCategoryId === 'ALL' ? '1px solid #2563eb' : '1px solid #cbd5e1',
-                  background: selectedCategoryId === 'ALL' ? '#eff6ff' : '#fff',
-                  color: selectedCategoryId === 'ALL' ? '#1d4ed8' : '#64748b',
+                  border: selectedCategoryId === 'ALL' ? '1px solid var(--primary)' : '1px solid var(--border-strong)',
+                  background: selectedCategoryId === 'ALL' ? 'var(--primary-light)' : 'var(--surface)',
+                  color: selectedCategoryId === 'ALL' ? 'var(--primary-hover)' : 'var(--text-muted)',
                 }}
               >
                 All Products
@@ -1418,13 +1258,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     alignItems: 'center',
                     gap: '6px',
                     padding: '6px 14px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
+                    borderRadius: 'var(--radius-xl)',
+                    fontSize: 'var(--fs-sm)',
                     fontWeight: 600,
                     cursor: 'pointer',
-                    border: selectedCategoryId === cat._id ? '1px solid #2563eb' : '1px solid #cbd5e1',
-                    background: selectedCategoryId === cat._id ? '#eff6ff' : '#fff',
-                    color: selectedCategoryId === cat._id ? '#1d4ed8' : '#64748b',
+                    border: selectedCategoryId === cat._id ? '1px solid var(--primary)' : '1px solid var(--border-strong)',
+                    background: selectedCategoryId === cat._id ? 'var(--primary-light)' : 'var(--surface)',
+                    color: selectedCategoryId === cat._id ? 'var(--primary-hover)' : 'var(--text-muted)',
                   }}
                 >
                   {(cat.imageUrl || cat.image) && (
@@ -1454,9 +1294,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
           {selectedCategoryId !== 'ALL' && (
             <div
               style={{
-                background: '#f8fafc',
-                borderRadius: '16px',
-                border: '1.5px solid #e2e8f0',
+                background: 'var(--surface-subtle)',
+                borderRadius: 'var(--radius-lg)',
+                border: '1.5px solid var(--border-color)',
                 padding: '20px',
                 marginBottom: '26px',
               }}
@@ -1471,35 +1311,26 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   gap: '12px',
                   marginBottom: '16px',
                   paddingBottom: '14px',
-                  borderBottom: '1px solid #e2e8f0',
+                  borderBottom: '1px solid var(--border-color)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: '13px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', fontSize: 'var(--fs-base)' }}>
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedCategoryId('ALL');
                       setSelectedSubcategoryId('ALL');
-                    }}
-                    style={{
-                      background: 'transparent',
-                      border: 'none',
-                      color: '#2563eb',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
-                  >
+                    }} className="link-btn">
                     All Categories
                   </button>
-                  <ChevronRight size={14} color="#94a3b8" />
-                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                  <ChevronRight size={14} color="var(--text-light)" />
+                  <span style={{ fontWeight: 700, color: 'var(--text-main)' }}>
                     {categoriesList.find((c) => c._id === selectedCategoryId)?.name || 'Selected Category'}
                   </span>
                   {selectedSubcategoryId !== 'ALL' && (
                     <>
-                      <ChevronRight size={14} color="#94a3b8" />
-                      <span style={{ fontWeight: 700, color: '#0284c7' }}>
+                      <ChevronRight size={14} color="var(--text-light)" />
+                      <span style={{ fontWeight: 700, color: 'var(--info)' }}>
                         {subcategoriesList.find((s) => s._id === selectedSubcategoryId)?.name}
                       </span>
                     </>
@@ -1511,21 +1342,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   onClick={() => {
                     setSelectedCategoryId('ALL');
                     setSelectedSubcategoryId('ALL');
-                  }}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: '#475569',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
+                  }} className="btn btn-secondary btn-sm">
                   <ArrowLeft size={13} />
                   <span>View All Categories</span>
                 </button>
@@ -1533,7 +1350,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
 
               {/* Subcategories Grid */}
               <div style={{ marginBottom: '8px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.04em' }}>
+                <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '12px', letterSpacing: '0.04em' }}>
                   Choose a Subcategory:
                 </div>
 
@@ -1548,23 +1365,23 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   <div
                     onClick={() => setSelectedSubcategoryId('ALL')}
                     style={{
-                      background: selectedSubcategoryId === 'ALL' ? '#eff6ff' : '#ffffff',
-                      border: selectedSubcategoryId === 'ALL' ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                      borderRadius: '12px',
+                      background: selectedSubcategoryId === 'ALL' ? 'var(--primary-light)' : 'var(--surface)',
+                      border: selectedSubcategoryId === 'ALL' ? '2px solid var(--primary)' : '1px solid var(--border-strong)',
+                      borderRadius: 'var(--radius-lg)',
                       padding: '12px',
                       textAlign: 'center',
                       cursor: 'pointer',
                       transition: 'all 0.18s ease',
-                      boxShadow: selectedSubcategoryId === 'ALL' ? '0 4px 12px rgba(37, 99, 235, 0.15)' : 'none',
+                      boxShadow: selectedSubcategoryId === 'ALL' ? 'none' : 'none',
                     }}
                   >
                     <div
                       style={{
                         width: '40px',
                         height: '40px',
-                        borderRadius: '10px',
-                        background: selectedSubcategoryId === 'ALL' ? '#2563eb' : '#f1f5f9',
-                        color: selectedSubcategoryId === 'ALL' ? '#ffffff' : '#475569',
+                        borderRadius: 'var(--radius-md)',
+                        background: selectedSubcategoryId === 'ALL' ? 'var(--primary)' : 'var(--surface-muted)',
+                        color: selectedSubcategoryId === 'ALL' ? 'var(--text-inverse)' : 'var(--text-secondary)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
@@ -1573,10 +1390,10 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     >
                       <Sparkles size={18} />
                     </div>
-                    <div style={{ fontSize: '12px', fontWeight: 700, color: selectedSubcategoryId === 'ALL' ? '#1d4ed8' : '#0f172a' }}>
+                    <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: selectedSubcategoryId === 'ALL' ? 'var(--primary-hover)' : 'var(--text-main)' }}>
                       All Products
                     </div>
-                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                    <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)', marginTop: '2px' }}>
                       Entire Category
                     </div>
                   </div>
@@ -1591,28 +1408,28 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         key={subcat._id}
                         onClick={() => setSelectedSubcategoryId(subcat._id)}
                         style={{
-                          background: isSelected ? '#eff6ff' : '#ffffff',
-                          border: isSelected ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                          borderRadius: '12px',
+                          background: isSelected ? 'var(--primary-light)' : 'var(--surface)',
+                          border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border-strong)',
+                          borderRadius: 'var(--radius-lg)',
                           padding: '12px',
                           textAlign: 'center',
                           cursor: 'pointer',
                           transition: 'all 0.18s ease',
-                          boxShadow: isSelected ? '0 4px 12px rgba(37, 99, 235, 0.15)' : 'none',
+                          boxShadow: isSelected ? 'none' : 'none',
                         }}
                       >
                         <div
                           style={{
                             width: '40px',
                             height: '40px',
-                            borderRadius: '10px',
-                            background: '#f8fafc',
+                            borderRadius: 'var(--radius-md)',
+                            background: 'var(--surface-subtle)',
                             overflow: 'hidden',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
                             margin: '0 auto 8px',
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--border-color)',
                           }}
                         >
                           {subImg ? (
@@ -1627,14 +1444,14 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                               }}
                             />
                           ) : (
-                            <Package size={18} color="#2563eb" />
+                            <Package size={18} color="var(--primary)" />
                           )}
                         </div>
                         <div
                           style={{
-                            fontSize: '12px',
+                            fontSize: 'var(--fs-sm)',
                             fontWeight: 700,
-                            color: isSelected ? '#1d4ed8' : '#0f172a',
+                            color: isSelected ? 'var(--primary-hover)' : 'var(--text-main)',
                             whiteSpace: 'nowrap',
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
@@ -1642,7 +1459,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         >
                           {subcat.name}
                         </div>
-                        <div style={{ fontSize: '10px', color: isSelected ? '#2563eb' : '#64748b', marginTop: '2px' }}>
+                        <div style={{ fontSize: 'var(--fs-2xs)', color: isSelected ? 'var(--primary)' : 'var(--text-muted)', marginTop: '2px' }}>
                           {isSelected ? '✓ Selected' : 'View Products'}
                         </div>
                       </div>
@@ -1665,14 +1482,14 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
             }}
           >
             <div>
-              <h3 style={{ fontSize: '17px', fontWeight: 700, color: '#0f172a', margin: 0 }}>
+              <h3 className="section-title" style={{ margin: 0 }}>
                 {selectedSubcategoryId !== 'ALL'
                   ? `${subcategoriesList.find((s) => s._id === selectedSubcategoryId)?.name || 'Subcategory'} Products`
                   : selectedCategoryId !== 'ALL'
                   ? `All ${categoriesList.find((c) => c._id === selectedCategoryId)?.name || 'Category'} Products`
                   : 'All Available Products'}
               </h3>
-              <p style={{ fontSize: '12px', color: '#64748b', margin: '2px 0 0 0' }}>
+              <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                 Showing {products.length} {products.length === 1 ? 'product' : 'products'} available for purchase
               </p>
             </div>
@@ -1684,18 +1501,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   setSelectedCategoryId('ALL');
                   setSelectedSubcategoryId('ALL');
                   setSearchQuery('');
-                }}
-                style={{
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  color: '#2563eb',
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  padding: '5px 12px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                }}
-              >
+                }} className="btn btn-soft btn-sm">
                 Clear Filters
               </button>
             )}
@@ -1703,13 +1509,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
 
           {/* Products Grid */}
           {loading ? (
-            <div style={{ padding: '60px', textAlign: 'center', color: '#94a3b8' }}>
+            <div style={{ padding: '60px', textAlign: 'center', color: 'var(--text-light)' }}>
               <div
                 style={{
                   width: '32px',
                   height: '32px',
-                  border: '3px solid #cbd5e1',
-                  borderTopColor: '#1d72fe',
+                  border: '3px solid var(--border-strong)',
+                  borderTopColor: 'var(--primary)',
                   borderRadius: '50%',
                   animation: 'spin 0.8s linear infinite',
                   margin: '0 auto 16px',
@@ -1718,12 +1524,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
               <p style={{ fontWeight: 500 }}>Loading active products catalog...</p>
             </div>
           ) : products.length === 0 ? (
-            <div className="dashboard-card" style={{ padding: '60px', textAlign: 'center', color: '#64748b' }}>
-              <ShoppingBag size={48} style={{ color: '#cbd5e1', margin: '0 auto 16px' }} />
-              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1e293b', marginBottom: '6px' }}>
+            <div className="dashboard-card" style={{ padding: '60px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <ShoppingBag size={48} style={{ color: 'var(--text-disabled)', margin: '0 auto 16px' }} />
+              <h3 className="section-title" style={{ marginBottom: '6px' }}>
                 No Active Products Found
               </h3>
-              <p style={{ fontSize: '13px', color: '#94a3b8' }}>
+              <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-light)' }}>
                 There are currently no products matching your filter criteria.
               </p>
             </div>
@@ -1746,7 +1552,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                       overflow: 'hidden',
                       padding: 0,
                       transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid var(--border-color)',
                     }}
                   >
                     {/* Image Banner */}
@@ -1754,7 +1560,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                       style={{
                         position: 'relative',
                         height: '210px',
-                        background: '#f8fafc',
+                        background: 'var(--surface-subtle)',
                         overflow: 'hidden',
                         display: 'flex',
                         alignItems: 'center',
@@ -1775,20 +1581,20 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                           }}
                         />
                       ) : (
-                        <ImageIcon size={48} color="#cbd5e1" />
+                        <ImageIcon size={48} color="var(--text-disabled)" />
                       )}
 
                       {/* Top Badges */}
                       <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '6px' }}>
                         <span
                           style={{
-                            background: '#eff6ff',
-                            color: '#1d4ed8',
-                            fontSize: '11px',
+                            background: 'var(--primary-light)',
+                            color: 'var(--primary-hover)',
+                            fontSize: 'var(--fs-xs)',
                             fontWeight: 800,
                             padding: '3px 8px',
-                            borderRadius: '6px',
-                            border: '1px solid #bfdbfe',
+                            borderRadius: 'var(--radius-sm)',
+                            border: '1px solid var(--primary-border)',
                           }}
                         >
                           {bv.toLocaleString()} BV
@@ -1796,12 +1602,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         {savings > 0 && (
                           <span
                             style={{
-                              background: '#ecfdf5',
-                              color: '#059669',
-                              fontSize: '11px',
+                              background: 'var(--success-light)',
+                              color: 'var(--success)',
+                              fontSize: 'var(--fs-xs)',
                               fontWeight: 700,
                               padding: '3px 8px',
-                              borderRadius: '6px',
+                              borderRadius: 'var(--radius-sm)',
                             }}
                           >
                             SAVE ₹{savings.toLocaleString()}
@@ -1813,13 +1619,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                       <div style={{ position: 'absolute', top: '10px', right: '10px' }}>
                         <span
                           style={{
-                            fontSize: '11px',
+                            fontSize: 'var(--fs-xs)',
                             fontWeight: 700,
                             padding: '3px 8px',
-                            borderRadius: '6px',
-                            background: isOutOfStock ? '#fef2f2' : '#ecfdf5',
-                            color: isOutOfStock ? '#dc2626' : '#16a34a',
-                            border: `1px solid ${isOutOfStock ? '#fecaca' : '#a7f3d0'}`,
+                            borderRadius: 'var(--radius-sm)',
+                            background: isOutOfStock ? 'var(--danger-light)' : 'var(--success-light)',
+                            color: isOutOfStock ? 'var(--danger)' : 'var(--success)',
+                            border: `1px solid ${isOutOfStock ? 'var(--danger-border)' : 'var(--success-border)'}`,
                           }}
                         >
                           {isOutOfStock ? 'Out of Stock' : 'In Stock'}
@@ -1830,12 +1636,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     {/* Card Body */}
                     <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flex: 1 }}>
                       {/* Category / Subcategory */}
-                      <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600, marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
                         <span>
                           {typeof prod.categoryId === 'object' && prod.categoryId?.name ? prod.categoryId.name : (prod.category || 'General')}
                         </span>
                         {(prod.subcategoryId && typeof prod.subcategoryId === 'object' ? prod.subcategoryId.name : prod.subcategory) && (
-                          <span style={{ color: '#0284c7' }}>
+                          <span style={{ color: 'var(--info)' }}>
                             • {typeof prod.subcategoryId === 'object' ? prod.subcategoryId.name : prod.subcategory}
                           </span>
                         )}
@@ -1844,9 +1650,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                       {/* Product Title */}
                       <h3
                         style={{
-                          fontSize: '15px',
+                          fontSize: 'var(--fs-lg)',
                           fontWeight: 700,
-                          color: '#0f172a',
+                          color: 'var(--text-main)',
                           marginBottom: '6px',
                           lineHeight: '1.4',
                           cursor: 'pointer',
@@ -1859,8 +1665,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                       {/* Short description */}
                       <p
                         style={{
-                          fontSize: '12px',
-                          color: '#64748b',
+                          fontSize: 'var(--fs-sm)',
+                          color: 'var(--text-muted)',
                           lineHeight: '1.4',
                           marginBottom: '14px',
                           flex: 1,
@@ -1881,21 +1687,21 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                           justifyContent: 'space-between',
                           marginBottom: '14px',
                           paddingTop: '10px',
-                          borderTop: '1px solid #f1f5f9',
+                          borderTop: '1px solid var(--border-light)',
                         }}
                       >
                         <div>
-                          <span style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a' }}>
+                          <span style={{ fontSize: 'var(--fs-xl)', fontWeight: 800, color: 'var(--text-main)' }}>
                             ₹{prod.price?.toLocaleString()}
                           </span>
                           {prod.mrp && prod.mrp > prod.price && (
-                            <span style={{ fontSize: '12px', color: '#94a3b8', textDecoration: 'line-through', marginLeft: '6px' }}>
+                            <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-light)', textDecoration: 'line-through', marginLeft: '6px' }}>
                               ₹{prod.mrp?.toLocaleString()}
                             </span>
                           )}
                         </div>
 
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>
+                        <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--primary)' }}>
                           +{bv.toLocaleString()} BV
                         </div>
                       </div>
@@ -1904,22 +1710,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
                         <button
                           type="button"
-                          onClick={() => handleOpenProduct(prod)}
-                          style={{
-                            padding: '8px 12px',
-                            background: '#f8fafc',
-                            color: '#475569',
-                            border: '1px solid #cbd5e1',
-                            borderRadius: '6px',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                          }}
-                        >
+                          onClick={() => handleOpenProduct(prod)} className="btn btn-secondary btn-sm">
                           <Eye size={14} /> Details
                         </button>
 
@@ -1929,11 +1720,11 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                           onClick={() => handleAddToCart(prod, 1)}
                           style={{
                             padding: '8px 12px',
-                            background: isOutOfStock ? '#e2e8f0' : '#1d72fe',
-                            color: isOutOfStock ? '#94a3b8' : '#fff',
+                            background: isOutOfStock ? 'var(--surface-sunken)' : 'var(--primary)',
+                            color: isOutOfStock ? 'var(--text-light)' : 'var(--text-inverse)',
                             border: 'none',
-                            borderRadius: '6px',
-                            fontSize: '12px',
+                            borderRadius: 'var(--radius-sm)',
+                            fontSize: 'var(--fs-sm)',
                             fontWeight: 700,
                             cursor: isOutOfStock ? 'not-allowed' : 'pointer',
                             display: 'flex',
@@ -1958,44 +1749,25 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
       {/* CART DRAWER                                              */}
       {/* ======================================================== */}
       {isCartOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            justifyContent: 'flex-end',
-            zIndex: 1100,
-          }}
-        >
-          <div
-            style={{
-              width: '420px',
-              maxWidth: '100%',
-              height: '100%',
-              background: '#fff',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '-10px 0 25px -5px rgba(0, 0, 0, 0.1)',
-            }}
-          >
+        <div className="modal-backdrop">
+          <div className="modal modal-legacy" style={{ maxWidth: 420, display: 'flex', flexDirection: 'column' }} role="dialog" aria-modal="true">
             {/* Cart Header */}
             <div
               style={{
                 padding: '20px',
-                borderBottom: '1px solid #e2e8f0',
+                borderBottom: '1px solid var(--border-color)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <ShoppingCart size={20} color="#1d72fe" />
-                <h3 style={{ fontSize: '17px', fontWeight: 800, color: '#0f172a' }}>Your Repurchase Cart</h3>
+                <ShoppingCart size={20} color="var(--primary)" />
+                <h3 className="section-title">Your Repurchase Cart</h3>
               </div>
               <button
                 onClick={() => setIsCartOpen(false)}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 <X size={20} />
               </button>
@@ -2004,12 +1776,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
             {/* Cart Items List */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
               {cart.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '60px 0', color: '#94a3b8' }}>
-                  <ShoppingBag size={48} style={{ color: '#cbd5e1', margin: '0 auto 16px' }} />
-                  <p style={{ fontWeight: 600, fontSize: '15px', color: '#334155', marginBottom: '4px' }}>
+                <div style={{ textAlign: 'center', padding: '60px 0', color: 'var(--text-light)' }}>
+                  <ShoppingBag size={48} style={{ color: 'var(--text-disabled)', margin: '0 auto 16px' }} />
+                  <p style={{ fontWeight: 600, fontSize: 'var(--fs-lg)', color: 'var(--text-body)', marginBottom: '4px' }}>
                     Your cart is empty
                   </p>
-                  <p style={{ fontSize: '13px' }}>Explore the products catalog to add items.</p>
+                  <p style={{ fontSize: 'var(--fs-base)' }}>Explore the products catalog to add items.</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -2025,9 +1797,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                           display: 'flex',
                           gap: '12px',
                           padding: '12px',
-                          borderRadius: '8px',
-                          border: '1px solid #e2e8f0',
-                          background: '#f8fafc',
+                          borderRadius: 'var(--radius-md)',
+                          border: '1px solid var(--border-color)',
+                          background: 'var(--surface-subtle)',
                         }}
                       >
                         {/* Thumbnail */}
@@ -2035,10 +1807,10 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                           style={{
                             width: '60px',
                             height: '60px',
-                            borderRadius: '6px',
+                            borderRadius: 'var(--radius-sm)',
                             overflow: 'hidden',
-                            background: '#fff',
-                            border: '1px solid #e2e8f0',
+                            background: 'var(--surface)',
+                            border: '1px solid var(--border-color)',
                             flexShrink: 0,
                           }}
                         >
@@ -2053,16 +1825,16 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                               }}
                             />
                           ) : (
-                            <ImageIcon size={24} color="#cbd5e1" style={{ margin: '18px auto' }} />
+                            <ImageIcon size={24} color="var(--text-disabled)" style={{ margin: '18px auto' }} />
                           )}
                         </div>
 
                         {/* Info */}
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontWeight: 700, fontSize: '13px', color: '#1e293b', marginBottom: '2px' }}>
+                          <div style={{ fontWeight: 700, fontSize: 'var(--fs-base)', color: 'var(--text-strong)', marginBottom: '2px' }}>
                             {item.product.title || item.product.name}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#2563eb', fontWeight: 700, marginBottom: '6px' }}>
+                          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--primary)', fontWeight: 700, marginBottom: '6px' }}>
                             ₹{item.product.price?.toLocaleString()} • {bv.toLocaleString()} BV
                           </div>
 
@@ -2072,9 +1844,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                               style={{
                                 display: 'flex',
                                 alignItems: 'center',
-                                border: '1px solid #cbd5e1',
-                                borderRadius: '4px',
-                                background: '#fff',
+                                border: '1px solid var(--border-strong)',
+                                borderRadius: 'var(--radius-xs)',
+                                background: 'var(--surface)',
                               }}
                             >
                               <button
@@ -2083,7 +1855,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                               >
                                 <Minus size={11} />
                               </button>
-                              <span style={{ fontSize: '12px', fontWeight: 700, padding: '0 6px' }}>
+                              <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, padding: '0 6px' }}>
                                 {item.quantity}
                               </span>
                               <button
@@ -2096,7 +1868,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
 
                             <button
                               onClick={() => handleRemoveFromCart(prodId)}
-                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#ef4444' }}
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}
                             >
                               <Trash2 size={14} />
                             </button>
@@ -2114,23 +1886,23 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
               <div
                 style={{
                   padding: '20px',
-                  borderTop: '1px solid #e2e8f0',
-                  background: '#f8fafc',
+                  borderTop: '1px solid var(--border-color)',
+                  background: 'var(--surface-subtle)',
                 }}
               >
                 {/* Summary Rows */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '8px' }}>
-                  <span style={{ color: '#64748b' }}>Total Items:</span>
-                  <span style={{ fontWeight: 600, color: '#1e293b' }}>{cartItemCount} units</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-base)', marginBottom: '8px' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Total Items:</span>
+                  <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{cartItemCount} units</span>
                 </div>
 
                 <div
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    fontSize: '14px',
+                    fontSize: 'var(--fs-md)',
                     fontWeight: 700,
-                    color: '#1d4ed8',
+                    color: 'var(--primary-hover)',
                     marginBottom: '8px',
                   }}
                 >
@@ -2142,12 +1914,12 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   style={{
                     display: 'flex',
                     justifyContent: 'space-between',
-                    fontSize: '18px',
+                    fontSize: 'var(--fs-xl)',
                     fontWeight: 800,
-                    color: '#0f172a',
+                    color: 'var(--text-main)',
                     marginBottom: '18px',
                     paddingTop: '8px',
-                    borderTop: '1px dashed #cbd5e1',
+                    borderTop: '1px dashed var(--border-strong)',
                   }}
                 >
                   <span>Payable Amount:</span>
@@ -2169,14 +1941,14 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   style={{
                     width: '100%',
                     padding: '13px',
-                    background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                    color: '#fff',
-                    borderRadius: '10px',
+                    background: 'var(--primary)',
+                    color: 'var(--text-inverse)',
+                    borderRadius: 'var(--radius-md)',
                     fontWeight: 700,
-                    fontSize: '14px',
+                    fontSize: 'var(--fs-md)',
                     border: 'none',
                     cursor: checkoutLoading || cart.length === 0 ? 'not-allowed' : 'pointer',
-                    boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+                    boxShadow: 'none',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -2197,8 +1969,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                     padding: '8px',
                     background: 'none',
                     border: 'none',
-                    color: '#94a3b8',
-                    fontSize: '12px',
+                    color: 'var(--text-light)',
+                    fontSize: 'var(--fs-sm)',
                     cursor: 'pointer',
                   }}
                 >
@@ -2214,34 +1986,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
       {/* ORDER REVIEW & PURCHASE REQUEST CONFIRMATION MODAL       */}
       {/* ======================================================== */}
       {isReviewModalOpen && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(4px)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1050,
-            padding: '16px',
-          }}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              borderRadius: '20px',
-              maxWidth: '600px',
-              width: '100%',
-              maxHeight: '92vh',
-              overflowY: 'auto',
-              padding: '28px',
-              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '20px',
-            }}
-          >
+        <div className="modal-backdrop">
+          <div className="modal modal-legacy" style={{ maxWidth: '600px', padding: 'var(--space-6)', display: 'flex', flexDirection: 'column', gap: '20px' }} role="dialog" aria-modal="true">
             {/* Modal Header */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -2249,9 +1995,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   style={{
                     width: '44px',
                     height: '44px',
-                    borderRadius: '12px',
-                    background: '#eff6ff',
-                    color: '#2563eb',
+                    borderRadius: 'var(--radius-lg)',
+                    background: 'var(--primary-light)',
+                    color: 'var(--primary)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
@@ -2261,10 +2007,10 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   <ShoppingBag size={22} />
                 </div>
                 <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                  <h3 className="section-title" style={{ margin: 0 }}>
                     Review Repurchase Order
                   </h3>
-                  <p style={{ fontSize: '12px', color: '#64748b', margin: '3px 0 0' }}>
+                  <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '3px 0 0' }}>
                     Verify items before submitting your purchase request to Super Admin
                   </p>
                 </div>
@@ -2275,7 +2021,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   setIsCartOpen(true);
                 }}
                 className="icon-btn"
-                style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}
+                style={{ padding: '6px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
               >
                 <X size={20} />
               </button>
@@ -2285,9 +2031,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
             <div>
               <div
                 style={{
-                  fontSize: '12px',
+                  fontSize: 'var(--fs-sm)',
                   fontWeight: 700,
-                  color: '#475569',
+                  color: 'var(--text-secondary)',
                   marginBottom: '8px',
                   textTransform: 'uppercase',
                   letterSpacing: '0.5px',
@@ -2299,9 +2045,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 style={{
                   maxHeight: '220px',
                   overflowY: 'auto',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '12px',
-                  background: '#f8fafc',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
+                  background: 'var(--surface-subtle)',
                   padding: '8px',
                   display: 'flex',
                   flexDirection: 'column',
@@ -2322,9 +2068,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                         alignItems: 'center',
                         justifyContent: 'space-between',
                         padding: '10px 12px',
-                        background: '#ffffff',
-                        borderRadius: '8px',
-                        border: '1px solid #e2e8f0',
+                        background: 'var(--surface)',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-color)',
                         gap: '12px',
                       }}
                     >
@@ -2333,25 +2079,25 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                           style={{
                             width: '42px',
                             height: '42px',
-                            borderRadius: '6px',
+                            borderRadius: 'var(--radius-sm)',
                             overflow: 'hidden',
-                            border: '1px solid #e2e8f0',
-                            background: '#f8fafc',
+                            border: '1px solid var(--border-color)',
+                            background: 'var(--surface-subtle)',
                             flexShrink: 0,
                           }}
                         >
                           {primaryImg?.url ? (
                             <img src={getAssetUrl(primaryImg.url)} referrerPolicy="no-referrer" alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { retryWithImageFallback(e.currentTarget); }} />
                           ) : (
-                            <ImageIcon size={18} color="#cbd5e1" style={{ margin: '12px auto' }} />
+                            <ImageIcon size={18} color="var(--text-disabled)" style={{ margin: '12px auto' }} />
                           )}
                         </div>
                         <div style={{ minWidth: 0 }}>
                           <div
                             style={{
-                              fontSize: '13px',
+                              fontSize: 'var(--fs-base)',
                               fontWeight: 700,
-                              color: '#0f172a',
+                              color: 'var(--text-main)',
                               whiteSpace: 'nowrap',
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
@@ -2360,17 +2106,17 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                           >
                             {item.product.title || item.product.name}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#64748b' }}>
-                            Qty: <strong style={{ color: '#0f172a' }}>{item.quantity}</strong> × ₹{item.product.price.toLocaleString()}
+                          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+                            Qty: <strong style={{ color: 'var(--text-main)' }}>{item.quantity}</strong> × ₹{item.product.price.toLocaleString()}
                           </div>
                         </div>
                       </div>
 
                       <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                        <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a' }}>
+                        <div style={{ fontSize: 'var(--fs-base)', fontWeight: 800, color: 'var(--text-main)' }}>
                           ₹{itemTotal.toLocaleString()}
                         </div>
-                        <div style={{ fontSize: '11px', fontWeight: 700, color: '#2563eb' }}>
+                        <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--primary)' }}>
                           +{bv.toLocaleString()} BV
                         </div>
                       </div>
@@ -2390,51 +2136,51 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
             >
               <div
                 style={{
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '12px',
+                  background: 'var(--surface-subtle)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
                   padding: '12px',
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
                   Total Items
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)', marginTop: '2px' }}>
                   {cartItemCount} Units
                 </div>
               </div>
 
               <div
                 style={{
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  borderRadius: '12px',
+                  background: 'var(--primary-light)',
+                  border: '1px solid var(--primary-border)',
+                  borderRadius: 'var(--radius-lg)',
                   padding: '12px',
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: '10px', color: '#2563eb', fontWeight: 700, textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--primary)', fontWeight: 700, textTransform: 'uppercase' }}>
                   Total Volume
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 800, color: '#1d4ed8', marginTop: '2px' }}>
+                <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--primary-hover)', marginTop: '2px' }}>
                   +{cartTotalBV.toLocaleString()} BV
                 </div>
               </div>
 
               <div
                 style={{
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  borderRadius: '12px',
+                  background: 'var(--surface-subtle)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-lg)',
                   padding: '12px',
                   textAlign: 'center',
                 }}
               >
-                <div style={{ fontSize: '10px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>
+                <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>
                   Payable Total
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)', marginTop: '2px' }}>
                   ₹{cartTotalAmount.toLocaleString()}
                 </div>
               </div>
@@ -2443,9 +2189,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
             {/* Explanation / Multi-Step Pipeline Notice */}
             <div
               style={{
-                background: '#f0f9ff',
-                border: '1px solid #bae6fd',
-                borderRadius: '14px',
+                background: 'var(--info-light)',
+                border: '1px solid var(--info-border)',
+                borderRadius: 'var(--radius-lg)',
                 padding: '14px 16px',
               }}
             >
@@ -2454,9 +2200,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
-                  color: '#0369a1',
+                  color: 'var(--info-strong)',
                   fontWeight: 700,
-                  fontSize: '13px',
+                  fontSize: 'var(--fs-base)',
                   marginBottom: '8px',
                 }}
               >
@@ -2464,13 +2210,13 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 <span>Next Steps in the Purchase Workflow</span>
               </div>
               {paymentMethod === 'BV_WALLET' ? (
-                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#0369a1', lineHeight: '1.6' }}>
+                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: 'var(--fs-sm)', color: 'var(--info-strong)', lineHeight: '1.6' }}>
                   <li>The BV is deducted from your BV Wallet when you submit.</li>
                   <li>Super Admin verifies the order; if it is rejected, the BV returns to your wallet.</li>
                   <li><strong>+{cartTotalBV.toLocaleString()} BV</strong> will be credited to your account upon verification.</li>
                 </ul>
               ) : (
-                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: '12px', color: '#0369a1', lineHeight: '1.6' }}>
+                <ul style={{ margin: 0, paddingLeft: '18px', fontSize: 'var(--fs-sm)', color: 'var(--info-strong)', lineHeight: '1.6' }}>
                   <li>Your request will be submitted directly to Super Admin for approval.</li>
                   <li>Once approved, you will receive company bank account & UPI QR details to make payment.</li>
                   <li>Submit your transaction ID (UTR) after payment for instant admin verification.</li>
@@ -2489,15 +2235,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
 
             {/* Optional Delivery / Order Notes */}
             <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  color: '#64748b',
-                  marginBottom: '4px',
-                  textTransform: 'uppercase',
-                }}
+              <label className="form-label" style={{ display: 'block', marginBottom: 6 }}
               >
                 Delivery Note / Instructions (Optional)
               </label>
@@ -2509,9 +2247,9 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                 style={{
                   width: '100%',
                   padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '13px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  fontSize: 'var(--fs-base)',
                   outline: 'none',
                   boxSizing: 'border-box',
                 }}
@@ -2526,22 +2264,8 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
                   setIsReviewModalOpen(false);
                   setIsCartOpen(true);
                 }}
-                className="outline-btn"
-                style={{
-                  flex: 1,
-                  justifyContent: 'center',
-                  padding: '11px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  borderRadius: '10px',
-                  border: '1.5px solid #cbd5e1',
-                  background: '#fff',
-                  cursor: 'pointer',
-                  color: '#475569',
-                }}
+                className="btn btn-secondary"
+                style={{ flex: 1 }}
               >
                 <ArrowLeft size={16} />
                 <span>Back to Cart</span>
@@ -2550,24 +2274,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
               <button
                 type="button"
                 onClick={handleCheckout}
-                disabled={checkoutLoading}
-                style={{
-                  flex: 1.6,
-                  justifyContent: 'center',
-                  padding: '11px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  borderRadius: '10px',
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                  color: '#fff',
-                  cursor: checkoutLoading ? 'not-allowed' : 'pointer',
-                  boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
-                }}
-              >
+                disabled={checkoutLoading} className="btn btn-primary" style={{ flex: 1.6 }}>
                 <Send size={16} />
                 <span>
                   {checkoutLoading

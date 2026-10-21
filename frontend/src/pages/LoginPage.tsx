@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { api } from '../services/api';
+import { AuthLayout } from '../components/AuthLayout';
+import { Alert, Field } from '../components/ui';
 
 interface LoginPageProps {
   onLoginSuccess: (user: any, token: string) => void;
@@ -45,139 +47,76 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess, onGoToPreR
   };
 
   return (
-    <div className="login-wrapper">
-      {/* Background Ambient Orbs */}
-      <div className="login-orb login-orb-1" />
-      <div className="login-orb login-orb-2" />
+    <AuthLayout
+      title="Sign in"
+      subtitle="Access your member dashboard and earnings."
+      footer={
+        <>
+          New to Panchveda?{' '}
+          <button type="button" className="link-btn" onClick={onGoToPreReg}>
+            Join with a referral
+          </button>
+        </>
+      }
+    >
+      {error && (
+        <Alert tone="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
 
-      <div className="login-card" style={{ maxWidth: '460px' }}>
-        {/* Brand Header */}
-        <div style={{ textAlign: 'center', marginBottom: '22px' }}>
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginBottom: '14px',
-            position: 'relative',
-          }}>
-            <img 
-              src="/logo.png" 
-              alt="Panchveda Wellness" 
-              style={{
-                width: '86px',
-                height: '86px',
-                borderRadius: '50%',
-                objectFit: 'contain',
-                background: '#ffffff',
-                padding: '2px',
-                border: '2px solid rgba(234, 179, 8, 0.45)',
-                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35), 0 0 20px rgba(16, 185, 129, 0.25)',
-              }}
+      <form onSubmit={handleLoginSubmit} className="auth-form" noValidate>
+        <Field label="Email address" htmlFor="login-email">
+          <div className="input-with-icon">
+            <Mail size={18} className="input-icon" aria-hidden="true" />
+            <input
+              id="login-email"
+              type="email"
+              required
+              value={identifier}
+              onChange={(e) => setIdentifier(e.target.value)}
+              placeholder="you@example.com"
+              className="form-input"
+              autoComplete="email"
             />
           </div>
-          <h1 className="login-title">Panchveda Wellness</h1>
-          <p className="login-subtitle">
-            Access your distributor dashboard & compensation ledger
-          </p>
-        </div>
+        </Field>
 
-
-
-        {/* Error Alert */}
-        {error && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '10px',
-            background: 'rgba(239, 68, 68, 0.15)',
-            border: '1px solid rgba(239, 68, 68, 0.3)',
-            color: '#fca5a5',
-            padding: '12px 14px',
-            borderRadius: '10px',
-            fontSize: '13px',
-            fontWeight: 500,
-            marginBottom: '20px'
-          }}>
-            <AlertCircle size={18} color="#ef4444" style={{ flexShrink: 0 }} />
-            <span>{error}</span>
+        <Field label="Password" htmlFor="login-password">
+          <div className="input-with-icon">
+            <Lock size={18} className="input-icon" aria-hidden="true" />
+            <input
+              id="login-password"
+              type={showPassword ? 'text' : 'password'}
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Enter your password"
+              className="form-input has-trailing"
+              autoComplete="current-password"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="input-eye-btn"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
           </div>
-        )}
+        </Field>
 
-        {/* =========================================================================
-            SIGN IN FORM
-            ========================================================================= */}
-        <form onSubmit={handleLoginSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label className="login-label">Email Address</label>
-            <div className="input-with-icon">
-              <Mail size={18} className="input-icon" color="#94a3b8" />
-              <input
-                type="email"
-                required
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                placeholder="e.g. aryan@gmail.com"
-                className="login-input"
-                autoComplete="email"
-              />
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label className="login-label">Password</label>
-            <div className="input-with-icon">
-              <Lock size={18} className="input-icon" color="#94a3b8" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••••••"
-                className="login-input"
-                autoComplete="current-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="input-eye-btn"
-                aria-label="Toggle password visibility"
-              >
-                {showPassword ? <EyeOff size={18} color="#94a3b8" /> : <Eye size={18} color="#94a3b8" />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="login-submit-btn"
-          >
-            {loading ? (
-              <span>Authenticating...</span>
-            ) : (
-              <>
-                <span>Sign In to Platform</span>
-                <ArrowRight size={18} />
-              </>
-            )}
-          </button>
-        </form>
-
-        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '13px', color: '#94a3b8' }}>
-          Don't have an account?{' '}
-          <button
-            type="button"
-            onClick={onGoToPreReg}
-            style={{ color: '#38bdf8', fontWeight: 700, textDecoration: 'underline' }}
-          >
-            Sign Up / Join with Referral
-          </button>
-        </div>
-
-        <div style={{ marginTop: '22px', textAlign: 'center', fontSize: '12px', color: '#64748b' }}>
-          Protected by Enterprise Decimal-Safe Binary Ledger
-        </div>
-      </div>
-    </div>
+        <button type="submit" disabled={loading} className="btn btn-primary btn-lg btn-block" style={{ marginTop: 'var(--space-2)' }}>
+          {loading ? (
+            <>
+              <span className="spinner spinner-sm spinner-inverse" aria-hidden="true" />
+              Signing in…
+            </>
+          ) : (
+            'Sign in'
+          )}
+        </button>
+      </form>
+    </AuthLayout>
   );
 };

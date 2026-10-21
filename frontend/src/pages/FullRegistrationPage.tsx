@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import {
-  User, UserRound, Mail, Phone, Lock, Eye, EyeOff, CheckCircle2, AlertCircle, ArrowLeft,
-  ArrowRight, CheckSquare, Square, Users
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, Eye, EyeOff, Lock, Mail, Phone, User, UserRound, Users } from 'lucide-react';
 import { api } from '../services/api';
+import { AuthLayout } from '../components/AuthLayout';
+import { Alert, Field } from '../components/ui';
 
 interface FullRegistrationPageProps {
   initialData: {
@@ -20,44 +19,6 @@ interface FullRegistrationPageProps {
   onBackToPreReg: () => void;
   onGoToLogin: () => void;
 }
-
-const lockedLabelStyle: React.CSSProperties = {
-  fontSize: '12px',
-  fontWeight: 700,
-  color: '#1e40af',
-  display: 'block',
-  marginBottom: '6px',
-};
-
-const lockedIconStyle: React.CSSProperties = {
-  position: 'absolute',
-  left: '12px',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  color: '#3b82f6',
-};
-
-const lockBadgeStyle: React.CSSProperties = {
-  position: 'absolute',
-  right: '12px',
-  top: '50%',
-  transform: 'translateY(-50%)',
-  color: '#94a3b8',
-};
-
-const lockedInputStyle: React.CSSProperties = {
-  width: '100%',
-  padding: '10px 34px 10px 38px',
-  borderRadius: '8px',
-  border: '1px solid #bfdbfe',
-  background: '#f8fafc',
-  color: '#1e3a8a',
-  fontSize: '13.5px',
-  fontWeight: 800,
-  letterSpacing: '0.5px',
-  outline: 'none',
-  cursor: 'not-allowed',
-};
 
 export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
   initialData,
@@ -219,614 +180,311 @@ export const FullRegistrationPage: React.FC<FullRegistrationPageProps> = ({
   // If successfully registered, show Success Card
   if (successResult) {
     return (
-      <div style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: 'linear-gradient(135deg, #090e1a 0%, #0f172a 50%, #1e293b 100%)',
-        padding: '24px'
-      }}>
-        <div style={{
-          background: '#ffffff',
-          borderRadius: '24px',
-          width: '540px',
-          maxWidth: '100%',
-          padding: '36px 32px',
-          textAlign: 'center',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.45)',
-          border: '1px solid rgba(255, 255, 255, 0.1)'
-        }}>
-          {/* Logo & Green Checkmark Header */}
-          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
-            <img 
-              src="/logo.png" 
-              alt="Panchveda Wellness" 
-              style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover', border: '2px solid #10b981' }} 
-            />
-            <div style={{
-              width: '48px',
-              height: '48px',
-              borderRadius: '50%',
-              background: '#ecfdf5',
-              color: '#10b981',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              boxShadow: '0 8px 16px -4px rgba(16, 185, 129, 0.3)'
-            }}>
-              <CheckCircle2 size={28} />
-            </div>
+      <AuthLayout
+        eyebrow="Registration complete"
+        title="Welcome to Panchveda"
+        subtitle={<>Congratulations, <strong>{successResult.name}</strong>. Your account is active and you can sign in now.</>}
+      >
+        <div className="detail-list" style={{ marginBottom: 'var(--space-5)' }}>
+          <div className="detail-row">
+            <span>Member ID</span>
+            <span style={{ color: 'var(--primary)', fontSize: 'var(--fs-lg)' }}>{successResult.memberId}</span>
           </div>
-
-          <div style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '6px',
-            background: '#ecfdf5',
-            color: '#065f46',
-            fontSize: '12px',
-            fontWeight: 700,
-            padding: '4px 12px',
-            borderRadius: '20px',
-            marginBottom: '14px',
-            border: '1px solid #a7f3d0'
-          }}>
-            🌿 Official Panchveda Member
+          <div className="detail-row">
+            <span>Sponsor</span>
+            <span>{formData.sponsorName} ({formData.sponsorId})</span>
           </div>
-
-          <h2 style={{ fontSize: '23px', fontWeight: 800, color: '#0f172a', margin: '0 0 10px 0', lineHeight: 1.3 }}>
-            Welcome to the Panchveda Wellness Family! 🌿
-          </h2>
-          <p style={{ fontSize: '14px', color: '#475569', margin: '0 0 24px 0', lineHeight: 1.6 }}>
-            Congratulations, <strong style={{ color: '#0f172a' }}>{successResult.name}</strong>! We are thrilled to welcome you to our family. Your account is active and ready for <strong style={{ color: '#16a34a' }}>immediate login</strong> to begin your journey of wellness and prosperity.
-          </p>
-
-          <div style={{
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: '16px',
-            padding: '20px',
-            marginBottom: '20px',
-            textAlign: 'left'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
-              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Assigned Member ID:</span>
-              <span style={{ fontSize: '17px', fontWeight: 800, color: '#1d72fe', letterSpacing: '0.5px' }}>
-                {successResult.memberId}
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9' }}>
-              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Sponsor:</span>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                {formData.sponsorName} ({formData.sponsorId})
-              </span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>Placement:</span>
-              <span style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a' }}>
-                {formData.position} Wing (Activates upon 100 BV)
-              </span>
-            </div>
+          <div className="detail-row">
+            <span>Placement</span>
+            <span>{formData.position} leg · activates at 100 BV</span>
           </div>
-
-          <div style={{
-            background: '#f0fdf4',
-            border: '1px solid #bbf7d0',
-            borderRadius: '12px',
-            padding: '12px 14px',
-            fontSize: '12px',
-            color: '#166534',
-            marginBottom: '24px',
-            textAlign: 'left',
-            lineHeight: 1.5
-          }}>
-            💡 <strong>Next Step:</strong> Sign in with your registered email and password, then open <strong>My Profile → Complete Your KYC</strong> to add your bank, payment and identity details. Once you purchase your first package or product (100 BV), your binary tree position will be officially placed!
-          </div>
-
-          <button
-            onClick={onGoToLogin}
-            style={{
-              width: '100%',
-              padding: '14px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, #1d72fe 0%, #155dfc 100%)',
-              color: '#ffffff',
-              border: 'none',
-              fontWeight: 700,
-              fontSize: '15px',
-              cursor: 'pointer',
-              boxShadow: '0 10px 20px -5px rgba(29, 114, 254, 0.4)',
-              transition: 'transform 0.15s ease'
-            }}
-          >
-            Proceed to Sign In →
-          </button>
         </div>
-      </div>
+
+        <Alert tone="success" title="Next steps">
+          Sign in with your email and password, then open <strong>Profile → Complete Your KYC</strong> to add your bank,
+          payment and identity details. Your binary tree position is placed once you purchase your first package or
+          product (100 BV).
+        </Alert>
+
+        <button type="button" onClick={onGoToLogin} className="btn btn-primary btn-lg btn-block">
+          Continue to sign in
+          <ArrowRight size={18} aria-hidden="true" />
+        </button>
+      </AuthLayout>
     );
   }
 
+  const togglePassword = (shown: boolean, setShown: (v: boolean) => void) => (
+    <button
+      type="button"
+      onClick={() => setShown(!shown)}
+      className="input-eye-btn"
+      aria-label={shown ? 'Hide password' : 'Show password'}
+    >
+      {shown ? <EyeOff size={16} /> : <Eye size={16} />}
+    </button>
+  );
+
   return (
-    <div style={{
-      minHeight: '100vh',
-      background: 'linear-gradient(135deg, #090e1a 0%, #0f172a 50%, #1e293b 100%)',
-      padding: '36px 16px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      overflowX: 'hidden',
-      overflowY: 'auto'
-    }}>
-      <div 
-        className="fullreg-card"
-        style={{
-          background: '#ffffff',
-          borderRadius: '24px',
-          width: '780px',
-          maxWidth: '100%',
-          padding: '36px',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.45)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          boxSizing: 'border-box'
-        }}
-      >
-        {/* Navigation & Header */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-          <button
-            type="button"
-            onClick={onBackToPreReg}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              background: '#f1f5f9',
-              border: 'none',
-              borderRadius: '8px',
-              padding: '8px 14px',
-              color: '#334155',
-              fontWeight: 700,
-              fontSize: '13px',
-              cursor: 'pointer'
-            }}
-          >
-            <ArrowLeft size={16} />
-            <span>Back to Step 1</span>
+    <AuthLayout
+      wide
+      eyebrow="Step 2 of 2"
+      title="Create your account"
+      subtitle="KYC documents can be added from your Profile after you sign in."
+      footer={
+        <>
+          Already have an account?{' '}
+          <button type="button" className="link-btn" onClick={onGoToLogin}>
+            Sign in
           </button>
-
-          <span style={{
-            background: '#e0f2fe',
-            color: '#0369a1',
-            padding: '4px 12px',
-            borderRadius: '20px',
-            fontSize: '11.5px',
-            fontWeight: 700,
-            letterSpacing: '0.5px',
-            textTransform: 'uppercase'
-          }}>
-            Step 2 of 2: Account Details
-          </span>
-        </div>
-
-        <div style={{ marginBottom: '24px' }}>
-          <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: '0 0 6px 0' }}>
-            New Member Registration
-          </h1>
-          <p style={{ fontSize: '13.5px', color: '#64748b', margin: 0 }}>
-            Fill in your details and set a password. KYC documents can be added from your Profile after you sign in.
-          </p>
-        </div>
-
-        {/* Sponsor & Position: set by the referral link, never editable here */}
-        <div style={{
-          background: '#eff6ff',
-          border: '1px solid #bfdbfe',
-          borderRadius: '14px',
-          padding: '14px 18px',
-          marginBottom: '24px'
-        }}>
-          <div className="fullreg-grid-2">
-            <div>
-              <label htmlFor="reg-sponsor-id" style={lockedLabelStyle}>
-                Sponsor ID
-              </label>
-              <div style={{ position: 'relative' }}>
-                <Users size={16} style={lockedIconStyle} />
-                <input
-                  id="reg-sponsor-id"
-                  type="text"
-                  value={formData.sponsorId}
-                  readOnly
-                  aria-readonly="true"
-                  tabIndex={-1}
-                  style={lockedInputStyle}
-                />
-                <Lock size={14} aria-hidden="true" style={lockBadgeStyle} />
-              </div>
-              <span style={{ fontSize: '11.5px', color: '#3b82f6', fontWeight: 600, display: 'block', marginTop: '4px' }}>
-                {formData.sponsorName}
-              </span>
-            </div>
-
-            <div>
-              <label htmlFor="reg-position" style={lockedLabelStyle}>
-                Position
-              </label>
-              <div style={{ position: 'relative' }}>
-                {formData.position === 'RIGHT'
-                  ? <ArrowRight size={16} style={lockedIconStyle} />
-                  : <ArrowLeft size={16} style={lockedIconStyle} />}
-                <input
-                  id="reg-position"
-                  type="text"
-                  value={`${formData.position} Leg`}
-                  readOnly
-                  aria-readonly="true"
-                  tabIndex={-1}
-                  style={lockedInputStyle}
-                />
-                <Lock size={14} aria-hidden="true" style={lockBadgeStyle} />
-              </div>
-              <span style={{ fontSize: '11.5px', color: '#64748b', display: 'block', marginTop: '4px' }}>
-                Set by your referral link
-              </span>
-            </div>
+        </>
+      }
+    >
+      {/* Sponsor & Position: set by the referral link, never editable here */}
+      <div className="fullreg-grid-2" style={{ marginBottom: 'var(--space-5)' }}>
+        <Field label="Sponsor" htmlFor="reg-sponsor-id" hint={formData.sponsorName}>
+          <div className="input-with-icon">
+            <Users size={16} className="input-icon" aria-hidden="true" />
+            <input
+              id="reg-sponsor-id"
+              type="text"
+              value={formData.sponsorId}
+              readOnly
+              aria-readonly="true"
+              tabIndex={-1}
+              className="form-input has-trailing"
+              style={{ paddingLeft: 38, fontWeight: 600 }}
+            />
+            <Lock size={14} aria-hidden="true" style={{ position: 'absolute', right: 12, color: 'var(--text-light)' }} />
           </div>
-        </div>
+        </Field>
 
-        {/* Error Alert */}
-        {error && (
-          <div style={{
-            background: '#fef2f2',
-            border: '1px solid #fecaca',
-            color: '#b91c1c',
-            borderRadius: '10px',
-            padding: '12px 14px',
-            fontSize: '13px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            marginBottom: '20px'
-          }}>
-            <AlertCircle size={18} style={{ flexShrink: 0 }} />
-            <span>{error}</span>
+        <Field label="Position" htmlFor="reg-position" hint="Set by your referral link">
+          <div className="input-with-icon">
+            {formData.position === 'RIGHT'
+              ? <ArrowRight size={16} className="input-icon" aria-hidden="true" />
+              : <ArrowLeft size={16} className="input-icon" aria-hidden="true" />}
+            <input
+              id="reg-position"
+              type="text"
+              value={`${formData.position} Leg`}
+              readOnly
+              aria-readonly="true"
+              tabIndex={-1}
+              className="form-input has-trailing"
+              style={{ paddingLeft: 38, fontWeight: 600 }}
+            />
+            <Lock size={14} aria-hidden="true" style={{ position: 'absolute', right: 12, color: 'var(--text-light)' }} />
           </div>
-        )}
-
-        {/* Full Form */}
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          {/* Section 1: Personal Details */}
-          <div>
-            <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#1e293b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              1. Personal Information
-            </h3>
-            
-            <div style={{ marginBottom: '14px' }}>
-              <label htmlFor="reg-name" style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                Full Name *
-              </label>
-              <div style={{ position: 'relative' }}>
-                <User size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                <input
-                  id="reg-name"
-                  type="text"
-                  required
-                  autoComplete="name"
-                  placeholder="Enter full name (e.g. Ramesh Sharma)"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-            </div>
-
-            <div className="fullreg-grid-2">
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155' }}>
-                    Mobile Number *
-                  </label>
-                  <span style={{ fontSize: '11px', color: formData.mobile.length === 10 ? '#10b981' : '#94a3b8', fontWeight: 600 }}>
-                    {formData.mobile.length}/10 digits
-                  </span>
-                </div>
-                <div style={{
-                  display: 'flex',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  overflow: 'hidden',
-                  background: '#ffffff',
-                  boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)'
-                }}>
-                  <select
-                    value={formData.countryCode}
-                    onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
-                    style={{
-                      padding: '10px 8px',
-                      border: 'none',
-                      borderRight: '1px solid #cbd5e1',
-                      background: '#f8fafc',
-                      fontSize: '13px',
-                      fontWeight: 600,
-                      color: '#1e293b',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      minWidth: '76px'
-                    }}
-                  >
-                    <option value="+91">🇮🇳 +91</option>
-                    <option value="+1">🇺🇸 +1</option>
-                    <option value="+44">🇬🇧 +44</option>
-                    <option value="+971">🇦🇪 +971</option>
-                    <option value="+65">🇸🇬 +65</option>
-                    <option value="+61">🇦🇺 +61</option>
-                    <option value="+966">🇸🇦 +966</option>
-                    <option value="+977">🇳🇵 +977</option>
-                    <option value="+880">🇧🇩 +880</option>
-                  </select>
-                  <div style={{ position: 'relative', flex: 1, display: 'flex', alignItems: 'center' }}>
-                    <Phone size={15} style={{ position: 'absolute', left: '10px', color: '#94a3b8' }} />
-                    <input
-                      type="tel"
-                      required
-                      maxLength={10}
-                      placeholder="10 digit mobile"
-                      value={formData.mobile}
-                      onChange={(e) => {
-                        // Strictly reject non-numeric characters and limit to 10 digits
-                        const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
-                        setFormData({ ...formData, mobile: digits });
-                      }}
-                      style={{
-                        width: '100%',
-                        padding: '10px 12px 10px 32px',
-                        border: 'none',
-                        fontSize: '13px',
-                        outline: 'none',
-                        letterSpacing: '0.5px'
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Email Address *
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Mail size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    type="email"
-                    required
-                    placeholder="email@example.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid #f1f5f9' }} />
-
-          {/* Section 2: Login Password */}
-          <div>
-            <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#1e293b', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              2. Account Password
-            </h3>
-
-            <div className="fullreg-grid-2">
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Password *
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    type={showPassword ? 'text' : 'password'}
-                    required
-                    placeholder="Set a strong password (min 6 chars)"
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    style={{ width: '100%', padding: '10px 38px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Confirm Password *
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Lock size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    type={showConfirmPassword ? 'text' : 'password'}
-                    required
-                    placeholder="Confirm password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    style={{ width: '100%', padding: '10px 38px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8' }}
-                  >
-                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div style={{ borderTop: '1px solid #f1f5f9' }} />
-
-          {/* Section 3: Nominee (optional) */}
-          <div>
-            <h3 style={{ fontSize: '14px', fontWeight: 800, color: '#1e293b', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-              3. Nominee Details{' '}
-              <span style={{ fontSize: '11.5px', fontWeight: 600, color: '#64748b', textTransform: 'none', letterSpacing: 0 }}>(Optional)</span>
-            </h3>
-            <p style={{ fontSize: '12px', color: '#64748b', margin: '0 0 12px 0' }}>
-              The person who will receive your benefits in case of an unforeseen event.
-            </p>
-
-            <div className="fullreg-grid-3">
-              <div>
-                <label htmlFor="reg-nominee-name" style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Nominee Name
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <UserRound size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    id="reg-nominee-name"
-                    type="text"
-                    maxLength={100}
-                    placeholder="Nominee's full name"
-                    value={formData.nomineeName}
-                    onChange={(e) => setFormData({ ...formData, nomineeName: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px 10px 38px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="reg-nominee-phone" style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Nominee Phone Number
-                </label>
-                <div style={{ position: 'relative' }}>
-                  <Phone size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
-                  <input
-                    id="reg-nominee-phone"
-                    type="tel"
-                    inputMode="numeric"
-                    maxLength={10}
-                    placeholder="10 digit mobile"
-                    value={formData.nomineePhone}
-                    onChange={(e) => setFormData({ ...formData, nomineePhone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                    style={{ width: '100%', padding: '10px 14px 10px 36px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none', letterSpacing: '0.5px' }}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label htmlFor="reg-nominee-age" style={{ fontSize: '12px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
-                  Nominee Age
-                </label>
-                <input
-                  id="reg-nominee-age"
-                  type="text"
-                  inputMode="numeric"
-                  maxLength={3}
-                  placeholder="e.g. 45"
-                  value={formData.nomineeAge}
-                  onChange={(e) => setFormData({ ...formData, nomineeAge: e.target.value.replace(/\D/g, '').slice(0, 3) })}
-                  style={{ width: '100%', padding: '10px 14px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', outline: 'none' }}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Terms & Conditions Checkbox */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'flex-start',
-            gap: '10px',
-            background: '#f8fafc',
-            padding: '14px',
-            borderRadius: '10px',
-            border: '1px solid #e2e8f0',
-            marginTop: '4px'
-          }}>
-            <button
-              type="button"
-              onClick={() => setFormData({ ...formData, agreeTerms: !formData.agreeTerms })}
-              style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: formData.agreeTerms ? '#1d72fe' : '#94a3b8', marginTop: '1px' }}
-            >
-              {formData.agreeTerms ? <CheckSquare size={19} /> : <Square size={19} />}
-            </button>
-            <label style={{ fontSize: '12.5px', color: '#334155', cursor: 'pointer', lineHeight: '1.4' }}>
-              I agree to the <strong>Terms & Conditions</strong>, Privacy Policy, and MLM Code of Ethics. I confirm that the details provided above are true and accurate.
-            </label>
-          </div>
-
-          {/* Submit Button */}
-          <div style={{ display: 'flex', gap: '12px', marginTop: '6px' }}>
-            <button
-              type="button"
-              onClick={onBackToPreReg}
-              disabled={loading}
-              style={{
-                padding: '13px 20px',
-                borderRadius: '10px',
-                border: '1px solid #cbd5e1',
-                background: '#fff',
-                color: '#475569',
-                fontWeight: 600,
-                fontSize: '13.5px',
-                cursor: 'pointer'
-              }}
-            >
-              Back
-            </button>
-
-            <button
-              type="submit"
-              disabled={loading || !formData.agreeTerms}
-              style={{
-                flex: 1,
-                padding: '13px',
-                borderRadius: '10px',
-                background: formData.agreeTerms ? 'linear-gradient(135deg, #1d72fe 0%, #155dfc 100%)' : '#cbd5e1',
-                color: '#ffffff',
-                border: 'none',
-                fontWeight: 700,
-                fontSize: '14.5px',
-                cursor: formData.agreeTerms ? 'pointer' : 'not-allowed',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: formData.agreeTerms ? '0 10px 20px -5px rgba(29, 114, 254, 0.4)' : 'none'
-              }}
-            >
-              <CheckCircle2 size={18} />
-              <span>{loading ? 'Submitting Registration...' : 'Complete Registration'}</span>
-            </button>
-          </div>
-        </form>
-
-        {/* Existing Member Link */}
-        <div style={{ textAlign: 'center', marginTop: '22px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
-          <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>
-            Already have an active account?{' '}
-            <button
-              onClick={onGoToLogin}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#1d72fe',
-                fontWeight: 700,
-                cursor: 'pointer',
-                padding: 0,
-                textDecoration: 'underline'
-              }}
-            >
-              Sign In Here
-            </button>
-          </p>
-        </div>
+        </Field>
       </div>
-    </div>
+
+      {error && (
+        <Alert tone="error" onClose={() => setError(null)}>
+          {error}
+        </Alert>
+      )}
+
+      <form onSubmit={handleSubmit} className="auth-form">
+        <h2 className="auth-section-title">Personal information</h2>
+
+        <Field label="Full name" required htmlFor="reg-name">
+          <div className="input-with-icon">
+            <User size={16} className="input-icon" aria-hidden="true" />
+            <input
+              id="reg-name"
+              type="text"
+              required
+              autoComplete="name"
+              placeholder="e.g. Ramesh Sharma"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              className="form-input"
+            />
+          </div>
+        </Field>
+
+        <div className="fullreg-grid-2">
+          <Field
+            label="Mobile number"
+            required
+            htmlFor="reg-mobile"
+            hint={<span style={{ color: formData.mobile.length === 10 ? 'var(--success)' : undefined }}>{formData.mobile.length}/10 digits</span>}
+          >
+            <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+              <select
+                aria-label="Country code"
+                value={formData.countryCode}
+                onChange={(e) => setFormData({ ...formData, countryCode: e.target.value })}
+                className="form-select"
+                style={{ width: 96, flexShrink: 0 }}
+              >
+                <option value="+91">+91 IN</option>
+                <option value="+1">+1 US</option>
+                <option value="+44">+44 UK</option>
+                <option value="+971">+971 AE</option>
+                <option value="+65">+65 SG</option>
+                <option value="+61">+61 AU</option>
+                <option value="+966">+966 SA</option>
+                <option value="+977">+977 NP</option>
+                <option value="+880">+880 BD</option>
+              </select>
+              <div className="input-with-icon">
+                <Phone size={15} className="input-icon" aria-hidden="true" />
+                <input
+                  id="reg-mobile"
+                  type="tel"
+                  required
+                  inputMode="numeric"
+                  maxLength={10}
+                  autoComplete="tel-national"
+                  placeholder="10-digit mobile"
+                  value={formData.mobile}
+                  onChange={(e) => {
+                    // Strictly reject non-numeric characters and limit to 10 digits
+                    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+                    setFormData({ ...formData, mobile: digits });
+                  }}
+                  className="form-input"
+                />
+              </div>
+            </div>
+          </Field>
+
+          <Field label="Email address" required htmlFor="reg-email">
+            <div className="input-with-icon">
+              <Mail size={16} className="input-icon" aria-hidden="true" />
+              <input
+                id="reg-email"
+                type="email"
+                required
+                autoComplete="email"
+                placeholder="you@example.com"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                className="form-input"
+              />
+            </div>
+          </Field>
+        </div>
+
+        <h2 className="auth-section-title">Account password</h2>
+
+        <div className="fullreg-grid-2">
+          <Field label="Password" required htmlFor="reg-password" hint="At least 6 characters">
+            <div className="input-with-icon">
+              <Lock size={16} className="input-icon" aria-hidden="true" />
+              <input
+                id="reg-password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                autoComplete="new-password"
+                placeholder="Create a password"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="form-input has-trailing"
+              />
+              {togglePassword(showPassword, setShowPassword)}
+            </div>
+          </Field>
+
+          <Field label="Confirm password" required htmlFor="reg-confirm">
+            <div className="input-with-icon">
+              <Lock size={16} className="input-icon" aria-hidden="true" />
+              <input
+                id="reg-confirm"
+                type={showConfirmPassword ? 'text' : 'password'}
+                required
+                autoComplete="new-password"
+                placeholder="Re-enter password"
+                value={formData.confirmPassword}
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                className="form-input has-trailing"
+              />
+              {togglePassword(showConfirmPassword, setShowConfirmPassword)}
+            </div>
+          </Field>
+        </div>
+
+        <h2 className="auth-section-title">
+          Nominee <span style={{ fontWeight: 500, textTransform: 'none', letterSpacing: 0, color: 'var(--text-muted)' }}>(optional)</span>
+        </h2>
+
+        <div className="fullreg-grid-3">
+          <Field label="Nominee name" htmlFor="reg-nominee-name">
+            <div className="input-with-icon">
+              <UserRound size={16} className="input-icon" aria-hidden="true" />
+              <input
+                id="reg-nominee-name"
+                type="text"
+                maxLength={100}
+                placeholder="Full name"
+                value={formData.nomineeName}
+                onChange={(e) => setFormData({ ...formData, nomineeName: e.target.value })}
+                className="form-input"
+              />
+            </div>
+          </Field>
+
+          <Field label="Nominee phone" htmlFor="reg-nominee-phone">
+            <div className="input-with-icon">
+              <Phone size={15} className="input-icon" aria-hidden="true" />
+              <input
+                id="reg-nominee-phone"
+                type="tel"
+                inputMode="numeric"
+                maxLength={10}
+                placeholder="10-digit mobile"
+                value={formData.nomineePhone}
+                onChange={(e) => setFormData({ ...formData, nomineePhone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                className="form-input"
+              />
+            </div>
+          </Field>
+
+          <Field label="Nominee age" htmlFor="reg-nominee-age">
+            <input
+              id="reg-nominee-age"
+              type="text"
+              inputMode="numeric"
+              maxLength={3}
+              placeholder="e.g. 45"
+              value={formData.nomineeAge}
+              onChange={(e) => setFormData({ ...formData, nomineeAge: e.target.value.replace(/\D/g, '').slice(0, 3) })}
+              className="form-input"
+            />
+          </Field>
+        </div>
+
+        <label className="checkbox-row">
+          <input
+            type="checkbox"
+            checked={formData.agreeTerms}
+            onChange={(e) => setFormData({ ...formData, agreeTerms: e.target.checked })}
+          />
+          <span>
+            I agree to the <strong>Terms &amp; Conditions</strong>, Privacy Policy and MLM Code of Ethics, and confirm
+            that the details above are true and accurate.
+          </span>
+        </label>
+
+        <div className="form-actions" style={{ marginTop: 0 }}>
+          <button type="button" onClick={onBackToPreReg} disabled={loading} className="btn btn-secondary btn-lg">
+            <ArrowLeft size={16} aria-hidden="true" />
+            Back
+          </button>
+          <button type="submit" disabled={loading || !formData.agreeTerms} className="btn btn-primary btn-lg" style={{ flex: 1 }}>
+            {loading ? (
+              <>
+                <span className="spinner spinner-sm spinner-inverse" aria-hidden="true" />
+                Creating account…
+              </>
+            ) : (
+              'Complete registration'
+            )}
+          </button>
+        </div>
+      </form>
+    </AuthLayout>
   );
 };

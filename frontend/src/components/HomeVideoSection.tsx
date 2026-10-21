@@ -124,29 +124,6 @@ export const HomeVideoSection: React.FC<HomeVideoSectionProps> = ({ className = 
       )}
 
       {/* Embedded CSS for CKEditor content rendering styling inside Video Section */}
-      <style>{`
-        .video-section-custom-title p {
-          margin: 0;
-          display: inline;
-        }
-        .video-section-custom-subtitle p {
-          margin: 0;
-        }
-        .video-card-description p {
-          margin: 0 0 8px 0;
-        }
-        .video-card-description p:last-child {
-          margin-bottom: 0;
-        }
-        .video-card-description a {
-          color: #2563eb;
-          text-decoration: underline;
-        }
-        .video-card-description ul, .video-card-description ol {
-          margin: 6px 0 8px 20px;
-          padding: 0;
-        }
-      `}</style>
     </section>
   );
 };

@@ -1,30 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import {
-  ShoppingCart,
-  Package,
-  ShoppingBag,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  XCircle,
-  Send,
-  Search,
-  Filter,
-  RefreshCw,
-  Landmark,
-  User,
-  FileText,
-  X,
-  CreditCard,
-  Copy,
-  Check,
-  Users,
-  Layers,
-  Phone,
-  Mail,
-  Sparkles,
-  ArrowLeft,
-} from 'lucide-react';
+import { Alert, Badge, EmptyState, Field, LoadingState, Modal, PageHeader, SegmentedControl, StatusBadge } from '../components/ui';
+import { ArrowLeft, Check, CheckCircle2, Clock, Copy, CreditCard, FileText, Filter, Landmark, Layers, Mail, Package, Phone, RefreshCw, Search, Send, ShoppingBag, ShoppingCart, Sparkles, User, Users, XCircle } from 'lucide-react';
+
 import { api } from '../services/api';
 
 interface PurchaseItem {
@@ -451,37 +428,17 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
   const stageBadge = (stage: string) => {
     switch (stage) {
       case 'REQUESTED':
-        return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#fef3c7', color: '#b45309', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 700 }}>
-            <Clock size={13} /> New Request
-          </span>
-        );
+        return <StatusBadge status="REQUESTED" icon={<Clock size={12} />} label="New request" />;
       case 'PAYMENT_INSTRUCTIONS_SENT':
-        return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#e0f2fe', color: '#0369a1', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 700 }}>
-            <Send size={13} /> Payment Details Sent
-          </span>
-        );
+        return <StatusBadge status="PAYMENT_INSTRUCTIONS_SENT" icon={<Send size={12} />} label="Payment details sent" />;
       case 'PAYMENT_SUBMITTED':
-        return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#ede9fe', color: '#6d28d9', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 700 }}>
-            <CreditCard size={13} /> Verify UTR
-          </span>
-        );
+        return <StatusBadge status="PAYMENT_SUBMITTED" icon={<CreditCard size={12} />} label="Verify UTR" />;
       case 'VERIFIED_AND_PAID':
-        return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#ecfdf5', color: '#059669', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 700 }}>
-            <CheckCircle2 size={13} /> Paid & Volume Credited
-          </span>
-        );
+        return <StatusBadge status="VERIFIED_AND_PAID" icon={<CheckCircle2 size={12} />} label="Paid & volume credited" />;
       case 'REJECTED':
-        return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', background: '#fef2f2', color: '#b91c1c', padding: '4px 10px', borderRadius: '12px', fontSize: '12px', fontWeight: 700 }}>
-            <XCircle size={13} /> Rejected
-          </span>
-        );
+        return <StatusBadge status="REJECTED" icon={<XCircle size={12} />} label="Rejected" />;
       default:
-        return <span>{stage}</span>;
+        return <StatusBadge status={stage} />;
     }
   };
 
@@ -491,130 +448,38 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
 
   return (
     <div className="page-body">
-      {/* Top Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '16px', marginBottom: '22px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '12px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <ShoppingCart size={22} />
-            </div>
-            <div>
-              <h1 style={{ fontSize: '24px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
-                Package & Product Purchase Requests
-              </h1>
-              <p style={{ margin: '3px 0 0 0', fontSize: '13px', color: '#64748b' }}>
-                Verify member purchase requests, dispatch company payment instructions, audit UTR payments, and credit business volume.
-              </p>
-            </div>
-          </div>
-        </div>
+      <PageHeader
+        title={isAdmin ? 'Purchase Requests' : 'My Orders'}
+        subtitle={
+          isAdmin
+            ? 'Review requests, send payment instructions, verify UTR payments and credit business volume.'
+            : 'Track your package and product orders and complete pending payments.'
+        }
+        actions={
+          <>
+            {isAdmin && (
+              <SegmentedControl
+                ariaLabel="View"
+                value={adminViewMode}
+                onChange={(v) => setAdminViewMode(v as typeof adminViewMode)}
+                options={[
+                  { value: 'MEMBER_WORKSPACE', label: 'By member', icon: <Users size={14} />, count: actionNeededCount },
+                  { value: 'GLOBAL_PIPELINE', label: 'All requests', icon: <Layers size={14} /> },
+                ]}
+              />
+            )}
+            <button type="button" onClick={fetchPurchases} disabled={refreshing} className="btn btn-secondary">
+              <RefreshCw size={16} className={refreshing ? 'animate-spin' : ''} />
+              {refreshing ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </>
+        }
+      />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {isAdmin && (
-            <div style={{ display: 'flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-              <button
-                onClick={() => setAdminViewMode('MEMBER_WORKSPACE')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 14px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: adminViewMode === 'MEMBER_WORKSPACE' ? '#ffffff' : 'transparent',
-                  color: adminViewMode === 'MEMBER_WORKSPACE' ? '#2563eb' : '#64748b',
-                  boxShadow: adminViewMode === 'MEMBER_WORKSPACE' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <Users size={14} />
-                <span>Member Workspace</span>
-                {actionNeededCount > 0 && (
-                  <span style={{ background: '#f59e0b', color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '9999px', fontWeight: 800 }}>
-                    {actionNeededCount}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setAdminViewMode('GLOBAL_PIPELINE')}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  padding: '7px 14px',
-                  borderRadius: '8px',
-                  border: 'none',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  background: adminViewMode === 'GLOBAL_PIPELINE' ? '#ffffff' : 'transparent',
-                  color: adminViewMode === 'GLOBAL_PIPELINE' ? '#2563eb' : '#64748b',
-                  boxShadow: adminViewMode === 'GLOBAL_PIPELINE' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <Layers size={14} />
-                <span>Global Pipeline View</span>
-              </button>
-            </div>
-          )}
-
-          <button
-            onClick={fetchPurchases}
-            disabled={refreshing}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '8px',
-              background: '#ffffff',
-              border: '1px solid #cbd5e1',
-              padding: '9px 15px',
-              borderRadius: '10px',
-              fontWeight: 600,
-              fontSize: '13px',
-              color: '#334155',
-              cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-            }}
-          >
-            <RefreshCw size={14} className={refreshing ? 'animate-spin' : ''} />
-            {refreshing ? 'Refreshing...' : 'Refresh Orders'}
-          </button>
-        </div>
-      </div>
-
-      {/* Feedback Banner */}
       {feedback && (
-        <div
-          style={{
-            padding: '14px 18px',
-            borderRadius: '10px',
-            marginBottom: '20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            background: feedback.type === 'success' ? '#f0fdf4' : '#fff1f2',
-            border: `1px solid ${feedback.type === 'success' ? '#bbf7d0' : '#fecdd3'}`,
-            color: feedback.type === 'success' ? '#166534' : '#9f1239',
-            fontSize: '14px',
-            fontWeight: 500,
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            {feedback.type === 'success' ? <CheckCircle2 size={18} /> : <AlertCircle size={18} />}
-            <span>{feedback.message}</span>
-          </div>
-          <button
-            onClick={() => setFeedback(null)}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit' }}
-          >
-            <X size={16} />
-          </button>
-        </div>
+        <Alert tone={feedback.type === 'success' ? 'success' : 'error'} onClose={() => setFeedback(null)}>
+          {feedback.message}
+        </Alert>
       )}
 
       {/* ======================================================== */}
@@ -624,23 +489,23 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
         <div style={{ width: '100%', maxWidth: '100%', boxSizing: 'border-box' }}>
           {/* Mobile Navigation Tabs (< 1024px) */}
           {isMobile && (
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', background: '#f1f5f9', padding: '4px', borderRadius: '12px', width: '100%', boxSizing: 'border-box' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', background: 'var(--surface-muted)', padding: '4px', borderRadius: 'var(--radius-lg)', width: '100%', boxSizing: 'border-box' }}>
               <button
                 type="button"
                 onClick={() => setMobileActivePane('QUEUE')}
                 style={{
                   flex: 1,
                   padding: '9px 12px',
-                  borderRadius: '8px',
+                  borderRadius: 'var(--radius-md)',
                   border: 'none',
                   fontWeight: 700,
-                  fontSize: '12px',
+                  fontSize: 'var(--fs-sm)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  background: mobileActivePane === 'QUEUE' ? '#ffffff' : 'transparent',
-                  color: mobileActivePane === 'QUEUE' ? '#0f172a' : '#64748b',
+                  background: mobileActivePane === 'QUEUE' ? 'var(--surface)' : 'transparent',
+                  color: mobileActivePane === 'QUEUE' ? 'var(--text-main)' : 'var(--text-muted)',
                   boxShadow: mobileActivePane === 'QUEUE' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                   cursor: 'pointer',
                 }}
@@ -648,7 +513,7 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                 <Users size={14} />
                 <span>Queue ({memberGroups.length})</span>
                 {actionNeededCount > 0 && (
-                  <span style={{ background: '#f59e0b', color: '#fff', fontSize: '10px', padding: '1px 6px', borderRadius: '9999px', fontWeight: 800 }}>
+                  <span style={{ background: 'var(--warning)', color: 'var(--text-inverse)', fontSize: 'var(--fs-2xs)', padding: '1px 6px', borderRadius: 'var(--radius-full)', fontWeight: 800 }}>
                     {actionNeededCount}
                   </span>
                 )}
@@ -663,17 +528,17 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                 style={{
                   flex: 1,
                   padding: '9px 12px',
-                  borderRadius: '8px',
+                  borderRadius: 'var(--radius-md)',
                   border: 'none',
                   fontWeight: 700,
-                  fontSize: '12px',
+                  fontSize: 'var(--fs-sm)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: '6px',
-                  background: mobileActivePane === 'DETAILS' ? '#2563eb' : 'transparent',
-                  color: mobileActivePane === 'DETAILS' ? '#ffffff' : selectedMemberGroup ? '#64748b' : '#cbd5e1',
-                  boxShadow: mobileActivePane === 'DETAILS' ? '0 1px 3px rgba(37,99,235,0.3)' : 'none',
+                  background: mobileActivePane === 'DETAILS' ? 'var(--primary)' : 'transparent',
+                  color: mobileActivePane === 'DETAILS' ? 'var(--text-inverse)' : selectedMemberGroup ? 'var(--text-muted)' : 'var(--text-disabled)',
+                  boxShadow: mobileActivePane === 'DETAILS' ? 'none' : 'none',
                   cursor: selectedMemberGroup ? 'pointer' : 'not-allowed',
                 }}
               >
@@ -694,9 +559,9 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
             {(!isMobile || mobileActivePane === 'QUEUE') && (
               <div
                 style={{
-                  background: '#ffffff',
-                  borderRadius: '16px',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--surface)',
+                  borderRadius: 'var(--radius-lg)',
+                  border: '1px solid var(--border-color)',
                   padding: isMobile ? '14px' : '18px',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                   display: 'flex',
@@ -712,18 +577,18 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
               >
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Users size={16} className="text-blue-600" />
+                    <h3 style={{ margin: 0, fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={16} color="var(--primary)" />
                   <span>Member Queue</span>
                 </h3>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', background: '#f1f5f9', padding: '2px 8px', borderRadius: '6px' }}>
+                <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-muted)', background: 'var(--surface-muted)', padding: '2px 8px', borderRadius: 'var(--radius-sm)' }}>
                   {memberGroups.length} Members
                 </span>
               </div>
 
               {/* Member Search */}
               <div style={{ position: 'relative', marginTop: '6px' }}>
-                <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+                <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
                 <input
                   type="text"
                   placeholder="Search Member ID, Name, Phone..."
@@ -732,9 +597,9 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                   style={{
                     width: '100%',
                     padding: '8px 10px 8px 32px',
-                    borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    fontSize: '12px',
+                    borderRadius: 'var(--radius-md)',
+                    border: '1px solid var(--border-strong)',
+                    fontSize: 'var(--fs-sm)',
                     boxSizing: 'border-box',
                     outline: 'none',
                   }}
@@ -748,13 +613,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                 onClick={() => setMemberFilterType('ALL')}
                 style={{
                   padding: '4px 9px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--fs-xs)',
                   fontWeight: 700,
                   border: 'none',
                   cursor: 'pointer',
-                  background: memberFilterType === 'ALL' ? '#0f172a' : '#f1f5f9',
-                  color: memberFilterType === 'ALL' ? '#fff' : '#64748b',
+                  background: memberFilterType === 'ALL' ? 'var(--surface-inverse)' : 'var(--surface-muted)',
+                  color: memberFilterType === 'ALL' ? 'var(--text-inverse)' : 'var(--text-muted)',
                 }}
               >
                 All ({memberGroups.length})
@@ -764,29 +629,29 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                 onClick={() => setMemberFilterType('ACTION_NEEDED')}
                 style={{
                   padding: '4px 9px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--fs-xs)',
                   fontWeight: 700,
                   border: 'none',
                   cursor: 'pointer',
-                  background: memberFilterType === 'ACTION_NEEDED' ? '#dc2626' : '#fee2e2',
-                  color: memberFilterType === 'ACTION_NEEDED' ? '#fff' : '#b91c1c',
+                  background: memberFilterType === 'ACTION_NEEDED' ? 'var(--danger)' : 'var(--danger-soft)',
+                  color: memberFilterType === 'ACTION_NEEDED' ? 'var(--text-inverse)' : 'var(--danger-hover)',
                 }}
               >
-                ⚡ Action Needed ({actionNeededCount})
+                Action needed ({actionNeededCount})
               </button>
 
               <button
                 onClick={() => setMemberFilterType('NEW_REQUESTS')}
                 style={{
                   padding: '4px 9px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--fs-xs)',
                   fontWeight: 700,
                   border: 'none',
                   cursor: 'pointer',
-                  background: memberFilterType === 'NEW_REQUESTS' ? '#d97706' : '#fef3c7',
-                  color: memberFilterType === 'NEW_REQUESTS' ? '#fff' : '#b45309',
+                  background: memberFilterType === 'NEW_REQUESTS' ? 'var(--warning)' : 'var(--warning-soft)',
+                  color: memberFilterType === 'NEW_REQUESTS' ? 'var(--text-inverse)' : 'var(--warning-hover)',
                 }}
               >
                 New ({newRequestsMembersCount})
@@ -796,13 +661,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                 onClick={() => setMemberFilterType('VERIFY_UTR')}
                 style={{
                   padding: '4px 9px',
-                  borderRadius: '6px',
-                  fontSize: '11px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: 'var(--fs-xs)',
                   fontWeight: 700,
                   border: 'none',
                   cursor: 'pointer',
-                  background: memberFilterType === 'VERIFY_UTR' ? '#7c3aed' : '#ede9fe',
-                  color: memberFilterType === 'VERIFY_UTR' ? '#fff' : '#6d28d9',
+                  background: memberFilterType === 'VERIFY_UTR' ? 'var(--accent)' : 'var(--accent-soft)',
+                  color: memberFilterType === 'VERIFY_UTR' ? 'var(--text-inverse)' : 'var(--accent-hover)',
                 }}
               >
                 Verify UTR ({verifyUtrMembersCount})
@@ -812,11 +677,11 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
             {/* Scrollable Members List */}
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', paddingRight: '2px' }}>
               {loading ? (
-                <div style={{ padding: '30px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                <div style={{ padding: '30px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 'var(--fs-base)' }}>
                   Loading members queue...
                 </div>
               ) : filteredMemberGroups.length === 0 ? (
-                <div style={{ padding: '30px 10px', textAlign: 'center', color: '#94a3b8', fontSize: '12px' }}>
+                <div style={{ padding: '30px 10px', textAlign: 'center', color: 'var(--text-light)', fontSize: 'var(--fs-sm)' }}>
                   No members matching this filter.
                 </div>
               ) : (
@@ -827,18 +692,18 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                   const hasAwaiting = group.awaitingPaymentCount > 0;
 
                   // Dynamic Card Styling based on status
-                  let borderStyle = '1px solid #e2e8f0';
-                  let bgStyle = '#ffffff';
+                  let borderStyle = '1px solid var(--border-color)';
+                  let bgStyle = 'var(--surface)';
 
                   if (hasNewRequest) {
-                    borderStyle = '2px solid #f59e0b';
-                    bgStyle = '#fffdf5';
+                    borderStyle = '2px solid var(--warning)';
+                    bgStyle = 'var(--warning-light)';
                   } else if (hasVerifyUtr) {
-                    borderStyle = '2px solid #8b5cf6';
-                    bgStyle = '#faf5ff';
+                    borderStyle = '2px solid var(--accent)';
+                    bgStyle = 'var(--accent-light)';
                   } else if (hasAwaiting) {
-                    borderStyle = '1px solid #bfdbfe';
-                    bgStyle = '#f0f9ff';
+                    borderStyle = '1px solid var(--primary-border)';
+                    bgStyle = 'var(--info-light)';
                   }
 
                   return (
@@ -853,30 +718,30 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                       }}
                       style={{
                         padding: '12px',
-                        borderRadius: '12px',
-                        border: isSelected ? '2px solid #2563eb' : borderStyle,
-                        background: isSelected ? '#eff6ff' : bgStyle,
+                        borderRadius: 'var(--radius-lg)',
+                        border: isSelected ? '2px solid var(--primary)' : borderStyle,
+                        background: isSelected ? 'var(--primary-light)' : bgStyle,
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
-                        boxShadow: isSelected ? '0 4px 14px rgba(37,99,235,0.18)' : '0 1px 2px rgba(0,0,0,0.03)',
+                        boxShadow: isSelected ? 'none' : '0 1px 2px rgba(0,0,0,0.03)',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
                         <div>
                           <span
                             style={{
-                              fontSize: '11px',
+                              fontSize: 'var(--fs-xs)',
                               fontWeight: 800,
-                              color: hasNewRequest ? '#b45309' : hasVerifyUtr ? '#6d28d9' : '#1e3a8a',
-                              background: hasNewRequest ? '#fef3c7' : hasVerifyUtr ? '#ede9fe' : '#e0f2fe',
+                              color: hasNewRequest ? 'var(--warning-hover)' : hasVerifyUtr ? 'var(--accent-hover)' : 'var(--primary-strong)',
+                              background: hasNewRequest ? 'var(--warning-soft)' : hasVerifyUtr ? 'var(--accent-soft)' : 'var(--info-soft)',
                               padding: '2px 7px',
-                              borderRadius: '4px',
+                              borderRadius: 'var(--radius-xs)',
                               letterSpacing: '0.4px',
                             }}
                           >
                             {group.memberId}
                           </span>
-                          <div style={{ fontSize: '13px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>
+                          <div style={{ fontSize: 'var(--fs-base)', fontWeight: 800, color: 'var(--text-main)', marginTop: '4px' }}>
                             {group.memberName}
                           </div>
                         </div>
@@ -889,16 +754,16 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '4px',
-                                background: '#f59e0b',
-                                color: '#ffffff',
-                                fontSize: '10px',
+                                background: 'var(--warning)',
+                                color: 'var(--text-inverse)',
+                                fontSize: 'var(--fs-2xs)',
                                 fontWeight: 800,
                                 padding: '2px 6px',
-                                borderRadius: '9999px',
-                                boxShadow: '0 2px 6px rgba(245, 158, 11, 0.4)',
+                                borderRadius: 'var(--radius-full)',
+                                boxShadow: 'none',
                               }}
                             >
-                              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#fff' }} />
+                              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--surface)' }} />
                               NEW ({group.newRequestsCount})
                             </span>
                           )}
@@ -909,13 +774,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                 display: 'inline-flex',
                                 alignItems: 'center',
                                 gap: '4px',
-                                background: '#8b5cf6',
-                                color: '#ffffff',
-                                fontSize: '10px',
+                                background: 'var(--accent)',
+                                color: 'var(--text-inverse)',
+                                fontSize: 'var(--fs-2xs)',
                                 fontWeight: 800,
                                 padding: '2px 6px',
-                                borderRadius: '9999px',
-                                boxShadow: '0 2px 6px rgba(139, 92, 246, 0.4)',
+                                borderRadius: 'var(--radius-full)',
+                                boxShadow: 'none',
                               }}
                             >
                               VERIFY UTR ({group.paymentSubmittedCount})
@@ -925,12 +790,12 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                           {!hasNewRequest && !hasVerifyUtr && hasAwaiting && (
                             <span
                               style={{
-                                background: '#e0f2fe',
-                                color: '#0369a1',
-                                fontSize: '10px',
+                                background: 'var(--info-soft)',
+                                color: 'var(--info-strong)',
+                                fontSize: 'var(--fs-2xs)',
                                 fontWeight: 700,
                                 padding: '2px 6px',
-                                borderRadius: '4px',
+                                borderRadius: 'var(--radius-xs)',
                               }}
                             >
                               Awaiting Payment
@@ -940,12 +805,12 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                           {!hasNewRequest && !hasVerifyUtr && !hasAwaiting && (
                             <span
                               style={{
-                                background: '#ecfdf5',
-                                color: '#059669',
-                                fontSize: '10px',
+                                background: 'var(--success-light)',
+                                color: 'var(--success)',
+                                fontSize: 'var(--fs-2xs)',
                                 fontWeight: 700,
                                 padding: '2px 6px',
-                                borderRadius: '4px',
+                                borderRadius: 'var(--radius-xs)',
                               }}
                             >
                               ✓ Settled
@@ -954,7 +819,7 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                         </div>
                       </div>
 
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px', color: '#64748b', marginTop: '6px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: '6px' }}>
                         <span>
                           {group.totalRequests} Request{group.totalRequests > 1 ? 's' : ''} • +{group.totalBVSum.toLocaleString()} BV
                         </span>
@@ -976,42 +841,26 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
               {isMobile && (
                 <button
                   type="button"
-                  onClick={() => setMobileActivePane('QUEUE')}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    padding: '8px 14px',
-                    borderRadius: '10px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    color: '#1e293b',
-                    cursor: 'pointer',
-                    marginBottom: '14px',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                  }}
-                >
+                  onClick={() => setMobileActivePane('QUEUE')} className="btn btn-secondary" style={{ marginBottom: '14px' }}>
                   <ArrowLeft size={16} />
                   <span>← Back to Member Queue</span>
                 </button>
               )}
 
               {!selectedMemberGroup ? (
-                <div style={{ padding: '60px 20px', textAlign: 'center', background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', color: '#64748b' }}>
-                  <Users size={40} style={{ color: '#cbd5e1', margin: '0 auto 12px' }} />
-                  <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#334155', margin: '0 0 6px 0' }}>No member selected</h3>
-                  <p style={{ margin: 0, fontSize: '13px' }}>Select a member from the queue on the left to review their purchase pipeline.</p>
+                <div style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+                  <Users size={40} style={{ color: 'var(--text-disabled)', margin: '0 auto 12px' }} />
+                  <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-body)', margin: '0 0 6px 0' }}>No member selected</h3>
+                  <p style={{ margin: 0, fontSize: 'var(--fs-base)' }}>Select a member from the queue on the left to review their purchase pipeline.</p>
                 </div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                   {/* Member Header Card */}
                   <div
                     style={{
-                      background: '#ffffff',
-                      borderRadius: '16px',
-                      border: '1px solid #e2e8f0',
+                      background: 'var(--surface)',
+                      borderRadius: 'var(--radius-lg)',
+                      border: '1px solid var(--border-color)',
                       padding: isMobile ? '16px' : '20px 24px',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                       display: 'flex',
@@ -1027,29 +876,29 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                       style={{
                         width: '50px',
                         height: '50px',
-                        borderRadius: '14px',
-                        background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                        color: '#ffffff',
+                        borderRadius: 'var(--radius-lg)',
+                        background: 'var(--primary)',
+                        color: 'var(--text-inverse)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        fontSize: '20px',
+                        fontSize: 'var(--fs-2xl)',
                         fontWeight: 900,
-                        boxShadow: '0 4px 12px rgba(37,99,235,0.3)',
+                        boxShadow: 'none',
                       }}
                     >
                       {selectedMemberGroup.memberName.charAt(0).toUpperCase()}
                     </div>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <h2 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                        <h2 className="section-title" style={{ margin: 0 }}>
                           {selectedMemberGroup.memberName}
                         </h2>
-                        <span style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb', background: '#eff6ff', padding: '2px 8px', borderRadius: '6px' }}>
+                        <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--primary)', background: 'var(--primary-light)', padding: '2px 8px', borderRadius: 'var(--radius-sm)' }}>
                           {selectedMemberGroup.memberId}
                         </span>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '12px', color: '#64748b', marginTop: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: '4px' }}>
                         {selectedMemberGroup.memberMobile && (
                           <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <Phone size={12} /> {selectedMemberGroup.memberMobile}
@@ -1064,32 +913,16 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : 'auto', gap: '12px', borderTop: isMobile ? '1px solid #f1f5f9' : 'none', paddingTop: isMobile ? '12px' : 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: isMobile ? 'space-between' : 'flex-end', width: isMobile ? '100%' : 'auto', gap: '12px', borderTop: isMobile ? '1px solid var(--border-light)' : 'none', paddingTop: isMobile ? '12px' : 0 }}>
                     <div style={{ textAlign: isMobile ? 'left' : 'right' }}>
-                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: 700, textTransform: 'uppercase' }}>Volume & Purchases</div>
-                      <div style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: 800, color: '#059669' }}>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Volume & Purchases</div>
+                      <div style={{ fontSize: isMobile ? '13px' : '15px', fontWeight: 800, color: 'var(--success)' }}>
                         +{selectedMemberGroup.totalBVSum.toLocaleString()} BV • ₹{selectedMemberGroup.totalAmountSum.toLocaleString()}
                       </div>
                     </div>
 
                     <button
-                      onClick={() => openMemberDossier(selectedMemberGroup.memberId)}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        padding: '9px 15px',
-                        background: '#0f172a',
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '10px',
-                        fontSize: '12px',
-                        fontWeight: 700,
-                        cursor: 'pointer',
-                        boxShadow: '0 2px 8px rgba(15, 23, 42, 0.25)',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
+                      onClick={() => openMemberDossier(selectedMemberGroup.memberId)} className="btn btn-primary btn-sm">
                       <FileText size={14} />
                       <span>Lifetime Dossier</span>
                     </button>
@@ -1099,17 +932,17 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                 {/* Section 1: Actionable / Active Requests Pipeline */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <Sparkles size={16} className="text-amber-500" />
-                    <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    <Sparkles size={16} color="var(--warning)" />
+                    <h3 className="section-title" style={{ margin: 0 }}>
                       Active Requests Pipeline ({selectedMemberGroup.requests.filter((r) => r.approvalStage !== 'VERIFIED_AND_PAID' && r.approvalStage !== 'REJECTED').length})
                     </h3>
                   </div>
 
                   {selectedMemberGroup.requests.filter((r) => r.approvalStage !== 'VERIFIED_AND_PAID' && r.approvalStage !== 'REJECTED').length === 0 ? (
-                    <div style={{ background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '24px', textAlign: 'center', color: '#64748b' }}>
-                      <CheckCircle2 size={32} style={{ color: '#10b981', margin: '0 auto 8px' }} />
-                      <div style={{ fontWeight: 700, color: '#1e293b', fontSize: '14px' }}>All caught up!</div>
-                      <p style={{ margin: '4px 0 0', fontSize: '12px' }}>No pending requests requiring action for this member.</p>
+                    <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <CheckCircle2 size={32} style={{ color: 'var(--success)', margin: '0 auto 8px' }} />
+                      <div style={{ fontWeight: 700, color: 'var(--text-strong)', fontSize: 'var(--fs-md)' }}>All caught up!</div>
+                      <p style={{ margin: '4px 0 0', fontSize: 'var(--fs-sm)' }}>No pending requests requiring action for this member.</p>
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1122,13 +955,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                             <div
                               key={pur._id}
                               style={{
-                                background: '#ffffff',
-                                borderRadius: '16px',
+                                background: 'var(--surface)',
+                                borderRadius: 'var(--radius-lg)',
                                 border: pur.approvalStage === 'REQUESTED'
-                                  ? '2px solid #f59e0b'
+                                  ? '2px solid var(--warning)'
                                   : pur.approvalStage === 'PAYMENT_SUBMITTED'
-                                  ? '2px solid #8b5cf6'
-                                  : '1px solid #cbd5e1',
+                                  ? '2px solid var(--accent)'
+                                  : '1px solid var(--border-strong)',
                                 padding: '22px',
                                 boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
                                 display: 'flex',
@@ -1140,32 +973,32 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '10px' }}>
                                 <div>
                                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ fontSize: '14px', fontWeight: 800, color: '#0f172a' }}>
+                                    <span style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--text-main)' }}>
                                       Order #{pur.purchaseId}
                                     </span>
                                     <span
                                       style={{
-                                        fontSize: '11px',
+                                        fontSize: 'var(--fs-xs)',
                                         fontWeight: 800,
-                                        color: isPackage ? '#b45309' : '#047857',
-                                        background: isPackage ? '#fef3c7' : '#ecfdf5',
+                                        color: isPackage ? 'var(--warning-hover)' : 'var(--success-hover)',
+                                        background: isPackage ? 'var(--warning-soft)' : 'var(--success-light)',
                                         padding: '2px 8px',
-                                        borderRadius: '6px',
+                                        borderRadius: 'var(--radius-sm)',
                                       }}
                                     >
                                       {isPackage ? 'Package Joining/Upgrade' : 'Product Repurchase'}
                                     </span>
                                   </div>
-                                  <div style={{ fontSize: '12px', color: '#64748b', marginTop: '3px' }}>
+                                  <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: '3px' }}>
                                     Requested on {new Date(pur.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                                   </div>
                                 </div>
 
                                 <div style={{ textAlign: 'right' }}>
-                                  <div style={{ fontSize: '16px', fontWeight: 900, color: '#059669' }}>
+                                  <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 900, color: 'var(--success)' }}>
                                     ₹ {pur.totalAmount.toLocaleString()}
                                   </div>
-                                  <div style={{ fontSize: '12px', fontWeight: 700, color: '#2563eb' }}>
+                                  <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--primary)' }}>
                                     +{pur.totalBV.toLocaleString()} BV
                                   </div>
                                 </div>
@@ -1174,10 +1007,10 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                               {/* Interactive 4-Step Pipeline Stepper */}
                               <div
                                 style={{
-                                  background: '#f8fafc',
-                                  borderRadius: '12px',
+                                  background: 'var(--surface-subtle)',
+                                  borderRadius: 'var(--radius-lg)',
                                   padding: isMobile ? '10px 8px' : '14px 18px',
-                                  border: '1px solid #e2e8f0',
+                                  border: '1px solid var(--border-color)',
                                 }}
                               >
                                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: isMobile ? '4px' : '8px', position: 'relative' }}>
@@ -1211,8 +1044,8 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                           width: isMobile ? '22px' : '26px',
                                           height: isMobile ? '22px' : '26px',
                                           borderRadius: '50%',
-                                          background: st.done ? '#10b981' : st.active ? '#2563eb' : '#e2e8f0',
-                                          color: st.done || st.active ? '#ffffff' : '#64748b',
+                                          background: st.done ? 'var(--success)' : st.active ? 'var(--primary)' : 'var(--surface-sunken)',
+                                          color: st.done || st.active ? 'var(--text-inverse)' : 'var(--text-muted)',
                                           margin: '0 auto 4px',
                                           display: 'flex',
                                           alignItems: 'center',
@@ -1223,10 +1056,10 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                       >
                                         {st.done ? '✓' : st.step}
                                       </div>
-                                      <div style={{ fontSize: isMobile ? '10px' : '11px', fontWeight: 800, color: st.active ? '#1e3a8a' : '#475569', lineHeight: 1.2 }}>
+                                      <div style={{ fontSize: isMobile ? '10px' : '11px', fontWeight: 800, color: st.active ? 'var(--primary-strong)' : 'var(--text-secondary)', lineHeight: 1.2 }}>
                                         {st.title}
                                       </div>
-                                      <div style={{ fontSize: isMobile ? '8px' : '10px', color: '#94a3b8', lineHeight: 1.2, marginTop: '2px' }}>
+                                      <div style={{ fontSize: isMobile ? '8px' : '10px', color: 'var(--text-light)', lineHeight: 1.2, marginTop: '2px' }}>
                                         {st.desc}
                                       </div>
                                     </div>
@@ -1235,14 +1068,14 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                               </div>
 
                               {/* Items Breakdown */}
-                              <div style={{ border: '1px solid #f1f5f9', borderRadius: '10px', padding: '12px 14px', background: '#ffffff' }}>
-                                <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>
+                              <div style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '12px 14px', background: 'var(--surface)' }}>
+                                <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '8px' }}>
                                   Requested Items
                                 </div>
                                 {pur.items.map((it, idx) => (
-                                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#1e293b', marginBottom: '4px' }}>
+                                  <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-base)', color: 'var(--text-strong)', marginBottom: '4px' }}>
                                     <span>
-                                      {it.name} <strong style={{ color: '#64748b' }}>× {it.quantity}</strong>
+                                      {it.name} <strong style={{ color: 'var(--text-muted)' }}>× {it.quantity}</strong>
                                     </span>
                                     <span>₹ {it.totalPrice.toLocaleString()} ({it.totalBV.toLocaleString()} BV)</span>
                                   </div>
@@ -1251,12 +1084,12 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
 
                               {/* STAGE ACTION PANEL */}
                               {pur.approvalStage === 'REQUESTED' && (
-                                <div style={{ background: '#fffbeb', border: '1.5px solid #f59e0b', borderRadius: '12px', padding: '16px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#b45309', fontWeight: 800, fontSize: '13px', marginBottom: '6px' }}>
+                                <div style={{ background: 'var(--warning-light)', border: '1.5px solid var(--warning)', borderRadius: 'var(--radius-lg)', padding: '16px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--warning-hover)', fontWeight: 800, fontSize: 'var(--fs-base)', marginBottom: '6px' }}>
                                     <Clock size={16} />
                                     <span>Step 1: Super Admin Action Required</span>
                                   </div>
-                                  <p style={{ margin: '0 0 14px', fontSize: '12px', color: '#78350f', lineHeight: '1.5' }}>
+                                  <p style={{ margin: '0 0 14px', fontSize: 'var(--fs-sm)', color: 'var(--warning-strong)', lineHeight: '1.5' }}>
                                     The member wants to buy this package/product. Approve the request to automatically dispatch the company bank details, UPI ID, and QR code to the member.
                                   </p>
                                   <div style={{ display: 'flex', gap: '10px' }}>
@@ -1270,12 +1103,12 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                         alignItems: 'center',
                                         gap: '6px',
                                         padding: '10px 18px',
-                                        background: '#0284c7',
-                                        color: '#ffffff',
+                                        background: 'var(--info)',
+                                        color: 'var(--text-inverse)',
                                         border: 'none',
-                                        borderRadius: '8px',
+                                        borderRadius: 'var(--radius-md)',
                                         fontWeight: 700,
-                                        fontSize: '13px',
+                                        fontSize: 'var(--fs-base)',
                                         cursor: 'pointer',
                                       }}
                                     >
@@ -1286,18 +1119,7 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                       onClick={() => {
                                         setSelectedPurchase(pur);
                                         setIsRejectModalOpen(true);
-                                      }}
-                                      style={{
-                                        padding: '10px 16px',
-                                        background: '#fee2e2',
-                                        color: '#b91c1c',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '13px',
-                                        cursor: 'pointer',
-                                      }}
-                                    >
+                                      }} className="btn btn-danger-outline">
                                       Reject
                                     </button>
                                   </div>
@@ -1305,12 +1127,12 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                               )}
 
                               {pur.approvalStage === 'PAYMENT_INSTRUCTIONS_SENT' && (
-                                <div style={{ background: '#f0f9ff', border: '1px solid #bae6fd', borderRadius: '12px', padding: '16px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#0369a1', fontWeight: 800, fontSize: '13px', marginBottom: '6px' }}>
+                                <div style={{ background: 'var(--info-light)', border: '1px solid var(--info-border)', borderRadius: 'var(--radius-lg)', padding: '16px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--info-strong)', fontWeight: 800, fontSize: 'var(--fs-base)', marginBottom: '6px' }}>
                                     <Send size={16} />
                                     <span>Step 2: Awaiting Member Payment & UTR</span>
                                   </div>
-                                  <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#0369a1', lineHeight: '1.5' }}>
+                                  <p style={{ margin: '0 0 12px', fontSize: 'var(--fs-sm)', color: 'var(--info-strong)', lineHeight: '1.5' }}>
                                     Company bank details and UPI instructions were sent. Waiting for <strong>{selectedMemberGroup.memberName}</strong> to transfer funds and submit their transaction reference UTR.
                                   </p>
                                   <div style={{ display: 'flex', gap: '10px' }}>
@@ -1318,18 +1140,7 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                       onClick={() => {
                                         setSelectedPurchase(pur);
                                         setIsVerifyModalOpen(true);
-                                      }}
-                                      style={{
-                                        padding: '8px 14px',
-                                        background: '#ffffff',
-                                        border: '1px solid #cbd5e1',
-                                        color: '#334155',
-                                        borderRadius: '8px',
-                                        fontWeight: 600,
-                                        fontSize: '12px',
-                                        cursor: 'pointer',
-                                      }}
-                                    >
+                                      }} className="btn btn-secondary btn-sm">
                                       Manual Verification / Mark Paid
                                     </button>
                                   </div>
@@ -1337,21 +1148,21 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                               )}
 
                               {pur.approvalStage === 'PAYMENT_SUBMITTED' && (
-                                <div style={{ background: '#faf5ff', border: '1.5px solid #8b5cf6', borderRadius: '12px', padding: '16px' }}>
-                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#6d28d9', fontWeight: 800, fontSize: '14px', marginBottom: '8px' }}>
+                                <div style={{ background: 'var(--accent-light)', border: '1.5px solid var(--accent)', borderRadius: 'var(--radius-lg)', padding: '16px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-hover)', fontWeight: 800, fontSize: 'var(--fs-md)', marginBottom: '8px' }}>
                                     <CreditCard size={18} />
                                     <span>Step 3: Verify Payment Proof (UTR)</span>
                                   </div>
-                                  <p style={{ margin: '0 0 12px', fontSize: '12px', color: '#581c87' }}>
+                                  <p style={{ margin: '0 0 12px', fontSize: 'var(--fs-sm)', color: 'var(--accent-strong)' }}>
                                     Member has completed the transfer and submitted the payment proof below. Verify with company bank statements.
                                   </p>
 
                                   {/* Submitted Proof Card */}
                                   <div
                                     style={{
-                                      background: '#ffffff',
-                                      border: '1px solid #e9d5ff',
-                                      borderRadius: '10px',
+                                      background: 'var(--surface)',
+                                      border: '1px solid var(--accent-border)',
+                                      borderRadius: 'var(--radius-md)',
                                       padding: '14px',
                                       marginBottom: '14px',
                                       display: 'grid',
@@ -1360,33 +1171,33 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                     }}
                                   >
                                     <div>
-                                      <div style={{ fontSize: '10px', color: '#7e22ce', fontWeight: 800, textTransform: 'uppercase' }}>UTR / Reference ID</div>
+                                      <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--accent-hover)', fontWeight: 800, textTransform: 'uppercase' }}>UTR / Reference ID</div>
                                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                                        <span style={{ fontSize: '14px', fontWeight: 900, color: '#3b0764', fontFamily: 'monospace' }}>
+                                        <span style={{ fontSize: 'var(--fs-md)', fontWeight: 900, color: 'var(--accent-strong)', fontFamily: 'monospace' }}>
                                           {pur.utrNumber}
                                         </span>
                                         <button
                                           onClick={() => handleCopyUtr(pur.utrNumber || '')}
-                                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#7c3aed', padding: 0 }}
+                                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', padding: 0 }}
                                           title="Copy UTR"
                                         >
-                                          {copiedUtr === pur.utrNumber ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                                          {copiedUtr === pur.utrNumber ? <Check size={14} color="var(--success)" /> : <Copy size={14} />}
                                         </button>
                                       </div>
                                     </div>
 
                                     <div>
-                                      <div style={{ fontSize: '10px', color: '#7e22ce', fontWeight: 800, textTransform: 'uppercase' }}>Payer Name</div>
-                                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#3b0764', marginTop: '2px' }}>
+                                      <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--accent-hover)', fontWeight: 800, textTransform: 'uppercase' }}>Payer Name</div>
+                                      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--accent-strong)', marginTop: '2px' }}>
                                         {pur.payerName || selectedMemberGroup.memberName}
                                       </div>
                                     </div>
 
                                     <div>
-                                      <div style={{ fontSize: '10px', color: '#7e22ce', fontWeight: 800, textTransform: 'uppercase' }}>Mode</div>
-                                      <div style={{ fontSize: '13px', fontWeight: 700, color: '#3b0764', marginTop: '2px' }}>
+                                      <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--accent-hover)', fontWeight: 800, textTransform: 'uppercase' }}>Mode</div>
+                                      <div style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--accent-strong)', marginTop: '2px' }}>
                                         {pur.paymentMethod === 'BV_WALLET' ? (
-                                          <span style={{ background: '#ede9fe', color: '#6d28d9', padding: '2px 8px', borderRadius: '9999px', fontSize: '11px', fontWeight: 800 }}>
+                                          <span style={{ background: 'var(--accent-soft)', color: 'var(--accent-hover)', padding: '2px 8px', borderRadius: 'var(--radius-full)', fontSize: 'var(--fs-xs)', fontWeight: 800 }}>
                                             Paid with BV: {(pur.bvAmount || 0).toLocaleString('en-IN')} BV
                                           </span>
                                         ) : (
@@ -1396,8 +1207,8 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                     </div>
 
                                     <div>
-                                      <div style={{ fontSize: '10px', color: '#7e22ce', fontWeight: 800, textTransform: 'uppercase' }}>Submitted At</div>
-                                      <div style={{ fontSize: '12px', color: '#581c87', marginTop: '2px' }}>
+                                      <div style={{ fontSize: 'var(--fs-2xs)', color: 'var(--accent-hover)', fontWeight: 800, textTransform: 'uppercase' }}>Submitted At</div>
+                                      <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--accent-strong)', marginTop: '2px' }}>
                                         {pur.paymentSubmittedAt ? new Date(pur.paymentSubmittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}
                                       </div>
                                     </div>
@@ -1408,22 +1219,7 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                       onClick={() => {
                                         setSelectedPurchase(pur);
                                         setIsVerifyModalOpen(true);
-                                      }}
-                                      style={{
-                                        display: 'inline-flex',
-                                        alignItems: 'center',
-                                        gap: '6px',
-                                        padding: '10px 20px',
-                                        background: '#059669',
-                                        color: '#ffffff',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontWeight: 800,
-                                        fontSize: '13px',
-                                        cursor: 'pointer',
-                                        boxShadow: '0 2px 8px rgba(5,150,105,0.3)',
-                                      }}
-                                    >
+                                      }} className="btn btn-success">
                                       <CheckCircle2 size={16} /> Verify UTR & Mark as Paid
                                     </button>
 
@@ -1431,18 +1227,7 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                       onClick={() => {
                                         setSelectedPurchase(pur);
                                         setIsRejectModalOpen(true);
-                                      }}
-                                      style={{
-                                        padding: '10px 16px',
-                                        background: '#fee2e2',
-                                        color: '#b91c1c',
-                                        border: 'none',
-                                        borderRadius: '8px',
-                                        fontWeight: 700,
-                                        fontSize: '13px',
-                                        cursor: 'pointer',
-                                      }}
-                                    >
+                                      }} className="btn btn-danger-outline">
                                       Reject
                                     </button>
                                   </div>
@@ -1458,53 +1243,53 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                 {/* Section 2: Settled History for this Member */}
                 <div style={{ marginTop: '10px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
-                    <CheckCircle2 size={16} className="text-emerald-600" />
-                    <h3 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    <CheckCircle2 size={16} color="var(--success)" />
+                    <h3 className="section-title" style={{ margin: 0 }}>
                       Settled Requests History ({selectedMemberGroup.requests.filter((r) => r.approvalStage === 'VERIFIED_AND_PAID' || r.approvalStage === 'REJECTED').length})
                     </h3>
                   </div>
 
                   {selectedMemberGroup.requests.filter((r) => r.approvalStage === 'VERIFIED_AND_PAID' || r.approvalStage === 'REJECTED').length === 0 ? (
-                    <div style={{ background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '20px', textAlign: 'center', color: '#94a3b8', fontSize: '13px' }}>
+                    <div style={{ background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', padding: '20px', textAlign: 'center', color: 'var(--text-light)', fontSize: 'var(--fs-base)' }}>
                       No previous settled purchases for this member yet.
                     </div>
                   ) : (
-                    <div style={{ overflowX: 'auto', background: '#ffffff', borderRadius: '14px', border: '1px solid #e2e8f0' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
+                    <div style={{ overflowX: 'auto', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+                      <table className="data-table">
                         <thead>
-                          <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                            <th style={{ padding: '10px 14px' }}>Date</th>
-                            <th style={{ padding: '10px 14px' }}>Order ID</th>
-                            <th style={{ padding: '10px 14px' }}>Item Details</th>
-                            <th style={{ padding: '10px 14px' }}>Amount / BV</th>
-                            <th style={{ padding: '10px 14px' }}>UTR / Reference</th>
-                            <th style={{ padding: '10px 14px' }}>Status</th>
+                          <tr>
+                            <th>Date</th>
+                            <th>Order ID</th>
+                            <th>Item Details</th>
+                            <th>Amount / BV</th>
+                            <th>UTR / Reference</th>
+                            <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
                           {selectedMemberGroup.requests
                             .filter((r) => r.approvalStage === 'VERIFIED_AND_PAID' || r.approvalStage === 'REJECTED')
                             .map((h) => (
-                              <tr key={h._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                                <td style={{ padding: '10px 14px', color: '#64748b' }}>
+                              <tr key={h._id}>
+                                <td style={{ color: 'var(--text-muted)' }}>
                                   {new Date(h.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </td>
-                                <td style={{ padding: '10px 14px', fontWeight: 700, color: '#0f172a' }}>
+                                <td style={{ fontWeight: 700, color: 'var(--text-main)' }}>
                                   {h.purchaseId}
                                 </td>
-                                <td style={{ padding: '10px 14px' }}>
-                                  <span style={{ fontWeight: 700, color: h.items[0]?.itemType === 'PACKAGE' ? '#b45309' : '#047857' }}>
+                                <td>
+                                  <span style={{ fontWeight: 700, color: h.items[0]?.itemType === 'PACKAGE' ? 'var(--warning-hover)' : 'var(--success-hover)' }}>
                                     [{h.items[0]?.itemType === 'PACKAGE' ? 'PACKAGE' : 'PRODUCT'}]
                                   </span>{' '}
                                   {h.items.map((it) => `${it.name} (x${it.quantity})`).join(', ')}
                                 </td>
-                                <td style={{ padding: '10px 14px', fontWeight: 800 }}>
-                                  ₹ {h.totalAmount.toLocaleString()} <span style={{ color: '#0284c7' }}>({h.totalBV.toLocaleString()} BV)</span>
+                                <td style={{ fontWeight: 800 }}>
+                                  ₹ {h.totalAmount.toLocaleString()} <span style={{ color: 'var(--info)' }}>({h.totalBV.toLocaleString()} BV)</span>
                                 </td>
-                                <td style={{ padding: '10px 14px', fontFamily: 'monospace', color: '#581c87' }}>
+                                <td style={{ fontFamily: 'monospace', color: 'var(--accent-strong)' }}>
                                   {h.utrNumber || '-'}
                                 </td>
-                                <td style={{ padding: '10px 14px' }}>
+                                <td>
                                   {stageBadge(h.approvalStage)}
                                 </td>
                               </tr>
@@ -1527,31 +1312,20 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
         <div>
           {/* Member Filter Bar for Global Pipeline */}
           {isAdmin && (
-            <div style={{ marginBottom: '18px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '14px 16px' }}>
+            <div style={{ marginBottom: '18px', background: 'var(--surface-subtle)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-lg)', padding: '14px 16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px', flexWrap: 'wrap', gap: '8px' }}>
-                <div style={{ fontSize: '12px', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Users size={15} className="text-blue-600" />
+                <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 800, color: 'var(--text-body)', textTransform: 'uppercase', letterSpacing: '0.4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={15} color="var(--primary)" />
                   <span>Filter by Member:</span>
-                  <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748b', textTransform: 'none' }}>
+                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'none' }}>
                     (Click any Member to view their requests across all 6 steps)
                   </span>
                 </div>
                 {globalSelectedMemberId && (
                   <button
                     type="button"
-                    onClick={() => setGlobalSelectedMemberId(null)}
-                    style={{
-                      background: '#ffffff',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: '6px',
-                      color: '#2563eb',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      padding: '4px 10px',
-                    }}
-                  >
-                    ✕ Show All Members
+                    onClick={() => setGlobalSelectedMemberId(null)} className="btn btn-secondary btn-sm">
+                    Show all members
                   </button>
                 )}
               </div>
@@ -1567,20 +1341,20 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                     alignItems: 'center',
                     gap: '6px',
                     padding: '7px 14px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
+                    borderRadius: 'var(--radius-xl)',
+                    fontSize: 'var(--fs-sm)',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    border: globalSelectedMemberId === null ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                    background: globalSelectedMemberId === null ? '#eff6ff' : '#ffffff',
-                    color: globalSelectedMemberId === null ? '#1d4ed8' : '#475569',
+                    border: globalSelectedMemberId === null ? '2px solid var(--primary)' : '1px solid var(--border-strong)',
+                    background: globalSelectedMemberId === null ? 'var(--primary-light)' : 'var(--surface)',
+                    color: globalSelectedMemberId === null ? 'var(--primary-hover)' : 'var(--text-secondary)',
                     whiteSpace: 'nowrap',
-                    boxShadow: globalSelectedMemberId === null ? '0 2px 6px rgba(37,99,235,0.15)' : 'none',
+                    boxShadow: globalSelectedMemberId === null ? 'none' : 'none',
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  <span>🌐 All Members</span>
-                  <span style={{ background: globalSelectedMemberId === null ? '#2563eb' : '#f1f5f9', color: globalSelectedMemberId === null ? '#fff' : '#64748b', padding: '1px 7px', borderRadius: '9999px', fontSize: '10px', fontWeight: 800 }}>
+                  <span>All members</span>
+                  <span style={{ background: globalSelectedMemberId === null ? 'var(--primary)' : 'var(--surface-muted)', color: globalSelectedMemberId === null ? 'var(--text-inverse)' : 'var(--text-muted)', padding: '1px 7px', borderRadius: 'var(--radius-full)', fontSize: 'var(--fs-2xs)', fontWeight: 800 }}>
                     {purchases.length}
                   </span>
                 </button>
@@ -1600,48 +1374,48 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                         alignItems: 'center',
                         gap: '6px',
                         padding: '7px 14px',
-                        borderRadius: '20px',
-                        fontSize: '12px',
+                        borderRadius: 'var(--radius-xl)',
+                        fontSize: 'var(--fs-sm)',
                         fontWeight: 700,
                         cursor: 'pointer',
                         border: isSelected
-                          ? '2px solid #2563eb'
+                          ? '2px solid var(--primary)'
                           : hasNew
-                          ? '1.5px solid #f59e0b'
+                          ? '1.5px solid var(--warning)'
                           : hasUtr
-                          ? '1.5px solid #8b5cf6'
-                          : '1px solid #cbd5e1',
+                          ? '1.5px solid var(--accent)'
+                          : '1px solid var(--border-strong)',
                         background: isSelected
-                          ? '#eff6ff'
+                          ? 'var(--primary-light)'
                           : hasNew
-                          ? '#fffdf5'
+                          ? 'var(--warning-light)'
                           : hasUtr
-                          ? '#faf5ff'
-                          : '#ffffff',
+                          ? 'var(--accent-light)'
+                          : 'var(--surface)',
                         color: isSelected
-                          ? '#1d4ed8'
+                          ? 'var(--primary-hover)'
                           : hasNew
-                          ? '#b45309'
+                          ? 'var(--warning-hover)'
                           : hasUtr
-                          ? '#6d28d9'
-                          : '#334155',
+                          ? 'var(--accent-hover)'
+                          : 'var(--text-body)',
                         whiteSpace: 'nowrap',
-                        boxShadow: isSelected ? '0 2px 6px rgba(37,99,235,0.15)' : 'none',
+                        boxShadow: isSelected ? 'none' : 'none',
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      <span>👤 {g.memberId} ({g.memberName})</span>
+                      <span>{g.memberId} ({g.memberName})</span>
                       {hasNew && (
-                        <span style={{ background: '#f59e0b', color: '#fff', padding: '1px 6px', borderRadius: '9999px', fontSize: '10px', fontWeight: 800 }}>
+                        <span style={{ background: 'var(--warning)', color: 'var(--text-inverse)', padding: '1px 6px', borderRadius: 'var(--radius-full)', fontSize: 'var(--fs-2xs)', fontWeight: 800 }}>
                           {g.newRequestsCount} NEW
                         </span>
                       )}
                       {hasUtr && (
-                        <span style={{ background: '#8b5cf6', color: '#fff', padding: '1px 6px', borderRadius: '9999px', fontSize: '10px', fontWeight: 800 }}>
+                        <span style={{ background: 'var(--accent)', color: 'var(--text-inverse)', padding: '1px 6px', borderRadius: 'var(--radius-full)', fontSize: 'var(--fs-2xs)', fontWeight: 800 }}>
                           {g.paymentSubmittedCount} UTR
                         </span>
                       )}
-                      <span style={{ background: isSelected ? '#2563eb' : '#f1f5f9', color: isSelected ? '#fff' : '#64748b', padding: '1px 6px', borderRadius: '9999px', fontSize: '10px', fontWeight: 800 }}>
+                      <span style={{ background: isSelected ? 'var(--primary)' : 'var(--surface-muted)', color: isSelected ? 'var(--text-inverse)' : 'var(--text-muted)', padding: '1px 6px', borderRadius: 'var(--radius-full)', fontSize: 'var(--fs-2xs)', fontWeight: 800 }}>
                         {g.totalRequests}
                       </span>
                     </button>
@@ -1658,16 +1432,16 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                borderRadius: '10px',
+                background: 'var(--primary-light)',
+                border: '1px solid var(--primary-border)',
+                borderRadius: 'var(--radius-md)',
                 padding: '10px 16px',
                 marginBottom: '16px',
                 gap: '12px',
                 flexWrap: 'wrap',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: '#1e40af' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--fs-base)', color: 'var(--primary-strong)' }}>
                 <User size={16} />
                 <span>
                   Showing all steps for Member: <strong>{globalSelectedMemberGroup ? globalSelectedMemberGroup.memberName : globalSelectedMemberId}</strong> (ID: <strong>{globalSelectedMemberId}</strong>) • {globalTabCounts.all} Request{globalTabCounts.all > 1 ? 's' : ''}
@@ -1679,42 +1453,20 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                   onClick={() => {
                     setSelectedMemberId(globalSelectedMemberId);
                     setAdminViewMode('MEMBER_WORKSPACE');
-                  }}
-                  style={{
-                    background: '#2563eb',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    padding: '5px 12px',
-                    fontSize: '12px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
+                  }} className="btn btn-primary btn-sm">
                   Open in Workspace →
                 </button>
                 <button
                   type="button"
-                  onClick={() => setGlobalSelectedMemberId(null)}
-                  style={{
-                    background: '#ffffff',
-                    border: '1px solid #cbd5e1',
-                    color: '#475569',
-                    borderRadius: '6px',
-                    padding: '5px 10px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ✕ Show All Members
+                  onClick={() => setGlobalSelectedMemberId(null)} className="btn btn-secondary btn-sm">
+                  Show all members
                 </button>
               </div>
             </div>
           )}
 
           {/* 6 Step Tabs with Dynamic Counts */}
-          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '20px', borderBottom: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', paddingBottom: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border-color)' }}>
             {[
               { key: 'REQUESTED', label: '1. New Requests', icon: Clock, count: globalTabCounts.requested },
               { key: 'PAYMENT_SUBMITTED', label: '2. Payment Verification', icon: CreditCard, count: globalTabCounts.paymentSubmitted },
@@ -1734,13 +1486,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                     alignItems: 'center',
                     gap: '8px',
                     padding: '9px 15px',
-                    borderRadius: '8px',
+                    borderRadius: 'var(--radius-md)',
                     fontWeight: isActive ? 700 : 600,
-                    fontSize: '13px',
-                    background: isActive ? '#0f172a' : '#f8fafc',
-                    color: isActive ? '#ffffff' : '#475569',
+                    fontSize: 'var(--fs-base)',
+                    background: isActive ? 'var(--surface-inverse)' : 'var(--surface-subtle)',
+                    color: isActive ? 'var(--text-inverse)' : 'var(--text-secondary)',
                     border: '1px solid',
-                    borderColor: isActive ? '#0f172a' : '#e2e8f0',
+                    borderColor: isActive ? 'var(--text-main)' : 'var(--border-color)',
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
                     whiteSpace: 'nowrap',
@@ -1751,11 +1503,11 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                   <span
                     style={{
                       padding: '1px 7px',
-                      borderRadius: '9999px',
-                      fontSize: '11px',
+                      borderRadius: 'var(--radius-full)',
+                      fontSize: 'var(--fs-xs)',
                       fontWeight: 800,
-                      background: isActive ? '#334155' : '#e2e8f0',
-                      color: isActive ? '#ffffff' : '#475569',
+                      background: isActive ? 'var(--text-body)' : 'var(--surface-sunken)',
+                      color: isActive ? 'var(--text-inverse)' : 'var(--text-secondary)',
                     }}
                   >
                     {tab.count}
@@ -1768,7 +1520,7 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
           {/* Search & Filters Bar */}
           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center', marginBottom: '20px' }}>
             <form onSubmit={handleSearchSubmit} style={{ flex: '1 1 300px', display: 'flex', position: 'relative' }}>
-              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-light)' }} />
               <input
                 type="text"
                 placeholder="Search Member ID, Name, UTR / Txn No, or Order ID..."
@@ -1777,26 +1529,26 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                 style={{
                   width: '100%',
                   padding: '10px 14px 10px 38px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '13px',
-                  background: '#fff',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  fontSize: 'var(--fs-base)',
+                  background: 'var(--surface)',
                 }}
               />
             </form>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Filter size={15} style={{ color: '#64748b' }} />
+              <Filter size={15} style={{ color: 'var(--text-muted)' }} />
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value as any)}
                 style={{
                   padding: '10px 14px',
-                  borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  fontSize: '13px',
-                  background: '#fff',
-                  color: '#334155',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--border-strong)',
+                  fontSize: 'var(--fs-base)',
+                  background: 'var(--surface)',
+                  color: 'var(--text-body)',
                 }}
               >
                 <option value="ALL">All Purchase Types</option>
@@ -1808,17 +1560,17 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
 
           {/* Cards List */}
           {loading ? (
-            <div style={{ padding: '60px 20px', textAlign: 'center', color: '#64748b' }}>
-              <div style={{ width: '32px', height: '32px', border: '3px solid #e2e8f0', borderTopColor: '#10b981', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
+            <div style={{ padding: '60px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
+              <div style={{ width: '32px', height: '32px', border: '3px solid var(--border-color)', borderTopColor: 'var(--success)', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
               Loading purchase requests...
             </div>
           ) : displayedGlobalPurchases.length === 0 ? (
-            <div style={{ padding: '60px 20px', textAlign: 'center', background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', color: '#64748b' }}>
-              <ShoppingCart size={40} style={{ color: '#cbd5e1', margin: '0 auto 14px' }} />
-              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#334155', margin: '0 0 6px 0' }}>
+            <div style={{ padding: '60px 20px', textAlign: 'center', background: 'var(--surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)', color: 'var(--text-muted)' }}>
+              <ShoppingCart size={40} style={{ color: 'var(--text-disabled)', margin: '0 auto 14px' }} />
+              <h3 style={{ fontSize: 'var(--fs-lg)', fontWeight: 700, color: 'var(--text-body)', margin: '0 0 6px 0' }}>
                 No purchase records found
               </h3>
-              <p style={{ margin: '0 0 14px', fontSize: '13px' }}>
+              <p style={{ margin: '0 0 14px', fontSize: 'var(--fs-base)' }}>
                 {globalSelectedMemberId
                   ? `No records in this step for Member ${globalSelectedMemberId}.`
                   : activeTab === 'REQUESTED'
@@ -1830,18 +1582,7 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
               {globalSelectedMemberId && (
                 <button
                   type="button"
-                  onClick={() => setGlobalSelectedMemberId(null)}
-                  style={{
-                    background: '#2563eb',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '8px',
-                    padding: '8px 16px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
+                  onClick={() => setGlobalSelectedMemberId(null)} className="btn btn-primary">
                   Show All Members' Records
                 </button>
               )}
@@ -1854,9 +1595,9 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                   <div
                     key={pur._id}
                     style={{
-                      background: '#ffffff',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '12px',
+                      background: 'var(--surface)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-lg)',
                       padding: '20px',
                       boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
                       display: 'flex',
@@ -1867,10 +1608,10 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                     {/* Header: Order ID & Stage Badge */}
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px' }}>
                       <div>
-                        <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                           {pur.purchaseId}
                         </span>
-                        <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
+                        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-light)', marginTop: '2px' }}>
                           {new Date(pur.createdAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </div>
@@ -1880,8 +1621,8 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                     {/* Member Details */}
                     <div
                       style={{
-                        background: '#f8fafc',
-                        borderRadius: '8px',
+                        background: 'var(--surface-subtle)',
+                        borderRadius: 'var(--radius-md)',
                         padding: '12px 14px',
                         display: 'flex',
                         justifyContent: 'space-between',
@@ -1893,18 +1634,7 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                           <button
                             type="button"
                             onClick={() => setGlobalSelectedMemberId(pur.memberId)}
-                            title={`Click to filter all pipeline steps for ${pur.memberId}`}
-                            style={{
-                              background: '#eff6ff',
-                              border: '1px solid #bfdbfe',
-                              color: '#1d4ed8',
-                              padding: '2px 8px',
-                              borderRadius: '6px',
-                              fontSize: '11px',
-                              fontWeight: 800,
-                              cursor: 'pointer',
-                            }}
-                          >
+                            title={`Click to filter all pipeline steps for ${pur.memberId}`} className="btn btn-soft btn-sm">
                             {pur.memberId}
                           </button>
                           <button
@@ -1914,9 +1644,9 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                               background: 'none',
                               border: 'none',
                               padding: 0,
-                              fontSize: '14px',
+                              fontSize: 'var(--fs-md)',
                               fontWeight: 700,
-                              color: '#0f172a',
+                              color: 'var(--text-main)',
                               cursor: 'pointer',
                               textAlign: 'left',
                               display: 'flex',
@@ -1924,23 +1654,23 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                               gap: '6px',
                             }}
                           >
-                            <User size={15} className="text-slate-400" />
+                            <User size={15} color="var(--text-light)" />
                             {pur.memberName || pur.memberId}
                           </button>
                         </div>
-                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '3px' }}>
+                        <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: '3px' }}>
                           {pur.memberMobile || pur.memberEmail || 'Registered Member'}
                         </div>
                       </div>
                       <button
                         onClick={() => openMemberDossier(pur.memberId)}
                         style={{
-                          background: '#e0f2fe',
+                          background: 'var(--info-soft)',
                           border: 'none',
-                          color: '#0369a1',
+                          color: 'var(--info-strong)',
                           padding: '6px 10px',
-                          borderRadius: '6px',
-                          fontSize: '11px',
+                          borderRadius: 'var(--radius-sm)',
+                          fontSize: 'var(--fs-xs)',
                           fontWeight: 700,
                           cursor: 'pointer',
                         }}
@@ -1950,51 +1680,51 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                     </div>
 
                     {/* Items Box */}
-                    <div style={{ border: '1px solid #f1f5f9', borderRadius: '8px', padding: '12px' }}>
-                      <div style={{ fontSize: '12px', fontWeight: 700, color: '#475569', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {isPackage ? <Package size={14} className="text-amber-500" /> : <ShoppingBag size={14} className="text-emerald-500" />}
+                    <div style={{ border: '1px solid var(--border-light)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                      <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {isPackage ? <Package size={14} color="var(--warning)" /> : <ShoppingBag size={14} color="var(--success)" />}
                         {isPackage ? 'Package Details' : 'Product Order Items'}
                       </div>
                       {pur.items.map((it, idx) => (
-                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#1e293b', marginBottom: '4px' }}>
+                        <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 'var(--fs-base)', color: 'var(--text-strong)', marginBottom: '4px' }}>
                           <span>
-                            {it.name} <strong style={{ color: '#64748b' }}>× {it.quantity}</strong>
+                            {it.name} <strong style={{ color: 'var(--text-muted)' }}>× {it.quantity}</strong>
                           </span>
                           <span>₹ {it.totalPrice.toLocaleString()} ({it.totalBV.toLocaleString()} BV)</span>
                         </div>
                       ))}
-                      <div style={{ borderTop: '1px dashed #cbd5e1', paddingTop: '8px', marginTop: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: '14px', color: '#0f172a' }}>
+                      <div style={{ borderTop: '1px dashed var(--border-strong)', paddingTop: '8px', marginTop: '8px', display: 'flex', justifyContent: 'space-between', fontWeight: 800, fontSize: 'var(--fs-md)', color: 'var(--text-main)' }}>
                         <span>Total Payable</span>
-                        <span style={{ color: '#059669' }}>
-                          ₹ {pur.totalAmount.toLocaleString()} <span style={{ fontSize: '12px', color: '#475569', fontWeight: 600 }}>({pur.totalBV.toLocaleString()} BV)</span>
+                        <span style={{ color: 'var(--success)' }}>
+                          ₹ {pur.totalAmount.toLocaleString()} <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontWeight: 600 }}>({pur.totalBV.toLocaleString()} BV)</span>
                         </span>
                       </div>
                     </div>
 
                     {/* Payment Submission Details (If submitted) */}
                     {pur.utrNumber && (
-                      <div style={{ background: '#faf5ff', border: '1px solid #e9d5ff', borderRadius: '8px', padding: '12px' }}>
-                        <div style={{ fontSize: '12px', fontWeight: 700, color: '#6b21a8', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <div style={{ background: 'var(--accent-light)', border: '1px solid var(--accent-border)', borderRadius: 'var(--radius-md)', padding: '12px' }}>
+                        <div style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--accent-strong)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                           <Landmark size={14} /> Member Payment Submission
                         </div>
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: 'var(--fs-sm)' }}>
                           <div>
-                            <span style={{ color: '#7e22ce', fontWeight: 600 }}>UTR / Txn ID:</span>
-                            <div style={{ fontWeight: 800, color: '#3b0764', fontSize: '13px' }}>{pur.utrNumber}</div>
+                            <span style={{ color: 'var(--accent-hover)', fontWeight: 600 }}>UTR / Txn ID:</span>
+                            <div style={{ fontWeight: 800, color: 'var(--accent-strong)', fontSize: 'var(--fs-base)' }}>{pur.utrNumber}</div>
                           </div>
                           <div>
-                            <span style={{ color: '#7e22ce', fontWeight: 600 }}>Payer Name:</span>
-                            <div style={{ fontWeight: 700, color: '#3b0764' }}>{pur.payerName || '-'}</div>
+                            <span style={{ color: 'var(--accent-hover)', fontWeight: 600 }}>Payer Name:</span>
+                            <div style={{ fontWeight: 700, color: 'var(--accent-strong)' }}>{pur.payerName || '-'}</div>
                           </div>
                           <div>
-                            <span style={{ color: '#7e22ce', fontWeight: 600 }}>Payment Mode:</span>
-                            <div style={{ fontWeight: 700, color: '#3b0764' }}>
+                            <span style={{ color: 'var(--accent-hover)', fontWeight: 600 }}>Payment Mode:</span>
+                            <div style={{ fontWeight: 700, color: 'var(--accent-strong)' }}>
                               {pur.paymentMethod === 'BV_WALLET' ? `BV Wallet (${(pur.bvAmount || 0).toLocaleString('en-IN')} BV)` : pur.paymentMode || 'UPI'}
                             </div>
                           </div>
                           <div>
-                            <span style={{ color: '#7e22ce', fontWeight: 600 }}>Submitted At:</span>
-                            <div style={{ color: '#581c87' }}>
+                            <span style={{ color: 'var(--accent-hover)', fontWeight: 600 }}>Submitted At:</span>
+                            <div style={{ color: 'var(--accent-strong)' }}>
                               {pur.paymentSubmittedAt ? new Date(pur.paymentSubmittedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-'}
                             </div>
                           </div>
@@ -2004,13 +1734,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
 
                     {/* Rejection notice */}
                     {pur.rejectionReason && (
-                      <div style={{ background: '#fff1f2', border: '1px solid #fecdd3', borderRadius: '8px', padding: '10px', fontSize: '12px', color: '#9f1239' }}>
+                      <div style={{ background: 'var(--danger-light)', border: '1px solid var(--danger-border)', borderRadius: 'var(--radius-md)', padding: '10px', fontSize: 'var(--fs-sm)', color: 'var(--danger-strong)' }}>
                         <strong>Rejection Note:</strong> {pur.rejectionReason}
                       </div>
                     )}
 
                     {/* Action Buttons */}
-                    <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: 'auto', paddingTop: '10px', borderTop: '1px solid var(--border-light)' }}>
                       {isAdmin ? (
                         <>
                           {pur.approvalStage === 'REQUESTED' && (
@@ -2026,13 +1756,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                   alignItems: 'center',
                                   justifyContent: 'center',
                                   gap: '6px',
-                                  background: '#0284c7',
-                                  color: '#ffffff',
+                                  background: 'var(--info)',
+                                  color: 'var(--text-inverse)',
                                   border: 'none',
                                   padding: '10px',
-                                  borderRadius: '8px',
+                                  borderRadius: 'var(--radius-md)',
                                   fontWeight: 700,
-                                  fontSize: '13px',
+                                  fontSize: 'var(--fs-base)',
                                   cursor: 'pointer',
                                 }}
                               >
@@ -2042,18 +1772,7 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                 onClick={() => {
                                   setSelectedPurchase(pur);
                                   setIsRejectModalOpen(true);
-                                }}
-                                style={{
-                                  background: '#fee2e2',
-                                  color: '#b91c1c',
-                                  border: 'none',
-                                  padding: '10px 14px',
-                                  borderRadius: '8px',
-                                  fontWeight: 700,
-                                  fontSize: '13px',
-                                  cursor: 'pointer',
-                                }}
-                              >
+                                }} className="btn btn-danger-outline">
                                 Reject
                               </button>
                             </>
@@ -2065,41 +1784,14 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                 onClick={() => {
                                   setSelectedPurchase(pur);
                                   setIsVerifyModalOpen(true);
-                                }}
-                                style={{
-                                  flex: 1,
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  gap: '6px',
-                                  background: '#059669',
-                                  color: '#ffffff',
-                                  border: 'none',
-                                  padding: '10px',
-                                  borderRadius: '8px',
-                                  fontWeight: 700,
-                                  fontSize: '13px',
-                                  cursor: 'pointer',
-                                }}
-                              >
+                                }} className="btn btn-success" style={{ flex: 1 }}>
                                 <CheckCircle2 size={15} /> Verify & Mark as Paid
                               </button>
                               <button
                                 onClick={() => {
                                   setSelectedPurchase(pur);
                                   setIsRejectModalOpen(true);
-                                }}
-                                style={{
-                                  background: '#fee2e2',
-                                  color: '#b91c1c',
-                                  border: 'none',
-                                  padding: '10px 14px',
-                                  borderRadius: '8px',
-                                  fontWeight: 700,
-                                  fontSize: '13px',
-                                  cursor: 'pointer',
-                                }}
-                              >
+                                }} className="btn btn-danger-outline">
                                 Reject
                               </button>
                             </>
@@ -2110,29 +1802,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                               onClick={() => {
                                 setSelectedPurchase(pur);
                                 setIsVerifyModalOpen(true);
-                              }}
-                              style={{
-                                flex: 1,
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                gap: '6px',
-                                background: '#f8fafc',
-                                color: '#334155',
-                                border: '1px solid #cbd5e1',
-                                padding: '10px',
-                                borderRadius: '8px',
-                                fontWeight: 600,
-                                fontSize: '12px',
-                                cursor: 'pointer',
-                              }}
-                            >
+                              }} className="btn btn-secondary btn-sm" style={{ flex: 1 }}>
                               Awaiting Member Payment (Manual Mark Paid)
                             </button>
                           )}
 
                           {pur.approvalStage === 'VERIFIED_AND_PAID' && (
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#16a34a', fontWeight: 700 }}>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--fs-sm)', color: 'var(--success)', fontWeight: 700 }}>
                               <CheckCircle2 size={16} /> Fully Verified & Volume Distributed
                             </div>
                           )}
@@ -2154,13 +1830,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                                 alignItems: 'center',
                                 justifyContent: 'center',
                                 gap: '8px',
-                                background: '#7c3aed',
-                                color: '#ffffff',
+                                background: 'var(--accent)',
+                                color: 'var(--text-inverse)',
                                 border: 'none',
                                 padding: '10px',
-                                borderRadius: '8px',
+                                borderRadius: 'var(--radius-md)',
                                 fontWeight: 700,
-                                fontSize: '13px',
+                                fontSize: 'var(--fs-base)',
                                 cursor: 'pointer',
                               }}
                             >
@@ -2169,13 +1845,13 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
                           )}
 
                           {pur.approvalStage === 'PAYMENT_SUBMITTED' && (
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#6d28d9', fontWeight: 700 }}>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--fs-sm)', color: 'var(--accent-hover)', fontWeight: 700 }}>
                               <Clock size={16} /> Payment Proof Submitted • Verification in Progress
                             </div>
                           )}
 
                           {pur.approvalStage === 'VERIFIED_AND_PAID' && (
-                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: '#16a34a', fontWeight: 700 }}>
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--fs-sm)', color: 'var(--success)', fontWeight: 700 }}>
                               <CheckCircle2 size={16} /> Order Completed • Volume & Benefits Credited
                             </div>
                           )}
@@ -2195,382 +1871,275 @@ export const PurchaseRequestsPage: React.FC<PurchaseRequestsPageProps> = ({ user
       {/* ======================================================== */}
 
       {/* Modal 1: Approve & Send Payment Instructions */}
-      {isSendInstructionsOpen && selectedPurchase && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: '#ffffff', borderRadius: '16px', maxWidth: '520px', width: '100%', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Send size={20} className="text-sky-600" />
-                Send Payment Instructions
-              </h3>
-              <button onClick={() => setIsSendInstructionsOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
-              You are approving the purchase request for <strong>{selectedPurchase.memberName || selectedPurchase.memberId}</strong>. The company bank details, UPI ID, and QR code configured in Company Account will automatically be attached.
+      <Modal
+        open={isSendInstructionsOpen && !!selectedPurchase}
+        onClose={() => setIsSendInstructionsOpen(false)}
+        dismissible={!actionLoading}
+        title="Send payment instructions"
+        footer={
+          <>
+            <button type="button" onClick={() => setIsSendInstructionsOpen(false)} className="btn btn-secondary">
+              Cancel
+            </button>
+            <button type="button" disabled={actionLoading} onClick={handleSendInstructions} className="btn btn-primary">
+              <Send size={16} />
+              {actionLoading ? 'Sending…' : 'Approve & send to member'}
+            </button>
+          </>
+        }
+      >
+        {selectedPurchase && (
+          <>
+            <p className="form-hint" style={{ marginBottom: 'var(--space-4)', fontSize: 'var(--fs-base)' }}>
+              Approving the request for <strong>{selectedPurchase.memberName || selectedPurchase.memberId}</strong>. The
+              company bank details, UPI ID and QR code from Company Account are attached automatically.
             </p>
-
-            <div style={{ background: '#f8fafc', borderRadius: '10px', padding: '14px', marginBottom: '16px', fontSize: '13px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ color: '#64748b' }}>Item Requested:</span>
-                <strong style={{ color: '#0f172a' }}>{selectedPurchase.items.map((i) => i.name).join(', ')}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ color: '#64748b' }}>Order Amount:</span>
-                <strong style={{ color: '#059669' }}>₹ {selectedPurchase.totalAmount.toLocaleString()}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#64748b' }}>Business Volume:</span>
-                <strong style={{ color: '#0284c7' }}>{selectedPurchase.totalBV.toLocaleString()} BV</strong>
-              </div>
+            <div className="detail-list stat-panel is-muted" style={{ marginBottom: 'var(--space-4)', padding: 'var(--space-2) var(--space-4)' }}>
+              <div className="detail-row"><span>Items</span><span>{selectedPurchase.items.map((i) => i.name).join(', ')}</span></div>
+              <div className="detail-row"><span>Order amount</span><span>₹ {selectedPurchase.totalAmount.toLocaleString()}</span></div>
+              <div className="detail-row"><span>Business volume</span><span>{selectedPurchase.totalBV.toLocaleString()} BV</span></div>
             </div>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Custom Instruction Note (Optional)
-              </label>
+            <Field label="Instruction note" hint="Optional" htmlFor="pr-instruction-note">
               <textarea
+                id="pr-instruction-note"
                 rows={3}
-                placeholder="e.g. Please make the payment via UPI or IMPS and enter the 12-digit UTR in your portal."
+                className="form-textarea"
+                placeholder="e.g. Please pay via UPI or IMPS and enter the 12-digit UTR in your portal."
                 value={adminInstructionNote}
                 onChange={(e) => setAdminInstructionNote(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
               />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={() => setIsSendInstructionsOpen(false)}
-                style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={handleSendInstructions}
-                style={{ padding: '10px 18px', borderRadius: '8px', border: 'none', background: '#0284c7', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
-              >
-                {actionLoading ? 'Dispatching...' : 'Approve & Send to Member'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+            </Field>
+          </>
+        )}
+      </Modal>
 
       {/* Modal 2: Verify & Mark as Paid */}
-      {isVerifyModalOpen && selectedPurchase && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: '#ffffff', borderRadius: '16px', maxWidth: '520px', width: '100%', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CheckCircle2 size={20} className="text-emerald-600" />
-                Verify Payment & Activate
-              </h3>
-              <button onClick={() => setIsVerifyModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
-              Confirming this will mark the order as <strong>PAID</strong>, credit <strong>{selectedPurchase.totalBV.toLocaleString()} BV</strong> to member <strong>{selectedPurchase.memberName || selectedPurchase.memberId}</strong>, activate package capping, and distribute binary commission volume.
+      <Modal
+        open={isVerifyModalOpen && !!selectedPurchase}
+        onClose={() => setIsVerifyModalOpen(false)}
+        dismissible={!actionLoading}
+        title="Verify payment & activate"
+        footer={
+          <>
+            <button type="button" onClick={() => setIsVerifyModalOpen(false)} className="btn btn-secondary">
+              Cancel
+            </button>
+            <button type="button" disabled={actionLoading} onClick={handleVerifyAndPay} className="btn btn-success">
+              <CheckCircle2 size={16} />
+              {actionLoading ? 'Activating…' : 'Confirm & mark paid'}
+            </button>
+          </>
+        }
+      >
+        {selectedPurchase && (
+          <>
+            <p className="form-hint" style={{ marginBottom: 'var(--space-4)', fontSize: 'var(--fs-base)' }}>
+              This marks the order as <strong>paid</strong>, credits <strong>{selectedPurchase.totalBV.toLocaleString()} BV</strong> to{' '}
+              <strong>{selectedPurchase.memberName || selectedPurchase.memberId}</strong>, activates package capping and
+              distributes binary volume.
             </p>
-
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '14px', marginBottom: '20px', fontSize: '13px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ color: '#166534' }}>Bank UTR / Txn ID:</span>
-                <strong style={{ color: '#14532d', fontSize: '14px' }}>{selectedPurchase.utrNumber || 'Manual Super Admin Verification'}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ color: '#166534' }}>Payer Name:</span>
-                <strong style={{ color: '#14532d' }}>{selectedPurchase.payerName || selectedPurchase.memberName || '-'}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ color: '#166534' }}>Total Received:</span>
-                <strong style={{ color: '#047857', fontSize: '15px' }}>₹ {selectedPurchase.totalAmount.toLocaleString()}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ color: '#166534' }}>Volume to Credit:</span>
-                <strong style={{ color: '#047857' }}>{selectedPurchase.totalBV.toLocaleString()} BV</strong>
-              </div>
+            <div className="detail-list stat-panel" style={{ padding: 'var(--space-2) var(--space-4)', borderColor: 'var(--success-border)', background: 'var(--success-light)' }}>
+              <div className="detail-row"><span>Bank UTR / Txn ID</span><span className="text-mono">{selectedPurchase.utrNumber || 'Manual Super Admin Verification'}</span></div>
+              <div className="detail-row"><span>Payer name</span><span>{selectedPurchase.payerName || selectedPurchase.memberName || '-'}</span></div>
+              <div className="detail-row"><span>Total received</span><span>₹ {selectedPurchase.totalAmount.toLocaleString()}</span></div>
+              <div className="detail-row"><span>Volume to credit</span><span>{selectedPurchase.totalBV.toLocaleString()} BV</span></div>
             </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={() => setIsVerifyModalOpen(false)}
-                style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={handleVerifyAndPay}
-                style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#059669', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
-              >
-                {actionLoading ? 'Activating...' : 'Confirm Verification & Mark Paid'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+          </>
+        )}
+      </Modal>
 
       {/* Modal 3: Reject Purchase Request */}
-      {isRejectModalOpen && selectedPurchase && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: '#ffffff', borderRadius: '16px', maxWidth: '480px', width: '100%', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#991b1b', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <XCircle size={20} />
-                Reject Purchase Request
-              </h3>
-              <button onClick={() => setIsRejectModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-                <X size={20} />
-              </button>
-            </div>
+      <Modal
+        open={isRejectModalOpen && !!selectedPurchase}
+        onClose={() => setIsRejectModalOpen(false)}
+        dismissible={!actionLoading}
+        size="sm"
+        title="Reject purchase request"
+        subtitle={selectedPurchase ? `Order ${selectedPurchase.purchaseId}` : undefined}
+        footer={
+          <>
+            <button type="button" onClick={() => setIsRejectModalOpen(false)} className="btn btn-secondary">
+              Cancel
+            </button>
+            <button type="button" disabled={actionLoading} onClick={handleReject} className="btn btn-danger">
+              {actionLoading ? 'Rejecting…' : 'Confirm rejection'}
+            </button>
+          </>
+        }
+      >
+        <Field label="Rejection reason" required htmlFor="pr-reject-reason">
+          <textarea
+            id="pr-reject-reason"
+            rows={3}
+            className="form-textarea"
+            placeholder="e.g. UTR does not match our bank statement, or payment is short."
+            value={rejectionReason}
+            onChange={(e) => setRejectionReason(e.target.value)}
+          />
+        </Field>
+      </Modal>
 
-            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '16px' }}>
-              Please provide a reason for rejecting order <strong>{selectedPurchase.purchaseId}</strong>.
-            </p>
-
-            <div style={{ marginBottom: '20px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' }}>
-                Rejection Reason *
-              </label>
-              <textarea
-                rows={3}
-                placeholder="e.g. Transaction UTR not matching our bank statement, or payment underpaid."
-                value={rejectionReason}
-                onChange={(e) => setRejectionReason(e.target.value)}
-                style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <button
-                type="button"
-                onClick={() => setIsRejectModalOpen(false)}
-                style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={actionLoading}
-                onClick={handleReject}
-                style={{ padding: '10px 18px', borderRadius: '8px', border: 'none', background: '#dc2626', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
-              >
-                {actionLoading ? 'Rejecting...' : 'Confirm Rejection'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal 4: Unified Member Purchase Dossier / History Modal */}
-      {dossierMemberId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: '#ffffff', borderRadius: '16px', maxWidth: '850px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '26px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', paddingBottom: '14px' }}>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <User size={22} className="text-sky-600" />
-                  Member Purchase Dossier & History
-                </h3>
-                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#64748b' }}>
-                  Complete lifetime purchases, package upgrades, and requests history for <strong>{dossierData?.member?.name || dossierMemberId}</strong>.
-                </p>
+      {/* Modal 4: Member purchase history */}
+      <Modal
+        open={!!dossierMemberId}
+        onClose={() => setDossierMemberId(null)}
+        size="lg"
+        title="Member purchase history"
+        subtitle={<>Lifetime purchases, package upgrades and requests for <strong>{dossierData?.member?.name || dossierMemberId}</strong></>}
+        footer={
+          <button type="button" onClick={() => setDossierMemberId(null)} className="btn btn-secondary">
+            Close
+          </button>
+        }
+      >
+        {dossierLoading ? (
+          <LoadingState label="Loading member history…" />
+        ) : dossierData ? (
+          <>
+            <div className="stat-panel-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 170px), 1fr))' }}>
+              <div className="stat-panel is-muted">
+                <div className="stat-panel-label">Current package</div>
+                <div className="stat-panel-value" style={{ fontSize: 'var(--fs-lg)' }}>{dossierData.member?.currentPackage || 'None'}</div>
+                <div className="form-hint">Cap ₹{(dossierData.member?.dailyCapping || 0).toLocaleString()}/day</div>
               </div>
-              <button onClick={() => setDossierMemberId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-                <X size={22} />
-              </button>
-            </div>
-
-            {dossierLoading ? (
-              <div style={{ padding: '40px', textAlign: 'center', color: '#64748b' }}>Loading member history...</div>
-            ) : dossierData ? (
-              <div>
-                {/* Member Profile Stats */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', marginBottom: '20px' }}>
-                  <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Current Package</div>
-                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{dossierData.member?.currentPackage || 'None'}</div>
-                    <div style={{ fontSize: '11px', color: '#059669', fontWeight: 600 }}>Cap: ₹{(dossierData.member?.dailyCapping || 0).toLocaleString()}/day</div>
-                  </div>
-                  <div style={{ background: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>Lifetime Requests</div>
-                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '4px' }}>{dossierData.summary?.totalRequests || 0} Orders</div>
-                    <div style={{ fontSize: '11px', color: '#64748b' }}>{dossierData.summary?.packageRequestsCount} Pkg | {dossierData.summary?.productRequestsCount} Prod</div>
-                  </div>
-                  <div style={{ background: '#f0fdf4', padding: '12px 14px', borderRadius: '10px', border: '1px solid #bbf7d0' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#166534', textTransform: 'uppercase' }}>Total Paid Amount</div>
-                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#15803d', marginTop: '4px' }}>₹ {(dossierData.summary?.totalSpent || 0).toLocaleString()}</div>
-                    <div style={{ fontSize: '11px', color: '#16a34a' }}>Lifetime settlements</div>
-                  </div>
-                  <div style={{ background: '#f0f9ff', padding: '12px 14px', borderRadius: '10px', border: '1px solid #bae6fd' }}>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase' }}>Total BV Credited</div>
-                    <div style={{ fontSize: '15px', fontWeight: 800, color: '#0284c7', marginTop: '4px' }}>{(dossierData.summary?.totalBvCredited || 0).toLocaleString()} BV</div>
-                    <div style={{ fontSize: '11px', color: '#0284c7' }}>Personal volume added</div>
-                  </div>
-                </div>
-
-                {/* History Table */}
-                <h4 style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 700, color: '#1e293b' }}>Chronological Requests History</h4>
-                {dossierData.history?.length === 0 ? (
-                  <div style={{ padding: '20px', textAlign: 'center', color: '#64748b' }}>No requests recorded for this member.</div>
-                ) : (
-                  <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '10px' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px', textAlign: 'left' }}>
-                      <thead>
-                        <tr style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', color: '#475569' }}>
-                          <th style={{ padding: '10px 12px' }}>Date</th>
-                          <th style={{ padding: '10px 12px' }}>Order ID</th>
-                          <th style={{ padding: '10px 12px' }}>Type & Items</th>
-                          <th style={{ padding: '10px 12px' }}>Amount / BV</th>
-                          <th style={{ padding: '10px 12px' }}>UTR / Reference</th>
-                          <th style={{ padding: '10px 12px' }}>Stage</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {dossierData.history.map((h: any) => (
-                          <tr key={h._id} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                            <td style={{ padding: '10px 12px', color: '#64748b' }}>
-                              {new Date(h.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </td>
-                            <td style={{ padding: '10px 12px', fontWeight: 600 }}>{h.purchaseId}</td>
-                            <td style={{ padding: '10px 12px' }}>
-                              <span style={{ fontWeight: 700, color: h.items[0]?.itemType === 'PACKAGE' ? '#b45309' : '#047857' }}>
-                                [{h.items[0]?.itemType === 'PACKAGE' ? 'PACKAGE' : 'PRODUCT'}]
-                              </span>{' '}
-                              {h.items.map((i: any) => `${i.name} (x${i.quantity})`).join(', ')}
-                            </td>
-                            <td style={{ padding: '10px 12px', fontWeight: 700 }}>
-                              ₹ {h.totalAmount.toLocaleString()} <span style={{ color: '#0284c7' }}>({h.totalBV.toLocaleString()} BV)</span>
-                            </td>
-                            <td style={{ padding: '10px 12px', fontFamily: 'monospace', color: '#581c87' }}>
-                              {h.utrNumber || '-'}
-                            </td>
-                            <td style={{ padding: '10px 12px' }}>{stageBadge(h.approvalStage)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
+              <div className="stat-panel is-muted">
+                <div className="stat-panel-label">Lifetime requests</div>
+                <div className="stat-panel-value" style={{ fontSize: 'var(--fs-lg)' }}>{dossierData.summary?.totalRequests || 0} orders</div>
+                <div className="form-hint">{dossierData.summary?.packageRequestsCount} packages · {dossierData.summary?.productRequestsCount} products</div>
               </div>
-            ) : null}
-
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
-              <button
-                onClick={() => setDossierMemberId(null)}
-                style={{ padding: '8px 18px', borderRadius: '8px', background: '#0f172a', color: '#fff', border: 'none', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
-              >
-                Close Dossier
-              </button>
+              <div className="stat-panel is-muted">
+                <div className="stat-panel-label">Total paid</div>
+                <div className="stat-panel-value" style={{ fontSize: 'var(--fs-lg)', color: 'var(--success)' }}>₹ {(dossierData.summary?.totalSpent || 0).toLocaleString()}</div>
+                <div className="form-hint">Lifetime settlements</div>
+              </div>
+              <div className="stat-panel is-muted">
+                <div className="stat-panel-label">BV credited</div>
+                <div className="stat-panel-value" style={{ fontSize: 'var(--fs-lg)' }}>{(dossierData.summary?.totalBvCredited || 0).toLocaleString()} BV</div>
+                <div className="form-hint">Personal volume added</div>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+
+            <h4 className="section-title" style={{ fontSize: 'var(--fs-md)' }}>Request history</h4>
+            {dossierData.history?.length === 0 ? (
+              <EmptyState compact title="No requests recorded" text="This member has no purchase requests yet." />
+            ) : (
+              <div className="table-responsive table-framed">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Order ID</th>
+                      <th>Type & Items</th>
+                      <th>Amount / BV</th>
+                      <th>UTR / Reference</th>
+                      <th>Stage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {dossierData.history.map((h: any) => (
+                      <tr key={h._id}>
+                        <td className="nowrap" style={{ color: 'var(--text-muted)' }}>
+                          {new Date(h.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </td>
+                        <td className="text-mono">{h.purchaseId}</td>
+                        <td>
+                          <Badge tone={h.items[0]?.itemType === 'PACKAGE' ? 'warning' : 'success'}>
+                            {h.items[0]?.itemType === 'PACKAGE' ? 'Package' : 'Product'}
+                          </Badge>{' '}
+                          {h.items.map((i: any) => `${i.name} (x${i.quantity})`).join(', ')}
+                        </td>
+                        <td className="nowrap" style={{ fontWeight: 600 }}>
+                          ₹ {h.totalAmount.toLocaleString()} <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>· {h.totalBV.toLocaleString()} BV</span>
+                        </td>
+                        <td className="text-mono">{h.utrNumber || '-'}</td>
+                        <td>{stageBadge(h.approvalStage)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
+        ) : null}
+      </Modal>
 
       {/* Modal 5: Member Submit Payment Details */}
-      {isSubmitPaymentModalOpen && selectedPurchase && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: '#ffffff', borderRadius: '16px', maxWidth: '580px', width: '100%', maxHeight: '90vh', overflowY: 'auto', padding: '24px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 800, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <CreditCard size={20} className="text-purple-600" />
-                Submit Payment Details & UTR
-              </h3>
-              <button onClick={() => setIsSubmitPaymentModalOpen(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Bank details preview */}
-            <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '14px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 700, color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Landmark size={15} className="text-sky-600" /> Company Deposit Account
+      <Modal
+        open={isSubmitPaymentModalOpen && !!selectedPurchase}
+        onClose={() => setIsSubmitPaymentModalOpen(false)}
+        dismissible={!actionLoading}
+        title="Submit payment details"
+      >
+        {selectedPurchase && (() => {
+          const acct = selectedPurchase.companyAccountSnapshot;
+          const hasAccount = Boolean(acct?.accountNumber || acct?.upiId);
+          return (
+            <>
+              <div className="stat-panel is-muted" style={{ marginBottom: 'var(--space-4)' }}>
+                <div className="icon-text" style={{ fontWeight: 600, color: 'var(--text-main)', marginBottom: 'var(--space-2)' }}>
+                  <Landmark size={15} /> Company deposit account
+                </div>
+                {hasAccount ? (
+                  <div className="detail-list">
+                    <div className="detail-row"><span>Bank</span><span>{acct?.bankName || '—'}</span></div>
+                    <div className="detail-row"><span>Account no.</span><span className="text-mono">{acct?.accountNumber || '—'}</span></div>
+                    <div className="detail-row"><span>IFSC</span><span className="text-mono">{acct?.ifscCode || '—'}</span></div>
+                    <div className="detail-row"><span>UPI ID</span><span className="text-mono">{acct?.upiId || '—'}</span></div>
+                  </div>
+                ) : (
+                  <Alert tone="warning" style={{ marginBottom: 0 }}>
+                    Company payment details were not attached to this order. Check <strong>Company Bank & QR</strong> or
+                    contact support before paying.
+                  </Alert>
+                )}
               </div>
-              <div style={{ fontSize: '12px', color: '#334155', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                <div><span style={{ color: '#64748b' }}>Bank:</span> <strong>{selectedPurchase.companyAccountSnapshot?.bankName || 'State Bank of India'}</strong></div>
-                <div><span style={{ color: '#64748b' }}>A/C No:</span> <strong style={{ color: '#0284c7' }}>{selectedPurchase.companyAccountSnapshot?.accountNumber || '9876543210123'}</strong></div>
-                <div><span style={{ color: '#64748b' }}>IFSC:</span> <strong>{selectedPurchase.companyAccountSnapshot?.ifscCode || 'SBIN0001234'}</strong></div>
-                <div><span style={{ color: '#64748b' }}>UPI ID:</span> <strong style={{ color: '#7e22ce' }}>{selectedPurchase.companyAccountSnapshot?.upiId || 'panchveda@sbi'}</strong></div>
-              </div>
-            </div>
 
-            <form onSubmit={handleMemberSubmitPayment}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginBottom: '20px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Bank UTR / Transaction ID *
-                  </label>
+              <form onSubmit={handleMemberSubmitPayment} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+                <Field label="Bank UTR / transaction ID" required htmlFor="pr-utr">
                   <input
+                    id="pr-utr"
                     type="text"
                     required
-                    placeholder="e.g. 423456789012 or UPI Ref Number"
+                    className="form-input"
+                    placeholder="e.g. 423456789012 or UPI reference"
                     value={memberUtr}
                     onChange={(e) => setMemberUtr(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
                   />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Payer Full Name *
-                  </label>
+                </Field>
+                <Field label="Payer full name" required htmlFor="pr-payer">
                   <input
+                    id="pr-payer"
                     type="text"
                     required
-                    placeholder="Name on bank account / UPI account"
+                    className="form-input"
+                    placeholder="Name on the bank / UPI account"
                     value={memberPayerName}
                     onChange={(e) => setMemberPayerName(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', boxSizing: 'border-box' }}
                   />
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>
-                    Payment Mode
-                  </label>
-                  <select
-                    value={memberPaymentMode}
-                    onChange={(e) => setMemberPaymentMode(e.target.value)}
-                    style={{ width: '100%', padding: '10px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', background: '#fff' }}
-                  >
+                </Field>
+                <Field label="Payment mode" htmlFor="pr-mode">
+                  <select id="pr-mode" className="form-select" value={memberPaymentMode} onChange={(e) => setMemberPaymentMode(e.target.value)}>
                     <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
-                    <option value="IMPS">IMPS Instant Bank Transfer</option>
-                    <option value="NEFT">NEFT Bank Transfer</option>
-                    <option value="QR_SCAN">QR Code Scan</option>
-                    <option value="NET_BANKING">Net Banking</option>
+                    <option value="IMPS">IMPS instant bank transfer</option>
+                    <option value="NEFT">NEFT bank transfer</option>
+                    <option value="QR_SCAN">QR code scan</option>
+                    <option value="NET_BANKING">Net banking</option>
                   </select>
+                </Field>
+                <div className="form-actions" style={{ marginTop: 0 }}>
+                  <button type="button" onClick={() => setIsSubmitPaymentModalOpen(false)} className="btn btn-secondary">
+                    Cancel
+                  </button>
+                  <button type="submit" disabled={actionLoading} className="btn btn-primary">
+                    <CreditCard size={16} />
+                    {actionLoading ? 'Submitting…' : 'Submit payment proof'}
+                  </button>
                 </div>
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-                <button
-                  type="button"
-                  onClick={() => setIsSubmitPaymentModalOpen(false)}
-                  style={{ padding: '10px 16px', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#fff', color: '#475569', fontWeight: 600, fontSize: '13px', cursor: 'pointer' }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#7c3aed', color: '#fff', fontWeight: 700, fontSize: '13px', cursor: 'pointer' }}
-                >
-                  {actionLoading ? 'Submitting...' : 'Submit Payment Proof'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+              </form>
+            </>
+          );
+        })()}
+      </Modal>
     </div>
   );
 };

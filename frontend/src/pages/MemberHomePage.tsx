@@ -8,16 +8,7 @@ import { AboutUsSection } from '../components/AboutUsSection';
 import { HomeFooter } from '../components/HomeFooter';
 import { HomeSectionHeader } from '../components/HomeSectionHeader';
 import { api, type SliderItem, type ProductItem, getAssetUrl, retryWithImageFallback } from '../services/api';
-import {
-  ShoppingBag,
-  Sparkles,
-  ArrowRight,
-  Check,
-  Star,
-  Package,
-  ShoppingCart,
-  Leaf,
-} from 'lucide-react';
+import { ArrowRight, Check, Leaf, Package, ShoppingBag, ShoppingCart, Sparkles, Star } from 'lucide-react';
 
 interface MemberHomePageProps {
   user?: any;
@@ -25,7 +16,7 @@ interface MemberHomePageProps {
   onNavigate?: (tab: string, params?: { categoryId?: string; subcategoryId?: string }) => void;
 }
 
-export const MemberHomePage: React.FC<MemberHomePageProps> = ({ onNavigate }) => {
+export const MemberHomePage: React.FC<MemberHomePageProps> = ({ user, onNavigate }) => {
   const [sliders, setSliders] = useState<SliderItem[]>([]);
   const [slidersLoading, setSlidersLoading] = useState(true);
 
@@ -191,8 +182,12 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({ onNavigate }) =>
             <div className="home-empty-state">
               <Package size={36} aria-hidden="true" />
               <h3>No featured products yet</h3>
-              <p>Products marked "Show on Home" by the admin will appear here.</p>
-              <button type="button" className="btn-primary" onClick={() => go('member-products')}>
+              <p>
+                {user?.role?.toLowerCase() === 'superadmin'
+                  ? 'Turn on “Show on Home” for products in Catalog → Products to feature them here.'
+                  : 'Featured products will appear here soon. Meanwhile, browse the full store.'}
+              </p>
+              <button type="button" className="btn btn-primary" onClick={() => go('member-products')}>
                 Browse the full store
               </button>
             </div>

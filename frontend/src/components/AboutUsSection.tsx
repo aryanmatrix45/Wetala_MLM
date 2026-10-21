@@ -49,176 +49,17 @@ export const AboutUsSection: React.FC<AboutUsSectionProps> = ({ className = '' }
 
   return (
     <section className={`home-section about-us-showcase-section ${className}`} aria-label="About us">
-      <style>{`
-        .about-card-container {
-          background: #ffffff;
-          border-radius: 16px;
-          border: 1px solid #e2e8f0;
-          padding: 32px 36px;
-          box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
-          position: relative;
-          overflow: hidden;
-        }
-
-        .about-grid-layout {
-          display: grid;
-          grid-template-columns: 1.15fr 0.85fr;
-          gap: 40px;
-          align-items: center;
-        }
-
-        .about-content-col {
-          order: 1; /* Left on Desktop */
-        }
-
-        .about-image-col {
-          order: 2; /* Right on Desktop */
-          display: flex;
-          justify-content: center;
-          width: 100%;
-        }
-
-        .about-image-box {
-          position: relative;
-          width: 100%;
-          max-width: 480px;
-          height: 350px;
-          border-radius: 18px;
-          overflow: hidden;
-          box-shadow: 0 12px 30px -8px rgba(15, 23, 42, 0.15);
-          border: 1px solid #cbd5e1;
-          background: #f8fafc;
-        }
-
-        .about-image-box img {
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          transition: transform 0.4s ease;
-        }
-
-        .about-floating-badge {
-          position: absolute;
-          bottom: 16px;
-          left: 16px;
-          background: rgba(255, 255, 255, 0.95);
-          backdrop-filter: blur(8px);
-          padding: 8px 14px;
-          border-radius: 12px;
-          box-shadow: 0 4px 14px rgba(0,0,0,0.12);
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          border: 1px solid rgba(226, 232, 240, 0.9);
-          z-index: 2;
-        }
-
-        .about-title {
-          font-size: 24px;
-          font-weight: 800;
-          color: #0f172a;
-          line-height: 1.3;
-          letter-spacing: -0.02em;
-          margin-bottom: 16px;
-          margin-top: 0;
-        }
-
-        .about-section-html-content {
-          font-size: 14px;
-          line-height: 1.75;
-          color: #334155;
-          margin-bottom: 20px;
-          word-break: break-word;
-          overflow-wrap: break-word;
-        }
-
-        .about-section-html-content p {
-          margin-top: 0;
-          margin-bottom: 12px;
-        }
-
-        .about-section-html-content ul, .about-section-html-content ol {
-          padding-left: 20px;
-          margin-bottom: 14px;
-        }
-
-        .about-section-html-content li {
-          margin-bottom: 6px;
-        }
-
-        /* Phone / Mobile Responsive Adjustments */
-        @media (max-width: 768px) {
-          .about-card-container {
-            padding: 22px 18px !important;
-            border-radius: 16px !important;
-          }
-
-          .about-grid-layout {
-            grid-template-columns: 1fr !important;
-            gap: 24px !important;
-          }
-
-          .about-content-col {
-            order: 1 !important;
-          }
-
-          .about-image-col {
-            order: 2 !important; /* Image renders smoothly below text on mobile */
-          }
-
-          .about-image-box {
-            height: 230px !important;
-            max-width: 100% !important;
-            border-radius: 14px !important;
-          }
-
-          .about-title {
-            font-size: 21px !important;
-            line-height: 1.35 !important;
-            margin-bottom: 12px !important;
-          }
-
-          .about-section-html-content {
-            font-size: 13.5px !important;
-            line-height: 1.65 !important;
-            margin-bottom: 16px !important;
-          }
-
-          .about-floating-badge {
-            bottom: 10px !important;
-            left: 10px !important;
-            padding: 6px 10px !important;
-            gap: 6px !important;
-          }
-
-          .about-floating-badge-title {
-            font-size: 10px !important;
-          }
-
-          .about-floating-badge-subtitle {
-            font-size: 9px !important;
-          }
-
-          .about-highlights-wrap {
-            gap: 8px !important;
-          }
-
-          .about-highlight-item {
-            font-size: 11px !important;
-          }
-        }
-      `}</style>
 
       {/* Skeletons while loading */}
       {loading && (
         <div
           style={{
             height: 320,
-            borderRadius: 18,
-            background: 'linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%)',
+            borderRadius: 'var(--radius-lg)',
+            background: 'linear-gradient(90deg, var(--surface-muted) 25%, var(--surface-sunken) 50%, var(--surface-muted) 75%)',
             backgroundSize: '200% 100%',
             animation: 'shimmer 1.5s infinite',
-            border: '1px solid #e2e8f0',
+            border: '1px solid var(--border-color)',
           }}
         />
       )}
@@ -264,13 +105,13 @@ export const AboutUsSection: React.FC<AboutUsSectionProps> = ({ className = '' }
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: 6,
-                      fontSize: 11,
+                      fontSize: 'var(--fs-xs)',
                       fontWeight: 700,
-                      color: '#2563eb',
-                      background: '#eff6ff',
-                      border: '1px solid #dbeafe',
+                      color: 'var(--primary)',
+                      background: 'var(--primary-light)',
+                      border: '1px solid var(--primary-soft)',
                       padding: '4px 12px',
-                      borderRadius: 20,
+                      borderRadius: 'var(--radius-xl)',
                       textTransform: 'uppercase',
                       letterSpacing: '0.05em',
                       marginBottom: 14,
@@ -297,19 +138,19 @@ export const AboutUsSection: React.FC<AboutUsSectionProps> = ({ className = '' }
                       flexWrap: 'wrap',
                       gap: 12,
                       paddingTop: 14,
-                      borderTop: '1px solid #f1f5f9',
+                      borderTop: '1px solid var(--border-light)',
                     }}
                   >
-                    <div className="about-highlight-item" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569', fontWeight: 600 }}>
-                      <CheckCircle2 size={15} color="#16a34a" />
+                    <div className="about-highlight-item" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      <CheckCircle2 size={15} color="var(--success)" />
                       <span>Authentic Ayurveda</span>
                     </div>
-                    <div className="about-highlight-item" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569', fontWeight: 600 }}>
-                      <Award size={15} color="#2563eb" />
+                    <div className="about-highlight-item" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      <Award size={15} color="var(--primary)" />
                       <span>Research Backed</span>
                     </div>
-                    <div className="about-highlight-item" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569', fontWeight: 600 }}>
-                      <HeartHandshake size={15} color="#8b5cf6" />
+                    <div className="about-highlight-item" style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', fontWeight: 600 }}>
+                      <HeartHandshake size={15} color="var(--accent)" />
                       <span>Distributor Prosperity</span>
                     </div>
                   </div>
@@ -337,8 +178,8 @@ export const AboutUsSection: React.FC<AboutUsSectionProps> = ({ className = '' }
                             width: 28,
                             height: 28,
                             borderRadius: '50%',
-                            background: '#16a34a',
-                            color: '#ffffff',
+                            background: 'var(--success)',
+                            color: 'var(--text-inverse)',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
@@ -348,10 +189,10 @@ export const AboutUsSection: React.FC<AboutUsSectionProps> = ({ className = '' }
                           <ShieldCheck size={16} />
                         </div>
                         <div>
-                          <div className="about-floating-badge-title" style={{ fontSize: 11, fontWeight: 700, color: '#0f172a' }}>
+                          <div className="about-floating-badge-title" style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--text-main)' }}>
                             100% Certified Herbal
                           </div>
-                          <div className="about-floating-badge-subtitle" style={{ fontSize: 10, color: '#64748b' }}>
+                          <div className="about-floating-badge-subtitle" style={{ fontSize: 'var(--fs-2xs)', color: 'var(--text-muted)' }}>
                             GMP Formulations
                           </div>
                         </div>

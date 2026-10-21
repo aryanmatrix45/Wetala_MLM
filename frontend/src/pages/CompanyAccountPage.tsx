@@ -1,32 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  QrCode, 
-  Check, 
-  Copy, 
-  Upload, 
-  Download, 
-  Save, 
-  RefreshCw, 
-  ShieldCheck, 
-  AlertCircle, 
-  CheckCircle2, 
-  Eye, 
-  EyeOff,
-  Trash2, 
-  Smartphone, 
-  Landmark, 
-  Phone, 
-  Mail,
-  Zap,
-  Sparkles,
-  FileCheck2
-} from 'lucide-react';
+import { Alert, EmptyState, LoadingState, PageHeader } from '../components/ui';
+import { Check, Copy, Download, Eye, EyeOff, FileCheck2, Landmark, Mail, Phone, QrCode, RefreshCw, Save, Smartphone, Sparkles, Trash2, Upload } from 'lucide-react';
 import { api, getAssetUrl, type CompanyAccountData } from '../services/api';
 
 interface CompanyAccountPageProps {
   user?: any;
   token?: string | null;
 }
+
+const NOT_CONFIGURED = <span style={{ color: 'var(--text-light)', fontWeight: 500, fontFamily: 'var(--font-family)', letterSpacing: 'normal', fontSize: 'var(--fs-md)' }}>Not configured</span>;
 
 export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, token }) => {
   const isAdmin = user?.role?.toLowerCase() === 'superadmin';
@@ -68,17 +50,17 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
       if (res && res.status && res.data) {
         setAccount(res.data);
         setFormData({
-          bankName: res.data.bankName || 'State Bank of India',
+          bankName: res.data.bankName || '',
           accountHolderName: res.data.accountHolderName || 'Panchveda Wellness Pvt Ltd',
-          accountNumber: res.data.accountNumber || '9876543210123',
-          ifscCode: res.data.ifscCode || 'SBIN0001234',
-          branchName: res.data.branchName || 'Connaught Place Branch, New Delhi',
+          accountNumber: res.data.accountNumber || '',
+          ifscCode: res.data.ifscCode || '',
+          branchName: res.data.branchName || '',
           accountType: res.data.accountType || 'Current Account',
-          upiId: res.data.upiId || 'panchveda@sbi',
+          upiId: res.data.upiId || '',
           upiHolderName: res.data.upiHolderName || 'Panchveda Wellness Pvt Ltd',
           depositInstructions: res.data.depositInstructions || 'Please mention your Member ID in the payment remarks/notes. After making the payment, note your 12-digit UTR/reference number and submit for instant verification.',
-          supportPhone: res.data.supportPhone || '+91 98765 43210',
-          supportEmail: res.data.supportEmail || 'payments@panchvedawellness.com',
+          supportPhone: res.data.supportPhone || '',
+          supportEmail: res.data.supportEmail || '',
           isActive: res.data.isActive !== false,
         });
         setQrPreview(res.data.qrCodeUrl ? getAssetUrl(res.data.qrCodeUrl) : '');
@@ -200,11 +182,11 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
   };
 
   // Generate UPI URI & Dynamic Scannable QR Code
-  const upiIdToUse = formData.upiId || 'panchveda@sbi';
+  const upiIdToUse = formData.upiId;
   const payeeNameToUse = formData.accountHolderName || formData.upiHolderName || 'Panchveda Wellness';
   const upiUri = `upi://pay?pa=${encodeURIComponent(upiIdToUse)}&pn=${encodeURIComponent(payeeNameToUse)}&cu=INR`;
   const dynamicGeneratedQr = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&margin=12&data=${encodeURIComponent(upiUri)}`;
-  const effectiveQrCodeUrl = qrPreview || dynamicGeneratedQr;
+  const effectiveQrCodeUrl = qrPreview || (upiIdToUse ? dynamicGeneratedQr : '');
 
   // Download QR Code
   const handleDownloadQr = () => {
@@ -219,7 +201,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
   const isEffectiveAdmin = isAdmin && !previewMemberMode;
 
   // Format account number in groups of 4 for readability
-  const formattedAccountNumber = (formData.accountNumber || '9876543210123')
+  const formattedAccountNumber = (formData.accountNumber || '')
     .replace(/\s?/g, '')
     .replace(/(\d{4})/g, '$1 ')
     .trim();
@@ -230,130 +212,53 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
       {/* ========================================================================= */}
       {/* 1. TOP HEADER & CONTROLS                                                 */}
       {/* ========================================================================= */}
-      <div className="welcome-header" style={{ marginBottom: '22px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <h1 className="page-title" style={{ fontSize: '26px', fontWeight: 800, color: '#0f172a', letterSpacing: '-0.02em' }}>
-              {isEffectiveAdmin ? 'Company Payment & Account Settings' : 'Official Payment & Bank Accounts'}
-            </h1>
-            <span style={{
-              background: 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)',
-              color: '#065f46',
-              border: '1px solid #a7f3d0',
-              padding: '4px 12px',
-              borderRadius: '9999px',
-              fontSize: '12px',
-              fontWeight: 800,
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '5px',
-              boxShadow: '0 1px 2px rgba(16, 185, 129, 0.1)'
-            }}>
-              <ShieldCheck size={14} style={{ color: '#059669' }} /> Verified Company Account
-            </span>
-          </div>
-          <p className="page-subtitle" style={{ fontSize: '13.5px', color: '#64748b', marginTop: '4px' }}>
-            {isEffectiveAdmin 
-              ? 'Configure company bank details, UPI ID, and payment QR code shared with members for official deposits.' 
-              : 'Scan the official payment QR code, transfer via UPI ID, or use NEFT/IMPS for package purchases and deposit verification.'}
-          </p>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-          {isAdmin && (
-            <button
-              onClick={() => setPreviewMemberMode(!previewMemberMode)}
-              className="secondary-btn"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '7px',
-                padding: '9px 16px',
-                borderRadius: '10px',
-                background: previewMemberMode ? '#eff6ff' : '#ffffff',
-                border: previewMemberMode ? '1.5px solid #3b82f6' : '1px solid #cbd5e1',
-                color: previewMemberMode ? '#1d4ed8' : '#334155',
-                fontWeight: 700,
-                fontSize: '13px',
-                boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {previewMemberMode ? <EyeOff size={15} /> : <Eye size={15} />}
-              <span>{previewMemberMode ? 'Back to Admin Edit' : 'Preview Member View'}</span>
+      <PageHeader
+        title={isEffectiveAdmin ? 'Company Account Settings' : 'Company Bank & QR'}
+        subtitle={
+          isEffectiveAdmin
+            ? 'Bank details, UPI ID and payment QR code shown to members for official deposits.'
+            : 'Pay for packages and products by UPI QR, UPI ID or bank transfer (NEFT/IMPS).'
+        }
+        actions={
+          <>
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={() => setPreviewMemberMode(!previewMemberMode)}
+                className={`btn ${previewMemberMode ? 'btn-soft' : 'btn-secondary'}`}
+                aria-pressed={previewMemberMode}
+              >
+                {previewMemberMode ? <EyeOff size={16} /> : <Eye size={16} />}
+                <span>{previewMemberMode ? 'Back to editing' : 'Preview member view'}</span>
+              </button>
+            )}
+            <button type="button" onClick={fetchAccount} className="btn btn-secondary" disabled={loading}>
+              <RefreshCw size={16} className={loading ? 'spin-anim' : ''} />
+              <span>Refresh</span>
             </button>
-          )}
+          </>
+        }
+      />
 
-          <button 
-            onClick={fetchAccount} 
-            className="secondary-btn" 
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '6px', 
-              padding: '9px 16px', 
-              borderRadius: '10px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: 'pointer'
-            }}
-            disabled={loading}
-          >
-            <RefreshCw size={15} className={loading ? 'spin-anim' : ''} />
-            <span>Refresh</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Status Alert Banner */}
       {statusMessage && (
-        <div style={{
-          padding: '14px 20px',
-          borderRadius: '12px',
-          marginBottom: '24px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          background: statusMessage.type === 'success' ? 'linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%)' : 'linear-gradient(135deg, #fef2f2 0%, #fff1f2 100%)',
-          border: `1.5px solid ${statusMessage.type === 'success' ? '#86efac' : '#fca5a5'}`,
-          color: statusMessage.type === 'success' ? '#14532d' : '#991b1b',
-          fontSize: '13.5px',
-          fontWeight: 700,
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.04)'
-        }}>
-          {statusMessage.type === 'success' ? <CheckCircle2 size={20} style={{ color: '#16a34a' }} /> : <AlertCircle size={20} style={{ color: '#dc2626' }} />}
-          <span>{statusMessage.text}</span>
-        </div>
+        <Alert tone={statusMessage.type === 'success' ? 'success' : 'error'} onClose={() => setStatusMessage(null)}>
+          {statusMessage.text}
+        </Alert>
       )}
 
       {loading ? (
-        <div style={{ padding: '90px 20px', textAlign: 'center', color: '#64748b' }}>
-          <div style={{ width: '42px', height: '42px', border: '3.5px solid #e2e8f0', borderTopColor: '#2563eb', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px' }} />
-          <p style={{ fontWeight: 700, fontSize: '15px', color: '#1e293b' }}>Loading verified payment details...</p>
-        </div>
+        <LoadingState label="Loading payment details…" />
       ) : isEffectiveAdmin ? (
         /* ========================================================================= */
-        /* 2. ADMIN CONFIGURATION MODE (Sleek Segmented Studio)                     */
+        /* 2. ADMIN CONFIGURATION MODE                                               */
         /* ========================================================================= */
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          
-          {/* Segmented Tab Navigation for Admin */}
-          <div style={{
-            display: 'flex',
-            gap: '8px',
-            background: '#ffffff',
-            padding: '6px',
-            borderRadius: '14px',
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-            flexWrap: 'wrap'
-          }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          <div className="tabs" role="tablist" aria-label="Company account settings" style={{ marginBottom: 0 }}>
             {[
-              { id: 'bank', label: '1. Bank Details', icon: Landmark },
-              { id: 'upi', label: '2. UPI ID Settings', icon: Smartphone },
-              { id: 'qr', label: '3. QR Code Upload', icon: QrCode },
-              { id: 'instructions', label: '4. Instructions & Support', icon: FileCheck2 },
+              { id: 'bank', label: 'Bank details', icon: Landmark },
+              { id: 'upi', label: 'UPI ID', icon: Smartphone },
+              { id: 'qr', label: 'QR code', icon: QrCode },
+              { id: 'instructions', label: 'Instructions & support', icon: FileCheck2 },
             ].map((tab) => {
               const TabIcon = tab.icon;
               const isSelected = adminActiveTab === tab.id;
@@ -361,25 +266,10 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                 <button
                   key={tab.id}
                   type="button"
+                  role="tab"
+                  aria-selected={isSelected}
                   onClick={() => setAdminActiveTab(tab.id as any)}
-                  style={{
-                    flex: '1 1 auto',
-                    minWidth: '150px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    padding: '10px 18px',
-                    borderRadius: '10px',
-                    fontSize: '13px',
-                    fontWeight: 700,
-                    border: 'none',
-                    cursor: 'pointer',
-                    background: isSelected ? 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)' : 'transparent',
-                    color: isSelected ? '#ffffff' : '#64748b',
-                    boxShadow: isSelected ? '0 4px 12px rgba(37, 99, 235, 0.25)' : 'none',
-                    transition: 'all 0.2s ease'
-                  }}
+                  className={`tab-btn${isSelected ? ' is-active' : ''}`}
                 >
                   <TabIcon size={16} />
                   <span>{tab.label}</span>
@@ -392,24 +282,24 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
             <div className="company-admin-studio-grid">
               
               {/* Active Tab Configuration Card */}
-              <div className="dashboard-card" style={{ padding: '28px', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)' }}>
+              <div className="dashboard-card">
                 
                 {/* TAB 1: BANK DETAILS */}
                 {adminActiveTab === 'bank' && (
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '22px' }}>
-                      <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-lg)', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Landmark size={22} />
                       </div>
                       <div>
-                        <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#0f172a' }}>Official Bank Account</h3>
-                        <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>Configure company bank for NEFT, RTGS, and IMPS payments.</p>
+                        <h3 className="section-title" style={{ margin: 0 }}>Official Bank Account</h3>
+                        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>Configure company bank for NEFT, RTGS, and IMPS payments.</p>
                       </div>
                     </div>
 
                     <div className="company-admin-form-row">
                       <div style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                           Account Holder / Beneficiary Name *
                         </label>
                         <input
@@ -418,12 +308,12 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                           placeholder="e.g. Panchveda Wellness Pvt Ltd"
                           value={formData.accountHolderName}
                           onChange={(e) => setFormData({ ...formData, accountHolderName: e.target.value })}
-                          style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+                          style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-md)', outline: 'none' }}
                         />
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                           Bank Name *
                         </label>
                         <input
@@ -432,18 +322,18 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                           placeholder="e.g. State Bank of India"
                           value={formData.bankName}
                           onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
-                          style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+                          style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-md)', outline: 'none' }}
                         />
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                           Account Type *
                         </label>
                         <select
                           value={formData.accountType}
                           onChange={(e) => setFormData({ ...formData, accountType: e.target.value })}
-                          style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', background: '#fff', outline: 'none' }}
+                          style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-md)', background: 'var(--surface)', outline: 'none' }}
                         >
                           <option value="Current Account">Current Account (Corporate)</option>
                           <option value="Savings Account">Savings Account</option>
@@ -451,7 +341,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                           Account Number *
                         </label>
                         <input
@@ -460,12 +350,12 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                           placeholder="e.g. 9876543210123"
                           value={formData.accountNumber}
                           onChange={(e) => setFormData({ ...formData, accountNumber: e.target.value })}
-                          style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14.5px', fontFamily: 'monospace', fontWeight: 700, outline: 'none' }}
+                          style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-md)', fontFamily: 'monospace', fontWeight: 700, outline: 'none' }}
                         />
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                           IFSC Code *
                         </label>
                         <input
@@ -474,12 +364,12 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                           placeholder="e.g. SBIN0001234"
                           value={formData.ifscCode}
                           onChange={(e) => setFormData({ ...formData, ifscCode: e.target.value.toUpperCase() })}
-                          style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14.5px', fontFamily: 'monospace', fontWeight: 700, outline: 'none' }}
+                          style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-md)', fontFamily: 'monospace', fontWeight: 700, outline: 'none' }}
                         />
                       </div>
 
                       <div style={{ gridColumn: 'span 2' }}>
-                        <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                           Branch Address / Name
                         </label>
                         <input
@@ -487,7 +377,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                           placeholder="e.g. Connaught Place Branch, New Delhi - 110001"
                           value={formData.branchName}
                           onChange={(e) => setFormData({ ...formData, branchName: e.target.value })}
-                          style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+                          style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-md)', outline: 'none' }}
                         />
                       </div>
                     </div>
@@ -498,18 +388,18 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                 {adminActiveTab === 'upi' && (
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '22px' }}>
-                      <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#ecfdf5', color: '#059669', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-lg)', background: 'var(--success-light)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <Smartphone size={22} />
                       </div>
                       <div>
-                        <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#0f172a' }}>Direct UPI ID (VPA)</h3>
-                        <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>Enables 1-click UPI payments across PhonePe, Google Pay, and Paytm.</p>
+                        <h3 className="section-title" style={{ margin: 0 }}>Direct UPI ID (VPA)</h3>
+                        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>Enables 1-click UPI payments across PhonePe, Google Pay, and Paytm.</p>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                       <div>
-                        <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                           Company Virtual Payment Address (UPI ID) *
                         </label>
                         <input
@@ -518,15 +408,15 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                           placeholder="e.g. panchveda@sbi or company@okhdfcbank"
                           value={formData.upiId}
                           onChange={(e) => setFormData({ ...formData, upiId: e.target.value.toLowerCase().trim() })}
-                          style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '15px', fontFamily: 'monospace', fontWeight: 700, outline: 'none' }}
+                          style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-lg)', fontFamily: 'monospace', fontWeight: 700, outline: 'none' }}
                         />
-                        <span style={{ fontSize: '11.5px', color: '#64748b', marginTop: '4px', display: 'block' }}>
+                        <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
                           Must be a valid active UPI handle registered with your business bank account.
                         </span>
                       </div>
 
                       <div>
-                        <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                           Registered Payee Name
                         </label>
                         <input
@@ -534,7 +424,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                           placeholder="e.g. Panchveda Wellness Pvt Ltd"
                           value={formData.upiHolderName}
                           onChange={(e) => setFormData({ ...formData, upiHolderName: e.target.value })}
-                          style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '14px', outline: 'none' }}
+                          style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-md)', outline: 'none' }}
                         />
                       </div>
                     </div>
@@ -545,31 +435,31 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                 {adminActiveTab === 'qr' && (
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '22px' }}>
-                      <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-lg)', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <QrCode size={22} />
                       </div>
                       <div>
-                        <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#0f172a' }}>Payment QR Code Image</h3>
-                        <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>Upload your official merchant soundbox / payment standee QR image.</p>
+                        <h3 className="section-title" style={{ margin: 0 }}>Payment QR Code Image</h3>
+                        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>Upload your official merchant soundbox / payment standee QR image.</p>
                       </div>
                     </div>
 
                     <div style={{
-                      border: '2px dashed #94a3b8',
-                      borderRadius: '16px',
+                      border: '2px dashed var(--text-light)',
+                      borderRadius: 'var(--radius-lg)',
                       padding: '30px',
                       textAlign: 'center',
-                      background: '#f8fafc',
+                      background: 'var(--surface-subtle)',
                       transition: 'all 0.2s ease'
                     }}>
                       {qrPreview ? (
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
                           <div style={{
-                            background: '#ffffff',
+                            background: 'var(--surface)',
                             padding: '16px',
-                            borderRadius: '16px',
+                            borderRadius: 'var(--radius-lg)',
                             boxShadow: '0 8px 24px rgba(0, 0, 0, 0.08)',
-                            border: '1.5px solid #e2e8f0',
+                            border: '1.5px solid var(--border-color)',
                             display: 'inline-block'
                           }}>
                             <img 
@@ -581,11 +471,11 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
 
                           <div style={{ display: 'flex', gap: '10px' }}>
                             <label style={{
-                              background: '#2563eb',
-                              color: '#ffffff',
+                              background: 'var(--primary)',
+                              color: 'var(--text-inverse)',
                               padding: '8px 16px',
-                              borderRadius: '8px',
-                              fontSize: '13px',
+                              borderRadius: 'var(--radius-md)',
+                              fontSize: 'var(--fs-base)',
                               fontWeight: 700,
                               cursor: 'pointer',
                               display: 'inline-flex',
@@ -600,21 +490,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                             <button
                               type="button"
                               onClick={handleRemoveQr}
-                              disabled={uploadingQr}
-                              style={{
-                                background: '#fee2e2',
-                                color: '#dc2626',
-                                border: '1px solid #fecaca',
-                                padding: '8px 16px',
-                                borderRadius: '8px',
-                                fontSize: '13px',
-                                fontWeight: 700,
-                                cursor: 'pointer',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '6px'
-                              }}
-                            >
+                              disabled={uploadingQr} className="btn btn-danger-outline">
                               <Trash2 size={14} />
                               <span>Remove QR</span>
                             </button>
@@ -622,33 +498,33 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                         </div>
                       ) : (
                         <div>
-                          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                          <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
                             <QrCode size={28} />
                           </div>
-                          <h4 style={{ fontSize: '15px', fontWeight: 800, color: '#1e293b', marginBottom: '4px' }}>
+                          <h4 style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-strong)', marginBottom: '4px' }}>
                             Upload Merchant QR Code
                           </h4>
-                          <p style={{ fontSize: '12.5px', color: '#64748b', maxWidth: '360px', margin: '0 auto 16px auto' }}>
+                          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', maxWidth: '360px', margin: '0 auto 16px auto' }}>
                             Upload a high-resolution screenshot or PDF export of your PhonePe / GooglePay / Paytm QR standee (PNG, JPG, WEBP).
                           </p>
                           <label style={{
-                            background: '#2563eb',
-                            color: '#ffffff',
+                            background: 'var(--primary)',
+                            color: 'var(--text-inverse)',
                             padding: '10px 22px',
-                            borderRadius: '10px',
-                            fontSize: '13px',
+                            borderRadius: 'var(--radius-md)',
+                            fontSize: 'var(--fs-base)',
                             fontWeight: 700,
                             cursor: 'pointer',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: '6px',
-                            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.25)'
+                            boxShadow: 'none'
                           }}>
                             <Upload size={15} />
                             <span>Select File</span>
                             <input type="file" accept="image/*" onChange={handleQrFileSelect} style={{ display: 'none' }} />
                           </label>
-                          <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '10px' }}>
+                          <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-light)', marginTop: '10px' }}>
                             * If left empty, a live dynamic QR code for your UPI ID will be automatically generated for members!
                           </div>
                         </div>
@@ -661,18 +537,18 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                 {adminActiveTab === 'instructions' && (
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '22px' }}>
-                      <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-lg)', background: 'var(--warning-soft)', color: 'var(--warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                         <FileCheck2 size={22} />
                       </div>
                       <div>
-                        <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#0f172a' }}>Payment Guidelines & Helpdesk</h3>
-                        <p style={{ fontSize: '13px', color: '#64748b', margin: '2px 0 0 0' }}>Step-by-step guidance shown to members upon making deposits.</p>
+                        <h3 className="section-title" style={{ margin: 0 }}>Payment Guidelines & Helpdesk</h3>
+                        <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>Step-by-step guidance shown to members upon making deposits.</p>
                       </div>
                     </div>
 
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                       <div>
-                        <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                           Deposit Guidelines for Members
                         </label>
                         <textarea
@@ -680,13 +556,13 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                           placeholder="e.g. Please enter your Member ID in remarks. Take a screenshot of the transaction receipt and submit for instant verification."
                           value={formData.depositInstructions}
                           onChange={(e) => setFormData({ ...formData, depositInstructions: e.target.value })}
-                          style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13.5px', outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
+                          style={{ width: '100%', padding: '12px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-md)', outline: 'none', resize: 'vertical', lineHeight: 1.5 }}
                         />
                       </div>
 
                       <div className="company-admin-form-row">
                         <div>
-                          <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                          <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                             Payment Support Phone
                           </label>
                           <input
@@ -694,12 +570,12 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                             placeholder="+91 98765 43210"
                             value={formData.supportPhone}
                             onChange={(e) => setFormData({ ...formData, supportPhone: e.target.value })}
-                            style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13.5px', outline: 'none' }}
+                            style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-md)', outline: 'none' }}
                           />
                         </div>
 
                         <div>
-                          <label style={{ fontSize: '12.5px', fontWeight: 700, color: '#334155', display: 'block', marginBottom: '6px' }}>
+                          <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                             Payment Support Email
                           </label>
                           <input
@@ -707,7 +583,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                             placeholder="payments@panchvedawellness.com"
                             value={formData.supportEmail}
                             onChange={(e) => setFormData({ ...formData, supportEmail: e.target.value })}
-                            style={{ width: '100%', padding: '11px 14px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '13.5px', outline: 'none' }}
+                            style={{ width: '100%', padding: '11px 14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--border-strong)', fontSize: 'var(--fs-md)', outline: 'none' }}
                           />
                         </div>
                       </div>
@@ -716,24 +592,24 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                 )}
 
                 {/* Submit Action Bar */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '28px', paddingTop: '18px', borderTop: '1px solid #f1f5f9' }}>
-                  <div style={{ fontSize: '12px', color: '#64748b' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '28px', paddingTop: '18px', borderTop: '1px solid var(--border-light)' }}>
+                  <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
                     Changes reflect immediately for all members upon saving.
                   </div>
                   <button
                     type="submit"
-                    className="primary-btn"
+                    className="btn btn-primary"
                     disabled={saving}
                     style={{
                       display: 'inline-flex',
                       alignItems: 'center',
                       gap: '8px',
                       padding: '11px 26px',
-                      fontSize: '14px',
+                      fontSize: 'var(--fs-md)',
                       fontWeight: 800,
-                      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                      boxShadow: '0 4px 14px rgba(37, 99, 235, 0.3)',
-                      borderRadius: '10px',
+                      background: 'var(--primary)',
+                      boxShadow: 'none',
+                      borderRadius: 'var(--radius-md)',
                       cursor: saving ? 'not-allowed' : 'pointer'
                     }}
                   >
@@ -745,28 +621,28 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
 
               {/* Sidebar Summary & Live Output Card */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div className="dashboard-card" style={{ padding: '24px', background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)' }}>
+                <div className="dashboard-card">
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
-                    <Sparkles size={18} style={{ color: '#2563eb' }} />
-                    <h4 style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', margin: 0 }}>
+                    <Sparkles size={18} style={{ color: 'var(--primary)' }} />
+                    <h4 style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)', margin: 0 }}>
                       Live Status Summary
                     </h4>
                   </div>
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '13px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: '#f1f5f9', borderRadius: '8px' }}>
-                      <span style={{ color: '#64748b' }}>Bank Configured:</span>
-                      <strong style={{ color: '#0f172a' }}>{formData.bankName || 'Not Set'}</strong>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', fontSize: 'var(--fs-base)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--surface-muted)', borderRadius: 'var(--radius-md)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Bank Configured:</span>
+                      <strong style={{ color: 'var(--text-main)' }}>{formData.bankName || 'Not Set'}</strong>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: '#f1f5f9', borderRadius: '8px' }}>
-                      <span style={{ color: '#64748b' }}>UPI Active:</span>
-                      <strong style={{ color: '#059669', fontFamily: 'monospace' }}>{formData.upiId || 'Not Set'}</strong>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--surface-muted)', borderRadius: 'var(--radius-md)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>UPI Active:</span>
+                      <strong style={{ color: 'var(--success)', fontFamily: 'monospace' }}>{formData.upiId || 'Not Set'}</strong>
                     </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: '#f1f5f9', borderRadius: '8px' }}>
-                      <span style={{ color: '#64748b' }}>Custom QR Status:</span>
-                      <strong style={{ color: qrPreview ? '#059669' : '#d97706' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 10px', background: 'var(--surface-muted)', borderRadius: 'var(--radius-md)' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Custom QR Status:</span>
+                      <strong style={{ color: qrPreview ? 'var(--success)' : 'var(--warning)' }}>
                         {qrPreview ? 'Custom Image Active' : 'Auto Dynamic QR Active'}
                       </strong>
                     </div>
@@ -774,24 +650,7 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
 
                   <button
                     type="button"
-                    onClick={() => setPreviewMemberMode(true)}
-                    style={{
-                      width: '100%',
-                      marginTop: '18px',
-                      padding: '10px',
-                      background: '#eff6ff',
-                      color: '#2563eb',
-                      border: '1.5px solid #bfdbfe',
-                      borderRadius: '10px',
-                      fontWeight: 700,
-                      fontSize: '13px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      cursor: 'pointer'
-                    }}
-                  >
+                    onClick={() => setPreviewMemberMode(true)} className="btn btn-soft" style={{ width: '100%', marginTop: '18px' }}>
                     <Eye size={15} />
                     <span>View As Member</span>
                   </button>
@@ -808,55 +667,18 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
         <div>
           
           {/* Official Security Guarantee Badge */}
-          <div className="company-security-banner">
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <div style={{
-                width: '46px',
-                height: '46px',
-                borderRadius: '12px',
-                background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                color: '#ffffff',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0,
-                boxShadow: '0 4px 14px rgba(37, 99, 235, 0.4)'
-              }}>
-                <ShieldCheck size={26} />
-              </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: '16px', letterSpacing: '-0.01em', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <span>Verified Corporate Account: {formData.accountHolderName || 'Panchveda Wellness Pvt Ltd'}</span>
-                </div>
-                <div style={{ fontSize: '13px', color: '#94a3b8', marginTop: '3px' }}>
-                  Always verify payment beneficiary name before sending funds. Mention your Member ID (<strong style={{ color: '#60a5fa' }}>{user?.memberId || 'MEM0001'}</strong>) in transaction remarks.
-                </div>
-              </div>
+          <Alert tone="info" title={`Beneficiary: ${formData.accountHolderName || 'Panchveda Wellness Pvt Ltd'}`}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 'var(--space-3)' }}>
+              <span style={{ flex: '1 1 320px' }}>
+                Check the beneficiary name before sending money, and mention your Member ID{' '}
+                <strong className="text-mono">{user?.memberId || 'MEM0001'}</strong> in the payment remarks.
+              </span>
+              <button type="button" onClick={handleCopyAllBankDetails} className="btn btn-sm btn-secondary">
+                {copiedField === 'allBank' ? <Check size={14} /> : <Copy size={14} />}
+                <span>{copiedField === 'allBank' ? 'Copied' : 'Copy all details'}</span>
+              </button>
             </div>
-
-            <button
-              onClick={handleCopyAllBankDetails}
-              style={{
-                background: copiedField === 'allBank' ? '#059669' : 'rgba(255, 255, 255, 0.1)',
-                color: '#ffffff',
-                border: '1px solid rgba(255, 255, 255, 0.2)',
-                padding: '10px 18px',
-                borderRadius: '10px',
-                fontSize: '12.5px',
-                fontWeight: 700,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                flexShrink: 0,
-                transition: 'all 0.2s ease',
-                backdropFilter: 'blur(5px)'
-              }}
-            >
-              {copiedField === 'allBank' ? <Check size={16} /> : <Copy size={16} />}
-              <span>{copiedField === 'allBank' ? 'Copied All Details!' : 'Copy All Details'}</span>
-            </button>
-          </div>
+          </Alert>
 
           {/* Core Grid: QR Code (Left) + Bank Details (Right) */}
           <div className="company-account-grid">
@@ -867,176 +689,53 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               
               {/* Option 1: Payment QR Code Card */}
-              <div className="dashboard-card" style={{
-                padding: '28px 24px',
-                textAlign: 'center',
-                background: '#ffffff',
-                borderRadius: '20px',
-                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.06)',
-                border: '1px solid #e2e8f0',
-                position: 'relative',
-                overflow: 'hidden'
-              }}>
-                <div style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)',
-                  color: '#1d4ed8',
-                  padding: '5px 14px',
-                  borderRadius: '9999px',
-                  fontSize: '12px',
-                  fontWeight: 800,
-                  marginBottom: '14px',
-                  border: '1px solid #bfdbfe'
-                }}>
-                  <Zap size={13} style={{ fill: '#2563eb' }} /> Scan & Pay Instantly
-                </div>
-
-                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#0f172a', margin: '0 0 4px 0' }}>
-                  UPI Bharat QR Code
-                </h3>
-                <p style={{ fontSize: '12.5px', color: '#64748b', margin: '0 0 20px 0' }}>
-                  Scan with GPay, PhonePe, Paytm, BHIM, or any UPI Bank App.
+              <div className="dashboard-card" style={{ textAlign: 'center' }}>
+                <h3 className="card-title">Scan & pay with UPI</h3>
+                <p className="card-subtitle" style={{ marginBottom: 'var(--space-5)' }}>
+                  Works with Google Pay, PhonePe, Paytm, BHIM or any UPI bank app.
                 </p>
 
-                {/* QR Code Container with Scan Frame */}
-                <div style={{
-                  display: 'inline-block',
-                  background: '#ffffff',
-                  padding: '16px',
-                  borderRadius: '20px',
-                  boxShadow: '0 12px 35px -8px rgba(0, 0, 0, 0.12), 0 4px 10px rgba(0, 0, 0, 0.04)',
-                  border: '2px solid #e2e8f0',
-                  position: 'relative',
-                  marginBottom: '16px',
-                  maxWidth: '100%'
-                }}>
-                  <img 
-                    src={effectiveQrCodeUrl} 
-                    alt="Company Payment QR Code" 
-                    style={{ 
-                      width: '220px', 
-                      height: '220px', 
-                      maxWidth: '100%',
-                      objectFit: 'contain', 
-                      display: 'block',
-                      borderRadius: '8px'
-                    }} 
-                  />
-
-                  {/* QR Center Badge */}
-                  <div style={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%, -50%)',
-                    background: '#ffffff',
-                    padding: '4px',
-                    borderRadius: '8px',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                    border: '1px solid #cbd5e1'
-                  }}>
-                    <div style={{
-                      width: '32px',
-                      height: '32px',
-                      background: 'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)',
-                      borderRadius: '6px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#ffffff',
-                      fontWeight: 900,
-                      fontSize: '11px',
-                      letterSpacing: '0.5px'
-                    }}>
-                      PV
+                {effectiveQrCodeUrl ? (
+                  <>
+                    <div className="qr-frame">
+                      <img src={effectiveQrCodeUrl} alt="Company payment QR code" />
                     </div>
-                  </div>
-                </div>
-
-                {/* Download Button */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '18px' }}>
-                  <button
-                    type="button"
-                    onClick={handleDownloadQr}
-                    className="primary-btn"
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '8px',
-                      padding: '9px 20px',
-                      fontSize: '12.5px',
-                      fontWeight: 700,
-                      background: 'linear-gradient(135deg, #059669 0%, #047857 100%)',
-                      border: 'none',
-                      borderRadius: '10px',
-                      boxShadow: '0 4px 12px rgba(5, 150, 105, 0.25)',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <Download size={15} />
-                    <span>Download QR Code Image</span>
-                  </button>
-                </div>
-
-                {/* Indian UPI Supported Logos strip */}
-                <div style={{
-                  borderTop: '1px solid #f1f5f9',
-                  paddingTop: '16px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '12px',
-                  flexWrap: 'wrap'
-                }}>
-                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase' }}>
-                    Accepted On:
-                  </span>
-                  {['Google Pay', 'PhonePe', 'Paytm', 'BHIM UPI', 'Cred'].map((app) => (
-                    <span 
-                      key={app} 
-                      style={{ 
-                        fontSize: '11px', 
-                        fontWeight: 700, 
-                        color: '#475569', 
-                        background: '#f8fafc', 
-                        border: '1px solid #e2e8f0', 
-                        padding: '3px 8px', 
-                        borderRadius: '6px' 
-                      }}
-                    >
-                      {app}
-                    </span>
-                  ))}
-                </div>
+                    <div>
+                      <button type="button" onClick={handleDownloadQr} className="btn btn-secondary btn-sm">
+                        <Download size={15} />
+                        <span>Download QR code</span>
+                      </button>
+                    </div>
+                  </>
+                ) : (
+                  <EmptyState
+                    compact
+                    icon={<QrCode size={22} />}
+                    title="QR code not configured"
+                    text={isEffectiveAdmin ? 'Add a UPI ID or upload a QR image in the editor.' : 'Use the bank details instead, or contact support.'}
+                  />
+                )}
               </div>
 
               {/* Option 2: UPI ID Card with 1-Click Copy */}
-              <div className="dashboard-card" style={{
-                padding: '24px',
-                background: 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)',
-                borderRadius: '18px',
-                border: '1.5px solid #bbf7d0',
-                boxShadow: '0 6px 20px rgba(16, 185, 129, 0.06)'
-              }}>
+              <div className="dashboard-card" style={{ border: '1.5px solid var(--success-border)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '38px', height: '38px', borderRadius: 'var(--radius-md)', background: 'var(--success-soft)', color: 'var(--success-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Smartphone size={20} />
                     </div>
                     <div>
-                      <h4 style={{ fontSize: '16px', fontWeight: 800, margin: 0, color: '#14532d' }}>Direct UPI ID (VPA)</h4>
-                      <p style={{ fontSize: '12px', color: '#16a34a', margin: '2px 0 0 0' }}>For manual UPI transfers in any banking app.</p>
+                      <h4 style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, margin: 0, color: 'var(--success-strong)' }}>Direct UPI ID (VPA)</h4>
+                      <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--success)', margin: '2px 0 0 0' }}>For manual UPI transfers in any banking app.</p>
                     </div>
                   </div>
 
                   <span style={{
-                    background: '#dcfce7',
-                    color: '#15803d',
+                    background: 'var(--success-soft)',
+                    color: 'var(--success-hover)',
                     padding: '3px 10px',
-                    borderRadius: '20px',
-                    fontSize: '11.5px',
+                    borderRadius: 'var(--radius-xl)',
+                    fontSize: 'var(--fs-sm)',
                     fontWeight: 700
                   }}>
                     Instant Transfer
@@ -1044,9 +743,9 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                 </div>
 
                 <div style={{
-                  background: '#ffffff',
-                  border: '1.5px solid #86efac',
-                  borderRadius: '12px',
+                  background: 'var(--surface)',
+                  border: '1.5px solid var(--success-border)',
+                  borderRadius: 'var(--radius-lg)',
                   padding: '16px',
                   display: 'flex',
                   alignItems: 'center',
@@ -1055,27 +754,27 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                   boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)'
                 }}>
                   <div>
-                    <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.4px' }}>
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.4px' }}>
                       Virtual Payment Address (VPA)
                     </div>
-                    <div style={{ fontSize: '18px', fontWeight: 900, color: '#0f172a', fontFamily: 'monospace', marginTop: '3px' }}>
-                      {formData.upiId || 'panchveda@sbi'}
+                    <div style={{ fontSize: 'var(--fs-xl)', fontWeight: 900, color: 'var(--text-main)', fontFamily: 'monospace', marginTop: '3px' }}>
+                      {formData.upiId || NOT_CONFIGURED}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#059669', fontWeight: 700, marginTop: '2px' }}>
+                    <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--success)', fontWeight: 700, marginTop: '2px' }}>
                       Payee: {formData.upiHolderName || formData.accountHolderName || 'Panchveda Wellness'}
                     </div>
                   </div>
 
                   <button
                     type="button"
-                    onClick={() => handleCopy(formData.upiId || 'panchveda@sbi', 'upiId')}
+                    onClick={() => handleCopy(formData.upiId, 'upiId')}
                     style={{
-                      background: copiedField === 'upiId' ? '#15803d' : '#2563eb',
-                      color: '#ffffff',
+                      background: copiedField === 'upiId' ? 'var(--success-hover)' : 'var(--primary)',
+                      color: 'var(--text-inverse)',
                       border: 'none',
                       padding: '10px 18px',
-                      borderRadius: '10px',
-                      fontSize: '13px',
+                      borderRadius: 'var(--radius-md)',
+                      fontSize: 'var(--fs-base)',
                       fontWeight: 800,
                       cursor: 'pointer',
                       display: 'flex',
@@ -1098,36 +797,30 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               
               {/* Option 3: Premium Bank Account Details Card */}
-              <div className="dashboard-card" style={{
-                padding: '28px',
-                background: '#ffffff',
-                borderRadius: '20px',
-                border: '1.5px solid #e2e8f0',
-                boxShadow: '0 8px 30px rgba(0, 0, 0, 0.06)'
-              }}>
+              <div className="dashboard-card" style={{ border: '1.5px solid var(--border-color)' }}>
                 {/* Header */}
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '22px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)', color: '#1d4ed8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-lg)', background: 'var(--primary-light)', color: 'var(--primary-hover)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Landmark size={24} />
                     </div>
                     <div>
-                      <h3 style={{ fontSize: '18px', fontWeight: 800, margin: 0, color: '#0f172a' }}>
+                      <h3 className="section-title" style={{ margin: 0 }}>
                         Bank Account (NEFT / IMPS / RTGS)
                       </h3>
-                      <p style={{ fontSize: '12.5px', color: '#64748b', margin: '2px 0 0 0' }}>
+                      <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
                         For internet banking and bank counter deposits.
                       </p>
                     </div>
                   </div>
 
                   <span style={{
-                    background: '#eff6ff',
-                    color: '#2563eb',
-                    border: '1px solid #bfdbfe',
+                    background: 'var(--primary-light)',
+                    color: 'var(--primary)',
+                    border: '1px solid var(--primary-border)',
                     padding: '4px 12px',
-                    borderRadius: '8px',
-                    fontSize: '12px',
+                    borderRadius: 'var(--radius-md)',
+                    fontSize: 'var(--fs-sm)',
                     fontWeight: 800
                   }}>
                     {formData.accountType || 'Current Account'}
@@ -1140,9 +833,9 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                   {/* Account Number Card (Highlight) */}
                   <div style={{
                     padding: '16px 18px',
-                    background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
-                    borderRadius: '14px',
-                    border: '1.5px solid #bfdbfe',
+                    background: 'var(--surface-subtle)',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1.5px solid var(--primary-border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -1150,24 +843,24 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                     gap: '12px'
                   }}>
                     <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-                      <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.5px' }}>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.5px' }}>
                         Account Number
                       </div>
-                      <div style={{ fontSize: 'clamp(16px, 4.5vw, 20px)', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', letterSpacing: '1px', marginTop: '3px', wordBreak: 'break-all' }}>
-                        {formattedAccountNumber}
+                      <div style={{ fontSize: 'clamp(16px, 4.5vw, 20px)', fontWeight: 900, color: 'var(--primary-strong)', fontFamily: 'monospace', letterSpacing: '1px', marginTop: '3px', wordBreak: 'break-all' }}>
+                        {formattedAccountNumber || NOT_CONFIGURED}
                       </div>
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => handleCopy(formData.accountNumber || '9876543210123', 'accountNumber')}
+                      onClick={() => handleCopy(formData.accountNumber, 'accountNumber')}
                       style={{
-                        background: copiedField === 'accountNumber' ? '#ecfdf5' : '#ffffff',
-                        color: copiedField === 'accountNumber' ? '#059669' : '#2563eb',
-                        border: copiedField === 'accountNumber' ? '1.5px solid #a7f3d0' : '1px solid #cbd5e1',
+                        background: copiedField === 'accountNumber' ? 'var(--success-light)' : 'var(--surface)',
+                        color: copiedField === 'accountNumber' ? 'var(--success)' : 'var(--primary)',
+                        border: copiedField === 'accountNumber' ? '1.5px solid var(--success-border)' : '1px solid var(--border-strong)',
                         padding: '8px 14px',
-                        borderRadius: '8px',
-                        fontSize: '12.5px',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: 'var(--fs-sm)',
                         fontWeight: 700,
                         cursor: 'pointer',
                         display: 'flex',
@@ -1185,9 +878,9 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                   {/* IFSC Code Card (Highlight) */}
                   <div style={{
                     padding: '16px 18px',
-                    background: 'linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)',
-                    borderRadius: '14px',
-                    border: '1.5px solid #bfdbfe',
+                    background: 'var(--surface-subtle)',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1.5px solid var(--primary-border)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
@@ -1195,24 +888,24 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                     gap: '12px'
                   }}>
                     <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-                      <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.5px' }}>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.5px' }}>
                         IFSC Code (Zero 0 in the 5th character)
                       </div>
-                      <div style={{ fontSize: 'clamp(15px, 4vw, 19px)', fontWeight: 900, color: '#1e3a8a', fontFamily: 'monospace', letterSpacing: '1px', marginTop: '3px' }}>
-                        {formData.ifscCode || 'SBIN0001234'}
+                      <div style={{ fontSize: 'clamp(15px, 4vw, 19px)', fontWeight: 900, color: 'var(--primary-strong)', fontFamily: 'monospace', letterSpacing: '1px', marginTop: '3px' }}>
+                        {formData.ifscCode || NOT_CONFIGURED}
                       </div>
                     </div>
 
                     <button
                       type="button"
-                      onClick={() => handleCopy(formData.ifscCode || 'SBIN0001234', 'ifscCode')}
+                      onClick={() => handleCopy(formData.ifscCode, 'ifscCode')}
                       style={{
-                        background: copiedField === 'ifscCode' ? '#ecfdf5' : '#ffffff',
-                        color: copiedField === 'ifscCode' ? '#059669' : '#2563eb',
-                        border: copiedField === 'ifscCode' ? '1.5px solid #a7f3d0' : '1px solid #cbd5e1',
+                        background: copiedField === 'ifscCode' ? 'var(--success-light)' : 'var(--surface)',
+                        color: copiedField === 'ifscCode' ? 'var(--success)' : 'var(--primary)',
+                        border: copiedField === 'ifscCode' ? '1.5px solid var(--success-border)' : '1px solid var(--border-strong)',
                         padding: '8px 14px',
-                        borderRadius: '8px',
-                        fontSize: '12.5px',
+                        borderRadius: 'var(--radius-md)',
+                        fontSize: 'var(--fs-sm)',
                         fontWeight: 700,
                         cursor: 'pointer',
                         display: 'flex',
@@ -1230,138 +923,94 @@ export const CompanyAccountPage: React.FC<CompanyAccountPageProps> = ({ user, to
                   {/* Beneficiary Name */}
                   <div style={{
                     padding: '14px 16px',
-                    background: '#f8fafc',
-                    borderRadius: '12px',
-                    border: '1px solid #e2e8f0',
+                    background: 'var(--surface-subtle)',
+                    borderRadius: 'var(--radius-lg)',
+                    border: '1px solid var(--border-color)',
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center'
                   }}>
                     <div>
-                      <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
                         Beneficiary / Account Holder Name
                       </div>
-                      <div style={{ fontSize: '15px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
+                      <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)', marginTop: '2px' }}>
                         {formData.accountHolderName || 'Panchveda Wellness Pvt Ltd'}
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={() => handleCopy(formData.accountHolderName || 'Panchveda Wellness Pvt Ltd', 'accName')}
-                      style={{ background: 'none', border: 'none', color: '#64748b', cursor: 'pointer', padding: '4px' }}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '4px' }}
                       title="Copy Name"
                     >
-                      {copiedField === 'accName' ? <Check size={16} color="#059669" /> : <Copy size={16} />}
+                      {copiedField === 'accName' ? <Check size={16} color="var(--success)" /> : <Copy size={16} />}
                     </button>
                   </div>
 
                   {/* Bank & Branch Row */}
                   <div className="company-bank-branch-grid">
-                    <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div style={{ padding: '14px 16px', background: 'var(--surface-subtle)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
                         Bank Name
                       </div>
-                      <div style={{ fontSize: '14.5px', fontWeight: 800, color: '#0f172a', marginTop: '2px' }}>
-                        {formData.bankName || 'State Bank of India'}
+                      <div style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--text-main)', marginTop: '2px' }}>
+                        {formData.bankName || NOT_CONFIGURED}
                       </div>
                     </div>
 
-                    <div style={{ padding: '14px 16px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                      <div style={{ fontSize: '11px', color: '#64748b', textTransform: 'uppercase', fontWeight: 700 }}>
+                    <div style={{ padding: '14px 16px', background: 'var(--surface-subtle)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border-color)' }}>
+                      <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700 }}>
                         Branch Name
                       </div>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginTop: '2px' }}>
-                        {formData.branchName || 'Connaught Place Branch'}
+                      <div style={{ fontSize: 'var(--fs-md)', fontWeight: 700, color: 'var(--text-main)', marginTop: '2px' }}>
+                        {formData.branchName || NOT_CONFIGURED}
                       </div>
                     </div>
                   </div>
                 </div>
               </div>
 
-              {/* 3-Step Visual Payment Stepper */}
-              <div className="dashboard-card" style={{
-                padding: '26px 28px',
-                background: 'linear-gradient(135deg, #ffffff 0%, #fffbeb 100%)',
-                borderRadius: '20px',
-                border: '1.5px solid #fef08a',
-                boxShadow: '0 6px 20px rgba(245, 158, 11, 0.06)'
-              }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px' }}>
-                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: '#fef3c7', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {/* 3-step payment guide */}
+              <div className="dashboard-card">
+                <div className="card-title-group" style={{ marginBottom: 'var(--space-4)' }}>
+                  <span className="icon-tile tone-blue" style={{ width: 32, height: 32 }}>
                     <FileCheck2 size={18} />
-                  </div>
-                  <div>
-                    <h4 style={{ fontSize: '16px', fontWeight: 800, color: '#854d0e', margin: 0 }}>
-                      Step-by-Step Payment & Activation Guide
-                    </h4>
-                    <p style={{ fontSize: '12px', color: '#a16207', margin: '2px 0 0 0' }}>Follow these 3 simple steps to ensure instant activation.</p>
-                  </div>
+                  </span>
+                  <h4 className="card-title">How to pay</h4>
                 </div>
 
-                <div className="company-payment-steps-grid">
-                  
-                  {/* Step 1 */}
-                  <div style={{ background: '#ffffff', padding: '14px', borderRadius: '12px', border: '1px solid #fef08a' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                      <span style={{ background: '#fef3c7', color: '#d97706', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '11px' }}>
-                        1
-                      </span>
-                      <strong style={{ fontSize: '13px', color: '#854d0e' }}>Pay Amount</strong>
-                    </div>
-                    <p style={{ fontSize: '11.5px', color: '#713f12', margin: 0, lineHeight: 1.4 }}>
-                      Scan QR, use UPI ID, or send via Net Banking.
-                    </p>
-                  </div>
+                <ol className="steps-list">
+                  <li>
+                    <strong>Pay the amount</strong>
+                    <span>Scan the QR, use the UPI ID, or send via net banking.</span>
+                  </li>
+                  <li>
+                    <strong>Note the UTR number</strong>
+                    <span>Save the 12-digit transaction reference.</span>
+                  </li>
+                  <li>
+                    <strong>Submit for verification</strong>
+                    <span>Enter the UTR on your order so it can be approved.</span>
+                  </li>
+                </ol>
 
-                  {/* Step 2 */}
-                  <div style={{ background: '#ffffff', padding: '14px', borderRadius: '12px', border: '1px solid #fef08a' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                      <span style={{ background: '#fef3c7', color: '#d97706', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '11px' }}>
-                        2
-                      </span>
-                      <strong style={{ fontSize: '13px', color: '#854d0e' }}>Note UTR No.</strong>
-                    </div>
-                    <p style={{ fontSize: '11.5px', color: '#713f12', margin: 0, lineHeight: 1.4 }}>
-                      Save the 12-digit transaction reference number.
-                    </p>
-                  </div>
-
-                  {/* Step 3 */}
-                  <div style={{ background: '#ffffff', padding: '14px', borderRadius: '12px', border: '1px solid #fef08a' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-                      <span style={{ background: '#fef3c7', color: '#d97706', width: '22px', height: '22px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 900, fontSize: '11px' }}>
-                        3
-                      </span>
-                      <strong style={{ fontSize: '13px', color: '#854d0e' }}>Verify & Active</strong>
-                    </div>
-                    <p style={{ fontSize: '11.5px', color: '#713f12', margin: 0, lineHeight: 1.4 }}>
-                      Share screenshot or UTR for immediate approval!
-                    </p>
-                  </div>
-                </div>
-
-                {/* Additional Custom Instructions from Admin */}
                 {formData.depositInstructions && (
-                  <div style={{ background: '#ffffff', padding: '12px 14px', borderRadius: '10px', border: '1px solid #fde047', fontSize: '12.5px', color: '#713f12', lineHeight: 1.5, marginBottom: '14px' }}>
-                    <strong>Admin Note:</strong> {formData.depositInstructions}
-                  </div>
+                  <Alert tone="info" style={{ marginTop: 'var(--space-4)', marginBottom: 0 }}>
+                    {formData.depositInstructions}
+                  </Alert>
                 )}
 
-                {/* Support Helpline Footer */}
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '12.5px', color: '#854d0e', paddingTop: '10px', borderTop: '1px solid #fef08a' }}>
-                  {formData.supportPhone && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Phone size={14} style={{ color: '#d97706' }} />
-                      <span>Helpline: <strong>{formData.supportPhone}</strong></span>
-                    </div>
-                  )}
-                  {formData.supportEmail && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Mail size={14} style={{ color: '#d97706' }} />
-                      <span>Support: <strong>{formData.supportEmail}</strong></span>
-                    </div>
-                  )}
-                </div>
+                {(formData.supportPhone || formData.supportEmail) && (
+                  <div className="steps-support">
+                    {formData.supportPhone && (
+                      <span className="icon-text"><Phone size={14} /> Helpline <strong>{formData.supportPhone}</strong></span>
+                    )}
+                    {formData.supportEmail && (
+                      <span className="icon-text"><Mail size={14} /> Support <strong>{formData.supportEmail}</strong></span>
+                    )}
+                  </div>
+                )}
               </div>
 
             </div>

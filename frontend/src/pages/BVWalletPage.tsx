@@ -1,25 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  ArrowDownLeft,
-  ArrowUpRight,
-  CheckCircle2,
-  Clock,
-  Gift,
-  ShoppingCart,
-  Layers,
-  PlusCircle,
-  RefreshCw,
-  Search,
-  Send,
-  ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  Undo2,
-  UserRound,
-  Wallet,
-  X,
-  XCircle,
-} from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Clock, Gift, Layers, PlusCircle, RefreshCw, Search, Send, ShieldAlert, ShieldCheck, ShoppingCart, Sparkles, Undo2, UserRound, Wallet } from 'lucide-react';
+import { Alert, Field as SharedField, Modal as SharedModal, StatusBadge } from '../components/ui';
 import {
   api,
   type BVRecipient,
@@ -81,103 +62,40 @@ const storeOperator = (name: string) => {
   }
 };
 
-const STATUS_STYLE: Record<BVTransactionStatus, { label: string; bg: string; color: string }> = {
-  COMPLETED: { label: 'Completed', bg: '#dcfce7', color: '#15803d' },
-  REVERSED: { label: 'Reversed', bg: '#fee2e2', color: '#b91c1c' },
+const STATUS_STYLE: Record<BVTransactionStatus, { label: string }> = {
+  COMPLETED: { label: 'Completed' },
+  REVERSED: { label: 'Reversed' },
 };
 
-const StatusPill: React.FC<{ status: BVTransactionStatus }> = ({ status }) => {
-  const s = STATUS_STYLE[status] || STATUS_STYLE.COMPLETED;
-  return (
-    <span style={{ fontSize: '11px', fontWeight: 700, background: s.bg, color: s.color, padding: '3px 9px', borderRadius: '9999px', whiteSpace: 'nowrap' }}>
-      {s.label}
-    </span>
-  );
-};
+const StatusPill: React.FC<{ status: BVTransactionStatus }> = ({ status }) => (
+  <StatusBadge status={status === 'REVERSED' ? 'REJECTED' : 'COMPLETED'} label={status === 'REVERSED' ? 'Reversed' : 'Completed'} />
+);
 
+// Matches .form-input; kept as an object because several fields extend it inline
 const inputStyle: React.CSSProperties = {
   width: '100%',
-  padding: '10px 12px',
-  border: '1.5px solid #cbd5e1',
-  borderRadius: '10px',
-  fontSize: '14px',
+  padding: '8px 12px',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 'var(--radius-md)',
+  fontSize: 'var(--fs-md)',
   outline: 'none',
-  boxSizing: 'border-box',
-  background: '#ffffff',
+  background: 'var(--surface)',
+  minHeight: 'var(--control-h)',
 };
 
-const labelStyle: React.CSSProperties = { display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '6px' };
-
 const Field: React.FC<{ label: string; hint?: string; children: React.ReactNode }> = ({ label, hint, children }) => (
-  <div style={{ marginBottom: '14px' }}>
-    <label style={labelStyle}>{label}</label>
-    {children}
-    {hint && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>{hint}</div>}
+  <div style={{ marginBottom: 'var(--space-4)' }}>
+    <SharedField label={label} hint={hint}>{children}</SharedField>
   </div>
 );
 
 const Banner: React.FC<{ kind: 'error' | 'success'; text: string; onClose?: () => void }> = ({ kind, text, onClose }) => (
-  <div
-    role={kind === 'error' ? 'alert' : 'status'}
-    style={{
-      display: 'flex',
-      alignItems: 'flex-start',
-      gap: '8px',
-      padding: '10px 12px',
-      borderRadius: '10px',
-      marginBottom: '14px',
-      fontSize: '13px',
-      background: kind === 'error' ? '#fef2f2' : '#f0fdf4',
-      border: `1px solid ${kind === 'error' ? '#fecaca' : '#bbf7d0'}`,
-      color: kind === 'error' ? '#b91c1c' : '#15803d',
-    }}
-  >
-    {kind === 'error' ? <XCircle size={16} style={{ flexShrink: 0, marginTop: '1px' }} /> : <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: '1px' }} />}
-    <span style={{ flex: 1 }}>{text}</span>
-    {onClose && (
-      <button type="button" onClick={onClose} aria-label="Dismiss" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', padding: 0 }}>
-        <X size={14} />
-      </button>
-    )}
-  </div>
+  <Alert tone={kind} onClose={onClose}>{text}</Alert>
 );
 
 const Modal: React.FC<{ title: string; onClose: () => void; children: React.ReactNode }> = ({ title, onClose, children }) => (
-  <div
-    style={{
-      position: 'fixed',
-      inset: 0,
-      backgroundColor: 'rgba(15, 23, 42, 0.65)',
-      backdropFilter: 'blur(5px)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      padding: '16px',
-    }}
-    onClick={(e) => {
-      if (e.target === e.currentTarget) onClose();
-    }}
-  >
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={title}
-      style={{ background: '#ffffff', borderRadius: '16px', width: '100%', maxWidth: '440px', boxShadow: '0 25px 50px -12px rgba(15, 23, 42, 0.35)', overflow: 'hidden' }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: '1px solid #e2e8f0' }}>
-        <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>{title}</h3>
-        <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
-          <X size={18} />
-        </button>
-      </div>
-      <div style={{ padding: '20px' }}>{children}</div>
-    </div>
-  </div>
+  <SharedModal title={title} onClose={onClose} size="sm">{children}</SharedModal>
 );
-
-const ghostBtn: React.CSSProperties = { fontSize: '12px', padding: '8px 14px', background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1' };
-const dangerBtn: React.CSSProperties = { fontSize: '12px', padding: '8px 14px', background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3' };
 
 const KpiCard: React.FC<{ tone: 'green' | 'gold' | 'blue' | 'purple'; icon: React.ReactNode; label: string; value: string; sub?: string; valueColor?: string }> = ({
   tone,
@@ -191,10 +109,10 @@ const KpiCard: React.FC<{ tone: 'green' | 'gold' | 'blue' | 'purple'; icon: Reac
     <div className={`kpi-icon-box kpi-icon-${tone}`}>{icon}</div>
     <div className="kpi-content">
       <div className="kpi-label">{label}</div>
-      <div className="kpi-value" style={valueColor ? { color: valueColor } : undefined}>
+      <div className="kpi-value" style={valueColor?.includes('danger') ? { color: valueColor } : undefined}>
         {value}
       </div>
-      {sub && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>{sub}</div>}
+      {sub && <div className="kpi-sub">{sub}</div>}
     </div>
   </div>
 );
@@ -252,7 +170,7 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
               : 'Send BV to other members or the Super Admin, pay for products and packages, and track everything you sent and received.'}
           </p>
         </div>
-        <button type="button" onClick={refreshAll} className="primary-btn" style={ghostBtn} title="Refresh">
+        <button type="button" onClick={refreshAll} className="btn btn-sm btn-secondary" title="Refresh">
           <RefreshCw size={14} className={loading ? 'spin' : ''} />
           <span>Refresh</span>
         </button>
@@ -262,32 +180,32 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
         <Banner kind="error" text={`Your BV wallet is frozen${wallet.frozenReason ? `: ${wallet.frozenReason}` : ''}. You can still receive BV but cannot send it.`} />
       )}
 
-      <div className="kpi-grid" style={{ marginBottom: '22px' }}>
-        <KpiCard tone="green" icon={<Wallet size={24} />} label="Available" value={formatBV(wallet?.availableBV)} sub="Ready to send" />
+      <div className="kpi-grid">
+        <KpiCard tone="green" icon={<Wallet size={20} />} label="Available" value={formatBV(wallet?.availableBV)} sub="Ready to send" />
         {isAdmin ? (
           <>
             <KpiCard
               tone="purple"
-              icon={<Sparkles size={24} />}
+              icon={<Sparkles size={20} />}
               label="Total generated"
               value={formatBV(overview?.totalGenerated)}
-              valueColor="#7c3aed"
+              valueColor="var(--accent)"
               sub={`${formatBV(overview?.memberCirculationBV)} with ${overview?.memberHolders || 0} member(s)`}
             />
             <KpiCard
               tone="gold"
-              icon={<ArrowDownLeft size={24} />}
+              icon={<ArrowDownLeft size={20} />}
               label="Received from members"
               value={formatBV(wallet?.totalReceived)}
-              valueColor="#d97706"
+              valueColor="var(--warning)"
               sub={`${formatBV(wallet?.totalSent)} sent to members`}
             />
             <KpiCard
               tone="blue"
-              icon={overview?.reconciliation.ok === false ? <ShieldAlert size={24} /> : <ShieldCheck size={24} />}
+              icon={overview?.reconciliation.ok === false ? <ShieldAlert size={20} /> : <ShieldCheck size={20} />}
               label="Balance check"
               value={overview ? (overview.reconciliation.ok ? 'Balanced' : 'Mismatch') : '—'}
-              valueColor={overview?.reconciliation.ok === false ? '#dc2626' : '#2563eb'}
+              valueColor={overview?.reconciliation.ok === false ? 'var(--danger)' : 'var(--primary)'}
               sub="All wallets vs. BV generated"
             />
           </>
@@ -295,21 +213,21 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
           <>
             <KpiCard
               tone="blue"
-              icon={<ArrowDownLeft size={24} />}
+              icon={<ArrowDownLeft size={20} />}
               label="Received"
               value={formatBV(wallet?.totalReceived)}
-              valueColor="#2563eb"
+              valueColor="var(--primary)"
               sub={`${formatBV(wallet?.totalSent)} sent to others`}
             />
-            <KpiCard tone="gold" icon={<Gift size={24} />} label="Welcome bonus" value={formatBV(wallet?.totalWelcomeBonus)} valueColor="#d97706" sub="Credited weekly as BV" />
-            <KpiCard tone="purple" icon={<ShoppingCart size={24} />} label="Spent on orders" value={formatBV(wallet?.totalSpent)} valueColor="#7c3aed" sub="Products & packages paid with BV" />
+            <KpiCard tone="gold" icon={<Gift size={20} />} label="Welcome bonus" value={formatBV(wallet?.totalWelcomeBonus)} valueColor="var(--warning)" sub="Credited weekly as BV" />
+            <KpiCard tone="purple" icon={<ShoppingCart size={20} />} label="Spent on orders" value={formatBV(wallet?.totalSpent)} valueColor="var(--accent)" sub="Products & packages paid with BV" />
             {(wallet?.totalActivationLocked || 0) > 0 && (
               <KpiCard
                 tone="gold"
-                icon={<Layers size={24} />}
+                icon={<Layers size={20} />}
                 label="Locked for binary"
                 value={formatBV(wallet?.totalActivationLocked)}
-                valueColor="#b45309"
+                valueColor="var(--warning-hover)"
                 sub="Used once in binary income; cannot be sent or spent"
               />
             )}
@@ -336,13 +254,13 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
                 alignItems: 'center',
                 gap: '6px',
                 padding: '8px 14px',
-                borderRadius: '9999px',
-                fontSize: '13px',
+                borderRadius: 'var(--radius-full)',
+                fontSize: 'var(--fs-base)',
                 fontWeight: 700,
                 cursor: 'pointer',
-                border: `1.5px solid ${active ? '#2563eb' : '#e2e8f0'}`,
-                background: active ? '#eff6ff' : '#ffffff',
-                color: active ? '#1d4ed8' : '#475569',
+                border: `1.5px solid ${active ? 'var(--primary)' : 'var(--border-color)'}`,
+                background: active ? 'var(--primary-light)' : 'var(--surface)',
+                color: active ? 'var(--primary-hover)' : 'var(--text-secondary)',
               }}
             >
               <Icon size={15} />
@@ -494,31 +412,17 @@ const SendSection: React.FC<{
           {!isAdmin && (
             <button
               type="button"
-              onClick={chooseSuperAdmin}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-                width: '100%',
-                padding: '12px 14px',
-                marginBottom: '16px',
-                background: '#f8fafc',
-                border: '1.5px dashed #cbd5e1',
-                borderRadius: '12px',
-                cursor: 'pointer',
-                textAlign: 'left',
-              }}
-            >
-              <UserRound size={18} color="#2563eb" />
+              onClick={chooseSuperAdmin} className="btn btn-secondary" style={{ width: '100%', marginBottom: '16px' }}>
+              <UserRound size={18} color="var(--primary)" />
               <span>
-                <span style={{ display: 'block', fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>Send to Super Admin</span>
-                <span style={{ display: 'block', color: '#64748b', fontSize: '12px' }}>Return BV to the company wallet</span>
+                <span style={{ display: 'block', fontWeight: 700, color: 'var(--text-main)', fontSize: 'var(--fs-base)' }}>Send to Super Admin</span>
+                <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>Return BV to the company wallet</span>
               </span>
             </button>
           )}
           <Field label={isAdmin ? 'Find member' : 'Or find a member'} hint="Search by Member ID, name, phone number or email.">
             <div style={{ position: 'relative' }}>
-              <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: '#94a3b8' }} />
+              <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-light)' }} />
               <input
                 type="search"
                 value={query}
@@ -528,13 +432,13 @@ const SendSection: React.FC<{
                 aria-label="Search member"
               />
             </div>
-            {searching && <div style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>Searching…</div>}
-            {searchError && <div style={{ fontSize: '12px', color: '#b91c1c', marginTop: '8px' }}>{searchError}</div>}
+            {searching && <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: '8px' }}>Searching…</div>}
+            {searchError && <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--danger-hover)', marginTop: '8px' }}>{searchError}</div>}
             {!searching && query.trim().length >= 3 && results.length === 0 && !searchError && (
-              <div style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>No active member matches.</div>
+              <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: '8px' }}>No active member matches.</div>
             )}
             {results.length > 0 && (
-              <div style={{ border: '1px solid #e2e8f0', borderRadius: '10px', marginTop: '8px', overflow: 'hidden' }}>
+              <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', marginTop: '8px', overflow: 'hidden' }}>
                 {results.map((m) => (
                   <button
                     key={m.memberId}
@@ -545,19 +449,19 @@ const SendSection: React.FC<{
                       justifyContent: 'space-between',
                       width: '100%',
                       padding: '10px 12px',
-                      background: '#ffffff',
+                      background: 'var(--surface)',
                       border: 'none',
-                      borderBottom: '1px solid #f1f5f9',
+                      borderBottom: '1px solid var(--border-light)',
                       cursor: 'pointer',
                       textAlign: 'left',
                       gap: '10px',
                     }}
                   >
                     <span>
-                      <span style={{ fontWeight: 700, color: '#0f172a', fontSize: '13px' }}>{m.name}</span>
-                      <span style={{ color: '#64748b', fontSize: '12px' }}> · {m.memberId}</span>
+                      <span style={{ fontWeight: 700, color: 'var(--text-main)', fontSize: 'var(--fs-base)' }}>{m.name}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}> · {m.memberId}</span>
                     </span>
-                    <span style={{ color: '#94a3b8', fontSize: '11px' }}>{m.mobile}</span>
+                    <span style={{ color: 'var(--text-light)', fontSize: 'var(--fs-xs)' }}>{m.mobile}</span>
                   </button>
                 ))}
               </div>
@@ -573,20 +477,20 @@ const SendSection: React.FC<{
               alignItems: 'center',
               gap: '10px',
               padding: '12px 14px',
-              background: '#f0fdf4',
-              border: '1.5px solid #86efac',
-              borderRadius: '12px',
+              background: 'var(--success-light)',
+              border: '1.5px solid var(--success-border)',
+              borderRadius: 'var(--radius-lg)',
               marginBottom: '16px',
             }}
           >
             <div>
-              <div style={{ fontSize: '11px', fontWeight: 700, color: '#15803d', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recipient</div>
-              <div style={{ fontSize: '16px', fontWeight: 800, color: '#0f172a' }}>{recipient.name}</div>
-              <div style={{ fontSize: '12px', color: '#475569' }}>
+              <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--success-hover)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recipient</div>
+              <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)' }}>{recipient.name}</div>
+              <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
                 {isToAdmin ? 'Company wallet' : [recipient.memberId, recipient.mobile, recipient.email].filter(Boolean).join(' · ')}
               </div>
             </div>
-            <button type="button" className="primary-btn" style={ghostBtn} onClick={() => setRecipient(null)}>
+            <button type="button" className="btn btn-sm btn-secondary" onClick={() => setRecipient(null)}>
               Change
             </button>
           </div>
@@ -607,8 +511,8 @@ const SendSection: React.FC<{
               <input type="text" maxLength={60} value={operatorName} onChange={(e) => setOperatorName(e.target.value)} style={inputStyle} />
             </Field>
           )}
-          {validationError && amount && <div style={{ fontSize: '12px', color: '#b45309', marginBottom: '10px' }}>{validationError}</div>}
-          <button type="button" className="primary-btn" disabled={!!validationError || !!wallet?.isFrozen} onClick={() => setConfirming(true)}>
+          {validationError && amount && <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--warning-hover)', marginBottom: '10px' }}>{validationError}</div>}
+          <button type="button" className="btn btn-primary" disabled={!!validationError || !!wallet?.isFrozen} onClick={() => setConfirming(true)}>
             <Send size={14} />
             <span>Review transfer</span>
           </button>
@@ -617,18 +521,18 @@ const SendSection: React.FC<{
 
       {confirming && recipient && (
         <Modal title="Confirm BV transfer" onClose={() => !submitting && setConfirming(false)}>
-          <div style={{ fontSize: '14px', color: '#334155', lineHeight: 1.6 }}>
+          <div style={{ fontSize: 'var(--fs-md)', color: 'var(--text-body)', lineHeight: 1.6 }}>
             Send <strong>{formatBV(amountNumber)}</strong> to <strong>{recipient.name}</strong>
             {!isToAdmin && ` (${recipient.memberId})`}?
-            <div style={{ fontSize: '12px', color: '#b91c1c', fontWeight: 600, marginTop: '8px' }}>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--danger-hover)', fontWeight: 600, marginTop: '8px' }}>
               The BV is credited immediately and this cannot be undone. Check the name and amount.
             </div>
           </div>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '18px' }}>
-            <button type="button" className="primary-btn" style={ghostBtn} disabled={submitting} onClick={() => setConfirming(false)}>
+            <button type="button" className="btn btn-sm btn-secondary" disabled={submitting} onClick={() => setConfirming(false)}>
               Back
             </button>
-            <button type="button" className="primary-btn" disabled={submitting} onClick={() => submit(false)}>
+            <button type="button" className="btn btn-primary" disabled={submitting} onClick={() => submit(false)}>
               {submitting ? 'Sending…' : 'Send now'}
             </button>
           </div>
@@ -637,13 +541,13 @@ const SendSection: React.FC<{
 
       {repeatWarning && recipient && (
         <Modal title="Send again?" onClose={() => !submitting && setRepeatWarning('')}>
-          <p style={{ fontSize: '14px', color: '#334155', marginTop: 0 }}>{repeatWarning}</p>
-          <p style={{ fontSize: '12px', color: '#64748b' }}>Nothing has been sent yet. Only continue if you really mean to send this twice.</p>
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-body)', marginTop: 0 }}>{repeatWarning}</p>
+          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>Nothing has been sent yet. Only continue if you really mean to send this twice.</p>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '18px' }}>
-            <button type="button" className="primary-btn" style={ghostBtn} disabled={submitting} onClick={() => setRepeatWarning('')}>
+            <button type="button" className="btn btn-sm btn-secondary" disabled={submitting} onClick={() => setRepeatWarning('')}>
               Don't send
             </button>
-            <button type="button" className="primary-btn" style={dangerBtn} disabled={submitting} onClick={() => submit(true)}>
+            <button type="button" className="btn btn-sm btn-danger-outline" disabled={submitting} onClick={() => submit(true)}>
               {submitting ? 'Sending…' : 'Yes, send again'}
             </button>
           </div>
@@ -702,12 +606,12 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
     return () => clearTimeout(handle);
   }, [scope, type, status, direction, search, page, token, refreshKey]);
 
-  const selectStyle: React.CSSProperties = { ...inputStyle, width: 'auto', padding: '8px 10px', fontSize: '13px' };
+  const selectStyle: React.CSSProperties = { ...inputStyle, width: 'auto', padding: '8px 10px', fontSize: 'var(--fs-base)' };
   const canReverse = (t: BVTransactionItem) => isAdmin && t.type === 'TRANSFER' && t.status === 'COMPLETED';
 
   return (
     <div className="dashboard-card" style={{ padding: 0, overflow: 'hidden' }}>
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border-color)', background: 'var(--surface-subtle)' }}>
         {isAdmin && (
           <select value={scope} onChange={(e) => setScope(e.target.value as 'mine' | 'all')} style={selectStyle} aria-label="Scope">
             <option value="all">All transactions</option>
@@ -746,11 +650,11 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Transaction ID, member, title"
-            style={{ ...inputStyle, width: 'auto', flex: '1 1 200px', padding: '8px 10px', fontSize: '13px' }}
+            style={{ ...inputStyle, width: 'auto', flex: '1 1 200px', padding: '8px 10px', fontSize: 'var(--fs-base)' }}
             aria-label="Search transactions"
           />
         )}
-        <span style={{ marginLeft: 'auto', fontSize: '12px', color: '#64748b' }}>{total} record(s)</span>
+        <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{total} record(s)</span>
       </div>
 
       {(error || message) && (
@@ -777,7 +681,7 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '28px', color: '#94a3b8' }}>
+                <td colSpan={isAdmin ? 8 : 7} style={{ textAlign: 'center', padding: '28px', color: 'var(--text-light)' }}>
                   No transactions yet.
                 </td>
               </tr>
@@ -801,46 +705,46 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
                             : ArrowDownLeft;
                 return (
                   <tr key={t.transactionId}>
-                    <td style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', fontSize: '12px' }}>{t.transactionId}</td>
+                    <td style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>{t.transactionId}</td>
                     <td>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', fontWeight: 600 }}>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: 'var(--fs-sm)', fontWeight: 600 }}>
                         <TypeIcon size={13} />
                         {typeLabel}
                       </span>
                     </td>
-                    <td style={{ fontSize: '12px' }}>
+                    <td>
                       <div>
-                        {t.sender.name} <span style={{ color: '#94a3b8' }}>({t.sender.id})</span>
+                        {t.sender.name} <span style={{ color: 'var(--text-light)' }}>({t.sender.id})</span>
                       </div>
                       {t.recipient && (
-                        <div style={{ color: '#475569' }}>
-                          → {t.recipient.name} <span style={{ color: '#94a3b8' }}>({t.recipient.id})</span>
+                        <div style={{ color: 'var(--text-secondary)' }}>
+                          → {t.recipient.name} <span style={{ color: 'var(--text-light)' }}>({t.recipient.id})</span>
                         </div>
                       )}
-                      {t.initiatedBy?.operatorName && <div style={{ color: '#94a3b8', fontSize: '11px' }}>Operator: {t.initiatedBy.operatorName}</div>}
+                      {t.initiatedBy?.operatorName && <div style={{ color: 'var(--text-light)', fontSize: 'var(--fs-xs)' }}>Operator: {t.initiatedBy.operatorName}</div>}
                     </td>
-                    <td style={{ textAlign: 'right', fontWeight: 800, color: outgoing ? '#b91c1c' : '#15803d', whiteSpace: 'nowrap' }}>
+                    <td style={{ textAlign: 'right', fontWeight: 800, color: outgoing ? 'var(--danger-hover)' : 'var(--success-hover)', whiteSpace: 'nowrap' }}>
                       {sign}
                       {t.amount.toLocaleString('en-IN')}
                     </td>
-                    <td style={{ fontSize: '12px', maxWidth: '240px' }}>
+                    <td style={{ maxWidth: '240px' }}>
                       <div style={{ fontWeight: 600 }}>{t.title}</div>
-                      {t.note && <div style={{ color: '#64748b' }}>{t.note}</div>}
+                      {t.note && <div style={{ color: 'var(--text-muted)' }}>{t.note}</div>}
                       {t.reversedBy && (
-                        <div style={{ color: '#b91c1c', fontSize: '11px', marginTop: '2px' }}>
+                        <div style={{ color: 'var(--danger-hover)', fontSize: 'var(--fs-xs)', marginTop: '2px' }}>
                           Reversed by {t.reversedBy}
                           {t.reversalReason ? `: ${t.reversalReason}` : ''}
                         </div>
                       )}
                     </td>
-                    <td style={{ fontSize: '12px', whiteSpace: 'nowrap' }}>{formatDateTime(t.createdAt)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(t.createdAt)}</td>
                     <td>
                       <StatusPill status={t.status} />
                     </td>
                     {isAdmin && (
                       <td>
                         {canReverse(t) && (
-                          <button type="button" className="primary-btn" style={{ ...dangerBtn, padding: '5px 10px', fontSize: '11px' }} onClick={() => setReversing(t)}>
+                          <button type="button" className="btn btn-sm btn-danger-outline" onClick={() => setReversing(t)}>
                             <Undo2 size={12} />
                             <span>Reverse</span>
                           </button>
@@ -857,13 +761,13 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
 
       {totalPages > 1 && (
         <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', padding: '12px 16px' }}>
-          <button type="button" className="primary-btn" style={ghostBtn} disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
+          <button type="button" className="btn btn-sm btn-secondary" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
             Previous
           </button>
-          <span style={{ fontSize: '12px', color: '#64748b' }}>
+          <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
             Page {page} of {totalPages}
           </span>
-          <button type="button" className="primary-btn" style={ghostBtn} disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
+          <button type="button" className="btn btn-sm btn-secondary" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>
             Next
           </button>
         </div>
@@ -915,7 +819,7 @@ const ReverseModal: React.FC<{ token?: string; transfer: BVTransactionItem; onCl
 
   return (
     <Modal title="Reverse transfer" onClose={() => !submitting && onClose()}>
-      <p style={{ fontSize: '13px', color: '#334155', marginTop: 0 }}>
+      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-body)', marginTop: 0 }}>
         Move <strong>{formatBV(transfer.amount)}</strong> back from <strong>{transfer.recipient?.name}</strong> ({transfer.recipient?.id}) to{' '}
         <strong>{transfer.sender.name}</strong> ({transfer.sender.id}). This creates a new reversal transaction and can only be done once.
       </p>
@@ -930,13 +834,12 @@ const ReverseModal: React.FC<{ token?: string; transfer: BVTransactionItem; onCl
         <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
       </Field>
       <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-        <button type="button" className="primary-btn" style={ghostBtn} disabled={submitting} onClick={onClose}>
+        <button type="button" className="btn btn-sm btn-secondary" disabled={submitting} onClick={onClose}>
           Back
         </button>
         <button
           type="button"
-          className="primary-btn"
-          style={dangerBtn}
+          className="btn btn-danger"
           disabled={submitting || !reason.trim() || !operatorName.trim() || !password}
           onClick={submit}
         >
@@ -1009,7 +912,7 @@ const GenerateSection: React.FC<{ token?: string; wallet: BVWalletSummary | null
       <div className="card-header-row" style={{ marginBottom: '12px' }}>
         <h2 className="card-title">Generate BV</h2>
       </div>
-      <p style={{ fontSize: '12px', color: '#64748b', marginTop: 0 }}>
+      <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: 0 }}>
         Adds BV to the Super Admin wallet. Wallet BV does not count toward personal BV, binary volume or commissions.
       </p>
       {message && <Banner kind={message.kind} text={message.text} onClose={() => setMessage(null)} />}
@@ -1025,16 +928,16 @@ const GenerateSection: React.FC<{ token?: string; wallet: BVWalletSummary | null
       <Field label="Operator name" hint="Who is generating on the shared Super Admin account.">
         <input type="text" maxLength={60} value={operatorName} onChange={(e) => setOperatorName(e.target.value)} style={inputStyle} />
       </Field>
-      <div style={{ fontSize: '12px', color: '#64748b', marginBottom: '12px' }}>The date and time are recorded automatically.</div>
-      {validationError && amount && <div style={{ fontSize: '12px', color: '#b45309', marginBottom: '10px' }}>{validationError}</div>}
-      <button type="button" className="primary-btn" disabled={!!validationError} onClick={() => setConfirming(true)}>
+      <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginBottom: '12px' }}>The date and time are recorded automatically.</div>
+      {validationError && amount && <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--warning-hover)', marginBottom: '10px' }}>{validationError}</div>}
+      <button type="button" className="btn btn-primary" disabled={!!validationError} onClick={() => setConfirming(true)}>
         <PlusCircle size={14} />
         <span>Generate</span>
       </button>
 
       {confirming && (
         <Modal title="Confirm BV generation" onClose={() => !submitting && setConfirming(false)}>
-          <p style={{ fontSize: '14px', color: '#334155', marginTop: 0 }}>
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-body)', marginTop: 0 }}>
             Generate <strong>{formatBV(amountNumber)}</strong> ("{title.trim()}") as <strong>{operatorName.trim()}</strong>?
           </p>
           <Field label="Super Admin password">
@@ -1051,10 +954,10 @@ const GenerateSection: React.FC<{ token?: string; wallet: BVWalletSummary | null
             />
           </Field>
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-            <button type="button" className="primary-btn" style={ghostBtn} disabled={submitting} onClick={() => setConfirming(false)}>
+            <button type="button" className="btn btn-sm btn-secondary" disabled={submitting} onClick={() => setConfirming(false)}>
               Back
             </button>
-            <button type="button" className="primary-btn" disabled={submitting || !password} onClick={submit}>
+            <button type="button" className="btn btn-primary" disabled={submitting || !password} onClick={submit}>
               {submitting ? 'Generating…' : 'Confirm & generate'}
             </button>
           </div>
