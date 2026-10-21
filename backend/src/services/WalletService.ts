@@ -1,3 +1,4 @@
+import { ClientSession } from 'mongoose';
 import { Wallet, IWallet } from '../models/Wallet.model';
 import { WalletTransaction } from '../models/WalletTransaction.model';
 import { Member } from '../models/Member.model';
@@ -7,46 +8,54 @@ export class WalletService {
   /**
    * Get or create wallet for a member
    */
-  static async getOrCreateWallet(memberId: string, userId: string): Promise<IWallet> {
-    let wallet = await Wallet.findOne({ memberId });
+  static async getOrCreateWallet(memberId: string, userId: string, session?: ClientSession): Promise<IWallet> {
+    let wallet = await Wallet.findOne({ memberId }).session(session || null);
     if (!wallet) {
-      wallet = await Wallet.create({
-        walletId: `WLT-${memberId}`,
-        userId,
-        memberId,
-        availableBalance: 0,
-        availableBalanceInPaise: 0,
-        pendingBalance: 0,
-        pendingBalanceInPaise: 0,
-        withdrawnAmount: 0,
-        withdrawnAmountInPaise: 0,
-        totalEarned: 0,
-        totalEarnedInPaise: 0,
-        totalPaid: 0,
-        totalPaidInPaise: 0,
-        totalAdjusted: 0,
-        totalAdjustedInPaise: 0,
-        isActive: true,
-      });
+      const [created] = await Wallet.create(
+        [
+          {
+            walletId: `WLT-${memberId}`,
+            userId,
+            memberId,
+            availableBalance: 0,
+            availableBalanceInPaise: 0,
+            pendingBalance: 0,
+            pendingBalanceInPaise: 0,
+            withdrawnAmount: 0,
+            withdrawnAmountInPaise: 0,
+            totalEarned: 0,
+            totalEarnedInPaise: 0,
+            totalPaid: 0,
+            totalPaidInPaise: 0,
+            totalAdjusted: 0,
+            totalAdjustedInPaise: 0,
+            isActive: true,
+          },
+        ],
+        { session }
+      );
+      wallet = created;
     }
     return wallet;
   }
 
   /**
-   * Credit commission payout to member's wallet with immutable transaction entry
+   * Credit commission payout to member's wallet with immutable transaction entry.
+   * Pass a session to make the credit part of a larger transaction.
    */
   static async creditCommission(
     memberId: string,
     amount: number,
     commissionLedgerId: string,
-    description: string
+    description: string,
+    session?: ClientSession
   ): Promise<IWallet> {
-    const member = await Member.findOne({ memberId });
+    const member = await Member.findOne({ memberId }).session(session || null);
     if (!member) {
       throw new Error(`Member ${memberId} not found.`);
     }
 
-    const wallet = await this.getOrCreateWallet(memberId, member._id.toString());
+    const wallet = await this.getOrCreateWallet(memberId, member._id.toString(), session);
     const amountInPaise = DecimalUtil.toPaise(amount);
     const balanceBeforeInPaise = wallet.availableBalanceInPaise || DecimalUtil.toPaise(wallet.availableBalance);
     const balanceAfterInPaise = balanceBeforeInPaise + amountInPaise;
@@ -59,25 +68,30 @@ export class WalletService {
     wallet.totalEarnedInPaise = totalEarnedInPaise;
     wallet.totalEarned = DecimalUtil.fromPaise(totalEarnedInPaise);
 
-    await wallet.save();
+    await wallet.save({ session });
 
     // Create immutable audit transaction
-    await WalletTransaction.create({
-      transactionId: `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
-      walletId: wallet.walletId,
-      userId: member._id.toString(),
-      memberId,
-      type: 'CREDIT',
-      amount,
-      amountInPaise,
-      balanceBefore: DecimalUtil.fromPaise(balanceBeforeInPaise),
-      balanceBeforeInPaise,
-      balanceAfter: DecimalUtil.fromPaise(balanceAfterInPaise),
-      balanceAfterInPaise,
-      referenceType: 'COMMISSION',
-      referenceId: commissionLedgerId,
-      description,
-    });
+    await WalletTransaction.create(
+      [
+        {
+          transactionId: `TXN-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`,
+          walletId: wallet.walletId,
+          userId: member._id.toString(),
+          memberId,
+          type: 'CREDIT',
+          amount,
+          amountInPaise,
+          balanceBefore: DecimalUtil.fromPaise(balanceBeforeInPaise),
+          balanceBeforeInPaise,
+          balanceAfter: DecimalUtil.fromPaise(balanceAfterInPaise),
+          balanceAfterInPaise,
+          referenceType: 'COMMISSION',
+          referenceId: commissionLedgerId,
+          description,
+        },
+      ],
+      { session }
+    );
 
     // Sync member summary balance safely without triggering full document re-validation
     await Member.updateOne(
@@ -87,7 +101,8 @@ export class WalletService {
           walletBalance: wallet.availableBalance,
           totalIncome: wallet.totalEarned,
         },
-      }
+      },
+      { session }
     );
 
     return wallet;

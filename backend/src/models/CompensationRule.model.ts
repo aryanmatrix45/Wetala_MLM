@@ -68,6 +68,7 @@ export interface ICompensationRule extends Document {
   };
   
   // 6. Team Performance Bonus (6 Slabs: 10:10 @ 3% max 10k, up to 25,000:25,000 @ 1% max 15L)
+  //    DEPRECATED: superseded by TeamPerformanceBonusConfig and no longer read by the engine.
   teamPerformanceBonus: {
     isEnabled: boolean;
     calculationBase: 'CTO_POOL' | 'DIRECT';

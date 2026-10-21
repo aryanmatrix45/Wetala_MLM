@@ -5,6 +5,7 @@ import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
 import { DeductionUtil } from '../../utils/deduction.util';
 import { COMMISSION_TYPE } from '../../config/constants';
+import { canEarnBonus } from '../../utils/binaryEligibility';
 
 export class FranchiseService {
   /**
@@ -23,7 +24,7 @@ export class FranchiseService {
     }
 
     const member = await Member.findOne({ memberId: franchiseMemberId });
-    if (!member || !member.isActive) {
+    if (!canEarnBonus(member)) {
       return { franchiseCommission: null, uplineCommission: null };
     }
 
@@ -90,7 +91,7 @@ export class FranchiseService {
     let uplineCommission: ICommissionLedger | null = null;
     if (config.uplineBonusRate > 0 && member.sponsorId) {
       const uplineMember = await Member.findOne({ memberId: member.sponsorId });
-      if (uplineMember && uplineMember.isActive) {
+      if (canEarnBonus(uplineMember)) {
         const rawUplineAmount = DecimalUtil.multiplyRate(purchaseAmount, config.uplineBonusRate);
         const uplineDeductions = DeductionUtil.calculateDeductions(rawUplineAmount, rules);
 

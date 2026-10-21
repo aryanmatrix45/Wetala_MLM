@@ -6,6 +6,7 @@ import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
 import { DeductionUtil } from '../../utils/deduction.util';
 import { COMMISSION_TYPE } from '../../config/constants';
+import { canEarnBonus } from '../../utils/binaryEligibility';
 
 export class UplineBonusService {
   /**
@@ -39,7 +40,7 @@ export class UplineBonusService {
 
     for (let level = 0; level < uplineChain.length; level++) {
       const upline = uplineChain[level];
-      if (!upline.isActive || upline.status === 'blocked') continue;
+      if (!canEarnBonus(upline)) continue;
 
       const rate = config.uplineBonusRate;
       const rawBonus = DecimalUtil.multiplyRate(baseValue, rate);

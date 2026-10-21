@@ -7,6 +7,7 @@ import { WalletTransaction } from '../../models/WalletTransaction.model';
 import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
 import { COMMISSION_TYPE } from '../../config/constants';
+import { canEarnBonus } from '../../utils/binaryEligibility';
 
 export interface SponsorBonusPlan {
   sponsorId: string;
@@ -36,8 +37,8 @@ export class SponsorBonusService {
     const config = rules.sponsorBinaryBonus;
     if (!config || config.isEnabled === false || creditedAmount <= 0 || !earner.sponsorId) return null;
 
-    const sponsor = await Member.findOne({ memberId: earner.sponsorId.toUpperCase() }).select('memberId name role status isActive');
-    if (!sponsor || !sponsor.isActive || sponsor.status !== 'active') return null;
+    const sponsor = await Member.findOne({ memberId: earner.sponsorId.toUpperCase() }).select('memberId name role status isActive isBinaryActive personalBv parentId sponsorId');
+    if (!sponsor || !canEarnBonus(sponsor) || sponsor.status !== 'active') return null;
     // Only distributors earn commissions (never the Super Admin / admin accounts)
     if (sponsor.role && sponsor.role !== 'member') return null;
 

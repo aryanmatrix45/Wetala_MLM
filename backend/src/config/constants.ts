@@ -163,6 +163,19 @@ export type BVLedgerEntryType = typeof BV_LEDGER_ENTRY[keyof typeof BV_LEDGER_EN
 // Welcome bonus: weekly pool paid as BV (defaults when the active rule set has no value)
 // ---------------------------------------------------------------------------
 
+/** Team Performance Bonus starting rules; SuperAdmin edits them in Team Performance Bonus settings */
+export const TEAM_PERFORMANCE_BONUS_DEFAULTS = {
+  RP_BV_UNIT: 1250, // 1250 BV = 1 reward point
+  SLABS: [
+    { slabId: 'TPB-10', leftRp: 10, rightRp: 10, percent: 3, lifetimeLimit: 10000, isActive: true },
+    { slabId: 'TPB-100', leftRp: 100, rightRp: 100, percent: 3, lifetimeLimit: 30000, isActive: true },
+    { slabId: 'TPB-400', leftRp: 400, rightRp: 400, percent: 2, lifetimeLimit: 100000, isActive: true },
+    { slabId: 'TPB-1600', leftRp: 1600, rightRp: 1600, percent: 2, lifetimeLimit: 300000, isActive: true },
+    { slabId: 'TPB-5000', leftRp: 5000, rightRp: 5000, percent: 1, lifetimeLimit: 500000, isActive: true },
+    { slabId: 'TPB-25000', leftRp: 25000, rightRp: 25000, percent: 1, lifetimeLimit: 1500000, isActive: true },
+  ],
+};
+
 export const WELCOME_BONUS_DEFAULTS = {
   RATE_PERCENT: 4, // share of the company's weekly gross BV that forms the pool
   MAX_MULTIPLIER: 2, // lifetime earnings stop at this many times the member's lifetime BV

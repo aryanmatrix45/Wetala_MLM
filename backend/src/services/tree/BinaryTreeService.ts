@@ -1,6 +1,7 @@
 import { Member, IMember } from '../../models/Member.model';
 import { BinaryVolume } from '../../models/BinaryVolume.model';
 import { BINARY_POSITION, BinaryPosition } from '../../config/constants';
+import { isBinaryActive } from '../../utils/binaryEligibility';
 
 export interface BinaryNodeDTO {
   memberId: string;
@@ -570,6 +571,9 @@ export class BinaryTreeService {
       await member.save();
       return { parentId: '', position: BINARY_POSITION.LEFT };
     }
+
+    // Only binary active members (100 BV reached) take a place in the tree
+    if (!isBinaryActive(member)) return null;
 
     // Determine target leg
     const rawLeg = (legOverride || member.preferredLeg || member.position || BINARY_POSITION.LEFT).toUpperCase();

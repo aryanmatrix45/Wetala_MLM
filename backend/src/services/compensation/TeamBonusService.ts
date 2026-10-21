@@ -6,6 +6,7 @@ import { WalletService } from '../WalletService';
 import { DecimalUtil } from '../../utils/decimal';
 import { DeductionUtil } from '../../utils/deduction.util';
 import { COMMISSION_TYPE } from '../../config/constants';
+import { canEarnBonus } from '../../utils/binaryEligibility';
 
 export class TeamBonusService {
   /**
@@ -23,7 +24,7 @@ export class TeamBonusService {
     }
 
     const member = await Member.findOne({ memberId });
-    if (!member || !member.isActive) {
+    if (!canEarnBonus(member)) {
       return null;
     }
 

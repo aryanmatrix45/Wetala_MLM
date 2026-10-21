@@ -15,6 +15,7 @@ import adminSubcategoryRoutes from './adminSubcategory.routes';
 import walletRoutes from './wallet.routes';
 import reportRoutes from './report.routes';
 import welcomeBonusRoutes from './welcomeBonus.routes';
+import teamPerformanceBonusRoutes from './teamPerformanceBonus.routes';
 import withdrawalRoutes from './withdrawal.routes';
 import companyAccountRoutes from './companyAccount.routes';
 import sliderRoutes from './slider.routes';
@@ -83,6 +84,9 @@ router.use('/compensation', compensationRoutes);
 
 // Standalone Welcome Bonus System
 router.use('/welcome-bonus', welcomeBonusRoutes);
+
+// Team Performance Bonus (RP milestones, CTO pools; SuperAdmin settings and member view)
+router.use('/team-performance', teamPerformanceBonusRoutes);
 
 // Purchases, Joining, Repurchase & Reversals
 router.use('/purchases', purchaseRoutes);

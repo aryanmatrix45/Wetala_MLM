@@ -8,6 +8,7 @@ import { LifetimeBvService } from './LifetimeBvService';
 import { DecimalUtil } from '../../utils/decimal';
 import { BusinessDate } from '../../utils/businessDate';
 import { BV_OWNER_TYPE, HTTP_STATUS, WELCOME_BONUS_DEFAULTS } from '../../config/constants';
+import { canEarnBonus } from '../../utils/binaryEligibility';
 
 /**
  * Welcome bonus: every week the company puts a share (4%) of its gross BV into a pool, split equally
@@ -186,7 +187,7 @@ export class WelcomeBonusService {
   ): Promise<MemberEligibilityResult[]> {
     const [members, lifetimeBv, sponsorRows] = await Promise.all([
       Member.find({ ...(memberIds ? { memberId: { $in: memberIds } } : {}), createdAt: { $lte: asOf } })
-        .select('memberId name email status isActive welcomeBonusEarned')
+        .select('memberId name email status isActive welcomeBonusEarned isBinaryActive personalBv parentId sponsorId')
         .sort({ createdAt: 1 })
         .lean(),
       LifetimeBvService.compute({ asOf, memberIds }),
@@ -218,6 +219,8 @@ export class WelcomeBonusService {
       let ineligibleReason = '';
       if (!m.isActive || m.status !== 'active') {
         ineligibleReason = 'Member account is inactive';
+      } else if (!canEarnBonus(m)) {
+        ineligibleReason = 'Member is not binary active (100 BV) or not placed in the binary tree';
       } else if (memberLifetimeBv < config.minLifetimeBv) {
         ineligibleReason = `Needs at least ${config.minLifetimeBv} BV in its lifetime (has ${memberLifetimeBv} BV)`;
       } else if (sponsoredCount < config.minSponsoredCount) {

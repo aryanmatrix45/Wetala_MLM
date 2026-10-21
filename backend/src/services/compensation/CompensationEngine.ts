@@ -9,7 +9,7 @@ import { WelcomeBonusService } from './WelcomeBonusService';
 import { BVWalletService } from '../BVWalletService';
 import { SelfPurchaseBonusService } from './SelfPurchaseBonusService';
 import { TeamBonusService } from './TeamBonusService';
-import { TeamPerformanceService } from './TeamPerformanceService';
+import { TeamPerformanceBonusService } from './TeamPerformanceBonusService';
 import { RewardService } from './RewardService';
 import { FranchiseService } from './FranchiseService';
 import { UplineBonusService } from './UplineBonusService';
@@ -289,14 +289,9 @@ export class CompensationEngine {
         );
         if (teamComm) commissionsGenerated.push(teamComm);
 
-        // F. Team Performance Bonus
-        const perfComm = await TeamPerformanceService.processTeamPerformanceBonus(
-          ancestorMemberId,
-          rules,
-          eventId,
-          purchase.purchaseId
-        );
-        if (perfComm) commissionsGenerated.push(perfComm);
+        // F. Team Performance Bonus: updates the ancestor's RP and records new slab qualifications.
+        //    Payouts are made by the period settlement, not per purchase.
+        await TeamPerformanceBonusService.evaluateMember(ancestorMemberId);
 
         // G. Lifetime Milestone Rewards
         const rewardComms = await RewardService.evaluateRewards(
