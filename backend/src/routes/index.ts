@@ -26,6 +26,8 @@ import aboutSectionRoutes from './aboutSection.routes';
 import adminAboutSectionRoutes from './adminAboutSection.routes';
 import homeVideoRoutes from './homeVideo.routes';
 import adminHomeVideoRoutes from './adminHomeVideo.routes';
+import homeHighlightRoutes from './homeHighlight.routes';
+import adminHomeHighlightRoutes from './adminHomeHighlight.routes';
 import footerRoutes from './footer.routes';
 import adminFooterRoutes from './adminFooter.routes';
 import kycRoutes from './kyc.routes';
@@ -45,6 +47,12 @@ router.use('/home-videos', homeVideoRoutes);
 
 // Video Showcase Management (SuperAdmin)
 router.use('/admin/home-videos', adminHomeVideoRoutes);
+
+// Home Highlight Cards (Members / Public)
+router.use('/home-highlights', homeHighlightRoutes);
+
+// Home Highlight Cards Management (SuperAdmin)
+router.use('/admin/home-highlights', adminHomeHighlightRoutes);
 
 // About Us Section (Members / Public)
 router.use('/about-sections', aboutSectionRoutes);

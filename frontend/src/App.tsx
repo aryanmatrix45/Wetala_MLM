@@ -25,6 +25,7 @@ import { ProfilePage } from './pages/ProfilePage';
 import { BVWalletPage } from './pages/BVWalletPage';
 import { MemberHomePage } from './pages/MemberHomePage';
 import { AdminSlidersPage } from './pages/AdminSlidersPage';
+import { AdminHomeHighlightsPage } from './pages/AdminHomeHighlightsPage';
 import { AdminSocialMediaPage } from './pages/AdminSocialMediaPage';
 import { AdminAboutPage } from './pages/AdminAboutPage';
 import { AdminVideosPage } from './pages/AdminVideosPage';
@@ -426,6 +427,10 @@ export function App() {
 
         {activeTab === 'manage-sliders' && (
           <AdminSlidersPage user={user} token={token} />
+        )}
+
+        {activeTab === 'manage-highlights' && (
+          <AdminHomeHighlightsPage user={user} token={token} />
         )}
 
         {activeTab === 'manage-social-links' && (

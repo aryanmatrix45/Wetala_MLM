@@ -1409,3 +1409,169 @@
   margin: 6px 0 8px 20px;
   padding: 0;
 }
+
+/* ==========================================================================
+   Home Highlights (admin-managed cards under the slider)
+   ========================================================================== */
+.hl-head {
+  margin-bottom: var(--space-4);
+}
+
+.hl-row,
+.hl-track {
+  list-style: none;
+  display: flex;
+  gap: var(--space-5);
+}
+
+.hl-row {
+  display: grid;
+  grid-template-columns: repeat(var(--hl-cols, 3), minmax(0, 1fr));
+}
+
+.hl-row.hl-count-1 { --hl-cols: 1; max-width: 480px; }
+.hl-row.hl-count-2 { --hl-cols: 2; }
+
+.hl-card {
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  min-height: 96px;
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-main);
+  min-width: 0;
+}
+
+.hl-card-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  color: var(--brand-forest-icon);
+  --hl-icon-contrast: var(--surface);
+}
+
+.hl-card-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.hl-card-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  line-height: 1.3;
+}
+
+.hl-card-subtitle {
+  font-size: var(--fs-md);
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.hl-card.is-highlighted {
+  background: var(--brand-forest);
+  border-color: var(--brand-forest);
+  color: var(--text-inverse);
+}
+
+.hl-card.is-highlighted .hl-card-icon {
+  color: var(--text-inverse);
+  --hl-icon-contrast: var(--brand-forest);
+}
+
+.hl-card.is-highlighted .hl-card-subtitle {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.hl-card.is-skeleton {
+  border-color: var(--border-color);
+}
+
+/* Continuous loop: the track holds two copies and slides right by one copy */
+.hl-marquee {
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, #000 32px, #000 calc(100% - 32px), transparent 100%);
+}
+
+.hl-track {
+  width: max-content;
+  animation: hl-scroll-right var(--hl-duration, 24s) linear infinite;
+}
+
+.hl-track .hl-card {
+  width: 420px;
+}
+
+.hl-marquee:hover .hl-track,
+.hl-marquee:focus-within .hl-track {
+  animation-play-state: paused;
+}
+
+/* Starts shifted left by one copy and moves to 0, so cards travel to the right.
+   The gap after the last card is included so the seam lines up exactly. */
+@keyframes hl-scroll-right {
+  from { transform: translateX(calc(-50% - var(--space-5) / 2)); }
+  to { transform: translateX(0); }
+}
+
+@media (max-width: 1024px) {
+  .hl-row {
+    --hl-cols: 2;
+  }
+  .hl-row.hl-count-1 { --hl-cols: 1; }
+}
+
+@media (max-width: 640px) {
+  .hl-row,
+  .hl-track {
+    gap: var(--space-3);
+  }
+  /* Static rows become a swipeable strip on phones */
+  .hl-row {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    padding-bottom: var(--space-1);
+  }
+  .hl-row .hl-card {
+    flex: 0 0 82%;
+    scroll-snap-align: start;
+  }
+  .hl-track .hl-card {
+    width: 290px;
+  }
+  .hl-card {
+    min-height: 84px;
+    padding: var(--space-4);
+    gap: var(--space-4);
+  }
+  .hl-card-title {
+    font-size: var(--fs-md);
+  }
+  .hl-card-subtitle {
+    font-size: var(--fs-base);
+  }
+  @keyframes hl-scroll-right {
+    from { transform: translateX(calc(-50% - var(--space-3) / 2)); }
+    to { transform: translateX(0); }
+  }
+}
+
+/* Reduced motion: no auto-scrolling; let people swipe instead */
+@media (prefers-reduced-motion: reduce) {
+  .hl-marquee {
+    overflow-x: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .hl-track {
+    animation: none;
+  }
+  .hl-track .hl-card[aria-hidden='true'] {
+    display: none;
+  }
+}

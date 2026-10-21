@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { HomeSlider } from '../components/HomeSlider';
 import { SocialMediaSection } from '../components/SocialMediaSection';
+import { HomeHighlightsSection } from '../components/HomeHighlightsSection';
 // Shop by Category is temporarily hidden on the homepage; uncomment this and the section below to restore it.
 // import { ShopByCategorySection } from '../components/ShopByCategorySection';
 import { HomeVideoSection } from '../components/HomeVideoSection';
@@ -136,6 +137,9 @@ export const MemberHomePage: React.FC<MemberHomePageProps> = ({ user, onNavigate
             )}
           </section>
         )}
+
+        {/* Highlight cards (admin-managed; scroll continuously when there are 4 or more) */}
+        <HomeHighlightsSection />
 
         {/* 2. Shop by Category (temporarily hidden; uncomment to restore, along with its import above)
         <ShopByCategorySection

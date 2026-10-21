@@ -27,6 +27,7 @@ import {
   Video,
   Share2,
   LayoutTemplate,
+  LayoutGrid,
   UserRound,
 } from 'lucide-react';
 
@@ -113,6 +114,7 @@ export function getNavSections(user: any, counts: NavCounts = {}): NavSection[] 
         title: 'Website',
         items: [
           { id: 'manage-sliders', label: 'Home Sliders', icon: Images },
+          { id: 'manage-highlights', label: 'Home Highlights', icon: LayoutGrid },
           { id: 'manage-about', label: 'About Us', icon: Info },
           { id: 'manage-videos', label: 'Videos', icon: Video },
           { id: 'manage-social-links', label: 'Social Links', icon: Share2 },

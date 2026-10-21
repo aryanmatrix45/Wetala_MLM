@@ -1505,3 +1505,21 @@
 .data-table td[colspan] {
   white-space: normal;
 }
+
+.form-field > .segmented {
+  align-self: flex-start;
+}
+
+/* Error shown beside modal actions so it is always visible */
+.modal-footer-error {
+  margin-right: auto;
+  align-self: center;
+  max-width: 60%;
+}
+
+@media (max-width: 640px) {
+  .modal-footer-error {
+    max-width: 100%;
+    flex-basis: 100%;
+  }
+}

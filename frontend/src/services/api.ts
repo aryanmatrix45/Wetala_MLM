@@ -2002,7 +2002,119 @@ export const api = {
   },
 
   // ==========================================
+  // HOME HIGHLIGHT CARDS APIS (MEMBER & ADMIN)
+  // ==========================================
+  async getHomeHighlights(): Promise<{
+    status: boolean;
+    data: { settings: HomeHighlightSettings; highlights: HomeHighlightItem[] };
+  }> {
+    const res = await fetch(`${API_BASE_URL}/home-highlights`);
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch highlights');
+    }
+    return resJson;
+  },
+
+  async adminGetHomeHighlights(token?: string): Promise<{
+    status: boolean;
+    data: { settings: HomeHighlightSettings; highlights: HomeHighlightItem[] };
+  }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-highlights`, {
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to fetch highlights');
+    }
+    return resJson;
+  },
+
+  async adminUpdateHomeHighlightSettings(
+    settings: Partial<HomeHighlightSettings>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: HomeHighlightSettings }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-highlights/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${savedToken}` },
+      body: JSON.stringify(settings),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to update highlights section');
+    }
+    return resJson;
+  },
+
+  async adminCreateHomeHighlight(
+    data: Partial<HomeHighlightItem>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: HomeHighlightItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-highlights`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${savedToken}` },
+      body: JSON.stringify(data),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to add card');
+    }
+    return resJson;
+  },
+
+  async adminUpdateHomeHighlight(
+    id: string,
+    data: Partial<HomeHighlightItem>,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: HomeHighlightItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-highlights/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${savedToken}` },
+      body: JSON.stringify(data),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to update card');
+    }
+    return resJson;
+  },
+
+  async adminToggleHomeHighlightStatus(
+    id: string,
+    token?: string
+  ): Promise<{ status: boolean; message: string; data: HomeHighlightItem }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-highlights/${encodeURIComponent(id)}/status`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to change card status');
+    }
+    return resJson;
+  },
+
+  async adminDeleteHomeHighlight(id: string, token?: string): Promise<{ status: boolean; message: string }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/home-highlights/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      throw new Error(resJson.message || 'Failed to delete card');
+    }
+    return resJson;
+  },
+
+  // ==========================================
   // HOME VIDEO SHOWCASE APIS (MEMBER & ADMIN)
+
   // ==========================================
   async getHomeVideos(): Promise<{
     status: boolean;
@@ -2262,7 +2374,28 @@ export interface HomeVideoItem {
   updatedAt?: string;
 }
 
+export type HighlightScrollSpeed = 'SLOW' | 'NORMAL' | 'FAST';
+
+export interface HomeHighlightItem {
+  _id: string;
+  icon: string;
+  title: string;
+  subtitle?: string;
+  isHighlighted: boolean;
+  order: number;
+  status: 'ACTIVE' | 'INACTIVE';
+  updatedAt?: string;
+}
+
+export interface HomeHighlightSettings {
+  heading?: string;
+  subheading?: string;
+  isActive: boolean;
+  scrollSpeed: HighlightScrollSpeed;
+}
+
 export interface HomeVideoSettings {
+
   settingsKey?: string;
   headerTitle: string;
   headerSubtitle?: string;
