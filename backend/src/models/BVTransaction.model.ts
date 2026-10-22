@@ -22,6 +22,11 @@ export interface IBVTransaction extends Document {
   requestKey?: string;
   purchaseId?: string; // PURCHASE / PURCHASE_REFUND
   settlementId?: string; // WELCOME_BONUS
+  returnRequestId?: string; // RETURN_REQUESTED / RETURN_APPROVED / RETURN_RELEASED
+  bonusAmount?: number; // part of `amount` taken from or put back into the welcome bonus balance
+  // Rupee value of a Super Admin sale (BV x rate) or a member return (BV x average purchase price)
+  ratePaise?: number;
+  valuePaise?: number;
   // Reversal links: a REVERSAL row points at the transfer it undid; that transfer points back
   reversalOf?: string;
   reversedBy?: string;
@@ -62,6 +67,10 @@ const bvTransactionSchema = new Schema<IBVTransaction>(
     requestKey: { type: String, trim: true },
     purchaseId: { type: String, trim: true },
     settlementId: { type: String, trim: true },
+    returnRequestId: { type: String, trim: true },
+    bonusAmount: { type: Number, default: 0 },
+    ratePaise: { type: Number },
+    valuePaise: { type: Number },
     reversalOf: { type: String, trim: true },
     reversedBy: { type: String, trim: true },
     reversedAt: { type: Date },
@@ -96,6 +105,11 @@ bvTransactionSchema.index(
 bvTransactionSchema.index(
   { type: 1, settlementId: 1, recipientId: 1 },
   { unique: true, partialFilterExpression: { settlementId: { $type: 'string' } } }
+);
+// A return request is held, approved and released at most once each
+bvTransactionSchema.index(
+  { type: 1, returnRequestId: 1 },
+  { unique: true, partialFilterExpression: { returnRequestId: { $type: 'string' } } }
 );
 // A transfer can be reversed at most once
 bvTransactionSchema.index(

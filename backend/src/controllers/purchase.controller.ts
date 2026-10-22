@@ -9,6 +9,7 @@ import { CompensationEngine } from '../services/compensation/CompensationEngine'
 import { AuditService } from '../services/AuditService';
 import { BVService } from '../services/BVService';
 import { BVWalletService, BVWalletError, runInTransaction } from '../services/BVWalletService';
+import { CompanyEarningService } from '../services/CompanyEarningService';
 import { submitPurchaseRequest, parsePaymentMethod, PURCHASE_PAYMENT_METHOD } from '../services/PurchaseRequestService';
 import { HTTP_STATUS, PURCHASE_TYPE, PURCHASE_STATUS, ROLES } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
@@ -456,26 +457,31 @@ export const PurchaseController = {
         return;
       }
 
-      // Claim the order atomically so two approvals (or an approval racing a rejection) can't both apply
+      // Claim the order atomically so two approvals (or an approval racing a rejection) can't both apply.
+      // A bank / UPI order's amount is added to Super Admin earnings in the same transaction.
       const now = new Date();
-      const claimed = await Purchase.findOneAndUpdate(
-        {
-          purchaseId,
-          status: { $in: [PURCHASE_STATUS.PENDING, PURCHASE_STATUS.CONFIRMED] },
-          approvalStage: { $ne: 'REJECTED' },
-        },
-        {
-          $set: {
-            status: PURCHASE_STATUS.COMPLETED,
-            paymentStatus: 'PAID',
-            approvalStage: 'VERIFIED_AND_PAID',
-            verifiedBy: req.user?.email || 'ADMIN',
-            verifiedAt: now,
-            completedAt: now,
+      const claimed = await runInTransaction(async (session) => {
+        const order = await Purchase.findOneAndUpdate(
+          {
+            purchaseId,
+            status: { $in: [PURCHASE_STATUS.PENDING, PURCHASE_STATUS.CONFIRMED] },
+            approvalStage: { $ne: 'REJECTED' },
           },
-        },
-        { returnDocument: 'after' }
-      );
+          {
+            $set: {
+              status: PURCHASE_STATUS.COMPLETED,
+              paymentStatus: 'PAID',
+              approvalStage: 'VERIFIED_AND_PAID',
+              verifiedBy: req.user?.email || 'ADMIN',
+              verifiedAt: now,
+              completedAt: now,
+            },
+          },
+          { session, returnDocument: 'after' }
+        );
+        if (order) await CompanyEarningService.recordOrderPaid(session, order, { email: req.user?.email || 'ADMIN' });
+        return order;
+      });
       if (!claimed) {
         res.status(HTTP_STATUS.CONFLICT).json({ status: false, message: 'This order was already processed.' });
         return;
@@ -738,7 +744,8 @@ export const PurchaseController = {
         return;
       }
 
-      // Mark refunded and (for BV-paid orders) return the BV in one transaction
+      // Mark refunded, return the BV of a BV-paid order, and take a bank / UPI order's amount back out
+      // of Super Admin earnings, all in one transaction
       const { purchase, refund } = await runInTransaction(async (session) => {
         const refunded = await Purchase.findOneAndUpdate(
           { purchaseId, status: PURCHASE_STATUS.COMPLETED },
@@ -747,6 +754,7 @@ export const PurchaseController = {
         );
         if (!refunded) throw new BVWalletError('This order was already refunded.', HTTP_STATUS.CONFLICT);
         const bvRefund = await BVWalletService.refundPurchaseInSession(session, refunded, `Order refunded: ${reason}`);
+        await CompanyEarningService.recordOrderRefunded(session, refunded, reason, { email: req.user?.email || 'ADMIN' });
         return { purchase: refunded, refund: bvRefund };
       });
 

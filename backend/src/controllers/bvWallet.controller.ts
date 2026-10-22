@@ -4,6 +4,7 @@ import { Admin } from '../models/Admin.model';
 import { HTTP_STATUS, ROLES, BV_OWNER_TYPE } from '../config/constants';
 import { AuthenticatedRequest } from '../middlewares/auth';
 import { BVWalletService, BVWalletError, BVOwner, BVActor, ADMIN_BV_OWNER } from '../services/BVWalletService';
+import { CompanyEarningError } from '../services/CompanyEarningService';
 
 const OPERATOR_NAME_MAX_LENGTH = 60;
 
@@ -14,7 +15,7 @@ const ownerFromRequest = (req: AuthenticatedRequest): BVOwner | null => {
   return null;
 };
 
-const actorFromRequest = (req: AuthenticatedRequest, operatorName?: string): BVActor => ({
+export const actorFromRequest = (req: AuthenticatedRequest, operatorName?: string): BVActor => ({
   role: req.user?.role || '',
   email: req.user?.email || '',
   operatorName,
@@ -23,7 +24,7 @@ const actorFromRequest = (req: AuthenticatedRequest, operatorName?: string): BVA
 });
 
 /** The Super Admin account is shared, so every BV-moving admin action records who performed it. */
-const requireOperatorName = (value: unknown): string => {
+export const requireOperatorName = (value: unknown): string => {
   const name = typeof value === 'string' ? value.trim() : '';
   if (!name) throw new BVWalletError('Enter your name (operator) so this action is recorded against you.');
   if (name.length > OPERATOR_NAME_MAX_LENGTH) {
@@ -32,8 +33,8 @@ const requireOperatorName = (value: unknown): string => {
   return name;
 };
 
-/** Re-checks the Super Admin password for sensitive actions (generation, reversal). */
-const requireAdminPassword = async (req: AuthenticatedRequest) => {
+/** Re-checks the Super Admin password for sensitive actions (generation, reversal, rate changes). */
+export const requireAdminPassword = async (req: AuthenticatedRequest) => {
   const password = typeof req.body?.password === 'string' ? req.body.password : '';
   if (!password) throw new BVWalletError('Enter the Super Admin password to confirm.');
   const admin = mongoose.Types.ObjectId.isValid(req.user?.id || '') ? await Admin.findById(req.user!.id).select('+password') : null;
@@ -43,9 +44,13 @@ const requireAdminPassword = async (req: AuthenticatedRequest) => {
   }
 };
 
-const handleError = (res: Response, error: any, context: string) => {
+export const handleError = (res: Response, error: any, context: string) => {
   if (error instanceof BVWalletError) {
     res.status(error.statusCode).json({ status: false, message: error.message, ...(error.details || {}) });
+    return;
+  }
+  if (error instanceof CompanyEarningError) {
+    res.status(error.statusCode).json({ status: false, message: error.message });
     return;
   }
   if (error instanceof mongoose.Error.ValidationError) {
@@ -84,6 +89,22 @@ const withAdmin =
     }
   };
 
+/** Wraps a handler that only a member can use (returns to the company). */
+const withMember =
+  (context: string, handler: (req: AuthenticatedRequest, res: Response, memberId: string) => Promise<void>) =>
+  async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+    const memberId = req.user?.role !== ROLES.SUPERADMIN ? req.user?.memberId?.toUpperCase() : undefined;
+    if (!memberId) {
+      res.status(HTTP_STATUS.FORBIDDEN).json({ status: false, message: 'Only members can return BV to the company.' });
+      return;
+    }
+    try {
+      await handler(req, res, memberId);
+    } catch (error) {
+      handleError(res, error, context);
+    }
+  };
+
 export const BVWalletController = {
   /** GET /api/bv-wallet/me */
   getMyWallet: withOwner('getMyWallet', async (_req, res, owner) => {
@@ -97,7 +118,7 @@ export const BVWalletController = {
     res.status(HTTP_STATUS.OK).json({ status: true, data });
   }),
 
-  /** GET /api/bv-wallet/recipients/:recipientId  ('ADMIN' resolves to the Super Admin) */
+  /** GET /api/bv-wallet/recipients/:recipientId */
   getRecipient: withOwner('getRecipient', async (req, res, owner) => {
     const data = await BVWalletService.getRecipient(req.params.recipientId, owner.ownerId);
     res.status(HTTP_STATUS.OK).json({ status: true, data });
@@ -179,6 +200,76 @@ export const BVWalletController = {
         original: BVWalletService.toPublic(result.original, { includeAudit: true }),
         reversal: BVWalletService.toPublic(result.reversal, { includeAudit: true }),
       },
+    });
+  }),
+
+  /** GET /api/bv-wallet/returns?status&page&limit  (the member's own return requests) */
+  getMyReturns: withMember('getMyReturns', async (req, res, memberId) => {
+    const { status, page, limit } = req.query;
+    const data = await BVWalletService.listReturnRequests({ memberId, status, page, limit });
+    res.status(HTTP_STATUS.OK).json({ status: true, ...data, data: data.items, items: undefined });
+  }),
+
+  /** POST /api/bv-wallet/returns  { amount, note?, requestKey } */
+  requestReturn: withMember('requestReturn', async (req, res, memberId) => {
+    const result = await BVWalletService.requestReturn({
+      memberId,
+      amount: req.body?.amount,
+      note: req.body?.note,
+      requestKey: req.body?.requestKey,
+      actor: actorFromRequest(req),
+    });
+    res.status(result.duplicate ? HTTP_STATUS.OK : HTTP_STATUS.CREATED).json({
+      status: true,
+      duplicate: result.duplicate || undefined,
+      message: result.duplicate
+        ? 'This return request was already submitted.'
+        : `Return request ${result.request.requestId} submitted. ${result.request.amount.toLocaleString('en-IN')} BV is held until the Super Admin approves it.`,
+      data: BVWalletService.returnToPublic(result.request),
+    });
+  }),
+
+  /** POST /api/bv-wallet/returns/:requestId/cancel */
+  cancelReturn: withMember('cancelReturn', async (req, res, memberId) => {
+    const request = await BVWalletService.cancelReturn({ requestId: req.params.requestId, memberId, actor: actorFromRequest(req) });
+    res.status(HTTP_STATUS.OK).json({
+      status: true,
+      message: `Return request ${request.requestId} cancelled. ${request.amount.toLocaleString('en-IN')} BV is back in your wallet.`,
+      data: BVWalletService.returnToPublic(request),
+    });
+  }),
+
+  /** GET /api/bv-wallet/admin/returns?status&search&page&limit */
+  getAllReturns: withAdmin('getAllReturns', async (req, res) => {
+    const { status, search, page, limit } = req.query;
+    const data = await BVWalletService.listReturnRequests({ status, search, page, limit, includeAudit: true });
+    res.status(HTTP_STATUS.OK).json({ status: true, ...data, data: data.items, items: undefined });
+  }),
+
+  /** POST /api/bv-wallet/admin/returns/:requestId/approve  { operatorName, password } */
+  approveReturn: withAdmin('approveReturn', async (req, res) => {
+    const operatorName = requireOperatorName(req.body?.operatorName);
+    await requireAdminPassword(req);
+    const request = await BVWalletService.approveReturn({ requestId: req.params.requestId, actor: actorFromRequest(req, operatorName) });
+    res.status(HTTP_STATUS.OK).json({
+      status: true,
+      message: `Return ${request.requestId} approved: ${request.amount.toLocaleString('en-IN')} BV moved to the Super Admin wallet and ₹${(request.valuePaise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })} deducted from earnings.`,
+      data: BVWalletService.returnToPublic(request, { includeAudit: true }),
+    });
+  }),
+
+  /** POST /api/bv-wallet/admin/returns/:requestId/reject  { reason, operatorName } */
+  rejectReturn: withAdmin('rejectReturn', async (req, res) => {
+    const operatorName = requireOperatorName(req.body?.operatorName);
+    const request = await BVWalletService.rejectReturn({
+      requestId: req.params.requestId,
+      reason: req.body?.reason,
+      actor: actorFromRequest(req, operatorName),
+    });
+    res.status(HTTP_STATUS.OK).json({
+      status: true,
+      message: `Return ${request.requestId} rejected. The BV is back in ${request.memberName}'s wallet.`,
+      data: BVWalletService.returnToPublic(request, { includeAudit: true }),
     });
   }),
 

@@ -9,7 +9,11 @@ import { Purchase, IPurchase } from '../models/Purchase.model';
 import { AuditService } from './AuditService';
 import { BinaryTreeService } from './tree/BinaryTreeService';
 import { BVService } from './BVService';
+import { CompanyEarningService, CompanyEarningError } from './CompanyEarningService';
 import { BVLedger } from '../models/BVLedger.model';
+import { BVReturnRequest, IBVReturnRequest } from '../models/BVReturnRequest.model';
+import { CompanyEarning } from '../models/CompanyEarning.model';
+import { DecimalUtil } from '../utils/decimal';
 import {
   HTTP_STATUS,
   BV_WALLET,
@@ -20,6 +24,8 @@ import {
   BV_LEDGER_ENTRY,
   BVLedgerEntryType,
   BV_SOURCE_TYPE,
+  BV_RETURN_STATUS,
+  COMPANY_EARNING_TYPE,
 } from '../config/constants';
 
 /**
@@ -33,12 +39,23 @@ import {
  * Transfers cannot be undone by members. The Super Admin can reverse a transfer once, which writes
  * a new REVERSAL transaction moving the BV back; the original amounts are never edited.
  *
+ * Every Super Admin -> member transfer is a BV sale: BV x the current BV rate is added to Super
+ * Admin earnings in the same transaction (CompanyEarningService), and the member's purchasedBV /
+ * purchasedPaise go up. Member -> member transfers move BV that was already paid for and earn nothing.
+ *
  * Other ways BV enters or leaves a wallet:
- *  - WELCOME_BONUS: the weekly welcome bonus share is credited as BV (WelcomeBonusService)
+ *  - WELCOME_BONUS: the weekly welcome bonus share is credited as BV (WelcomeBonusService). It goes
+ *    into the wallet's bonusBV part, which can pay for orders but can never be transferred or returned
  *  - PURCHASE: a member pays for an order with its own BV value (e.g. a 1,250 BV package costs
- *    1,250 BV; rupee prices are never converted); the order then waits for Super Admin approval
- *  - PURCHASE_REFUND: the BV comes back if that order is rejected or refunded
+ *    1,250 BV; rupee prices are never converted), welcome bonus BV first; the order then waits for
+ *    Super Admin approval
+ *  - PURCHASE_REFUND: the BV comes back, to the same parts it was paid from, if that order is
+ *    rejected or refunded
  *  - BINARY_ACTIVATION: up to 100 BV locked once at binary activation and fed into the upline legs
+ *  - RETURN_REQUESTED / RETURN_APPROVED / RETURN_RELEASED: a member returns BV it bought from the
+ *    Super Admin. The BV is held while the request waits; approval moves it to the Super Admin wallet
+ *    and deducts its value (at the member's average purchase price) from earnings; rejection or
+ *    cancellation gives it back. Only regular BV, and only up to what the member bought, can be returned.
  *
  * Wallet BV itself is not earned volume: it never changes Member.personalBv. Earned BV comes from
  * the order once the Super Admin approves it. A wallet balance can, however,
@@ -75,7 +92,6 @@ export interface BVActor {
 }
 
 export const ADMIN_BV_OWNER: BVOwner = { ownerType: BV_OWNER_TYPE.ADMIN, ownerId: BV_WALLET.ADMIN_OWNER_ID };
-const ADMIN_PARTY: BVParty = { ...ADMIN_BV_OWNER, name: BV_WALLET.ADMIN_DISPLAY_NAME };
 
 const randomCode = (bytes: number) => crypto.randomBytes(bytes).toString('hex').toUpperCase();
 const newTransactionId = () => `BVT-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${randomCode(5)}`;
@@ -145,6 +161,61 @@ const safeAudit = async (params: Parameters<typeof AuditService.log>[0]) => {
 
 const actorLabel = (actor: BVActor) => (actor.operatorName ? `${actor.email} (${actor.operatorName})` : actor.email);
 
+const newReturnRequestId = () => `BVR-${new Date().toISOString().slice(0, 10).replace(/-/g, '')}-${randomCode(4)}`;
+
+const formatRupees = (paise: number) =>
+  `₹${DecimalUtil.fromPaise(paise).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+type WalletCounter =
+  | 'bonusBV'
+  | 'totalGenerated'
+  | 'totalReceived'
+  | 'totalSent'
+  | 'totalWelcomeBonus'
+  | 'totalSpent'
+  | 'totalActivationLocked'
+  | 'totalSold'
+  | 'purchasedBV'
+  | 'purchasedPaise'
+  | 'returnedBV'
+  | 'returnedPaise'
+  | 'pendingReturnBV'
+  | 'pendingReturnPaise';
+
+/** Regular BV: the balance minus the welcome bonus part. Only regular BV can be transferred or returned. */
+const regularBVOf = (w: Pick<IBVWallet, 'availableBV' | 'bonusBV'>) => Math.max(0, (w.availableBV || 0) - (w.bonusBV || 0));
+
+/**
+ * How much of what a member bought from the Super Admin it can still return, and for how much.
+ * Requests waiting for approval already hold their BV and value, so they are taken out first.
+ */
+const returnCapacity = (w: IBVWallet) => {
+  const remainingBV = Math.max(0, (w.purchasedBV || 0) - (w.returnedBV || 0) - (w.pendingReturnBV || 0));
+  const remainingPaise = Math.max(0, (w.purchasedPaise || 0) - (w.returnedPaise || 0) - (w.pendingReturnPaise || 0));
+  return { remainingBV, remainingPaise, returnableBV: Math.min(regularBVOf(w), remainingBV) };
+};
+
+/** Value of returning `bv` at the member's average purchase price; the last BV takes the exact remainder. */
+const returnValuePaise = (bv: number, remainingBV: number, remainingPaise: number) =>
+  remainingBV <= 0 ? 0 : bv >= remainingBV ? remainingPaise : Math.round((bv * remainingPaise) / remainingBV);
+
+/** $expr guard: the member still has at least `bv` of bought-and-not-returned BV. */
+const purchasedCapacityGuard = (bv: number) => ({
+  $gte: [
+    {
+      $subtract: [
+        { $ifNull: ['$purchasedBV', 0] },
+        { $add: [{ $ifNull: ['$returnedBV', 0] }, { $ifNull: ['$pendingReturnBV', 0] }] },
+      ],
+    },
+    bv,
+  ],
+});
+
+/** Rate errors come from CompanyEarningService; surface them like any other wallet error. */
+const asWalletError = (error: unknown) =>
+  error instanceof CompanyEarningError ? new BVWalletError(error.message, error.statusCode) : error;
+
 export class BVWalletService {
   // ---------------------------------------------------------------------------
   // Wallet & ledger primitives
@@ -169,7 +240,9 @@ export class BVWalletService {
 
   /**
    * Atomically applies a balance change and writes the matching ledger entry.
-   * Returns null when the guard fails (insufficient BV for a debit, or wallet frozen).
+   * `totals.bonusBV` moves the welcome bonus part of the balance along with it.
+   * Returns null when a guard fails (insufficient BV or bonus BV for a debit, regular BV for a
+   * regular-only debit, a caller guard, or wallet frozen).
    */
   private static async moveBalance(
     session: ClientSession,
@@ -177,12 +250,19 @@ export class BVWalletService {
     entryType: BVLedgerEntryType,
     txn: IBVTransaction,
     delta: number,
-    totals: Partial<Record<'totalGenerated' | 'totalReceived' | 'totalSent' | 'totalWelcomeBonus' | 'totalSpent' | 'totalActivationLocked', number>> = {},
-    options: { requireNotFrozen?: boolean } = {}
+    totals: Partial<Record<WalletCounter, number>> = {},
+    options: { requireNotFrozen?: boolean; regularOnly?: boolean; guards?: Record<string, unknown>[] } = {}
   ): Promise<IBVWallet | null> {
     const filter: Record<string, unknown> = { ownerId };
     if (delta < 0) filter.availableBV = { $gte: -delta };
+    const bonusDelta = totals.bonusBV || 0;
+    if (bonusDelta < 0) filter.bonusBV = { $gte: -bonusDelta };
     if (options.requireNotFrozen) filter.isFrozen = false;
+    const exprs = [...(options.guards || [])];
+    if (options.regularOnly && delta < 0) {
+      exprs.push({ $gte: [{ $subtract: ['$availableBV', { $ifNull: ['$bonusBV', 0] }] }, -delta] });
+    }
+    if (exprs.length) filter.$expr = exprs.length === 1 ? exprs[0] : { $and: exprs };
 
     const wallet = await BVWallet.findOneAndUpdate(
       filter,
@@ -201,6 +281,7 @@ export class BVWalletService {
           entryType,
           amount: txn.amount,
           availableDelta: delta,
+          bonusDelta,
           availableBefore: wallet.availableBV - delta,
           availableAfter: wallet.availableBV,
           walletSequence: wallet.sequence,
@@ -236,7 +317,7 @@ export class BVWalletService {
     );
   }
 
-  private static async insufficientBalanceError(ownerId: string, amount: number): Promise<BVWalletError> {
+  private static async insufficientBalanceError(ownerId: string, amount: number, options: { regularOnly?: boolean } = {}): Promise<BVWalletError> {
     const wallet = await BVWallet.findOne({ ownerId });
     if (wallet?.isFrozen) {
       return new BVWalletError(
@@ -245,6 +326,14 @@ export class BVWalletService {
       );
     }
     const available = wallet?.availableBV || 0;
+    if (options.regularOnly && (wallet?.bonusBV || 0) > 0) {
+      const regular = regularBVOf(wallet!);
+      return new BVWalletError(
+        `You can send up to ${formatBV(regular)}. ${formatBV(wallet!.bonusBV)} of your balance is welcome bonus BV, which can only be used for your own orders.`,
+        HTTP_STATUS.BAD_REQUEST,
+        { availableBV: available, sendableBV: regular }
+      );
+    }
     return new BVWalletError(
       `Insufficient BV balance. Available: ${formatBV(available)}, requested: ${formatBV(amount)}.`,
       HTTP_STATUS.BAD_REQUEST,
@@ -252,11 +341,16 @@ export class BVWalletService {
     );
   }
 
-  /** Resolves who BV is being sent to. Members may pick the Super Admin; nobody may pick themselves. */
+  /**
+   * Resolves who BV is being sent to: always an active member, never the sender. Members give BV
+   * back to the company through a return request, not a transfer.
+   */
   private static async resolveRecipient(recipientId: string, sender: BVOwner): Promise<BVParty> {
     if (!recipientId) throw new BVWalletError('Select who you want to send BV to.');
     if (recipientId === sender.ownerId) throw new BVWalletError('You cannot transfer BV to yourself.');
-    if (recipientId === BV_WALLET.ADMIN_OWNER_ID) return ADMIN_PARTY;
+    if (recipientId === BV_WALLET.ADMIN_OWNER_ID) {
+      throw new BVWalletError('To give BV back to the company, use "Return BV" in your BV Wallet.');
+    }
 
     const member = await Member.findOne({ memberId: recipientId });
     if (!member || !isEligibleMember(member)) {
@@ -380,6 +474,17 @@ export class BVWalletService {
       }
     }
 
+    // A Super Admin transfer is a sale at the current BV rate; selling is blocked until a rate is set
+    let ratePaise: number | undefined;
+    let valuePaise: number | undefined;
+    if (isAdminSender) {
+      const rate = await CompanyEarningService.requireCurrentRate().catch((error) => {
+        throw asWalletError(error);
+      });
+      ratePaise = rate.ratePaise;
+      valuePaise = amount * rate.ratePaise;
+    }
+
     await this.ensureWallet(sender);
     await this.ensureWallet(recipient);
     const transactionId = newTransactionId();
@@ -403,27 +508,51 @@ export class BVWalletService {
               title,
               note,
               requestKey,
+              ratePaise,
+              valuePaise,
               initiatedBy: input.actor,
             },
           ],
           { session }
         );
 
+        // Members can only send regular BV; welcome bonus BV stays with the member
         const senderWallet = await this.moveBalance(
           session,
           sender.ownerId,
           BV_LEDGER_ENTRY.DEBIT_OUT,
           txn,
           -amount,
-          { totalSent: amount },
-          { requireNotFrozen: true }
+          isAdminSender ? { totalSent: amount, totalSold: amount } : { totalSent: amount },
+          { requireNotFrozen: true, regularOnly: !isAdminSender }
         );
-        if (!senderWallet) throw await this.insufficientBalanceError(sender.ownerId, amount);
+        if (!senderWallet) throw await this.insufficientBalanceError(sender.ownerId, amount, { regularOnly: !isAdminSender });
 
-        const recipientWallet = await this.moveBalance(session, recipient.ownerId, BV_LEDGER_ENTRY.CREDIT_IN, txn, amount, {
-          totalReceived: amount,
-        });
+        const recipientWallet = await this.moveBalance(
+          session,
+          recipient.ownerId,
+          BV_LEDGER_ENTRY.CREDIT_IN,
+          txn,
+          amount,
+          isAdminSender
+            ? { totalReceived: amount, purchasedBV: amount, purchasedPaise: valuePaise! }
+            : { totalReceived: amount }
+        );
         if (!recipientWallet) throw new BVWalletError('Recipient BV wallet not found.', HTTP_STATUS.INTERNAL_SERVER_ERROR);
+
+        if (isAdminSender) {
+          await CompanyEarningService.record(session, {
+            type: COMPANY_EARNING_TYPE.BV_SALE,
+            sourceId: transactionId,
+            memberId: recipient.ownerId,
+            memberName: recipient.name,
+            bv: amount,
+            ratePaise,
+            amountPaise: valuePaise!,
+            note: [title, note].filter(Boolean).join(' · '),
+            performedBy: { email: input.actor.email, operatorName: input.actor.operatorName },
+          });
+        }
 
         await this.notify(session, {
           type: 'BV_RECEIVED',
@@ -451,7 +580,7 @@ export class BVWalletService {
       entityId: transactionId,
       performedBy: actorLabel(input.actor),
       performedByRole: input.actor.role,
-      newValues: { senderId: sender.ownerId, recipientId: recipient.ownerId, amount, title, note },
+      newValues: { senderId: sender.ownerId, recipientId: recipient.ownerId, amount, title, note, ratePaise, valuePaise },
       ipAddress: input.actor.ip,
     });
 
@@ -461,7 +590,9 @@ export class BVWalletService {
   /**
    * Super Admin correction: moves a completed transfer's BV back from the recipient to the sender.
    * Writes a new REVERSAL transaction; the original keeps its amounts and is marked REVERSED.
-   * Only possible while the recipient still has the BV, and only once per transfer.
+   * Only possible while the recipient still has the BV as regular BV, and only once per transfer.
+   * Reversing a Super Admin sale also takes its amount back out of earnings; that needs the member
+   * not to have returned (or asked to return) the BV it bought.
    */
   static async reverseTransfer(input: { transactionId: unknown; reason: unknown; actor: BVActor }) {
     const transactionId = parseTransactionId(input.transactionId);
@@ -483,6 +614,8 @@ export class BVWalletService {
         { session, returnDocument: 'after' }
       );
       if (!claimed) throw new BVWalletError('This transfer was already reversed.', HTTP_STATUS.CONFLICT);
+      const isSale = claimed.senderType === BV_OWNER_TYPE.ADMIN && typeof claimed.valuePaise === 'number';
+      const saleValuePaise = isSale ? claimed.valuePaise! : 0;
 
       const [reversal] = await BVTransaction.create(
         [
@@ -500,6 +633,8 @@ export class BVWalletService {
             title: `Reversal of ${claimed.transactionId}`,
             note: reason,
             reversalOf: claimed.transactionId,
+            ratePaise: claimed.ratePaise,
+            valuePaise: claimed.valuePaise,
             initiatedBy: input.actor,
           },
         ],
@@ -507,21 +642,57 @@ export class BVWalletService {
       );
 
       // Undo the original totals rather than inflating "sent"/"received" with the correction
-      const debited = await this.moveBalance(session, claimed.recipientId, BV_LEDGER_ENTRY.DEBIT_OUT, reversal, -claimed.amount, {
-        totalReceived: -claimed.amount,
-      });
+      const debited = await this.moveBalance(
+        session,
+        claimed.recipientId,
+        BV_LEDGER_ENTRY.DEBIT_OUT,
+        reversal,
+        -claimed.amount,
+        isSale
+          ? { totalReceived: -claimed.amount, purchasedBV: -claimed.amount, purchasedPaise: -saleValuePaise }
+          : { totalReceived: -claimed.amount },
+        { regularOnly: true, guards: isSale ? [purchasedCapacityGuard(claimed.amount)] : [] }
+      );
       if (!debited) {
         const wallet = await BVWallet.findOne({ ownerId: claimed.recipientId });
+        const regular = wallet ? regularBVOf(wallet) : 0;
+        if (wallet && isSale && regular >= claimed.amount) {
+          throw new BVWalletError(
+            `${claimed.recipientName} has already returned (or asked to return) part of the BV it bought, so ${formatBV(claimed.amount)} cannot be reversed.`,
+            HTTP_STATUS.BAD_REQUEST
+          );
+        }
         throw new BVWalletError(
-          `${claimed.recipientName} only has ${formatBV(wallet?.availableBV || 0)} available, so ${formatBV(claimed.amount)} cannot be reversed.`,
+          `${claimed.recipientName} only has ${formatBV(regular)} of transferable BV, so ${formatBV(claimed.amount)} cannot be reversed.`,
           HTTP_STATUS.BAD_REQUEST,
-          { availableBV: wallet?.availableBV || 0 }
+          { availableBV: wallet?.availableBV || 0, regularBV: regular }
         );
       }
-      const credited = await this.moveBalance(session, claimed.senderId, BV_LEDGER_ENTRY.CREDIT_IN, reversal, claimed.amount, {
-        totalSent: -claimed.amount,
-      });
+      const credited = await this.moveBalance(
+        session,
+        claimed.senderId,
+        BV_LEDGER_ENTRY.CREDIT_IN,
+        reversal,
+        claimed.amount,
+        isSale ? { totalSent: -claimed.amount, totalSold: -claimed.amount } : { totalSent: -claimed.amount }
+      );
       if (!credited) throw new BVWalletError('Sender BV wallet not found.', HTTP_STATUS.INTERNAL_SERVER_ERROR);
+
+      if (isSale) {
+        const sale = await CompanyEarning.findOne({ type: COMPANY_EARNING_TYPE.BV_SALE, sourceId: claimed.transactionId }).session(session);
+        await CompanyEarningService.record(session, {
+          type: COMPANY_EARNING_TYPE.BV_SALE_REVERSED,
+          sourceId: claimed.transactionId,
+          memberId: claimed.recipientId,
+          memberName: claimed.recipientName,
+          bv: claimed.amount,
+          ratePaise: claimed.ratePaise,
+          amountPaise: -(sale?.amountPaise ?? saleValuePaise),
+          note: reason,
+          relatedEntryId: sale?.entryId,
+          performedBy: { email: input.actor.email, operatorName: input.actor.operatorName },
+        });
+      }
 
       const amountText = `${formatBV(claimed.amount)} ("${claimed.title}", ${claimed.transactionId})`;
       if (claimed.recipientId !== BV_WALLET.ADMIN_OWNER_ID) {
@@ -562,6 +733,390 @@ export class BVWalletService {
   }
 
   // ---------------------------------------------------------------------------
+  // Returns to the company (member request, Super Admin approval)
+  // ---------------------------------------------------------------------------
+
+  static returnToPublic(request: IBVReturnRequest, options: { includeAudit?: boolean } = {}) {
+    return {
+      requestId: request.requestId,
+      memberId: request.memberId,
+      memberName: request.memberName,
+      amount: request.amount,
+      value: DecimalUtil.fromPaise(request.valuePaise),
+      valuePerBV: request.amount > 0 ? DecimalUtil.round(request.valuePaise / request.amount / 100, 4) : 0,
+      status: request.status,
+      note: request.note,
+      decisionReason: request.decisionReason || '',
+      decidedAt: request.decidedAt,
+      createdAt: request.createdAt,
+      ...(options.includeAudit ? { decidedBy: request.decidedBy, holdTransactionId: request.holdTransactionId, settleTransactionId: request.settleTransactionId } : {}),
+    };
+  }
+
+  /**
+   * A member asks to return BV it bought from the Super Admin. The BV is held from its wallet at
+   * once (so it can't be spent or sent meanwhile) and valued at its average purchase price. Only
+   * regular BV, up to what it bought and has not already returned, can be returned.
+   */
+  static async requestReturn(input: { memberId: string; amount: unknown; note: unknown; requestKey?: unknown; actor: BVActor }) {
+    const memberId = input.memberId.toUpperCase();
+    const amount = parseAmount(input.amount, BV_WALLET.MAX_ADMIN_TRANSFER_BV);
+    const note = parseText(input.note, 'Note', BV_WALLET.NOTE_MAX_LENGTH, false);
+    const requestKey = parseRequestKey(input.requestKey);
+
+    const member = await Member.findOne({ memberId });
+    if (!member || !isEligibleMember(member)) {
+      throw new BVWalletError('Your account must be active to return BV.', HTTP_STATUS.FORBIDDEN);
+    }
+
+    const findDuplicate = () => (requestKey ? BVReturnRequest.findOne({ memberId, requestKey }) : Promise.resolve(null));
+    const existing = await findDuplicate();
+    if (existing) return { request: existing, duplicate: true };
+
+    await this.ensureWallet({ ownerType: BV_OWNER_TYPE.MEMBER, ownerId: memberId });
+    const requestId = newReturnRequestId();
+    const holdTransactionId = newTransactionId();
+
+    let request: IBVReturnRequest;
+    try {
+      request = await runInTransaction(async (session) => {
+        const wallet = await BVWallet.findOne({ ownerId: memberId }).session(session);
+        if (!wallet) throw new BVWalletError('BV wallet not found.', HTTP_STATUS.INTERNAL_SERVER_ERROR);
+        if (wallet.isFrozen) {
+          throw new BVWalletError(`This BV wallet is frozen${wallet.frozenReason ? `: ${wallet.frozenReason}` : ''}. Contact support.`, HTTP_STATUS.FORBIDDEN);
+        }
+
+        const capacity = returnCapacity(wallet);
+        if (amount > capacity.returnableBV) {
+          throw new BVWalletError(
+            capacity.returnableBV > 0
+              ? `You can return up to ${formatBV(capacity.returnableBV)}. Only BV you bought from the company and still hold can be returned; welcome bonus BV and BV received from other members cannot.`
+              : 'You have no BV to return. Only BV you bought from the company and still hold can be returned; welcome bonus BV and BV received from other members cannot.',
+            HTTP_STATUS.BAD_REQUEST,
+            { returnableBV: capacity.returnableBV }
+          );
+        }
+        const valuePaise = returnValuePaise(amount, capacity.remainingBV, capacity.remainingPaise);
+
+        const [txn] = await BVTransaction.create(
+          [
+            {
+              transactionId: holdTransactionId,
+              type: BV_TXN_TYPE.RETURN_REQUESTED,
+              status: BV_TXN_STATUS.COMPLETED,
+              senderType: BV_OWNER_TYPE.MEMBER,
+              senderId: memberId,
+              senderName: member.name,
+              recipientType: BV_OWNER_TYPE.SYSTEM,
+              recipientId: BV_WALLET.SYSTEM_OWNER_ID,
+              recipientName: 'Return to company (awaiting approval)',
+              amount,
+              title: `Return request ${requestId}`,
+              note,
+              returnRequestId: requestId,
+              ratePaise: Math.round(valuePaise / amount),
+              valuePaise,
+              initiatedBy: input.actor,
+            },
+          ],
+          { session }
+        );
+
+        const debited = await this.moveBalance(
+          session,
+          memberId,
+          BV_LEDGER_ENTRY.DEBIT_OUT,
+          txn,
+          -amount,
+          { pendingReturnBV: amount, pendingReturnPaise: valuePaise },
+          { requireNotFrozen: true, regularOnly: true, guards: [purchasedCapacityGuard(amount)] }
+        );
+        if (!debited) throw new BVWalletError('Your BV balance changed. Please check your returnable BV and try again.', HTTP_STATUS.CONFLICT);
+
+        const [created] = await BVReturnRequest.create(
+          [
+            {
+              requestId,
+              memberId,
+              memberName: member.name,
+              amount,
+              valuePaise,
+              status: BV_RETURN_STATUS.PENDING,
+              note,
+              requestKey,
+              holdTransactionId,
+            },
+          ],
+          { session }
+        );
+
+        await this.notify(session, {
+          type: 'BV_RETURN_REQUESTED',
+          title: 'BV Return Requested',
+          message: `${member.name} (${memberId}) asked to return ${formatBV(amount)} to the company (refund value ${formatRupees(valuePaise)}). Request ${requestId}.`,
+          recipientId: BV_WALLET.ADMIN_OWNER_ID,
+          txn,
+        });
+        return created;
+      });
+    } catch (error: any) {
+      // Two identical submits raced: the loser returns the winner's request
+      if (error?.code === 11000 && requestKey && error?.keyPattern?.requestKey) {
+        const duplicate = await findDuplicate();
+        if (duplicate) return { request: duplicate, duplicate: true };
+      }
+      throw error;
+    }
+
+    await safeAudit({
+      action: 'BV_RETURN_REQUESTED',
+      entity: 'BV_WALLET',
+      entityId: requestId,
+      performedBy: actorLabel(input.actor),
+      performedByRole: input.actor.role,
+      newValues: { memberId, amount, valuePaise: request.valuePaise, holdTransactionId },
+      ipAddress: input.actor.ip,
+    });
+
+    return { request, duplicate: false };
+  }
+
+  /**
+   * Super Admin approves a return after refunding the member outside the app: the held BV goes to
+   * the Super Admin wallet and its value is deducted from Super Admin earnings.
+   */
+  static async approveReturn(input: { requestId: unknown; actor: BVActor }) {
+    const requestId = typeof input.requestId === 'string' ? input.requestId.trim().toUpperCase() : '';
+    if (!requestId) throw new BVWalletError('Return request not found.', HTTP_STATUS.NOT_FOUND);
+    const settleTransactionId = newTransactionId();
+
+    const result = await runInTransaction(async (session) => {
+      const request = await BVReturnRequest.findOneAndUpdate(
+        { requestId, status: BV_RETURN_STATUS.PENDING },
+        {
+          $set: {
+            status: BV_RETURN_STATUS.APPROVED,
+            settleTransactionId,
+            decidedBy: { role: input.actor.role, email: input.actor.email, operatorName: input.actor.operatorName },
+            decidedAt: new Date(),
+          },
+        },
+        { session, returnDocument: 'after' }
+      );
+      if (!request) throw await this.returnNotPendingError(requestId);
+
+      const [txn] = await BVTransaction.create(
+        [
+          {
+            transactionId: settleTransactionId,
+            type: BV_TXN_TYPE.RETURN_APPROVED,
+            status: BV_TXN_STATUS.COMPLETED,
+            senderType: BV_OWNER_TYPE.SYSTEM,
+            senderId: BV_WALLET.SYSTEM_OWNER_ID,
+            senderName: `Return from ${request.memberName} (${request.memberId})`,
+            recipientType: BV_OWNER_TYPE.ADMIN,
+            recipientId: BV_WALLET.ADMIN_OWNER_ID,
+            recipientName: BV_WALLET.ADMIN_DISPLAY_NAME,
+            amount: request.amount,
+            title: `Return ${requestId} approved`,
+            note: request.note,
+            returnRequestId: requestId,
+            ratePaise: Math.round(request.valuePaise / request.amount),
+            valuePaise: request.valuePaise,
+            initiatedBy: input.actor,
+          },
+        ],
+        { session }
+      );
+
+      const credited = await this.moveBalance(session, BV_WALLET.ADMIN_OWNER_ID, BV_LEDGER_ENTRY.CREDIT_IN, txn, request.amount, {
+        totalReceived: request.amount,
+      });
+      if (!credited) throw new BVWalletError('Super Admin BV wallet not found.', HTTP_STATUS.INTERNAL_SERVER_ERROR);
+
+      // The held BV is now returned: move it from pending to returned on the member's wallet
+      const settled = await BVWallet.updateOne(
+        { ownerId: request.memberId, pendingReturnBV: { $gte: request.amount } },
+        {
+          $inc: {
+            pendingReturnBV: -request.amount,
+            pendingReturnPaise: -request.valuePaise,
+            returnedBV: request.amount,
+            returnedPaise: request.valuePaise,
+          },
+        },
+        { session }
+      );
+      if (!settled.modifiedCount) throw new BVWalletError(`BV wallet for ${request.memberId} has no pending return to settle.`, HTTP_STATUS.CONFLICT);
+
+      await CompanyEarningService.record(session, {
+        type: COMPANY_EARNING_TYPE.BV_RETURNED,
+        sourceId: requestId,
+        memberId: request.memberId,
+        memberName: request.memberName,
+        bv: request.amount,
+        ratePaise: Math.round(request.valuePaise / request.amount),
+        amountPaise: -request.valuePaise,
+        note: request.note,
+        performedBy: { email: input.actor.email, operatorName: input.actor.operatorName },
+      });
+
+      await this.notify(session, {
+        type: 'BV_RETURN_APPROVED',
+        title: 'BV Return Approved',
+        message: `Your return of ${formatBV(request.amount)} (${requestId}) was approved. Refund value: ${formatRupees(request.valuePaise)}.`,
+        recipientId: request.memberId,
+        txn,
+      });
+      return request;
+    });
+
+    await safeAudit({
+      action: 'BV_RETURN_APPROVED',
+      entity: 'BV_WALLET',
+      entityId: requestId,
+      performedBy: actorLabel(input.actor),
+      performedByRole: input.actor.role,
+      newValues: { memberId: result.memberId, amount: result.amount, valuePaise: result.valuePaise, settleTransactionId },
+      ipAddress: input.actor.ip,
+    });
+    return result;
+  }
+
+  /** Super Admin rejects a return: the held BV goes back to the member. */
+  static async rejectReturn(input: { requestId: unknown; reason: unknown; actor: BVActor }) {
+    const reason = parseText(input.reason, 'Reason', BV_WALLET.NOTE_MAX_LENGTH, true);
+    return this.releaseReturn({ requestId: input.requestId, status: BV_RETURN_STATUS.REJECTED, reason, actor: input.actor });
+  }
+
+  /** The member withdraws its own pending return: the held BV goes back. */
+  static async cancelReturn(input: { requestId: unknown; memberId: string; actor: BVActor }) {
+    return this.releaseReturn({
+      requestId: input.requestId,
+      status: BV_RETURN_STATUS.CANCELLED,
+      reason: 'Cancelled by the member',
+      actor: input.actor,
+      memberId: input.memberId.toUpperCase(),
+    });
+  }
+
+  private static async returnNotPendingError(requestId: string, memberId?: string) {
+    const current = await BVReturnRequest.findOne(memberId ? { requestId, memberId } : { requestId });
+    if (!current) return new BVWalletError('Return request not found.', HTTP_STATUS.NOT_FOUND);
+    return new BVWalletError(`This return request is already ${current.status.toLowerCase()}.`, HTTP_STATUS.CONFLICT);
+  }
+
+  private static async releaseReturn(input: {
+    requestId: unknown;
+    status: typeof BV_RETURN_STATUS.REJECTED | typeof BV_RETURN_STATUS.CANCELLED;
+    reason: string;
+    actor: BVActor;
+    memberId?: string;
+  }) {
+    const requestId = typeof input.requestId === 'string' ? input.requestId.trim().toUpperCase() : '';
+    if (!requestId) throw new BVWalletError('Return request not found.', HTTP_STATUS.NOT_FOUND);
+    const settleTransactionId = newTransactionId();
+    const rejected = input.status === BV_RETURN_STATUS.REJECTED;
+
+    const result = await runInTransaction(async (session) => {
+      const request = await BVReturnRequest.findOneAndUpdate(
+        { requestId, status: BV_RETURN_STATUS.PENDING, ...(input.memberId ? { memberId: input.memberId } : {}) },
+        {
+          $set: {
+            status: input.status,
+            settleTransactionId,
+            decisionReason: input.reason,
+            decidedBy: { role: input.actor.role, email: input.actor.email, operatorName: input.actor.operatorName },
+            decidedAt: new Date(),
+          },
+        },
+        { session, returnDocument: 'after' }
+      );
+      if (!request) throw await this.returnNotPendingError(requestId, input.memberId);
+
+      const [txn] = await BVTransaction.create(
+        [
+          {
+            transactionId: settleTransactionId,
+            type: BV_TXN_TYPE.RETURN_RELEASED,
+            status: BV_TXN_STATUS.COMPLETED,
+            senderType: BV_OWNER_TYPE.SYSTEM,
+            senderId: BV_WALLET.SYSTEM_OWNER_ID,
+            senderName: rejected ? 'Return rejected' : 'Return cancelled',
+            recipientType: BV_OWNER_TYPE.MEMBER,
+            recipientId: request.memberId,
+            recipientName: request.memberName,
+            amount: request.amount,
+            title: `Return ${requestId} ${rejected ? 'rejected' : 'cancelled'}`,
+            note: input.reason,
+            returnRequestId: requestId,
+            initiatedBy: input.actor,
+          },
+        ],
+        { session }
+      );
+
+      const credited = await this.moveBalance(session, request.memberId, BV_LEDGER_ENTRY.CREDIT_IN, txn, request.amount, {
+        pendingReturnBV: -request.amount,
+        pendingReturnPaise: -request.valuePaise,
+      });
+      if (!credited) throw new BVWalletError(`BV wallet for ${request.memberId} not found.`, HTTP_STATUS.INTERNAL_SERVER_ERROR);
+
+      if (rejected) {
+        await this.notify(session, {
+          type: 'BV_RETURN_REJECTED',
+          title: 'BV Return Rejected',
+          message: `Your return of ${formatBV(request.amount)} (${requestId}) was rejected and the BV is back in your wallet. Reason: ${input.reason}`,
+          recipientId: request.memberId,
+          txn,
+        });
+      }
+      return request;
+    });
+
+    await this.activateFromWalletIfEligible(result.memberId);
+    await safeAudit({
+      action: rejected ? 'BV_RETURN_REJECTED' : 'BV_RETURN_CANCELLED',
+      entity: 'BV_WALLET',
+      entityId: requestId,
+      performedBy: actorLabel(input.actor),
+      performedByRole: input.actor.role,
+      newValues: { memberId: result.memberId, amount: result.amount, settleTransactionId },
+      reason: input.reason,
+      ipAddress: input.actor.ip,
+    });
+    return result;
+  }
+
+  static async listReturnRequests(params: { memberId?: string; status?: unknown; search?: unknown; page?: unknown; limit?: unknown; includeAudit?: boolean }) {
+    const conditions: Record<string, unknown>[] = [];
+    if (params.memberId) conditions.push({ memberId: params.memberId.toUpperCase() });
+    const status = typeof params.status === 'string' ? params.status.toUpperCase() : '';
+    if (Object.values(BV_RETURN_STATUS).includes(status as any)) conditions.push({ status });
+    const search = typeof params.search === 'string' ? params.search.trim().slice(0, 100) : '';
+    if (search) {
+      const regex = { $regex: escapeRegex(search), $options: 'i' };
+      conditions.push({ $or: [{ requestId: regex }, { memberId: regex }, { memberName: regex }] });
+    }
+
+    const page = Math.max(1, Math.floor(Number(params.page) || 1));
+    const limit = Math.min(100, Math.max(1, Math.floor(Number(params.limit) || 20)));
+    const filter = conditions.length ? { $and: conditions } : {};
+
+    const [items, total] = await Promise.all([
+      BVReturnRequest.find(filter).sort({ createdAt: -1 }).skip((page - 1) * limit).limit(limit),
+      BVReturnRequest.countDocuments(filter),
+    ]);
+    return {
+      items: items.map((r) => this.returnToPublic(r, { includeAudit: params.includeAudit })),
+      total,
+      page,
+      limit,
+      totalPages: Math.max(1, Math.ceil(total / limit)),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
   // Welcome bonus (called by WelcomeBonusService inside its settlement transaction)
   // ---------------------------------------------------------------------------
 
@@ -583,6 +1138,7 @@ export class BVWalletService {
           recipientId: memberId,
           recipientName: input.memberName,
           amount: input.amount,
+          bonusAmount: input.amount,
           title: `Welcome bonus (${input.settlementId})`,
           note: 'Weekly welcome bonus share',
           settlementId: input.settlementId,
@@ -591,15 +1147,17 @@ export class BVWalletService {
       ],
       { session }
     );
+    // Welcome bonus BV is kept apart: it pays for the member's own orders but can't be sent or returned
     const wallet = await this.moveBalance(session, memberId, BV_LEDGER_ENTRY.CREDIT_IN, txn, input.amount, {
       totalWelcomeBonus: input.amount,
+      bonusBV: input.amount,
     });
     if (!wallet) throw new BVWalletError(`BV wallet for ${memberId} not found.`, HTTP_STATUS.INTERNAL_SERVER_ERROR);
 
     await this.notify(session, {
       type: 'BV_WELCOME_BONUS',
       title: 'Welcome Bonus Credited',
-      message: `${formatBV(input.amount)} welcome bonus (${input.settlementId}) was added to your BV Wallet.`,
+      message: `${formatBV(input.amount)} welcome bonus (${input.settlementId}) was added to your BV Wallet. It can be used for your own product and package orders.`,
       recipientId: memberId,
       txn,
     });
@@ -659,6 +1217,10 @@ export class BVWalletService {
           { session }
         );
 
+        // Welcome bonus BV is spent first: it can't be used any other way
+        const current = await BVWallet.findOne({ ownerId: memberId }).session(session);
+        const bonusUsed = Math.min(current?.bonusBV || 0, bvAmount);
+
         const [txn] = await BVTransaction.create(
           [
             {
@@ -672,6 +1234,7 @@ export class BVWalletService {
               recipientId: BV_WALLET.SYSTEM_OWNER_ID,
               recipientName: 'Company order',
               amount: bvAmount,
+              bonusAmount: bonusUsed,
               title: `Order ${order.purchaseId}`,
               note: order.items.map((i) => `${i.quantity} x ${i.name}`).join(', ').slice(0, BV_WALLET.NOTE_MAX_LENGTH),
               purchaseId: order.purchaseId,
@@ -687,7 +1250,7 @@ export class BVWalletService {
           BV_LEDGER_ENTRY.DEBIT_OUT,
           txn,
           -bvAmount,
-          { totalSpent: bvAmount },
+          { totalSpent: bvAmount, bonusBV: -bonusUsed },
           { requireNotFrozen: true }
         );
         if (!wallet) throw await this.insufficientBalanceError(memberId, bvAmount);
@@ -725,6 +1288,8 @@ export class BVWalletService {
     if (existing) return existing;
     const paid = await BVTransaction.findOne({ type: BV_TXN_TYPE.PURCHASE, purchaseId: purchase.purchaseId }).session(session);
     if (!paid) return null;
+    // Back to the parts it was paid from, so a refund can't turn welcome bonus BV into regular BV
+    const bonusRefund = paid.bonusAmount || 0;
 
     const [txn] = await BVTransaction.create(
       [
@@ -739,6 +1304,7 @@ export class BVWalletService {
           recipientId: paid.senderId,
           recipientName: paid.senderName,
           amount: paid.amount,
+          bonusAmount: bonusRefund,
           title: `Refund for order ${purchase.purchaseId}`,
           note: reason.slice(0, BV_WALLET.NOTE_MAX_LENGTH),
           purchaseId: purchase.purchaseId,
@@ -750,6 +1316,7 @@ export class BVWalletService {
 
     const wallet = await this.moveBalance(session, paid.senderId, BV_LEDGER_ENTRY.CREDIT_IN, txn, paid.amount, {
       totalSpent: -paid.amount,
+      bonusBV: bonusRefund,
     });
     if (!wallet) throw new BVWalletError(`BV wallet for ${paid.senderId} not found.`, HTTP_STATUS.INTERNAL_SERVER_ERROR);
 
@@ -823,6 +1390,10 @@ export class BVWalletService {
         if (!claim.modifiedCount) return false;
         if (fromWallet === 0) return true;
 
+        // Welcome bonus BV is locked first, the same order as paying for an order
+        const current = await BVWallet.findOne({ ownerId: id }).session(session);
+        const bonusUsed = Math.min(current?.bonusBV || 0, fromWallet);
+
         const [txn] = await BVTransaction.create(
           [
             {
@@ -836,6 +1407,7 @@ export class BVWalletService {
               recipientId: BV_WALLET.SYSTEM_OWNER_ID,
               recipientName: 'Binary activation',
               amount: fromWallet,
+              bonusAmount: bonusUsed,
               title: 'Binary activation lock',
               note: `${formatBV(fromWallet)} locked from the BV Wallet to activate binary income${fromPersonal > 0 ? ` (plus ${formatBV(fromPersonal)} of personal BV)` : ''}.`,
               initiatedBy: { role: 'system', email: 'SYSTEM' },
@@ -843,7 +1415,15 @@ export class BVWalletService {
           ],
           { session }
         );
-        const debited = await this.moveBalance(session, id, BV_LEDGER_ENTRY.DEBIT_OUT, txn, -fromWallet, { totalActivationLocked: fromWallet }, { requireNotFrozen: true });
+        const debited = await this.moveBalance(
+          session,
+          id,
+          BV_LEDGER_ENTRY.DEBIT_OUT,
+          txn,
+          -fromWallet,
+          { totalActivationLocked: fromWallet, bonusBV: -bonusUsed },
+          { requireNotFrozen: true }
+        );
         if (!debited) throw await this.insufficientBalanceError(id, fromWallet);
         await this.notify(session, {
           type: 'BV_BINARY_ACTIVATION',
@@ -921,6 +1501,10 @@ export class BVWalletService {
       recipient: txn.recipientId ? { type: txn.recipientType, id: txn.recipientId, name: txn.recipientName } : null,
       purchaseId: txn.purchaseId,
       settlementId: txn.settlementId,
+      returnRequestId: txn.returnRequestId,
+      bonusAmount: txn.bonusAmount || 0,
+      rate: typeof txn.ratePaise === 'number' ? DecimalUtil.fromPaise(txn.ratePaise) : null,
+      value: typeof txn.valuePaise === 'number' ? DecimalUtil.fromPaise(txn.valuePaise) : null,
       reversalOf: txn.reversalOf,
       reversedBy: txn.reversedBy,
       reversedAt: txn.reversedAt,
@@ -944,11 +1528,31 @@ export class BVWalletService {
     // Activation may lock BV out of the wallet, so read the balance after it
     if (owner.ownerType === BV_OWNER_TYPE.MEMBER) await this.activateFromWalletIfEligible(owner.ownerId);
     const wallet = await this.ensureWallet(owner);
+    const isAdmin = owner.ownerType === BV_OWNER_TYPE.ADMIN;
+    const capacity = returnCapacity(wallet);
     return {
       walletId: wallet.walletId,
       ownerType: wallet.ownerType,
       ownerId: wallet.ownerId,
       availableBV: wallet.availableBV,
+      bonusBV: wallet.bonusBV || 0,
+      regularBV: regularBVOf(wallet),
+      sendableBV: isAdmin ? wallet.availableBV : regularBVOf(wallet),
+      totalSold: wallet.totalSold || 0,
+      returns: isAdmin
+        ? undefined
+        : {
+            purchasedBV: wallet.purchasedBV || 0,
+            purchasedValue: DecimalUtil.fromPaise(wallet.purchasedPaise || 0),
+            returnedBV: wallet.returnedBV || 0,
+            returnedValue: DecimalUtil.fromPaise(wallet.returnedPaise || 0),
+            pendingReturnBV: wallet.pendingReturnBV || 0,
+            pendingReturnValue: DecimalUtil.fromPaise(wallet.pendingReturnPaise || 0),
+            returnableBV: capacity.returnableBV,
+            // Average price paid per BV for what is still returnable
+            valuePerBV: capacity.remainingBV > 0 ? DecimalUtil.round(capacity.remainingPaise / capacity.remainingBV / 100, 4) : 0,
+            returnableValue: DecimalUtil.fromPaise(returnValuePaise(capacity.returnableBV, capacity.remainingBV, capacity.remainingPaise)),
+          },
       totalGenerated: wallet.totalGenerated,
       totalReceived: wallet.totalReceived,
       totalSent: wallet.totalSent,
@@ -1082,13 +1686,10 @@ export class BVWalletService {
     return members.map((m) => this.toRecipientView(m as any));
   }
 
-  /** Recipient check before sending. 'ADMIN' resolves to the Super Admin for members. */
+  /** Recipient check before sending. Only active members can receive transfers. */
   static async getRecipient(recipientId: unknown, excludeOwnerId: string) {
     const id = typeof recipientId === 'string' ? recipientId.trim().toUpperCase() : '';
     if (!id || id === excludeOwnerId.toUpperCase()) throw new BVWalletError('Recipient not found.', HTTP_STATUS.NOT_FOUND);
-    if (id === BV_WALLET.ADMIN_OWNER_ID) {
-      return { memberId: BV_WALLET.ADMIN_OWNER_ID, name: BV_WALLET.ADMIN_DISPLAY_NAME, mobile: '', email: '' };
-    }
     const member = await Member.findOne({ memberId: id, ...ELIGIBLE_MEMBER_FILTER }).select('memberId name mobile email').lean();
     if (!member) throw new BVWalletError('Recipient not found or not an active member.', HTTP_STATUS.NOT_FOUND);
     return this.toRecipientView(member as any);
@@ -1134,7 +1735,10 @@ export class BVWalletService {
   /**
    * Verifies that balances agree with the records:
    *  - all wallet BV = generated + welcome bonus credited + order refunds - BV spent on orders
-   *  - each wallet's balance equals the sum of its ledger entries, with no missing entries
+   *    - BV locked at activation - BV held by return requests awaiting approval
+   *  - BV held by return requests = the wallets' pendingReturnBV
+   *  - each wallet's balance (and welcome bonus part) equals the sum of its ledger entries, with no
+   *    missing entries; the welcome bonus part is never negative or more than the balance
    */
   static async reconcile() {
     const issues: string[] = [];
@@ -1149,6 +1753,9 @@ export class BVWalletService {
               BV_TXN_TYPE.PURCHASE,
               BV_TXN_TYPE.PURCHASE_REFUND,
               BV_TXN_TYPE.BINARY_ACTIVATION,
+              BV_TXN_TYPE.RETURN_REQUESTED,
+              BV_TXN_TYPE.RETURN_APPROVED,
+              BV_TXN_TYPE.RETURN_RELEASED,
             ],
           },
         },
@@ -1161,15 +1768,21 @@ export class BVWalletService {
     const totalSpentOnOrders = flow(BV_TXN_TYPE.PURCHASE);
     const totalRefunded = flow(BV_TXN_TYPE.PURCHASE_REFUND);
     const totalActivationLocked = flow(BV_TXN_TYPE.BINARY_ACTIVATION);
-    const expectedInWallets = totalGenerated + totalWelcomeBonus + totalRefunded - totalSpentOnOrders - totalActivationLocked;
+    const totalHeldForReturns = flow(BV_TXN_TYPE.RETURN_REQUESTED) - flow(BV_TXN_TYPE.RETURN_APPROVED) - flow(BV_TXN_TYPE.RETURN_RELEASED);
+    const expectedInWallets =
+      totalGenerated + totalWelcomeBonus + totalRefunded - totalSpentOnOrders - totalActivationLocked - totalHeldForReturns;
 
-    const wallets = await BVWallet.find().select('walletId ownerId availableBV sequence').lean();
+    const wallets = await BVWallet.find().select('walletId ownerId availableBV bonusBV pendingReturnBV sequence').lean();
     const totalInWallets = wallets.reduce((sum, w) => sum + w.availableBV, 0);
     if (expectedInWallets !== totalInWallets) {
       issues.push(
         `Wallets hold ${totalInWallets} BV but records give ${expectedInWallets} BV ` +
-          `(generated ${totalGenerated} + welcome bonus ${totalWelcomeBonus} + refunds ${totalRefunded} - spent ${totalSpentOnOrders} - locked for binary activation ${totalActivationLocked}).`
+          `(generated ${totalGenerated} + welcome bonus ${totalWelcomeBonus} + refunds ${totalRefunded} - spent ${totalSpentOnOrders} - locked for binary activation ${totalActivationLocked} - held for returns ${totalHeldForReturns}).`
       );
+    }
+    const totalPendingInWallets = wallets.reduce((sum, w) => sum + (w.pendingReturnBV || 0), 0);
+    if (totalPendingInWallets !== totalHeldForReturns) {
+      issues.push(`Return requests hold ${totalHeldForReturns} BV but wallets record ${totalPendingInWallets} BV pending return.`);
     }
 
     const ledgerTotals = await BVWalletLedger.aggregate([
@@ -1177,6 +1790,7 @@ export class BVWalletService {
         $group: {
           _id: '$walletId',
           available: { $sum: '$availableDelta' },
+          bonus: { $sum: '$bonusDelta' },
           entries: { $sum: 1 },
           lastSequence: { $max: '$walletSequence' },
         },
@@ -1190,6 +1804,13 @@ export class BVWalletService {
       if (ledgerAvailable !== w.availableBV) {
         issues.push(`${w.walletId}: balance ${w.availableBV} BV does not match ledger total ${ledgerAvailable} BV.`);
       }
+      const bonus = w.bonusBV || 0;
+      if ((ledger?.bonus || 0) !== bonus) {
+        issues.push(`${w.walletId}: welcome bonus part ${bonus} BV does not match ledger total ${ledger?.bonus || 0} BV.`);
+      }
+      if (bonus < 0 || bonus > w.availableBV) {
+        issues.push(`${w.walletId}: welcome bonus part ${bonus} BV is outside the balance of ${w.availableBV} BV.`);
+      }
       if ((ledger?.entries || 0) !== w.sequence || (ledger?.lastSequence || 0) !== w.sequence) {
         issues.push(`${w.walletId}: ledger has ${ledger?.entries || 0} entries but wallet sequence is ${w.sequence}.`);
       }
@@ -1202,6 +1823,7 @@ export class BVWalletService {
       totalSpentOnOrders,
       totalRefunded,
       totalActivationLocked,
+      totalHeldForReturns,
       totalInWallets,
       walletsChecked: wallets.length,
       issues: issues.slice(0, 50),
@@ -1217,6 +1839,7 @@ export class BVWalletService {
         $group: {
           _id: null,
           available: { $sum: '$availableBV' },
+          bonus: { $sum: { $ifNull: ['$bonusBV', 0] } },
           holders: { $sum: { $cond: [{ $gt: ['$availableBV', 0] }, 1, 0] } },
           frozen: { $sum: { $cond: ['$isFrozen', 1, 0] } },
         },
@@ -1228,6 +1851,7 @@ export class BVWalletService {
       adminWallet,
       totalGenerated: reconciliation.totalGenerated,
       memberCirculationBV: members?.available || 0,
+      memberBonusBV: members?.bonus || 0,
       memberHolders: members?.holders || 0,
       frozenWallets: members?.frozen || 0,
       reconciliation,

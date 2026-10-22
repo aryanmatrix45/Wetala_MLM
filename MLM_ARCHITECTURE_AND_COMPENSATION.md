@@ -73,7 +73,7 @@ The system is built on a modular, enterprise-grade architecture:
    - `leftCarryForwardBV`, `rightCarryForwardBV`.
 
 6. **`CompensationRule` (`compensationrules` collection)**:
-   - Active versioned configuration for Binary, Team, Welcome, Sponsor, Self Purchase, Rewards, Franchise, Upline, and Royalty rules.
+   - Active versioned configuration for Binary, Welcome, Sponsor, Self Purchase, Rewards, Franchise and Upline rules.
 
 7. **`CompensationEvent` (`compensationevents` collection)**:
    - Guarantees strict idempotency via `eventId` (e.g. `EVENT-PURCHASE-123`).
@@ -147,26 +147,14 @@ Switched off for now.
 ### 4.3 Self Purchase Bonus (Repurchase Only)
 $$\text{selfPurchaseBonus} = \text{qualifyingBase} \times 8\% \quad (\text{base: BV or Purchase Value})$$
 
-### 4.4 Team Volume Bonus Tiers
-| Left Volume (BV) | Right Volume (BV) | Tier Rate |
-| :--- | :--- | :--- |
-| 1,000 | 1,000 | 15% |
-| 2,500 | 2,500 | 10% |
-| 7,500 | 7,500 | 7% |
-| 25,000 | 25,000 | 6% |
-| 35,000 | 35,000 | 5% |
-| 70,000 | 70,000 | 4% |
-| 150,000 | 150,000 | 3% |
-| 300,000 | 300,000 | 2% |
-
-### 4.5 Franchise / Stockist Incentives
+### 4.4 Franchise / Stockist Incentives
 - ₹50,000 bulk stock purchase $\rightarrow 5\%$ incentive
 - ₹100,000 bulk stock purchase $\rightarrow 8\%$ incentive
 - ₹500,000 bulk stock purchase $\rightarrow 10\%$ incentive
 - ₹1,000,000 bulk stock purchase $\rightarrow 12\%$ incentive
 - Plus 2% Upline Bonus to direct sponsor.
 
-### 4.6 Lifetime Milestone Rewards
+### 4.5 Lifetime Milestone Rewards
 - 5:5 pairs $\rightarrow$ ₹1,000 (Bronze Achiever)
 - 10:10 pairs $\rightarrow$ ₹2,000 (Silver Achiever)
 - Subsequent tiers (50:50, 100:100, etc.) are configurable with amounts set to null until confirmed.
@@ -227,11 +215,9 @@ $$\text{selfPurchaseBonus} = \text{qualifyingBase} \times 8\% \quad (\text{base:
 The following items are implemented as configurable rules with `TODO` annotations:
 1. **Welcome Bonus 4:1**: Exact formula for "Company turns 4:1" and whether it is pool-based or transaction-based.
 2. **20% vs. 25% Binary Rate**: The exact business conditions required for the special 25% binary rate.
-3. **Consultancy Bonus**: Confirmation of product criteria for "₹2500 per product, 3 months, 4th month free".
-4. **Team Performance Bonus**: Confirmation of payout formula for 10:10, 100:100, 1000:1000 thresholds.
-5. **Reward Amounts After 10:10**: Rupee reward amounts for 50:50 up to 40,000:40,000.
-6. **Royalty Pool Formula**: Company turnover pool share, qualification reset cadence, and rank eligibility.
-7. **Franchise Classification**: Confirmation whether percentages represent discounts, retail margins, or wallet commissions.
+3. **Team Performance Bonus**: Confirmation of payout formula for 10:10, 100:100, 1000:1000 thresholds.
+4. **Reward Amounts After 10:10**: Rupee reward amounts for 50:50 up to 40,000:40,000.
+5. **Franchise Classification**: Confirmation whether percentages represent discounts, retail margins, or wallet commissions.
 
 ---
 

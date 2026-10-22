@@ -11,6 +11,9 @@ export type NotificationType =
   | 'BV_WELCOME_BONUS'
   | 'BV_PURCHASE_REFUND'
   | 'BV_BINARY_ACTIVATION'
+  | 'BV_RETURN_REQUESTED'
+  | 'BV_RETURN_APPROVED'
+  | 'BV_RETURN_REJECTED'
   | 'BINARY_INCOME';
 
 export interface IAdminNotification extends Document {
@@ -51,6 +54,9 @@ const adminNotificationSchema = new Schema<IAdminNotification>(
         'BV_WELCOME_BONUS',
         'BV_PURCHASE_REFUND',
         'BV_BINARY_ACTIVATION',
+        'BV_RETURN_REQUESTED',
+        'BV_RETURN_APPROVED',
+        'BV_RETURN_REJECTED',
         'BINARY_INCOME',
       ],
       default: 'WITHDRAWAL_REQUEST',

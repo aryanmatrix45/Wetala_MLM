@@ -15,7 +15,8 @@
     "test:welcome-bonus": "tsx tests/welcomeBonus.test.ts",
     "test:sponsor-income": "tsx tests/sponsorIncome.test.ts",
     "test:team-performance": "tsx tests/teamPerformanceBonus.test.ts",
-    "test:binary-eligibility": "tsx tests/binaryEligibilityGate.test.ts"
+    "test:binary-eligibility": "tsx tests/binaryEligibilityGate.test.ts",
+    "test:company-earnings": "tsx tests/companyEarnings.test.ts"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

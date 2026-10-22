@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Alert, LoadingState, PageHeader, SegmentedControl } from '../components/ui';
 
-import { Award, Building2, Calculator, Crown, Eye, Gift, Lock, Percent, Plus, Save, Sparkles, Store, Trash2, TrendingUp, Users, Zap } from 'lucide-react';
+import { Award, Building2, Calculator, Crown, Eye, Lock, Percent, Plus, Save, Trash2, TrendingUp, Users, Zap } from 'lucide-react';
 
 
 import { api } from '../services/api';
@@ -9,7 +9,7 @@ import { api } from '../services/api';
 interface IncomeSettingsPageProps {
   user?: any;
   token?: string | null;
-  defaultSection?: 'all' | 'simulator' | 'teamBonus' | 'royalty' | 'rewards' | string;
+  defaultSection?: 'all' | 'simulator' | 'teamPerformance' | 'rewards' | string;
 }
 
 const DEFAULT_PERFORMANCE_SLABS = [
@@ -19,17 +19,6 @@ const DEFAULT_PERFORMANCE_SLABS = [
   { tierId: 'TPB-4', pairCount: 1600, leftThreshold: 1600, rightThreshold: 1600, royaltyBonusPercent: 2, limitAmount: 300000 },
   { tierId: 'TPB-5', pairCount: 5000, leftThreshold: 5000, rightThreshold: 5000, royaltyBonusPercent: 1, limitAmount: 500000 },
   { tierId: 'TPB-6', pairCount: 25000, leftThreshold: 25000, rightThreshold: 25000, royaltyBonusPercent: 1, limitAmount: 1500000 },
-];
-
-const DEFAULT_TEAM_BONUS_TIERS = [
-  { tierId: 'TB-1', leftVolume: 1000, rightVolume: 1000, rate: 0.15 },
-  { tierId: 'TB-2', leftVolume: 2500, rightVolume: 2500, rate: 0.10 },
-  { tierId: 'TB-3', leftVolume: 7500, rightVolume: 7500, rate: 0.07 },
-  { tierId: 'TB-4', leftVolume: 20000, rightVolume: 20000, rate: 0.06 },
-  { tierId: 'TB-5', leftVolume: 35000, rightVolume: 35000, rate: 0.05 },
-  { tierId: 'TB-6', leftVolume: 70000, rightVolume: 70000, rate: 0.04 },
-  { tierId: 'TB-7', leftVolume: 150000, rightVolume: 150000, rate: 0.03 },
-  { tierId: 'TB-8', leftVolume: 300000, rightVolume: 300000, rate: 0.02 },
 ];
 
 const DEFAULT_FRANCHISE_TIERS = [
@@ -56,23 +45,6 @@ const DEFAULT_REWARD_TIERS = [
   { tierId: 'RW-14', rankName: 'DOUBLE KOHINOOR', teamTarget: 50000, leftRequirement: 50000, rightRequirement: 50000, rewardAmount: 10000000, rewardTitle: 'Double Kohinoor' },
   { tierId: 'RW-15', rankName: 'TRIPLE KOHINOOR', teamTarget: 100000, leftRequirement: 100000, rightRequirement: 100000, rewardAmount: 20000000, rewardTitle: 'Triple Kohinoor' },
 ];
-
-const DEFAULT_ROYALTY = {
-  isEnabled: true,
-  poolPercent: 2, // 2% of Company Monthly Turnover
-  eligibleRanks: ['DIAMOND', 'DOUBLE DIAMOND', 'CROWN DIAMOND', 'PLATINUM', 'TOPAZ', 'KOHINOOR', 'DOUBLE KOHINOOR', 'TRIPLE KOHINOOR'],
-  minTeamVolume: 50000,
-  notes: 'Royalty Club pool equally distributed among qualifying Diamond and above leaders from Company Monthly Turnover (CTO).',
-};
-
-const DEFAULT_CONSULTANCY = {
-  isEnabled: true,
-  qualifyingAmount: 2500, // ₹2,500 DP
-  productQuantity: 1,
-  qualifyingMonths: 3, // 3 consecutive months
-  freeProductMonth: 4, // 4th month free product
-  notes: 'Purchase products worth ₹2,500 DP continuously for 3 consecutive months to receive a free product of ₹2,500 DP in the 4th month.',
-};
 
 const FALLBACK_FULL_RULES = {
   ruleSetId: 'DEFAULT_RULES',
@@ -101,11 +73,6 @@ const FALLBACK_FULL_RULES = {
     excessCapPolicy: 'FLUSH',
     firstPairRatio: '1:1',
     subsequentPairRatio: '1:2_or_2:1',
-  },
-  teamBonus: {
-    isEnabled: true,
-    calculationBase: 'MATCHED_BV',
-    tiers: DEFAULT_TEAM_BONUS_TIERS,
   },
   selfPurchaseBonus: {
     isEnabled: true,
@@ -140,8 +107,6 @@ const FALLBACK_FULL_RULES = {
     maxUplineLevels: 1,
     calculationBase: 'BV',
   },
-  royalty: DEFAULT_ROYALTY,
-  consultancyBonus: DEFAULT_CONSULTANCY,
   retailProfit: {
     isEnabled: true,
     maxPercentage: 50,
@@ -165,7 +130,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
   const user = propUser || (savedUserStr ? JSON.parse(savedUserStr) : null);
   const isAdmin = user?.role === 'superadmin';
 
-  // Section Mode: 'teamBonus' | 'royalty' | 'rewards' | 'simulator'
+  // Section Mode: 'teamPerformance' | 'rewards' | 'simulator'
   const section = defaultSection || 'simulator';
 
   // Sub-tabs for simulator page
@@ -216,16 +181,6 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
           };
         }
 
-        // Ensure Team Volume Bonus tiers
-        if (!loadedRules.teamBonus?.tiers || loadedRules.teamBonus.tiers.length === 0) {
-          loadedRules.teamBonus = {
-            ...(loadedRules.teamBonus || {}),
-            isEnabled: true,
-            calculationBase: 'MATCHED_BV',
-            tiers: DEFAULT_TEAM_BONUS_TIERS,
-          };
-        }
-
         // Ensure Franchise tiers
         if (!loadedRules.franchisePolicy?.tiers || loadedRules.franchisePolicy.tiers.length === 0) {
           loadedRules.franchisePolicy = {
@@ -243,22 +198,6 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
             ...(loadedRules.rewards || {}),
             isEnabled: true,
             tiers: DEFAULT_REWARD_TIERS,
-          };
-        }
-
-        // Ensure Royalty settings
-        if (!loadedRules.royalty || loadedRules.royalty.poolPercent === undefined) {
-          loadedRules.royalty = {
-            ...(loadedRules.royalty || {}),
-            ...DEFAULT_ROYALTY,
-          };
-        }
-
-        // Ensure Consultancy settings
-        if (!loadedRules.consultancyBonus || loadedRules.consultancyBonus.qualifyingAmount === undefined) {
-          loadedRules.consultancyBonus = {
-            ...(loadedRules.consultancyBonus || {}),
-            ...DEFAULT_CONSULTANCY,
           };
         }
 
@@ -356,12 +295,9 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
   let pageTitle = isAdmin ? 'Compensation Rules & Simulator' : 'Compensation Plan';
   let pageSubtitle = 'Binary matching, welcome bonus and an interactive income simulator.';
 
-  if (section === 'teamBonus') {
-    pageTitle = 'Team Volume Bonus & Performance Slabs';
-    pageSubtitle = 'Repurchase matched-BV bonus slabs (15% down to 2%) and company turnover (CTO) performance pools (3% down to 1%).';
-  } else if (section === 'royalty') {
-    pageTitle = 'Royalty Pool & Consultancy Program';
-    pageSubtitle = 'Monthly CTO royalty club for Diamond+ leaders and the 4th-month free product loyalty program.';
+  if (section === 'teamPerformance') {
+    pageTitle = 'Team Performance Slabs';
+    pageSubtitle = 'Company turnover (CTO) performance pools (3% down to 1%).';
   } else if (section === 'rewards') {
     pageTitle = 'Leadership Ranks & Lifetime Rewards';
     pageSubtitle = 'Cumulative left:right pair milestones with one-time cash and reward payouts from ₹1,000 up to ₹2 crore.';
@@ -402,125 +338,10 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
       {error && <Alert tone="error">{error}</Alert>}
 
       {/* =========================================================================
-          PAGE 1: TEAM BONUS SLABS (defaultSection === 'teamBonus')
+          PAGE 1: TEAM PERFORMANCE SLABS (defaultSection === 'teamPerformance')
           ========================================================================= */}
-      {section === 'teamBonus' && (
+      {section === 'teamPerformance' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
-          {/* Card 5: Team Volume Bonus (8 Slabs) */}
-          <div className="dashboard-card">
-            <div className="card-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div className="card-title-group">
-                <div style={{ width: '38px', height: '38px', borderRadius: 'var(--radius-md)', background: 'var(--warning-light)', color: 'var(--warning)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Store size={20} />
-                </div>
-                <div>
-                  <h2 className="card-title">Team Volume Bonus (Repurchase CTO Slabs)</h2>
-                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                    Matched BV repurchase pool bonus • 8 Progressive Volume Slabs from 15% down to 2%
-                  </span>
-                </div>
-              </div>
-
-              {isAdmin && (
-                <button
-                  onClick={() => {
-                    const newTiers = [...(rules.teamBonus?.tiers || [])];
-                    newTiers.push({
-                      tierId: `TB-${newTiers.length + 1}`,
-                      leftVolume: 500000,
-                      rightVolume: 500000,
-                      rate: 0.01
-                    });
-                    setRules({ ...rules, teamBonus: { ...rules.teamBonus, tiers: newTiers } });
-                  }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--fs-base)', padding: '7px 14px', borderRadius: 'var(--radius-md)', background: 'var(--warning-light)', color: 'var(--warning)', fontWeight: 700, border: '1px solid var(--warning-border)', cursor: 'pointer' }}
-                >
-                  <Plus size={15} /> Add Volume Tier
-                </button>
-              )}
-            </div>
-
-            <div className="table-responsive">
-              <table className="data-table" style={{ marginTop: '12px' }}>
-              <thead>
-                <tr>
-                  <th>Tier ID</th>
-                  <th>Left BV : Right BV Match</th>
-                  <th>CTO Pool Percentage</th>
-                  <th>Calculation Base</th>
-                  {isAdmin && <th>Action</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {rules.teamBonus?.tiers?.map((tier: any, idx: number) => (
-                  <tr key={idx}>
-                    <td style={{ fontWeight: 800, color: 'var(--text-muted)' }}>{tier.tierId || `TB-${idx + 1}`}</td>
-                    <td style={{ fontWeight: 700, color: 'var(--text-main)' }}>
-                      {isAdmin ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <input
-                            type="number"
-                            value={tier.leftVolume}
-                            onChange={(e) => {
-                              const newTiers = [...rules.teamBonus.tiers];
-                              const val = parseInt(e.target.value) || 0;
-                              newTiers[idx].leftVolume = val;
-                              newTiers[idx].rightVolume = val;
-                              setRules({ ...rules, teamBonus: { ...rules.teamBonus, tiers: newTiers } });
-                            }}
-                            style={{ width: '90px', padding: '6px 8px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--fs-sm)' }}
-                          />
-                          <span>BV : </span>
-                          <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{tier.leftVolume?.toLocaleString()} BV</span>
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--text-strong)' }}>
-                          {tier.leftVolume?.toLocaleString()} BV : {tier.rightVolume?.toLocaleString()} BV
-                        </span>
-                      )}
-                    </td>
-                    <td>
-                      {isAdmin ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <input
-                            type="number"
-                            step="0.5"
-                            value={((tier.rate || 0) * 100).toFixed(1)}
-                            onChange={(e) => {
-                              const newTiers = [...rules.teamBonus.tiers];
-                              newTiers[idx].rate = (parseFloat(e.target.value) || 0) / 100;
-                              setRules({ ...rules, teamBonus: { ...rules.teamBonus, tiers: newTiers } });
-                            }}
-                            style={{ width: '65px', padding: '6px 8px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--fs-sm)' }}
-                          />
-                          <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--warning)' }}>% CTO</span>
-                        </div>
-                      ) : (
-                        <strong style={{ color: 'var(--warning)', fontSize: 'var(--fs-lg)' }}>{((tier.rate || 0) * 100).toFixed(0)}% CTO</strong>
-                      )}
-                    </td>
-                    <td style={{ color: 'var(--text-muted)' }}>Matched Repurchase BV</td>
-                    {isAdmin && (
-                      <td>
-                        <button
-                          onClick={() => {
-                            const newTiers = rules.teamBonus.tiers.filter((_: any, i: number) => i !== idx);
-                            setRules({ ...rules, teamBonus: { ...rules.teamBonus, tiers: newTiers } });
-                          }}
-                          style={{ border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}
-                          title="Delete Tier"
-                        >
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
-          </div>
-
           {/* Card 4: Team Performance Bonus (6 Slabs) */}
           <div className="dashboard-card">
             <div className="card-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -663,192 +484,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
       )}
 
       {/* =========================================================================
-          PAGE 2: ROYALTY & CONSULTANCY (defaultSection === 'royalty')
-          ========================================================================= */}
-      {section === 'royalty' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
-          {/* Card: Royalty Club Pool */}
-          <div className="dashboard-card" style={{ borderLeft: '4px solid var(--accent)' }}>
-            <div className="card-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div className="card-title-group">
-                <div style={{ width: '38px', height: '38px', borderRadius: 'var(--radius-md)', background: 'var(--accent-light)', color: 'var(--accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Sparkles size={20} />
-                </div>
-                <div>
-                  <h2 className="card-title">Royalty Club Pool (CTO Distribution)</h2>
-                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                    Exclusive monthly leadership pool distributed equally among Diamond and higher leadership ranks
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 800, padding: '4px 10px', borderRadius: 'var(--radius-sm)', background: rules.royalty?.isEnabled ? 'var(--success-light)' : 'var(--danger-light)', color: rules.royalty?.isEnabled ? 'var(--success)' : 'var(--danger)' }}>
-                  {rules.royalty?.isEnabled ? 'ROYALTY POOL ACTIVE' : 'POOL INACTIVE'}
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginTop: '16px', marginBottom: '20px' }}>
-              <div style={{ background: 'var(--surface-subtle)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Monthly CTO Pool Share</span>
-                <div style={{ fontSize: 'var(--fs-3xl)', fontWeight: 900, color: 'var(--accent)', marginTop: '4px' }}>
-                  {isAdmin ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <input
-                        type="number"
-                        step="0.5"
-                        value={rules.royalty?.poolPercent ?? 2}
-                        onChange={(e) => setRules({ ...rules, royalty: { ...rules.royalty, poolPercent: parseFloat(e.target.value) || 0 } })}
-                        style={{ width: '80px', padding: '6px 8px', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--fs-xl)', fontWeight: 800 }}
-                      />
-                      <span>% CTO</span>
-                    </div>
-                  ) : (
-                    `${rules.royalty?.poolPercent || 2}% CTO`
-                  )}
-                </div>
-                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Divided equally across active qualifiers</span>
-              </div>
-
-              <div style={{ background: 'var(--surface-subtle)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Min Qualifying Team Volume</span>
-                <div style={{ fontSize: 'var(--fs-3xl)', fontWeight: 900, color: 'var(--text-main)', marginTop: '4px' }}>
-                  {isAdmin ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <input
-                        type="number"
-                        value={rules.royalty?.minTeamVolume ?? 50000}
-                        onChange={(e) => setRules({ ...rules, royalty: { ...rules.royalty, minTeamVolume: parseInt(e.target.value) || 0 } })}
-                        style={{ width: '100px', padding: '6px 8px', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--fs-xl)', fontWeight: 800 }}
-                      />
-                      <span style={{ fontSize: 'var(--fs-md)' }}>BV</span>
-                    </div>
-                  ) : (
-                    `${(rules.royalty?.minTeamVolume || 50000)?.toLocaleString()} BV`
-                  )}
-                </div>
-                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>Monthly combined repurchase volume</span>
-              </div>
-
-              <div style={{ background: 'var(--surface-subtle)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Your Current Rank Status</span>
-                <div style={{ fontSize: 'var(--fs-2xl)', fontWeight: 900, color: currentRank === 'FRESHER' ? 'var(--text-muted)' : 'var(--success)', marginTop: '4px' }}>
-                  {currentRank}
-                </div>
-                <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                  {['DIAMOND', 'DOUBLE DIAMOND', 'CROWN DIAMOND', 'PLATINUM', 'TOPAZ', 'KOHINOOR', 'DOUBLE KOHINOOR', 'TRIPLE KOHINOOR'].includes(currentRank.toUpperCase()) 
-                    ? 'You qualify for the Royalty Club Pool!' 
-                    : 'Requires Diamond rank or above to qualify.'}
-                </span>
-              </div>
-            </div>
-
-            <div>
-              <span style={{ fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-body)', display: 'block', marginBottom: '8px' }}>
-                Eligible Leadership Ranks for Monthly Royalty Club:
-              </span>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                {['DIAMOND', 'DOUBLE DIAMOND', 'CROWN DIAMOND', 'PLATINUM', 'TOPAZ', 'KOHINOOR', 'DOUBLE KOHINOOR', 'TRIPLE KOHINOOR'].map((rank, idx) => (
-                  <span key={idx} style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, padding: '5px 12px', borderRadius: 'var(--radius-sm)', background: 'var(--accent-light)', color: 'var(--accent-hover)', border: '1px solid var(--accent-border)' }}>
-                    ★ {rank}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Card: Consultancy Loyalty Bonus (4th Month Free Product) */}
-          <div className="dashboard-card" style={{ borderLeft: '4px solid var(--success)' }}>
-            <div className="card-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div className="card-title-group">
-                <div style={{ width: '38px', height: '38px', borderRadius: 'var(--radius-md)', background: 'var(--success-light)', color: 'var(--success)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Gift size={20} />
-                </div>
-                <div>
-                  <h2 className="card-title">Consultancy Loyalty Bonus (4th Month Free Product)</h2>
-                  <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                    Special repurchase customer loyalty program • Purchase ₹2,500 DP continuously for 3 months to unlock free product in Month 4
-                  </span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 800, padding: '4px 10px', borderRadius: 'var(--radius-sm)', background: 'var(--success-light)', color: 'var(--success)' }}>
-                  PROGRAM ACTIVE
-                </span>
-              </div>
-            </div>
-
-            {/* Stepper Card */}
-            <div style={{ background: 'var(--success-light)', border: '1px solid var(--success-border)', borderRadius: 'var(--radius-lg)', padding: '20px', marginTop: '16px', marginBottom: '20px' }}>
-              <div style={{ fontSize: 'var(--fs-md)', fontWeight: 800, color: 'var(--success-strong)', marginBottom: '14px' }}>
-                4-MONTH CONSECUTIVE REPURCHASE REWARD TIMELINE
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '16px' }}>
-                <div style={{ background: 'var(--surface)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--success-border)', textAlign: 'center' }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 800, color: 'var(--success-strong)' }}>MONTH 1</span>
-                  <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)', margin: '4px 0' }}>₹2,500 DP</div>
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Product Repurchase</span>
-                </div>
-
-                <div style={{ background: 'var(--surface)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--success-border)', textAlign: 'center' }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 800, color: 'var(--success-strong)' }}>MONTH 2</span>
-                  <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)', margin: '4px 0' }}>₹2,500 DP</div>
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Product Repurchase</span>
-                </div>
-
-                <div style={{ background: 'var(--surface)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1.5px solid var(--success-border)', textAlign: 'center' }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 800, color: 'var(--success-strong)' }}>MONTH 3</span>
-                  <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)', margin: '4px 0' }}>₹2,500 DP</div>
-                  <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>Product Repurchase</span>
-                </div>
-
-                <div style={{ background: 'var(--warning-soft)', padding: '14px', borderRadius: 'var(--radius-md)', border: '2px solid var(--warning)', textAlign: 'center' }}>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 900, color: 'var(--warning-hover)' }}>MONTH 4 (AWARD)</span>
-                  <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 900, color: 'var(--warning-hover)', margin: '4px 0' }}>FREE PRODUCT 🎁</div>
-                  <span style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--warning-hover)' }}>₹2,500 DP Free Value</span>
-                </div>
-              </div>
-            </div>
-
-            {isAdmin && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', background: 'var(--surface-subtle)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                <div>
-                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>Qualifying Monthly Purchase (₹ DP)</label>
-                  <input
-                    type="number"
-                    value={rules.consultancyBonus?.qualifyingAmount ?? 2500}
-                    onChange={(e) => setRules({ ...rules, consultancyBonus: { ...rules.consultancyBonus, qualifyingAmount: parseInt(e.target.value) || 0 } })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--fs-base)' }}
-                  />
-                </div>
-                <div>
-                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>Required Consecutive Months</label>
-                  <input
-                    type="number"
-                    value={rules.consultancyBonus?.qualifyingMonths ?? 3}
-                    onChange={(e) => setRules({ ...rules, consultancyBonus: { ...rules.consultancyBonus, qualifyingMonths: parseInt(e.target.value) || 0 } })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--fs-base)' }}
-                  />
-                </div>
-                <div>
-                  <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>Free Product Reward Month</label>
-                  <input
-                    type="number"
-                    value={rules.consultancyBonus?.freeProductMonth ?? 4}
-                    onChange={(e) => setRules({ ...rules, consultancyBonus: { ...rules.consultancyBonus, freeProductMonth: parseInt(e.target.value) || 0 } })}
-                    style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--border-strong)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--fs-base)' }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* =========================================================================
-          PAGE 3: LIFETIME REWARDS (defaultSection === 'rewards')
+          PAGE 2: LIFETIME REWARDS (defaultSection === 'rewards')
           ========================================================================= */}
       {section === 'rewards' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
@@ -1059,7 +695,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
       )}
 
       {/* =========================================================================
-          PAGE 4: INCOME & SIMULATOR (defaultSection === 'simulator' or 'all')
+          PAGE 3: INCOME & SIMULATOR (defaultSection === 'simulator' or 'all')
           ========================================================================= */}
       {section === 'simulator' && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>

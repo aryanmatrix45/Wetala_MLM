@@ -18,7 +18,6 @@ import {
   Landmark,
   Calculator,
   Users2,
-  Sparkles,
   Medal,
   FolderTree,
   Layers,
@@ -28,6 +27,7 @@ import {
   Share2,
   LayoutTemplate,
   LayoutGrid,
+  IndianRupee,
   UserRound,
 } from 'lucide-react';
 
@@ -86,6 +86,7 @@ export function getNavSections(user: any, counts: NavCounts = {}): NavSection[] 
           { id: 'purchase-requests', label: 'Purchase Requests', icon: ShoppingCart, count: counts.purchases },
           { id: 'wallet-payouts', label: 'Wallet & Payouts', icon: Wallet },
           { id: 'bv-wallet', label: 'BV Wallet', icon: Coins },
+          { id: 'company-earnings', label: 'Company Earnings', icon: IndianRupee },
           { id: 'company-account', label: 'Company Account', icon: Landmark },
         ],
       },
@@ -94,8 +95,7 @@ export function getNavSections(user: any, counts: NavCounts = {}): NavSection[] 
         title: 'Compensation Plan',
         items: [
           { id: 'income-settings', label: 'Income Simulator', icon: Calculator },
-          { id: 'team-bonus', label: 'Team Bonus Slabs', icon: Users2 },
-          { id: 'direct-royalty', label: 'Royalty & Consultancy', icon: Sparkles },
+          { id: 'team-bonus', label: 'Team Performance Slabs', icon: Users2 },
           { id: 'rank-rewards', label: 'Lifetime Rewards', icon: Medal },
         ],
       },
@@ -175,8 +175,7 @@ export function getNavSections(user: any, counts: NavCounts = {}): NavSection[] 
       title: 'Compensation Plan',
       items: [
         { id: 'income-settings', label: 'Income Simulator', icon: Calculator },
-        { id: 'team-bonus', label: 'Team Bonus Slabs', icon: Users2 },
-        { id: 'direct-royalty', label: 'Royalty & Consultancy', icon: Sparkles },
+        { id: 'team-bonus', label: 'Team Performance Slabs', icon: Users2 },
         { id: 'rank-rewards', label: 'Lifetime Rewards', icon: Medal },
       ],
     },

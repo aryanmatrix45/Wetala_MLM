@@ -3,7 +3,8 @@ import { BV_LEDGER_ENTRY, BVLedgerEntryType } from '../config/constants';
 
 /**
  * Append-only record of every BV Wallet balance change. Never updated or deleted.
- * Summing availableDelta per wallet must reproduce the wallet's balance.
+ * Summing availableDelta per wallet must reproduce the wallet's balance, and summing bonusDelta its
+ * welcome bonus part.
  */
 export interface IBVWalletLedger extends Document {
   entryId: string;
@@ -13,6 +14,7 @@ export interface IBVWalletLedger extends Document {
   entryType: BVLedgerEntryType;
   amount: number;
   availableDelta: number;
+  bonusDelta: number;
   availableBefore: number;
   availableAfter: number;
   walletSequence: number;
@@ -28,6 +30,7 @@ const bvWalletLedgerSchema = new Schema<IBVWalletLedger>(
     entryType: { type: String, enum: Object.values(BV_LEDGER_ENTRY), required: true },
     amount: { type: Number, required: true, min: 1 },
     availableDelta: { type: Number, required: true },
+    bonusDelta: { type: Number, default: 0 },
     availableBefore: { type: Number, required: true },
     availableAfter: { type: Number, required: true },
     walletSequence: { type: Number, required: true },

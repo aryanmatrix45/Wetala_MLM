@@ -13,6 +13,9 @@ import { BVLedger } from '../src/models/BVLedger.model';
 import { BVWallet } from '../src/models/BVWallet.model';
 import { BVTransaction } from '../src/models/BVTransaction.model';
 import { BVWalletLedger } from '../src/models/BVWalletLedger.model';
+import { BVRate } from '../src/models/BVRate.model';
+import { CompanyEarning } from '../src/models/CompanyEarning.model';
+import { BVReturnRequest } from '../src/models/BVReturnRequest.model';
 import { BinaryVolume } from '../src/models/BinaryVolume.model';
 import { CompensationRule } from '../src/models/CompensationRule.model';
 import { AdminNotification } from '../src/models/AdminNotification.model';
@@ -58,7 +61,7 @@ async function wipe() {
   await Promise.all(
     [
       Member, Purchase, BVLedger, BVWallet, BVTransaction, BVWalletLedger, BinaryVolume, CompensationRule,
-      AdminNotification, WelcomeBonusSettlement, WelcomeBonusTransaction,
+      AdminNotification, WelcomeBonusSettlement, WelcomeBonusTransaction, BVRate, CompanyEarning, BVReturnRequest,
     ].map((m: any) => m.deleteMany({}))
   );
 }
@@ -101,6 +104,8 @@ async function runTests() {
   try {
     await wipe();
     await BVWalletService.generate({ amount: 100000, title: 'Stock', note: 'Test', actor: ACTOR });
+    // Super Admin transfers are BV sales and need a BV rate
+    await BVRate.create({ rateId: 'RATE-TEST-1', ratePaise: 100, setBy: { email: ACTOR.email, operatorName: 'Test' } });
 
     // A: 1,250 BV transferred in; sponsors two members, both placed on the LEFT
     await makeMember('WB00001');

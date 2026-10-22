@@ -48,8 +48,6 @@ export enum IncomeType {
   SPONSOR_BINARY = 'SPONSOR_BINARY',         // 20% on Direct's binary
   TEAM_PERFORMANCE = 'TEAM_PERFORMANCE',     // Milestone volume (10:10, 100:100, etc.)
   RANK_REWARD = 'RANK_REWARD',               // Pair rewards (5:5, 10:10, up to 40k:40k)
-  REPURCHASE_TEAM = 'REPURCHASE_TEAM',       // 15% down to 2% on product repurchase BV
-  CONSULTANCY_BONUS = 'CONSULTANCY_BONUS',   // 2000 DP 3 mo -> 4th mo free
   FRANCHISE_BONUS = 'FRANCHISE_BONUS'        // Stock point 5% to 12% + 2% upline
 }
 

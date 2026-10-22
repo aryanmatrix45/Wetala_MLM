@@ -89,7 +89,6 @@ export const CompensationController = {
         pairBvUnit = 1250,
         dailyCap = 4000,
         alreadyEarnedToday = 0,
-        teamVolume = 0,
         purchaseAmount = 0,
       } = req.body;
 
@@ -175,34 +174,10 @@ export const CompensationController = {
         excessCommission = DecimalUtil.sub(rawBinaryCommission, remainingCap);
       }
 
-      // 2. Team Bonus Tier Simulation (1000:15%, 2500:10%, etc.)
-      const tiers = [
-        { leftVolume: 1000, rightVolume: 1000, rate: 0.15 },
-        { leftVolume: 2500, rightVolume: 2500, rate: 0.10 },
-        { leftVolume: 7500, rightVolume: 7500, rate: 0.07 },
-        { leftVolume: 25000, rightVolume: 25000, rate: 0.06 },
-        { leftVolume: 35000, rightVolume: 35000, rate: 0.05 },
-        { leftVolume: 70000, rightVolume: 70000, rate: 0.04 },
-        { leftVolume: 150000, rightVolume: 150000, rate: 0.03 },
-        { leftVolume: 300000, rightVolume: 300000, rate: 0.02 },
-      ].sort((a, b) => b.leftVolume - a.leftVolume);
-
-      let qualifiedTeamTier: (typeof tiers)[0] | null = null;
-      for (const t of tiers) {
-        if (leftBV >= t.leftVolume && rightBV >= t.rightVolume) {
-          qualifiedTeamTier = t;
-          break;
-        }
-      }
-
-      const teamBonusAmount = qualifiedTeamTier
-        ? DecimalUtil.multiplyRate(matchedBV || teamVolume, qualifiedTeamTier.rate)
-        : 0;
-
-      // 3. Self Purchase Repurchase Bonus (8%)
+      // 2. Self Purchase Repurchase Bonus (8%)
       const selfPurchaseBonus = purchaseAmount > 0 ? DecimalUtil.multiplyPercent(purchaseAmount, 8) : 0;
 
-      // 4. Franchise Tier Simulation
+      // 3. Franchise Tier Simulation
       const franchiseTiers = [
         { threshold: 50000, rate: 0.05 },
         { threshold: 100000, rate: 0.08 },
@@ -240,11 +215,6 @@ export const CompensationController = {
             payableCommission: payableBinaryCommission,
             excessCommission,
           },
-          teamBonus: {
-            qualifiedTier: qualifiedTeamTier ? `${qualifiedTeamTier.leftVolume}:${qualifiedTeamTier.rightVolume}` : 'None',
-            rateApplied: qualifiedTeamTier ? qualifiedTeamTier.rate * 100 : 0,
-            calculatedBonus: teamBonusAmount,
-          },
           selfPurchaseBonus: {
             rate: '8%',
             calculatedBonus: selfPurchaseBonus,
@@ -256,7 +226,7 @@ export const CompensationController = {
           },
           totalSimulatedCommission: DecimalUtil.add(
             payableBinaryCommission,
-            DecimalUtil.add(teamBonusAmount, DecimalUtil.add(selfPurchaseBonus, franchiseBonus))
+            DecimalUtil.add(selfPurchaseBonus, franchiseBonus)
           ),
         },
       });

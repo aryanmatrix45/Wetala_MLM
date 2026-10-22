@@ -23,6 +23,7 @@ import { PreRegistrationPage } from './pages/PreRegistrationPage';
 import { FullRegistrationPage } from './pages/FullRegistrationPage';
 import { ProfilePage } from './pages/ProfilePage';
 import { BVWalletPage } from './pages/BVWalletPage';
+import { CompanyEarningsPage } from './pages/CompanyEarningsPage';
 import { MemberHomePage } from './pages/MemberHomePage';
 import { AdminSlidersPage } from './pages/AdminSlidersPage';
 import { AdminHomeHighlightsPage } from './pages/AdminHomeHighlightsPage';
@@ -473,15 +474,16 @@ export function App() {
 
         {activeTab === 'income-settings' && <IncomeSettingsPage user={user} token={token} defaultSection="simulator" />}
 
-        {activeTab === 'team-bonus' && <IncomeSettingsPage user={user} token={token} defaultSection="teamBonus" />}
+        {activeTab === 'team-bonus' && <IncomeSettingsPage user={user} token={token} defaultSection="teamPerformance" />}
 
-        {activeTab === 'direct-royalty' && <IncomeSettingsPage user={user} token={token} defaultSection="royalty" />}
 
         {activeTab === 'rank-rewards' && <IncomeSettingsPage user={user} token={token} defaultSection="rewards" />}
 
         {activeTab === 'wallet-payouts' && <PayoutsPage user={user} token={token} defaultSubTab="commissions" onNavigate={handleTabChange} />}
 
         {activeTab === 'bv-wallet' && <BVWalletPage user={user} token={token} />}
+
+        {activeTab === 'company-earnings' && <CompanyEarningsPage user={user} token={token} />}
 
         {activeTab === 'withdrawals' && <PayoutsPage user={user} token={token} defaultSubTab="requests" onNavigate={handleTabChange} />}
 

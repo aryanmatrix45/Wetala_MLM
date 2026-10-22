@@ -36,7 +36,6 @@ const TIER_THEMES = [
       '2,500 Business Volume (BV) allocated',
       '2 RP reward qualification points',
       'Daily Binary Payout Cap: ₹ 8,000',
-      'Eligible for consultancy bonus & pools',
       'Direct sponsor binary matching payout'
     ]
   },
@@ -64,7 +63,6 @@ const TIER_THEMES = [
       '10,000 Business Volume (BV) allocated',
       '8 RP reward qualification points',
       'Maximum Daily Payout Cap: ₹ 16,000',
-      'High-tier royalty pool qualification',
       'Priority rank advancement & stockist ready'
     ]
   },

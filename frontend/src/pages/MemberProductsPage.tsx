@@ -1166,8 +1166,7 @@ export const MemberProductsPage: React.FC<MemberProductsPageProps> = ({
             <div>
               <h1 className="page-title">Products</h1>
               <p className="page-subtitle">
-                Browse genuine products, earn independent Business Volume (BV) with every purchase, and qualify for
-                repurchase binary team bonuses.
+                Browse genuine products and earn independent Business Volume (BV) with every purchase.
               </p>
             </div>
 

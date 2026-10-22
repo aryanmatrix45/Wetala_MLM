@@ -45,11 +45,9 @@ export const COMMISSION_TYPE = {
   BINARY_BONUS: 'BINARY_BONUS',
   SPONSOR_BINARY_BONUS: 'SPONSOR_BINARY_BONUS',
   SELF_PURCHASE_BONUS: 'SELF_PURCHASE_BONUS',
-  TEAM_BONUS: 'TEAM_BONUS',
   TEAM_PERFORMANCE_BONUS: 'TEAM_PERFORMANCE_BONUS',
   UPLINE_BONUS: 'UPLINE_BONUS',
   FRANCHISE_BONUS: 'FRANCHISE_BONUS',
-  ROYALTY: 'ROYALTY',
   REWARD: 'REWARD',
   ADJUSTMENT: 'ADJUSTMENT',
   REVERSAL: 'REVERSAL',
@@ -140,6 +138,9 @@ export const BV_TXN_TYPE = {
   PURCHASE: 'PURCHASE', // BV spent on a product / package order
   PURCHASE_REFUND: 'PURCHASE_REFUND', // BV returned when a BV-paid order is rejected or refunded
   BINARY_ACTIVATION: 'BINARY_ACTIVATION', // wallet BV locked at binary activation and fed into the tree
+  RETURN_REQUESTED: 'RETURN_REQUESTED', // member's BV held while a return to the company waits for approval
+  RETURN_APPROVED: 'RETURN_APPROVED', // held BV handed to the Super Admin wallet
+  RETURN_RELEASED: 'RETURN_RELEASED', // held BV given back (return rejected or cancelled)
 } as const;
 
 export type BVTxnType = typeof BV_TXN_TYPE[keyof typeof BV_TXN_TYPE];
@@ -158,6 +159,34 @@ export const BV_LEDGER_ENTRY = {
 } as const;
 
 export type BVLedgerEntryType = typeof BV_LEDGER_ENTRY[keyof typeof BV_LEDGER_ENTRY];
+
+export const BV_RETURN_STATUS = {
+  PENDING: 'PENDING',
+  APPROVED: 'APPROVED',
+  REJECTED: 'REJECTED',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+export type BVReturnStatus = typeof BV_RETURN_STATUS[keyof typeof BV_RETURN_STATUS];
+
+// ---------------------------------------------------------------------------
+// Super Admin earnings: BV sold at the BV rate, plus package / product orders paid by bank / UPI
+// ---------------------------------------------------------------------------
+
+export const COMPANY_EARNING_TYPE = {
+  BV_SALE: 'BV_SALE', // Super Admin sent BV to a member: + BV x rate
+  BV_SALE_REVERSED: 'BV_SALE_REVERSED', // that transfer reversed: - the sale amount
+  BV_RETURNED: 'BV_RETURNED', // a member's return approved: - BV x the member's average purchase price
+  ORDER_PAID: 'ORDER_PAID', // bank / UPI order marked as paid: + order total
+  ORDER_REFUNDED: 'ORDER_REFUNDED', // that order refunded: - order total
+} as const;
+
+export type CompanyEarningType = typeof COMPANY_EARNING_TYPE[keyof typeof COMPANY_EARNING_TYPE];
+
+export const BV_RATE = {
+  MAX_RUPEES_PER_BV: 100_000,
+  NOTE_MAX_LENGTH: 300,
+} as const;
 
 // ---------------------------------------------------------------------------
 // Welcome bonus: weekly pool paid as BV (defaults when the active rule set has no value)

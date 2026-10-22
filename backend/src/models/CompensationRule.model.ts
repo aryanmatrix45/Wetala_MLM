@@ -40,18 +40,6 @@ export interface ICompensationRule extends Document {
     secondPayoutNewBv?: number; // 1250
   };
   
-  // 3. Team Bonus Tiers (Repurchase CTO Volume: 1k=15%, 2.5k=10%, 7.5k=7%, 20k=6%, 35k=5%, 70k=4%, 150k=3%, 300k=2%)
-  teamBonus: {
-    isEnabled: boolean;
-    calculationBase: 'MATCHED_BV' | 'LEFT_BV' | 'RIGHT_BV' | 'TOTAL_TEAM_BV' | 'PURCHASE_VALUE';
-    tiers: Array<{
-      tierId: string;
-      leftVolume: number;
-      rightVolume: number;
-      rate: number; // e.g. 0.15 for 15%
-    }>;
-  };
-  
   // 4. Self Purchase Bonus (8% on self purchase)
   selfPurchaseBonus: {
     isEnabled: boolean;
@@ -114,25 +102,6 @@ export interface ICompensationRule extends Document {
     uplineBonusRate: number; // 2% = 0.02
     maxUplineLevels: number;
     calculationBase: 'PURCHASE_VALUE' | 'BV';
-  };
-  
-  // 10. Royalty
-  royalty: {
-    isEnabled: boolean;
-    poolPercent: number;
-    eligibleRanks: string[];
-    minTeamVolume: number;
-    notes: string;
-  };
-  
-  // 11. Consultancy Bonus (2,500 DP Product for 3 months -> 4th month free product)
-  consultancyBonus: {
-    isEnabled: boolean;
-    qualifyingAmount: number; // 2500 DP
-    productQuantity: number;
-    qualifyingMonths: number; // 3
-    freeProductMonth: number; // 4
-    notes: string;
   };
   
   // 12. Retail Profit (Up to 50%)
@@ -207,18 +176,6 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       firstPayoutOppositeBv: { type: Number, default: 1250 },
       secondPayoutNewBv: { type: Number, default: 1250 },
     },
-    teamBonus: {
-      isEnabled: { type: Boolean, default: true },
-      calculationBase: { type: String, default: 'MATCHED_BV' },
-      tiers: [
-        {
-          tierId: String,
-          leftVolume: Number,
-          rightVolume: Number,
-          rate: Number,
-        },
-      ],
-    },
     selfPurchaseBonus: {
       isEnabled: { type: Boolean, default: true },
       ratePercent: { type: Number, default: 0.08 }, // 8%
@@ -275,21 +232,6 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       uplineBonusRate: { type: Number, default: 0.02 }, // 2%
       maxUplineLevels: { type: Number, default: 1 },
       calculationBase: { type: String, default: 'BV' },
-    },
-    royalty: {
-      isEnabled: { type: Boolean, default: false },
-      poolPercent: { type: Number, default: 0 },
-      eligibleRanks: { type: [String], default: [] },
-      minTeamVolume: { type: Number, default: 0 },
-      notes: { type: String, default: 'TODO: Confirm exact Royalty pool formula with business owner.' },
-    },
-    consultancyBonus: {
-      isEnabled: { type: Boolean, default: false },
-      qualifyingAmount: { type: Number, default: 2500 },
-      productQuantity: { type: Number, default: 1 },
-      qualifyingMonths: { type: Number, default: 3 },
-      freeProductMonth: { type: Number, default: 4 },
-      notes: { type: String, default: 'TODO: Confirm exact Consultancy Bonus rules with business owner.' },
     },
     retailProfit: {
       isEnabled: { type: Boolean, default: true },

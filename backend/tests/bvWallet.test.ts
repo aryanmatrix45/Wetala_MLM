@@ -19,6 +19,9 @@ import { BVWallet } from '../src/models/BVWallet.model';
 import { BVTransaction } from '../src/models/BVTransaction.model';
 import { BVWalletLedger } from '../src/models/BVWalletLedger.model';
 import { BVWalletService } from '../src/services/BVWalletService';
+import { BVRate } from '../src/models/BVRate.model';
+import { CompanyEarning } from '../src/models/CompanyEarning.model';
+import { BVReturnRequest } from '../src/models/BVReturnRequest.model';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DOMAIN = '@test-bv.com';
@@ -49,7 +52,14 @@ async function call(method: string, url: string, body?: unknown, token?: string)
 const key = () => `test-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 
 async function cleanup() {
-  await Promise.all([BVWallet.deleteMany({}), BVTransaction.deleteMany({}), BVWalletLedger.deleteMany({})]);
+  await Promise.all([
+    BVWallet.deleteMany({}),
+    BVTransaction.deleteMany({}),
+    BVWalletLedger.deleteMany({}),
+    BVRate.deleteMany({}),
+    CompanyEarning.deleteMany({}),
+    BVReturnRequest.deleteMany({}),
+  ]);
   await AdminNotification.deleteMany({ type: { $regex: /^BV_/ } });
   await Member.deleteMany({ email: { $regex: /@test-bv\.com$/i } });
   await Admin.deleteMany({ email: { $regex: /@test-bv\.com$/i } });
@@ -65,10 +75,19 @@ async function runTests() {
 
   await mongoose.connect(MONGODB_URI);
   // Start from fresh collections so indexes always match the current schemas
-  for (const name of ['bvwallets', 'bvtransactions', 'bvwalletledgers']) {
+  for (const name of ['bvwallets', 'bvtransactions', 'bvwalletledgers', 'bvrates', 'companyearnings', 'bvreturnrequests']) {
     await mongoose.connection.db!.dropCollection(name).catch(() => {});
   }
-  await Promise.all([BVWallet.init(), BVTransaction.init(), BVWalletLedger.init(), Member.init(), AdminNotification.init()]);
+  await Promise.all([
+    BVWallet.init(),
+    BVTransaction.init(),
+    BVWalletLedger.init(),
+    BVRate.init(),
+    CompanyEarning.init(),
+    BVReturnRequest.init(),
+    Member.init(),
+    AdminNotification.init(),
+  ]);
   const server = app.listen(0);
   baseUrl = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
@@ -119,6 +138,9 @@ async function runTests() {
     assert(r.status === 400 && /operator/i.test(r.data.message), 'Admin transfer requires operator name', r.data);
     r = await adminSend({ recipientId: 'ADMIN', amount: 1 });
     assert(r.status === 400 && /yourself/.test(r.data.message), 'Admin cannot send to Super Admin', r.data);
+    r = await adminSend({ recipientId: 'TBV001', amount: 2000 });
+    assert(r.status === 409 && /BV rate/.test(r.data.message), 'Admin cannot sell BV before a BV rate is set', r.data);
+    await BVRate.create({ rateId: 'RATE-TEST-1', ratePaise: 100, setBy: { email: admin.email, operatorName: 'Ravi' } });
 
     r = await adminSend({ recipientId: 'TBV001', amount: 2000, note: 'Welcome' });
     const t1 = r.data.data?.transaction?.transactionId;
@@ -152,7 +174,7 @@ async function runTests() {
     r = await call('GET', '/api/bv-wallet/recipients/search?q=Super Admin', undefined, A.token);
     assert(r.status === 200 && r.data.data.length === 0, 'Super Admin is not returned by search', r.data);
     r = await call('GET', '/api/bv-wallet/recipients/ADMIN', undefined, A.token);
-    assert(r.status === 200 && r.data.data.name === 'Super Admin', 'Members can look up the Super Admin as a fixed recipient', r.data);
+    assert(r.status === 404, 'The Super Admin is not a transfer recipient (returns go through a request)', r.data);
     r = await call('GET', '/api/bv-wallet/recipients/TBV004', undefined, A.token);
     assert(r.status === 404, 'Blocked member cannot be a recipient', r.data);
 
@@ -177,11 +199,9 @@ async function runTests() {
     assert(w.availableBV === 400 && w.totalActivationLocked === 100, 'Recipient member credited immediately (100 BV locked at activation)', w);
 
     r = await send(B.token, { recipientId: 'ADMIN', amount: 200, title: 'Return' });
-    assert(r.status === 201 && r.data.data.transaction.recipient.name === 'Super Admin', 'Member sends BV to Super Admin', r.data);
+    assert(r.status === 400 && /Return BV/.test(r.data.message), 'Member cannot transfer BV straight to the Super Admin', r.data);
     w = await wallet(adminToken);
-    assert(w.availableBV === 8200 && w.totalReceived === 200, 'Super Admin wallet credited 200 BV', w);
-    const adminNotif = await AdminNotification.findOne({ referenceId: r.data.data.transaction.transactionId, recipientId: 'admin' });
-    assert(adminNotif?.type === 'BV_RECEIVED' && adminNotif.recipientRole === 'admin', 'Super Admin is notified of BV received');
+    assert(w.availableBV === 8000 && w.totalReceived === 0, 'Super Admin wallet unchanged', w);
 
     console.log('\n--- Repeat warning & duplicates ---');
     r = await send(A.token, { recipientId: 'TBV002', amount: 500 });
@@ -267,7 +287,7 @@ async function runTests() {
     r = await call('GET', '/api/bv-wallet/transactions?direction=RECEIVED', undefined, A.token);
     assert(r.data.data.length > 0 && r.data.data.every((t: any) => t.direction === 'RECEIVED'), 'History filters by direction', r.data.data.map((t: any) => t.direction));
     r = await call('GET', '/api/bv-wallet/transactions?direction=RECEIVED', undefined, adminToken);
-    assert(r.data.data.length === 1 && r.data.data[0].sender.id === 'TBV002', 'Super Admin history shows BV received from members', r.data);
+    assert(r.status === 200 && r.data.data.length === 0, 'Super Admin received nothing from members', r.data);
 
     r = await call('GET', '/api/bv-wallet/admin/transactions?limit=100', undefined, A.token);
     assert(r.status === 403, 'Member cannot view all transactions', r.data);

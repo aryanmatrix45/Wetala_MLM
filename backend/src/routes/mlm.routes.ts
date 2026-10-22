@@ -6,7 +6,7 @@ import { CommissionLedger } from '../models/CommissionLedger.model';
 import { Purchase } from '../models/Purchase.model';
 import { HTTP_STATUS, BINARY_POSITION, BinaryPosition, ROLES, PURCHASE_STATUS, PURCHASE_TYPE } from '../config/constants';
 import { BinaryTreeService } from '../services/tree/BinaryTreeService';
-import { authenticate, AuthenticatedRequest } from '../middlewares/auth';
+import { authenticate, requireSuperAdmin, AuthenticatedRequest } from '../middlewares/auth';
 import { WalletService } from '../services/WalletService';
 import { BVService } from '../services/BVService';
 import { GrossVolumeService } from '../services/GrossVolumeService';
@@ -15,7 +15,7 @@ import { BusinessDate } from '../utils/businessDate';
 const router = Router();
 
 // Dashboard Overview Metrics - Fetches 100% dynamically from MongoDB
-router.get('/dashboard/stats', async (_req, res) => {
+router.get('/dashboard/stats', authenticate, async (_req, res) => {
   try {
     const [members, packages, commissions, purchases] = await Promise.all([
       Member.find().sort({ createdAt: -1 }),
@@ -493,9 +493,15 @@ router.get('/packages', async (_req, res) => {
 });
 
 // Payouts List from Database CommissionLedger
-router.get('/payouts', async (_req, res) => {
+// Commission ledger: the Super Admin sees everyone's, a member only its own
+router.get('/payouts', authenticate, async (req: AuthenticatedRequest, res) => {
   try {
-    const commissions = await CommissionLedger.find().sort({ createdAt: -1 });
+    const isSuperAdmin = req.user?.role === ROLES.SUPERADMIN;
+    const ownMemberId = req.user?.memberId?.toUpperCase();
+    if (!isSuperAdmin && !ownMemberId) {
+      return res.json([]);
+    }
+    const commissions = await CommissionLedger.find(isSuperAdmin ? {} : { memberId: ownMemberId }).sort({ createdAt: -1 });
     const members = await Member.find();
     const memberNameMap = new Map(members.map(m => [m.memberId, m.name]));
 
@@ -520,7 +526,7 @@ router.get('/payouts', async (_req, res) => {
 });
 
 // Process Payout Action in Database CommissionLedger
-router.post('/payouts/:id/action', async (req, res) => {
+router.post('/payouts/:id/action', authenticate, requireSuperAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const { action } = req.body; // 'pay' or 'reject'

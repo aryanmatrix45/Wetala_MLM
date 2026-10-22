@@ -146,7 +146,17 @@ export interface BVSummary {
 
 export interface BVTransactionItem {
   transactionId: string;
-  type: 'GENERATION' | 'TRANSFER' | 'REVERSAL' | 'WELCOME_BONUS' | 'PURCHASE' | 'PURCHASE_REFUND' | 'BINARY_ACTIVATION';
+  type:
+    | 'GENERATION'
+    | 'TRANSFER'
+    | 'REVERSAL'
+    | 'WELCOME_BONUS'
+    | 'PURCHASE'
+    | 'PURCHASE_REFUND'
+    | 'BINARY_ACTIVATION'
+    | 'RETURN_REQUESTED'
+    | 'RETURN_APPROVED'
+    | 'RETURN_RELEASED';
   status: BVTransactionStatus;
   direction?: 'GENERATED' | 'SENT' | 'RECEIVED';
   amount: number;
@@ -156,6 +166,10 @@ export interface BVTransactionItem {
   recipient: { type?: 'ADMIN' | 'MEMBER' | 'SYSTEM'; id: string; name: string } | null;
   purchaseId?: string;
   settlementId?: string;
+  returnRequestId?: string;
+  bonusAmount?: number; // part of the BV taken from or put back into the welcome bonus balance
+  rate?: number | null; // ₹ per BV: Super Admin sales and member returns
+  value?: number | null; // ₹ value: BV x rate
   reversalOf?: string;
   reversedBy?: string;
   reversedAt?: string;
@@ -164,11 +178,28 @@ export interface BVTransactionItem {
   initiatedBy?: { role?: string; email?: string; operatorName?: string; ip?: string };
 }
 
+export interface BVReturnCapacity {
+  purchasedBV: number;
+  purchasedValue: number;
+  returnedBV: number;
+  returnedValue: number;
+  pendingReturnBV: number;
+  pendingReturnValue: number;
+  returnableBV: number;
+  valuePerBV: number;
+  returnableValue: number;
+}
+
 export interface BVWalletSummary {
   walletId: string;
   ownerType: 'ADMIN' | 'MEMBER';
   ownerId: string;
   availableBV: number;
+  bonusBV: number; // welcome bonus part: pays for own orders only
+  regularBV: number;
+  sendableBV: number;
+  totalSold: number; // Super Admin: BV sold to members
+  returns?: BVReturnCapacity; // members only
   totalGenerated: number;
   totalReceived: number;
   totalSent: number;
@@ -178,6 +209,64 @@ export interface BVWalletSummary {
   isFrozen: boolean;
   frozenReason: string;
   limits: { maxTransferBV: number; maxGenerateBV: number; activationBV: number };
+}
+
+export type BVReturnStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+
+export interface BVReturnRequestItem {
+  requestId: string;
+  memberId: string;
+  memberName: string;
+  amount: number;
+  value: number;
+  valuePerBV: number;
+  status: BVReturnStatus;
+  note: string;
+  decisionReason: string;
+  decidedAt?: string;
+  createdAt: string;
+  decidedBy?: { role?: string; email?: string; operatorName?: string };
+}
+
+export type CompanyEarningType = 'BV_SALE' | 'BV_SALE_REVERSED' | 'BV_RETURNED' | 'ORDER_PAID' | 'ORDER_REFUNDED';
+
+export interface CompanyEarningEntry {
+  entryId: string;
+  type: CompanyEarningType;
+  sourceId: string;
+  memberId: string;
+  memberName: string;
+  bv: number;
+  rate: number | null;
+  amount: number;
+  paymentMode: string;
+  note: string;
+  relatedEntryId?: string;
+  performedBy: { email: string; operatorName: string };
+  createdAt: string;
+}
+
+export interface BVRateInfo {
+  rateId: string;
+  rate: number;
+  ratePaise: number;
+  note: string;
+  setBy: { email: string; operatorName: string };
+  createdAt: string;
+}
+
+export interface CompanyEarningsSummary {
+  total: number;
+  today: number;
+  thisWeek: number;
+  thisMonth: number;
+  bvSales: { amount: number; bv: number; count: number };
+  bvReturns: { amount: number; bv: number; count: number };
+  orders: { amount: number; count: number; refunded: number };
+  netBVSold: number;
+  pendingReturns: { count: number; bv: number; amount: number };
+  currentRate: BVRateInfo | null;
+  periods: { today: string; weekStart: string; monthStart: string };
 }
 
 export interface BVRecipient {
@@ -554,7 +643,8 @@ export const api = {
 
   // Dashboard Stats
   async getDashboardStats(): Promise<DashboardStats> {
-    const res = await fetch(`${API_BASE_URL}/dashboard/stats`);
+    const savedToken = localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/dashboard/stats`, { headers: { Authorization: `Bearer ${savedToken}` } });
     if (!res.ok) throw new Error(`Failed to fetch stats: ${res.statusText}`);
     return res.json();
   },
@@ -695,15 +785,17 @@ export const api = {
 
   // Payouts
   async getPayouts(): Promise<ApiPayout[]> {
-    const res = await fetch(`${API_BASE_URL}/payouts`);
+    const savedToken = localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/payouts`, { headers: { Authorization: `Bearer ${savedToken}` } });
     if (!res.ok) throw new Error(`Failed to fetch payouts: ${res.statusText}`);
     return res.json();
   },
 
   async processPayout(id: string, action: 'pay' | 'reject') {
+    const savedToken = localStorage.getItem('wetala_token') || '';
     const res = await fetch(`${API_BASE_URL}/payouts/${id}/action`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${savedToken}` },
       body: JSON.stringify({ action }),
     });
     if (!res.ok) throw new Error(`Failed to process payout: ${res.statusText}`);
@@ -1340,6 +1432,81 @@ export const api = {
 
   getAllBVTransactions(params: Record<string, string | number | undefined> = {}, token?: string) {
     return this.bvWalletRequest('GET', `/admin/transactions${toQueryString(params)}`, undefined, token);
+  },
+
+  // Returns of bought BV to the company (member request, Super Admin approval)
+  getMyBVReturns(params: Record<string, string | number | undefined> = {}, token?: string) {
+    return this.bvWalletRequest('GET', `/returns${toQueryString(params)}`, undefined, token);
+  },
+
+  requestBVReturn(data: { amount: number; note?: string; requestKey: string }, token?: string) {
+    return this.bvWalletRequest('POST', '/returns', data, token);
+  },
+
+  cancelBVReturn(requestId: string, token?: string) {
+    return this.bvWalletRequest('POST', `/returns/${encodeURIComponent(requestId)}/cancel`, {}, token);
+  },
+
+  getAllBVReturns(params: Record<string, string | number | undefined> = {}, token?: string) {
+    return this.bvWalletRequest('GET', `/admin/returns${toQueryString(params)}`, undefined, token);
+  },
+
+  approveBVReturn(requestId: string, data: { operatorName: string; password: string }, token?: string) {
+    return this.bvWalletRequest('POST', `/admin/returns/${encodeURIComponent(requestId)}/approve`, data, token);
+  },
+
+  rejectBVReturn(requestId: string, data: { reason: string; operatorName: string }, token?: string) {
+    return this.bvWalletRequest('POST', `/admin/returns/${encodeURIComponent(requestId)}/reject`, data, token);
+  },
+
+  // Super Admin earnings & BV rate
+  async companyEarningsRequest(method: 'GET' | 'PUT', path: string, body?: unknown, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const headers: Record<string, string> = { Authorization: `Bearer ${savedToken}` };
+    if (body !== undefined) headers['Content-Type'] = 'application/json';
+    const res = await fetch(`${API_BASE_URL}/company-earnings${path}`, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    return res.json();
+  },
+
+  getCompanyEarningsSummary(token?: string): Promise<{ status: boolean; message?: string; data?: CompanyEarningsSummary }> {
+    return this.companyEarningsRequest('GET', '/summary', undefined, token);
+  },
+
+  getCompanyEarnings(params: Record<string, string | number | undefined> = {}, token?: string) {
+    return this.companyEarningsRequest('GET', toQueryString(params), undefined, token);
+  },
+
+  getBVRate(token?: string): Promise<{ status: boolean; message?: string; data?: BVRateInfo | null }> {
+    return this.companyEarningsRequest('GET', '/rate', undefined, token);
+  },
+
+  getBVRateHistory(token?: string): Promise<{ status: boolean; message?: string; data?: BVRateInfo[] }> {
+    return this.companyEarningsRequest('GET', '/rate/history', undefined, token);
+  },
+
+  setBVRate(data: { rate: number; note?: string; operatorName: string; password: string }, token?: string) {
+    return this.companyEarningsRequest('PUT', '/rate', data, token);
+  },
+
+  /** Downloads the filtered earnings as a CSV file. */
+  async downloadCompanyEarningsCsv(params: Record<string, string | number | undefined> = {}, token?: string) {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/company-earnings/export${toQueryString(params)}`, {
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    if (!res.ok) throw new Error('Export failed.');
+    const url = URL.createObjectURL(await res.blob());
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `company-earnings-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
   },
 
   async getBVSummary(token?: string): Promise<{ status: boolean; message?: string; data?: BVSummary }> {

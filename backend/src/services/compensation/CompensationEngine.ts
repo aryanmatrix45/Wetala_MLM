@@ -8,12 +8,10 @@ import { WalletService } from '../WalletService';
 import { WelcomeBonusService } from './WelcomeBonusService';
 import { BVWalletService } from '../BVWalletService';
 import { SelfPurchaseBonusService } from './SelfPurchaseBonusService';
-import { TeamBonusService } from './TeamBonusService';
 import { TeamPerformanceBonusService } from './TeamPerformanceBonusService';
 import { RewardService } from './RewardService';
 import { FranchiseService } from './FranchiseService';
 import { UplineBonusService } from './UplineBonusService';
-import { RoyaltyService } from './RoyaltyService';
 import { BinaryTreeService } from '../tree/BinaryTreeService';
 import { DecimalUtil } from '../../utils/decimal';
 import {
@@ -66,20 +64,6 @@ export class CompensationEngine {
           firstPayoutDominantBv: 2500,
           firstPayoutOppositeBv: 1250,
           secondPayoutNewBv: 1250,
-        },
-        teamBonus: {
-          isEnabled: true,
-          calculationBase: 'MATCHED_BV',
-          tiers: [
-            { tierId: 'TB-1', leftVolume: 1000, rightVolume: 1000, rate: 0.15 },
-            { tierId: 'TB-2', leftVolume: 2500, rightVolume: 2500, rate: 0.10 },
-            { tierId: 'TB-3', leftVolume: 7500, rightVolume: 7500, rate: 0.07 },
-            { tierId: 'TB-4', leftVolume: 20000, rightVolume: 20000, rate: 0.06 },
-            { tierId: 'TB-5', leftVolume: 35000, rightVolume: 35000, rate: 0.05 },
-            { tierId: 'TB-6', leftVolume: 70000, rightVolume: 70000, rate: 0.04 },
-            { tierId: 'TB-7', leftVolume: 150000, rightVolume: 150000, rate: 0.03 },
-            { tierId: 'TB-8', leftVolume: 300000, rightVolume: 300000, rate: 0.02 },
-          ],
         },
         selfPurchaseBonus: {
           isEnabled: true,
@@ -141,21 +125,6 @@ export class CompensationEngine {
           uplineBonusRate: 0.02, // 2%
           maxUplineLevels: 1,
           calculationBase: 'BV',
-        },
-        royalty: {
-          isEnabled: false,
-          poolPercent: 0,
-          eligibleRanks: [],
-          minTeamVolume: 0,
-          notes: 'TODO: Confirm exact Royalty pool formula with business owner.',
-        },
-        consultancyBonus: {
-          isEnabled: false,
-          qualifyingAmount: 2500,
-          productQuantity: 1,
-          qualifyingMonths: 3,
-          freeProductMonth: 4,
-          notes: 'TODO: Confirm exact Consultancy Bonus rules with business owner.',
         },
         retailProfit: {
           isEnabled: true,
@@ -280,20 +249,11 @@ export class CompensationEngine {
       //    leg and is matched and paid by the daily binary settlement once the IST day ends, which
       //    also pays the direct sponsor's 20% sponsor income.
       for (const { ancestorMemberId } of binaryAncestors) {
-        // E. Team Bonus Tiers for Ancestors
-        const teamComm = await TeamBonusService.processTeamBonus(
-          ancestorMemberId,
-          rules,
-          eventId,
-          purchase.purchaseId
-        );
-        if (teamComm) commissionsGenerated.push(teamComm);
-
-        // F. Team Performance Bonus: updates the ancestor's RP and records new slab qualifications.
+        // E. Team Performance Bonus: updates the ancestor's RP and records new slab qualifications.
         //    Payouts are made by the period settlement, not per purchase.
         await TeamPerformanceBonusService.evaluateMember(ancestorMemberId);
 
-        // G. Lifetime Milestone Rewards
+        // F. Lifetime Milestone Rewards
         const rewardComms = await RewardService.evaluateRewards(
           ancestorMemberId,
           rules,

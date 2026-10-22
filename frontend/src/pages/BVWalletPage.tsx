@@ -1,15 +1,17 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ArrowDownLeft, ArrowUpRight, Clock, Gift, Layers, PlusCircle, RefreshCw, Search, Send, ShieldAlert, ShieldCheck, ShoppingCart, Sparkles, Undo2, UserRound, Wallet } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Clock, Gift, IndianRupee, Layers, PlusCircle, RefreshCw, RotateCcw, Search, Send, ShieldAlert, ShieldCheck, ShoppingCart, Sparkles, Undo2, Wallet } from 'lucide-react';
 import { Alert, Field as SharedField, Modal as SharedModal, StatusBadge } from '../components/ui';
 import {
   api,
+  type BVRateInfo,
   type BVRecipient,
+  type BVReturnRequestItem,
   type BVTransactionItem,
   type BVTransactionStatus,
   type BVWalletSummary,
 } from '../services/api';
 
-type Section = 'send' | 'history' | 'generate';
+type Section = 'send' | 'history' | 'returns' | 'generate';
 
 interface BVWalletPageProps {
   user?: any;
@@ -25,9 +27,10 @@ interface AdminOverview {
 }
 
 const OPERATOR_STORAGE_KEY = 'wetala_bv_operator_name';
-const SUPER_ADMIN_ID = 'ADMIN';
 
 const formatBV = (value: number | undefined) => `${(value || 0).toLocaleString('en-IN')} BV`;
+const formatINR = (value: number | null | undefined) =>
+  `₹${(value || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 const TYPE_LABEL: Record<BVTransactionItem['type'], string> = {
   GENERATION: 'Generated',
@@ -37,6 +40,9 @@ const TYPE_LABEL: Record<BVTransactionItem['type'], string> = {
   PURCHASE: 'Order payment',
   PURCHASE_REFUND: 'Order refund',
   BINARY_ACTIVATION: 'Binary activation',
+  RETURN_REQUESTED: 'Return requested',
+  RETURN_APPROVED: 'Return to company',
+  RETURN_RELEASED: 'Return released',
 };
 const formatDateTime = (value?: string) =>
   value ? new Date(value).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
@@ -154,10 +160,12 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
   const refreshAll = () => setRefreshKey((k) => k + 1);
 
   const sections: Array<{ id: Section; label: string; icon: React.ElementType }> = [
-    { id: 'send', label: 'Send BV', icon: Send },
+    { id: 'send', label: isAdmin ? 'Sell BV' : 'Send BV', icon: Send },
     { id: 'history', label: 'History', icon: Clock },
+    { id: 'returns', label: isAdmin ? 'Return requests' : 'Return BV', icon: RotateCcw },
     ...(isAdmin ? [{ id: 'generate' as Section, label: 'Generate BV', icon: PlusCircle }] : []),
   ];
+  const bonusBV = wallet?.bonusBV || 0;
 
   return (
     <div className="page-body">
@@ -166,8 +174,8 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
           <h1 className="page-title">{isAdmin ? 'BV Wallet (Super Admin)' : 'My BV Wallet'}</h1>
           <p className="page-subtitle">
             {isAdmin
-              ? 'Generate BV, send it to members instantly, and audit or reverse transactions.'
-              : 'Send BV to other members or the Super Admin, pay for products and packages, and track everything you sent and received.'}
+              ? 'Generate BV, sell it to members at the BV rate, handle return requests, and audit or reverse transactions.'
+              : 'Send BV to other members, pay for products and packages, return BV you bought, and track everything you sent and received.'}
           </p>
         </div>
         <button type="button" onClick={refreshAll} className="btn btn-sm btn-secondary" title="Refresh">
@@ -181,7 +189,19 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
       )}
 
       <div className="kpi-grid">
-        <KpiCard tone="green" icon={<Wallet size={20} />} label="Available" value={formatBV(wallet?.availableBV)} sub="Ready to send" />
+        <KpiCard
+          tone="green"
+          icon={<Wallet size={20} />}
+          label="Available"
+          value={formatBV(wallet?.availableBV)}
+          sub={
+            isAdmin
+              ? 'Ready to sell'
+              : bonusBV > 0
+                ? `${formatBV(wallet?.sendableBV)} can be sent · ${formatBV(bonusBV)} bonus for orders only`
+                : 'Ready to send'
+          }
+        />
         {isAdmin ? (
           <>
             <KpiCard
@@ -194,11 +214,11 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
             />
             <KpiCard
               tone="gold"
-              icon={<ArrowDownLeft size={20} />}
-              label="Received from members"
-              value={formatBV(wallet?.totalReceived)}
+              icon={<IndianRupee size={20} />}
+              label="Sold to members"
+              value={formatBV(wallet?.totalSold)}
               valueColor="var(--warning)"
-              sub={`${formatBV(wallet?.totalSent)} sent to members`}
+              sub={`${formatBV(wallet?.totalReceived)} returned by members`}
             />
             <KpiCard
               tone="blue"
@@ -219,7 +239,14 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
               valueColor="var(--primary)"
               sub={`${formatBV(wallet?.totalSent)} sent to others`}
             />
-            <KpiCard tone="gold" icon={<Gift size={20} />} label="Welcome bonus" value={formatBV(wallet?.totalWelcomeBonus)} valueColor="var(--warning)" sub="Credited weekly as BV" />
+            <KpiCard
+              tone="gold"
+              icon={<Gift size={20} />}
+              label="Welcome bonus"
+              value={formatBV(wallet?.totalWelcomeBonus)}
+              valueColor="var(--warning)"
+              sub={`${formatBV(bonusBV)} unused · for your own orders only`}
+            />
             <KpiCard tone="purple" icon={<ShoppingCart size={20} />} label="Spent on orders" value={formatBV(wallet?.totalSpent)} valueColor="var(--accent)" sub="Products & packages paid with BV" />
             {(wallet?.totalActivationLocked || 0) > 0 && (
               <KpiCard
@@ -272,6 +299,12 @@ export const BVWalletPage: React.FC<BVWalletPageProps> = ({ user, token, initial
 
       {section === 'send' && <SendSection token={authToken} isAdmin={isAdmin} wallet={wallet} onChange={refreshAll} />}
       {section === 'history' && <HistorySection token={authToken} isAdmin={isAdmin} refreshKey={refreshKey} onChange={refreshAll} />}
+      {section === 'returns' &&
+        (isAdmin ? (
+          <AdminReturnsSection token={authToken} refreshKey={refreshKey} onChange={refreshAll} />
+        ) : (
+          <MemberReturnsSection token={authToken} wallet={wallet} refreshKey={refreshKey} onChange={refreshAll} />
+        ))}
       {section === 'generate' && isAdmin && <GenerateSection token={authToken} wallet={wallet} onChange={refreshAll} />}
     </div>
   );
@@ -301,6 +334,18 @@ const SendSection: React.FC<{
   const [repeatWarning, setRepeatWarning] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
+  // Super Admin transfers are sales at the current BV rate
+  const [rate, setRate] = useState<BVRateInfo | null>(null);
+  const [rateLoaded, setRateLoaded] = useState(!isAdmin);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    api
+      .getBVRate(token)
+      .then((res) => setRate(res?.status ? res.data || null : null))
+      .catch(() => setRate(null))
+      .finally(() => setRateLoaded(true));
+  }, [isAdmin, token]);
 
   // Debounced member search
   useEffect(() => {
@@ -324,28 +369,25 @@ const SendSection: React.FC<{
     return () => clearTimeout(handle);
   }, [query, token]);
 
-  const chooseSuperAdmin = async () => {
-    setSearchError('');
-    try {
-      const res = await api.getBVRecipient(SUPER_ADMIN_ID, token);
-      if (res?.status) setRecipient(res.data);
-      else setSearchError(res?.message || 'Super Admin is not available.');
-    } catch {
-      setSearchError('Super Admin is not available.');
-    }
-  };
-
   const amountNumber = Number(amount);
   const maxTransfer = wallet?.limits.maxTransferBV || 0;
+  // Members can only send regular BV; welcome bonus BV pays for their own orders
+  const sendable = wallet ? (wallet.sendableBV ?? wallet.availableBV) : 0;
+  const saleValue = rate && Number.isInteger(amountNumber) && amountNumber > 0 ? (amountNumber * rate.ratePaise) / 100 : 0;
   const validationError = useMemo(() => {
+    if (isAdmin && rateLoaded && !rate) return 'Set the BV rate in Company Earnings before selling BV.';
     if (!recipient) return 'Select a recipient.';
     if (!amount || !Number.isInteger(amountNumber) || amountNumber < 1) return 'Enter a whole number of BV.';
-    if (wallet && amountNumber > wallet.availableBV) return `You only have ${formatBV(wallet.availableBV)} available.`;
+    if (wallet && amountNumber > sendable) {
+      return wallet.bonusBV > 0 && !isAdmin
+        ? `You can send up to ${formatBV(sendable)}. ${formatBV(wallet.bonusBV)} is welcome bonus BV, which can only be used for your own orders.`
+        : `You only have ${formatBV(sendable)} available.`;
+    }
     if (maxTransfer && amountNumber > maxTransfer) return `Maximum per transfer is ${formatBV(maxTransfer)}.`;
     if (!title.trim()) return 'Enter a title.';
     if (isAdmin && !operatorName.trim()) return 'Enter your name as operator.';
     return '';
-  }, [recipient, amount, amountNumber, wallet, maxTransfer, title, isAdmin, operatorName]);
+  }, [recipient, amount, amountNumber, wallet, sendable, maxTransfer, title, isAdmin, operatorName, rate, rateLoaded]);
 
   const resetForm = () => {
     setRecipient(null);
@@ -398,29 +440,32 @@ const SendSection: React.FC<{
     }
   };
 
-  const isToAdmin = recipient?.memberId === SUPER_ADMIN_ID;
-
   return (
     <div className="dashboard-card">
       <div className="card-header-row" style={{ marginBottom: '12px' }}>
-        <h2 className="card-title">Send BV</h2>
+        <h2 className="card-title">{isAdmin ? 'Sell BV to a member' : 'Send BV'}</h2>
       </div>
       {message && <Banner kind={message.kind} text={message.text} onClose={() => setMessage(null)} />}
+      {isAdmin && rateLoaded && (
+        rate ? (
+          <Alert tone="info" style={{ marginBottom: '16px' }}>
+            BV rate: <strong>{formatINR(rate.rate)} per BV</strong>. Every BV you send is added to Super Admin earnings at this rate.
+          </Alert>
+        ) : (
+          <Alert tone="warning" style={{ marginBottom: '16px' }} title="No BV rate set">
+            Set the BV rate in Company Earnings before selling BV to members.
+          </Alert>
+        )
+      )}
+      {!isAdmin && (
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: 0 }}>
+          To give BV you bought back to the company, use <strong>Return BV</strong>.
+        </p>
+      )}
 
       {!recipient ? (
         <>
-          {!isAdmin && (
-            <button
-              type="button"
-              onClick={chooseSuperAdmin} className="btn btn-secondary" style={{ width: '100%', marginBottom: '16px' }}>
-              <UserRound size={18} color="var(--primary)" />
-              <span>
-                <span style={{ display: 'block', fontWeight: 700, color: 'var(--text-main)', fontSize: 'var(--fs-base)' }}>Send to Super Admin</span>
-                <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>Return BV to the company wallet</span>
-              </span>
-            </button>
-          )}
-          <Field label={isAdmin ? 'Find member' : 'Or find a member'} hint="Search by Member ID, name, phone number or email.">
+          <Field label="Find member" hint="Search by Member ID, name, phone number or email.">
             <div style={{ position: 'relative' }}>
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-light)' }} />
               <input
@@ -487,7 +532,7 @@ const SendSection: React.FC<{
               <div style={{ fontSize: 'var(--fs-xs)', fontWeight: 700, color: 'var(--success-hover)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Recipient</div>
               <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800, color: 'var(--text-main)' }}>{recipient.name}</div>
               <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)' }}>
-                {isToAdmin ? 'Company wallet' : [recipient.memberId, recipient.mobile, recipient.email].filter(Boolean).join(' · ')}
+                {[recipient.memberId, recipient.mobile, recipient.email].filter(Boolean).join(' · ')}
               </div>
             </div>
             <button type="button" className="btn btn-sm btn-secondary" onClick={() => setRecipient(null)}>
@@ -496,13 +541,27 @@ const SendSection: React.FC<{
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0 16px' }}>
-            <Field label="Amount (BV)" hint={wallet ? `Available: ${formatBV(wallet.availableBV)}` : undefined}>
+            <Field
+              label="Amount (BV)"
+              hint={
+                wallet
+                  ? isAdmin || !wallet.bonusBV
+                    ? `Available: ${formatBV(sendable)}`
+                    : `Can be sent: ${formatBV(sendable)} (${formatBV(wallet.bonusBV)} welcome bonus is for your own orders)`
+                  : undefined
+              }
+            >
               <input type="number" min={1} step={1} value={amount} onChange={(e) => setAmount(e.target.value)} style={inputStyle} placeholder="e.g. 2000" />
             </Field>
             <Field label="Title">
-              <input type="text" maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} placeholder="e.g. Payment received" />
+              <input type="text" maxLength={100} value={title} onChange={(e) => setTitle(e.target.value)} style={inputStyle} placeholder={isAdmin ? 'e.g. BV purchase' : 'e.g. For your order'} />
             </Field>
           </div>
+          {isAdmin && rate && saleValue > 0 && (
+            <div style={{ fontSize: 'var(--fs-base)', color: 'var(--text-body)', marginBottom: '12px' }}>
+              {formatBV(amountNumber)} × {formatINR(rate.rate)} = <strong>{formatINR(saleValue)}</strong> will be added to Super Admin earnings.
+            </div>
+          )}
           <Field label="Note (optional)">
             <textarea maxLength={500} rows={2} value={note} onChange={(e) => setNote(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} />
           </Field>
@@ -522,8 +581,12 @@ const SendSection: React.FC<{
       {confirming && recipient && (
         <Modal title="Confirm BV transfer" onClose={() => !submitting && setConfirming(false)}>
           <div style={{ fontSize: 'var(--fs-md)', color: 'var(--text-body)', lineHeight: 1.6 }}>
-            Send <strong>{formatBV(amountNumber)}</strong> to <strong>{recipient.name}</strong>
-            {!isToAdmin && ` (${recipient.memberId})`}?
+            Send <strong>{formatBV(amountNumber)}</strong> to <strong>{recipient.name}</strong> ({recipient.memberId})?
+            {isAdmin && rate && (
+              <div style={{ marginTop: '8px' }}>
+                Sale value: <strong>{formatINR(saleValue)}</strong> at {formatINR(rate.rate)} per BV, added to Super Admin earnings.
+              </div>
+            )}
             <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--danger-hover)', fontWeight: 600, marginTop: '8px' }}>
               The BV is credited immediately and this cannot be undone. Check the name and amount.
             </div>
@@ -627,6 +690,9 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
           <option value="PURCHASE">Order payment</option>
           <option value="PURCHASE_REFUND">Order refund</option>
           <option value="BINARY_ACTIVATION">Binary activation</option>
+          <option value="RETURN_REQUESTED">Return requested</option>
+          <option value="RETURN_APPROVED">Return to company</option>
+          <option value="RETURN_RELEASED">Return released</option>
         </select>
         {scope === 'mine' && (
           <select value={direction} onChange={(e) => setDirection(e.target.value)} style={selectStyle} aria-label="Direction">
@@ -700,7 +766,9 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
                         ? Gift
                         : t.type === 'PURCHASE' || t.type === 'PURCHASE_REFUND'
                           ? ShoppingCart
-                          : outgoing
+                          : t.type === 'RETURN_REQUESTED' || t.type === 'RETURN_APPROVED' || t.type === 'RETURN_RELEASED'
+                            ? RotateCcw
+                            : outgoing
                             ? ArrowUpRight
                             : ArrowDownLeft;
                 return (
@@ -726,6 +794,15 @@ const HistorySection: React.FC<{ token?: string; isAdmin: boolean; refreshKey: n
                     <td style={{ textAlign: 'right', fontWeight: 800, color: outgoing ? 'var(--danger-hover)' : 'var(--success-hover)', whiteSpace: 'nowrap' }}>
                       {sign}
                       {t.amount.toLocaleString('en-IN')}
+                      {typeof t.value === 'number' && (
+                        <div style={{ fontWeight: 600, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>
+                          {formatINR(t.value)}
+                          {typeof t.rate === 'number' ? ` @ ${formatINR(t.rate)}` : ''}
+                        </div>
+                      )}
+                      {!!t.bonusAmount && t.type !== 'WELCOME_BONUS' && (
+                        <div style={{ fontWeight: 600, fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>{t.bonusAmount.toLocaleString('en-IN')} bonus BV</div>
+                      )}
                     </td>
                     <td style={{ maxWidth: '240px' }}>
                       <div style={{ fontWeight: 600 }}>{t.title}</div>
@@ -822,6 +899,12 @@ const ReverseModal: React.FC<{ token?: string; transfer: BVTransactionItem; onCl
       <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-body)', marginTop: 0 }}>
         Move <strong>{formatBV(transfer.amount)}</strong> back from <strong>{transfer.recipient?.name}</strong> ({transfer.recipient?.id}) to{' '}
         <strong>{transfer.sender.name}</strong> ({transfer.sender.id}). This creates a new reversal transaction and can only be done once.
+        {typeof transfer.value === 'number' && (
+          <>
+            {' '}
+            The sale value of <strong>{formatINR(transfer.value)}</strong> is taken back out of Super Admin earnings.
+          </>
+        )}
       </p>
       {error && <Banner kind="error" text={error} />}
       <Field label="Reason">
@@ -844,6 +927,467 @@ const ReverseModal: React.FC<{ token?: string; transfer: BVTransactionItem; onCl
           onClick={submit}
         >
           {submitting ? 'Reversing…' : 'Reverse transfer'}
+        </button>
+      </div>
+    </Modal>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Returns to the company
+// ---------------------------------------------------------------------------
+
+const ReturnStatus: React.FC<{ status: BVReturnRequestItem['status'] }> = ({ status }) => <StatusBadge status={status} />;
+
+const Pagination: React.FC<{ page: number; totalPages: number; onPage: (page: number) => void }> = ({ page, totalPages, onPage }) =>
+  totalPages > 1 ? (
+    <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '8px', padding: '12px 16px' }}>
+      <button type="button" className="btn btn-sm btn-secondary" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+        Previous
+      </button>
+      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+        Page {page} of {totalPages}
+      </span>
+      <button type="button" className="btn btn-sm btn-secondary" disabled={page >= totalPages} onClick={() => onPage(page + 1)}>
+        Next
+      </button>
+    </div>
+  ) : null;
+
+/** Member: return BV bought from the Super Admin, and follow its own requests. */
+const MemberReturnsSection: React.FC<{ token?: string; wallet: BVWalletSummary | null; refreshKey: number; onChange: () => void }> = ({
+  token,
+  wallet,
+  refreshKey,
+  onChange,
+}) => {
+  const [amount, setAmount] = useState('');
+  const [note, setNote] = useState('');
+  const [requestKey, setRequestKey] = useState(newRequestKey);
+  const [confirming, setConfirming] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [message, setMessage] = useState<{ kind: 'error' | 'success'; text: string } | null>(null);
+  const [items, setItems] = useState<BVReturnRequestItem[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [cancelling, setCancelling] = useState('');
+
+  useEffect(() => {
+    api
+      .getMyBVReturns({ page, limit: 10 }, token)
+      .then((res: any) => {
+        if (res?.status) {
+          setItems(res.data || []);
+          setTotalPages(res.totalPages || 1);
+        }
+      })
+      .catch(() => {});
+  }, [token, page, refreshKey]);
+
+  const capacity = wallet?.returns;
+  const returnable = capacity?.returnableBV || 0;
+  const amountNumber = Number(amount);
+  // Same average-price rule as the server; the last BV takes the exact remainder
+  const estimate =
+    capacity && Number.isInteger(amountNumber) && amountNumber > 0
+      ? amountNumber >= returnable
+        ? capacity.returnableValue
+        : Math.round(amountNumber * capacity.valuePerBV * 100) / 100
+      : 0;
+  const validationError =
+    !amount || !Number.isInteger(amountNumber) || amountNumber < 1
+      ? 'Enter a whole number of BV.'
+      : amountNumber > returnable
+        ? `You can return up to ${formatBV(returnable)}.`
+        : '';
+
+  const submit = async () => {
+    setSubmitting(true);
+    setMessage(null);
+    try {
+      const res = await api.requestBVReturn({ amount: amountNumber, note: note.trim(), requestKey }, token);
+      setConfirming(false);
+      if (res?.status) {
+        setMessage({ kind: 'success', text: res.message });
+        setAmount('');
+        setNote('');
+        setRequestKey(newRequestKey());
+        setPage(1);
+        onChange();
+      } else {
+        setMessage({ kind: 'error', text: res?.message || 'Return request failed.' });
+      }
+    } catch {
+      // Keep the same request key so a retry cannot file twice
+      setConfirming(false);
+      setMessage({ kind: 'error', text: 'Network error. Check your requests below before retrying; a retry will not file twice.' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const cancel = async (requestId: string) => {
+    setCancelling(requestId);
+    setMessage(null);
+    try {
+      const res = await api.cancelBVReturn(requestId, token);
+      setMessage({ kind: res?.status ? 'success' : 'error', text: res?.message || 'Could not cancel.' });
+      if (res?.status) onChange();
+    } catch {
+      setMessage({ kind: 'error', text: 'Network error. Please try again.' });
+    } finally {
+      setCancelling('');
+    }
+  };
+
+  return (
+    <>
+      <div className="dashboard-card" style={{ maxWidth: '640px' }}>
+        <div className="card-header-row" style={{ marginBottom: '12px' }}>
+          <h2 className="card-title">Return BV to the company</h2>
+        </div>
+        <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', marginTop: 0 }}>
+          You can return BV you bought from the company, at the average price you paid. Welcome bonus BV and BV received from other members
+          cannot be returned. The BV is held until the Super Admin approves your request and refunds you.
+        </p>
+        {message && <Banner kind={message.kind} text={message.text} onClose={() => setMessage(null)} />}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px', marginBottom: '16px' }}>
+          <div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Returnable now</div>
+            <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800 }}>{formatBV(returnable)}</div>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>Worth {formatINR(capacity?.returnableValue)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Bought from company</div>
+            <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800 }}>{formatBV(capacity?.purchasedBV)}</div>
+            <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>Paid {formatINR(capacity?.purchasedValue)}</div>
+          </div>
+          <div>
+            <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase' }}>Returned / pending</div>
+            <div style={{ fontSize: 'var(--fs-lg)', fontWeight: 800 }}>
+              {formatBV(capacity?.returnedBV)} / {formatBV(capacity?.pendingReturnBV)}
+            </div>
+          </div>
+        </div>
+
+        {returnable > 0 ? (
+          <>
+            <Field label="BV to return" hint={capacity ? `Average price: ${formatINR(capacity.valuePerBV)} per BV` : undefined}>
+              <input type="number" min={1} step={1} value={amount} onChange={(e) => setAmount(e.target.value)} style={inputStyle} placeholder={`Up to ${returnable}`} />
+            </Field>
+            <Field label="Note (optional)">
+              <textarea maxLength={500} rows={2} value={note} onChange={(e) => setNote(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} placeholder="e.g. Refund to my UPI ID" />
+            </Field>
+            {amount && validationError && <div style={{ fontSize: 'var(--fs-sm)', color: 'var(--warning-hover)', marginBottom: '10px' }}>{validationError}</div>}
+            {amount && !validationError && (
+              <div style={{ fontSize: 'var(--fs-base)', marginBottom: '12px' }}>
+                Refund value: <strong>{amountNumber < returnable ? '≈ ' : ''}{formatINR(estimate)}</strong>
+              </div>
+            )}
+            <button type="button" className="btn btn-primary" disabled={!!validationError || !!wallet?.isFrozen} onClick={() => setConfirming(true)}>
+              <RotateCcw size={14} />
+              <span>Review return</span>
+            </button>
+          </>
+        ) : (
+          <Alert tone="info">You have no BV to return.</Alert>
+        )}
+      </div>
+
+      <div className="dashboard-card" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="card-header-row" style={{ padding: '14px 16px', margin: 0, borderBottom: '1px solid var(--border-color)' }}>
+          <h2 className="card-title">My return requests</h2>
+        </div>
+        <div className="table-responsive">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Request</th>
+                <th style={{ textAlign: 'right' }}>BV</th>
+                <th style={{ textAlign: 'right' }}>Refund value</th>
+                <th>Requested</th>
+                <th>Status</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} style={{ textAlign: 'center', padding: '28px', color: 'var(--text-light)' }}>
+                    No return requests yet.
+                  </td>
+                </tr>
+              ) : (
+                items.map((r) => (
+                  <tr key={r.requestId}>
+                    <td style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+                      {r.requestId}
+                      {r.note && <div style={{ fontFamily: 'inherit', color: 'var(--text-muted)' }}>{r.note}</div>}
+                    </td>
+                    <td style={{ textAlign: 'right', fontWeight: 700 }}>{r.amount.toLocaleString('en-IN')}</td>
+                    <td style={{ textAlign: 'right' }}>{formatINR(r.value)}</td>
+                    <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(r.createdAt)}</td>
+                    <td>
+                      <ReturnStatus status={r.status} />
+                      {r.decisionReason && r.status === 'REJECTED' && (
+                        <div style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', marginTop: '2px' }}>{r.decisionReason}</div>
+                      )}
+                    </td>
+                    <td>
+                      {r.status === 'PENDING' && (
+                        <button type="button" className="btn btn-sm btn-secondary" disabled={cancelling === r.requestId} onClick={() => cancel(r.requestId)}>
+                          {cancelling === r.requestId ? 'Cancelling…' : 'Cancel'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+        <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+      </div>
+
+      {confirming && (
+        <Modal title="Confirm BV return" onClose={() => !submitting && setConfirming(false)}>
+          <p style={{ fontSize: 'var(--fs-md)', color: 'var(--text-body)', marginTop: 0 }}>
+            Return <strong>{formatBV(amountNumber)}</strong> to the company for <strong>{amountNumber < returnable ? 'about ' : ''}{formatINR(estimate)}</strong>?
+          </p>
+          <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
+            The BV is held from your wallet now. If the Super Admin rejects the request, or you cancel it, the BV comes back.
+          </p>
+          <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end', marginTop: '18px' }}>
+            <button type="button" className="btn btn-sm btn-secondary" disabled={submitting} onClick={() => setConfirming(false)}>
+              Back
+            </button>
+            <button type="button" className="btn btn-primary" disabled={submitting} onClick={submit}>
+              {submitting ? 'Submitting…' : 'Submit request'}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+};
+
+/** Super Admin: approve (after refunding outside the app) or reject members' return requests. */
+const AdminReturnsSection: React.FC<{ token?: string; refreshKey: number; onChange: () => void }> = ({ token, refreshKey, onChange }) => {
+  const [status, setStatus] = useState<'' | BVReturnRequestItem['status']>('PENDING');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [items, setItems] = useState<BVReturnRequestItem[]>([]);
+  const [total, setTotal] = useState(0);
+  const [totalPages, setTotalPages] = useState(1);
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const [acting, setActing] = useState<{ request: BVReturnRequestItem; action: 'approve' | 'reject' } | null>(null);
+
+  useEffect(() => {
+    setPage(1);
+  }, [status, search]);
+
+  useEffect(() => {
+    const handle = setTimeout(() => {
+      api
+        .getAllBVReturns({ status, search: search.trim(), page, limit: 20 }, token)
+        .then((res: any) => {
+          if (res?.status) {
+            setItems(res.data || []);
+            setTotal(res.total || 0);
+            setTotalPages(res.totalPages || 1);
+            setError('');
+          } else {
+            setError(res?.message || 'Could not load return requests.');
+          }
+        })
+        .catch(() => setError('Could not load return requests.'));
+    }, search ? 300 : 0);
+    return () => clearTimeout(handle);
+  }, [status, search, page, token, refreshKey]);
+
+  const selectStyle: React.CSSProperties = { ...inputStyle, width: 'auto', padding: '8px 10px', fontSize: 'var(--fs-base)' };
+
+  return (
+    <div className="dashboard-card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid var(--border-color)', background: 'var(--surface-subtle)' }}>
+        <select value={status} onChange={(e) => setStatus(e.target.value as typeof status)} style={selectStyle} aria-label="Status">
+          <option value="PENDING">Pending</option>
+          <option value="APPROVED">Approved</option>
+          <option value="REJECTED">Rejected</option>
+          <option value="CANCELLED">Cancelled</option>
+          <option value="">All statuses</option>
+        </select>
+        <input
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Request ID, member"
+          style={{ ...inputStyle, width: 'auto', flex: '1 1 200px', padding: '8px 10px', fontSize: 'var(--fs-base)' }}
+          aria-label="Search return requests"
+        />
+        <span style={{ marginLeft: 'auto', fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>{total} request(s)</span>
+      </div>
+      <div style={{ padding: '12px 16px 0' }}>
+        <Alert tone="info">
+          Refund the member outside the app first, then approve. Approving moves the BV to the Super Admin wallet and deducts the refund value from earnings.
+        </Alert>
+        {error && <Banner kind="error" text={error} />}
+        {message && <Banner kind="success" text={message} onClose={() => setMessage('')} />}
+      </div>
+
+      <div className="table-responsive">
+        <table className="data-table">
+          <thead>
+            <tr>
+              <th>Request</th>
+              <th>Member</th>
+              <th style={{ textAlign: 'right' }}>BV</th>
+              <th style={{ textAlign: 'right' }}>Refund value</th>
+              <th>Requested</th>
+              <th>Status</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody>
+            {items.length === 0 ? (
+              <tr>
+                <td colSpan={7} style={{ textAlign: 'center', padding: '28px', color: 'var(--text-light)' }}>
+                  No return requests.
+                </td>
+              </tr>
+            ) : (
+              items.map((r) => (
+                <tr key={r.requestId}>
+                  <td style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
+                    {r.requestId}
+                    {r.note && <div style={{ fontFamily: 'inherit', color: 'var(--text-muted)' }}>{r.note}</div>}
+                  </td>
+                  <td>
+                    {r.memberName} <span style={{ color: 'var(--text-light)' }}>({r.memberId})</span>
+                  </td>
+                  <td style={{ textAlign: 'right', fontWeight: 700 }}>{r.amount.toLocaleString('en-IN')}</td>
+                  <td style={{ textAlign: 'right' }}>
+                    {formatINR(r.value)}
+                    <div style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)' }}>@ {formatINR(r.valuePerBV)}</div>
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{formatDateTime(r.createdAt)}</td>
+                  <td>
+                    <ReturnStatus status={r.status} />
+                    {r.status !== 'PENDING' && (r.decidedBy?.operatorName || r.decisionReason) && (
+                      <div style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-xs)', marginTop: '2px' }}>
+                        {[r.decidedBy?.operatorName, r.decisionReason].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </td>
+                  <td style={{ whiteSpace: 'nowrap' }}>
+                    {r.status === 'PENDING' && (
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        <button type="button" className="btn btn-sm btn-primary" onClick={() => setActing({ request: r, action: 'approve' })}>
+                          Approve
+                        </button>
+                        <button type="button" className="btn btn-sm btn-danger-outline" onClick={() => setActing({ request: r, action: 'reject' })}>
+                          Reject
+                        </button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+
+      {acting && (
+        <ReturnDecisionModal
+          token={token}
+          request={acting.request}
+          action={acting.action}
+          onClose={() => setActing(null)}
+          onDone={(text) => {
+            setActing(null);
+            setMessage(text);
+            onChange();
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+const ReturnDecisionModal: React.FC<{
+  token?: string;
+  request: BVReturnRequestItem;
+  action: 'approve' | 'reject';
+  onClose: () => void;
+  onDone: (message: string) => void;
+}> = ({ token, request, action, onClose, onDone }) => {
+  const [reason, setReason] = useState('');
+  const [operatorName, setOperatorName] = useState(readStoredOperator);
+  const [password, setPassword] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const approving = action === 'approve';
+
+  const submit = async () => {
+    setSubmitting(true);
+    setError('');
+    try {
+      storeOperator(operatorName.trim());
+      const res = approving
+        ? await api.approveBVReturn(request.requestId, { operatorName: operatorName.trim(), password }, token)
+        : await api.rejectBVReturn(request.requestId, { reason: reason.trim(), operatorName: operatorName.trim() }, token);
+      setPassword('');
+      if (res?.status) onDone(res.message);
+      else setError(res?.message || 'Action failed.');
+    } catch {
+      setError('Network error. Check the request status before retrying.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Modal title={approving ? 'Approve return' : 'Reject return'} onClose={() => !submitting && onClose()}>
+      <p style={{ fontSize: 'var(--fs-base)', color: 'var(--text-body)', marginTop: 0 }}>
+        {approving ? (
+          <>
+            Confirm you have refunded <strong>{formatINR(request.value)}</strong> to <strong>{request.memberName}</strong> ({request.memberId}).{' '}
+            {formatBV(request.amount)} moves to the Super Admin wallet and {formatINR(request.value)} is deducted from earnings.
+          </>
+        ) : (
+          <>
+            {formatBV(request.amount)} goes back to <strong>{request.memberName}</strong> ({request.memberId}). Earnings do not change.
+          </>
+        )}
+      </p>
+      {error && <Banner kind="error" text={error} />}
+      {!approving && (
+        <Field label="Reason">
+          <textarea maxLength={500} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} style={{ ...inputStyle, resize: 'vertical' }} placeholder="Shown to the member" />
+        </Field>
+      )}
+      <Field label="Operator name">
+        <input type="text" maxLength={60} value={operatorName} onChange={(e) => setOperatorName(e.target.value)} style={inputStyle} />
+      </Field>
+      {approving && (
+        <Field label="Super Admin password">
+          <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} style={inputStyle} />
+        </Field>
+      )}
+      <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+        <button type="button" className="btn btn-sm btn-secondary" disabled={submitting} onClick={onClose}>
+          Back
+        </button>
+        <button
+          type="button"
+          className={approving ? 'btn btn-primary' : 'btn btn-danger'}
+          disabled={submitting || !operatorName.trim() || (approving ? !password : !reason.trim())}
+          onClick={submit}
+        >
+          {submitting ? 'Saving…' : approving ? 'Approve return' : 'Reject return'}
         </button>
       </div>
     </Modal>

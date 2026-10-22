@@ -14,8 +14,13 @@ router.get('/transactions', BVWalletController.getMyTransactions);
 router.get('/recipients/search', BVWalletController.searchRecipients);
 router.get('/recipients/:recipientId', BVWalletController.getRecipient);
 
-// Instant transfers (member -> member, member -> Super Admin, Super Admin -> member)
+// Instant transfers (member -> member, Super Admin -> member; the latter is a BV sale at the BV rate)
 router.post('/transfers', BVWalletController.transfer);
+
+// Member returns of BV bought from the Super Admin (held until the Super Admin approves)
+router.get('/returns', BVWalletController.getMyReturns);
+router.post('/returns', BVWalletController.requestReturn);
+router.post('/returns/:requestId/cancel', BVWalletController.cancelReturn);
 
 // Super Admin
 router.post('/admin/generate', requireSuperAdmin, BVWalletController.generate);
@@ -25,5 +30,8 @@ router.post('/admin/transactions/:transactionId/reverse', requireSuperAdmin, BVW
 router.get('/admin/reconcile', requireSuperAdmin, BVWalletController.reconcile);
 router.get('/admin/wallets/:memberId', requireSuperAdmin, BVWalletController.getMemberWallet);
 router.post('/admin/wallets/:memberId/freeze', requireSuperAdmin, BVWalletController.setWalletFrozen);
+router.get('/admin/returns', requireSuperAdmin, BVWalletController.getAllReturns);
+router.post('/admin/returns/:requestId/approve', requireSuperAdmin, BVWalletController.approveReturn);
+router.post('/admin/returns/:requestId/reject', requireSuperAdmin, BVWalletController.rejectReturn);
 
 export default router;

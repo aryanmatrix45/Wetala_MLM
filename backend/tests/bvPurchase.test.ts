@@ -24,6 +24,9 @@ import { AdminNotification } from '../src/models/AdminNotification.model';
 import { BVWallet } from '../src/models/BVWallet.model';
 import { BVTransaction } from '../src/models/BVTransaction.model';
 import { BVWalletLedger } from '../src/models/BVWalletLedger.model';
+import { BVRate } from '../src/models/BVRate.model';
+import { CompanyEarning } from '../src/models/CompanyEarning.model';
+import { BVReturnRequest } from '../src/models/BVReturnRequest.model';
 import { WelcomeBonusSettlement } from '../src/models/WelcomeBonusSettlement.model';
 import { WelcomeBonusTransaction } from '../src/models/WelcomeBonusTransaction.model';
 import { WalletTransaction } from '../src/models/WalletTransaction.model';
@@ -63,6 +66,7 @@ async function wipe() {
     [
       Member, Admin, Package, Product, Purchase, Wallet, WalletTransaction, BinaryVolume, BVLedger, CommissionLedger,
       CompensationEvent, AdminNotification, BVWallet, BVTransaction, BVWalletLedger, WelcomeBonusSettlement, WelcomeBonusTransaction,
+      BVRate, CompanyEarning, BVReturnRequest,
     ].map((m: any) => m.deleteMany({}))
   );
 }
@@ -88,6 +92,8 @@ async function runTests() {
 
     const admin = await Admin.create({ firstName: 'Bv', lastName: 'Admin', phone: '9000000001', email: `admin${DOMAIN}`, password: ADMIN_PASSWORD });
     const adminToken = jwt.sign({ id: admin._id.toString(), email: admin.email, role: 'superadmin' }, secret);
+    // Super Admin transfers are BV sales and need a BV rate
+    await BVRate.create({ rateId: 'RATE-TEST-1', ratePaise: 100, setBy: { email: admin.email, operatorName: 'Ravi' } });
 
     const makeMember = async (memberId: string, extra: Record<string, unknown> = {}) => {
       const m = await Member.create({
