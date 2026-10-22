@@ -73,7 +73,7 @@ The system is built on a modular, enterprise-grade architecture:
    - `leftCarryForwardBV`, `rightCarryForwardBV`.
 
 6. **`CompensationRule` (`compensationrules` collection)**:
-   - Active versioned configuration for Binary, Welcome, Sponsor, Self Purchase, Rewards, Franchise and Upline rules.
+   - Active versioned configuration for Binary, Welcome, Sponsor and Rewards rules.
 
 7. **`CompensationEvent` (`compensationevents` collection)**:
    - Guarantees strict idempotency via `eventId` (e.g. `EVENT-PURCHASE-123`).
@@ -144,17 +144,7 @@ $$\text{flushed} = \text{earned} - \text{credited} \quad (\text{lost; its BV is 
 ### 4.2 Sponsor Binary Income
 Switched off for now.
 
-### 4.3 Self Purchase Bonus (Repurchase Only)
-$$\text{selfPurchaseBonus} = \text{qualifyingBase} \times 8\% \quad (\text{base: BV or Purchase Value})$$
-
-### 4.4 Franchise / Stockist Incentives
-- ₹50,000 bulk stock purchase $\rightarrow 5\%$ incentive
-- ₹100,000 bulk stock purchase $\rightarrow 8\%$ incentive
-- ₹500,000 bulk stock purchase $\rightarrow 10\%$ incentive
-- ₹1,000,000 bulk stock purchase $\rightarrow 12\%$ incentive
-- Plus 2% Upline Bonus to direct sponsor.
-
-### 4.5 Lifetime Milestone Rewards
+### 4.3 Lifetime Milestone Rewards
 - 5:5 pairs $\rightarrow$ ₹1,000 (Bronze Achiever)
 - 10:10 pairs $\rightarrow$ ₹2,000 (Silver Achiever)
 - Subsequent tiers (50:50, 100:100, etc.) are configurable with amounts set to null until confirmed.
@@ -183,7 +173,6 @@ $$\text{selfPurchaseBonus} = \text{qualifyingBase} \times 8\% \quad (\text{base:
 
 - The sponsor relationship records who directly introduced each distributor to the business.
 - Independent of binary placement ($A$ can sponsor $B$, but $B$ can be placed under $X$ in the binary tree).
-- `SponsorTreeService.getSponsorUplineChain` traverses up through `sponsorId` up to $N$ levels to distribute Sponsor Binary Bonuses and Upline Bonuses.
 
 ---
 
@@ -217,7 +206,6 @@ The following items are implemented as configurable rules with `TODO` annotation
 2. **20% vs. 25% Binary Rate**: The exact business conditions required for the special 25% binary rate.
 3. **Team Performance Bonus**: Confirmation of payout formula for 10:10, 100:100, 1000:1000 thresholds.
 4. **Reward Amounts After 10:10**: Rupee reward amounts for 50:50 up to 40,000:40,000.
-5. **Franchise Classification**: Confirmation whether percentages represent discounts, retail margins, or wallet commissions.
 
 ---
 

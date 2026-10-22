@@ -40,13 +40,6 @@ export interface ICompensationRule extends Document {
     secondPayoutNewBv?: number; // 1250
   };
   
-  // 4. Self Purchase Bonus (8% on self purchase)
-  selfPurchaseBonus: {
-    isEnabled: boolean;
-    ratePercent: number; // 8% = 0.08
-    calculationBase: 'PURCHASE_VALUE' | 'BV' | 'QUALIFYING_VALUE';
-  };
-  
   // 5. Sponsor Income: 20% of each direct's daily binary income (as credited), paid on top, uncapped
   sponsorBinaryBonus: {
     isEnabled: boolean;
@@ -85,32 +78,6 @@ export interface ICompensationRule extends Document {
     }>;
   };
   
-  // 8. Franchise / Stock Point (50k=5%, 100k=8%, 500k=10%, 1M=12%, upline=2%)
-  franchisePolicy: {
-    isEnabled: boolean;
-    incentiveType: 'MARGIN' | 'DISCOUNT' | 'COMMISSION' | 'STOCK_INCENTIVE';
-    tiers: Array<{
-      threshold: number;
-      rate: number; // e.g. 0.05
-    }>;
-    uplineBonusRate: number; // 0.02 (2%)
-  };
-  
-  // 9. Upline Bonus (2% flat)
-  uplineBonus: {
-    isEnabled: boolean;
-    uplineBonusRate: number; // 2% = 0.02
-    maxUplineLevels: number;
-    calculationBase: 'PURCHASE_VALUE' | 'BV';
-  };
-  
-  // 12. Retail Profit (Up to 50%)
-  retailProfit: {
-    isEnabled: boolean;
-    maxPercentage: number; // 50%
-    calculationBase: 'COST_PRICE' | 'SELLING_PRICE' | 'MRP' | 'CONFIGURED_BASE';
-  };
-
   // 13. Payout Deductions (Admin configurable, can be set to anything including 0%)
   payoutDeductions: {
     isEnabled: boolean;
@@ -176,11 +143,6 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       firstPayoutOppositeBv: { type: Number, default: 1250 },
       secondPayoutNewBv: { type: Number, default: 1250 },
     },
-    selfPurchaseBonus: {
-      isEnabled: { type: Boolean, default: true },
-      ratePercent: { type: Number, default: 0.08 }, // 8%
-      calculationBase: { type: String, default: 'BV' },
-    },
     sponsorBinaryBonus: {
       isEnabled: { type: Boolean, default: true },
       sponsorBinaryRate: { type: Number, default: 0.20 }, // 20%
@@ -215,28 +177,6 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
           rewardTitle: String,
         },
       ],
-    },
-    franchisePolicy: {
-      isEnabled: { type: Boolean, default: true },
-      incentiveType: { type: String, default: 'MARGIN' },
-      tiers: [
-        {
-          threshold: Number,
-          rate: Number,
-        },
-      ],
-      uplineBonusRate: { type: Number, default: 0.02 }, // 2%
-    },
-    uplineBonus: {
-      isEnabled: { type: Boolean, default: true },
-      uplineBonusRate: { type: Number, default: 0.02 }, // 2%
-      maxUplineLevels: { type: Number, default: 1 },
-      calculationBase: { type: String, default: 'BV' },
-    },
-    retailProfit: {
-      isEnabled: { type: Boolean, default: true },
-      maxPercentage: { type: Number, default: 50 },
-      calculationBase: { type: String, default: 'MRP' },
     },
     payoutDeductions: {
       // No TDS or admin fee is deducted from any income (DeductionUtil always returns 0)

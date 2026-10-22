@@ -1,7 +1,6 @@
 /**
- * Binary eligibility gate: other income (team performance, rank rewards, team, upline, self purchase,
- * sponsor, franchise, welcome bonus) is paid only to members who are active, not blocked, binary
- * active (100 BV reached) and placed in the binary tree. Members who are not binary active do not
+ * Binary eligibility gate: other income (team performance, rank rewards, sponsor, welcome bonus) is
+ * paid only to members who are active, not blocked, binary active (100 BV reached) and placed in the binary tree. Members who are not binary active do not
  * sit in the tree, and new people are placed under the nearest placed member above them.
  *
  * The pure rules always run. The database tests need a local replica set:

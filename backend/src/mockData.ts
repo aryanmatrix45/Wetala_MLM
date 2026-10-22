@@ -55,19 +55,6 @@ export const REPURCHASE_SLABS: RepurchaseSlab[] = [
   { leftBv: 300000, rightBv: 300000, percentage: 2 }
 ];
 
-export interface FranchiseSlab {
-  investment: number;
-  marginPercent: number;
-  uplineBonusPercent: number;
-}
-
-export const FRANCHISE_SLABS: FranchiseSlab[] = [
-  { investment: 50000, marginPercent: 5, uplineBonusPercent: 2 },
-  { investment: 100000, marginPercent: 8, uplineBonusPercent: 2 },
-  { investment: 500000, marginPercent: 10, uplineBonusPercent: 2 },
-  { investment: 1000000, marginPercent: 12, uplineBonusPercent: 2 }
-];
-
 export interface RewardMilestone {
   leftPairs: number;
   rightPairs: number;

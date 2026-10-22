@@ -311,8 +311,6 @@ export interface DashboardStats {
     totalBusinessVolume?: number;
     repurchaseBv: number;
     repurchasePercent: number;
-    activeFranchises: number;
-    franchisePercent: number;
     pendingPayouts: number;
     repurchaseTurnover?: number;
     rankAchievers?: number;

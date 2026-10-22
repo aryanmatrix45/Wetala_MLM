@@ -89,7 +89,6 @@ export const CompensationController = {
         pairBvUnit = 1250,
         dailyCap = 4000,
         alreadyEarnedToday = 0,
-        purchaseAmount = 0,
       } = req.body;
 
       // 1. Binary Matching Sequential Simulation in Rupees
@@ -174,29 +173,6 @@ export const CompensationController = {
         excessCommission = DecimalUtil.sub(rawBinaryCommission, remainingCap);
       }
 
-      // 2. Self Purchase Repurchase Bonus (8%)
-      const selfPurchaseBonus = purchaseAmount > 0 ? DecimalUtil.multiplyPercent(purchaseAmount, 8) : 0;
-
-      // 3. Franchise Tier Simulation
-      const franchiseTiers = [
-        { threshold: 50000, rate: 0.05 },
-        { threshold: 100000, rate: 0.08 },
-        { threshold: 500000, rate: 0.10 },
-        { threshold: 1000000, rate: 0.12 },
-      ].sort((a, b) => b.threshold - a.threshold);
-
-      let qualifiedFranchiseTier: (typeof franchiseTiers)[0] | null = null;
-      for (const f of franchiseTiers) {
-        if (purchaseAmount >= f.threshold) {
-          qualifiedFranchiseTier = f;
-          break;
-        }
-      }
-
-      const franchiseBonus = qualifiedFranchiseTier
-        ? DecimalUtil.multiplyRate(purchaseAmount, qualifiedFranchiseTier.rate)
-        : 0;
-
       res.status(HTTP_STATUS.OK).json({
         status: true,
         simulation: {
@@ -215,19 +191,7 @@ export const CompensationController = {
             payableCommission: payableBinaryCommission,
             excessCommission,
           },
-          selfPurchaseBonus: {
-            rate: '8%',
-            calculatedBonus: selfPurchaseBonus,
-          },
-          franchiseBonus: {
-            qualifiedTier: qualifiedFranchiseTier ? `₹${qualifiedFranchiseTier.threshold}` : 'None',
-            rateApplied: qualifiedFranchiseTier ? qualifiedFranchiseTier.rate * 100 : 0,
-            calculatedBonus: franchiseBonus,
-          },
-          totalSimulatedCommission: DecimalUtil.add(
-            payableBinaryCommission,
-            DecimalUtil.add(selfPurchaseBonus, franchiseBonus)
-          ),
+          totalSimulatedCommission: payableBinaryCommission,
         },
       });
     } catch (error: any) {

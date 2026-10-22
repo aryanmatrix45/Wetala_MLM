@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Alert, LoadingState, PageHeader, SegmentedControl } from '../components/ui';
 
-import { Award, Building2, Calculator, Crown, Eye, Lock, Percent, Plus, Save, Trash2, TrendingUp, Users, Zap } from 'lucide-react';
+import { Award, Calculator, Crown, Eye, Lock, Percent, Plus, Save, Trash2, TrendingUp, Users, Zap } from 'lucide-react';
 
 
 import { api } from '../services/api';
@@ -19,13 +19,6 @@ const DEFAULT_PERFORMANCE_SLABS = [
   { tierId: 'TPB-4', pairCount: 1600, leftThreshold: 1600, rightThreshold: 1600, royaltyBonusPercent: 2, limitAmount: 300000 },
   { tierId: 'TPB-5', pairCount: 5000, leftThreshold: 5000, rightThreshold: 5000, royaltyBonusPercent: 1, limitAmount: 500000 },
   { tierId: 'TPB-6', pairCount: 25000, leftThreshold: 25000, rightThreshold: 25000, royaltyBonusPercent: 1, limitAmount: 1500000 },
-];
-
-const DEFAULT_FRANCHISE_TIERS = [
-  { threshold: 50000, rate: 0.05 },
-  { threshold: 100000, rate: 0.08 },
-  { threshold: 500000, rate: 0.10 },
-  { threshold: 1000000, rate: 0.12 },
 ];
 
 const DEFAULT_REWARD_TIERS = [
@@ -74,11 +67,6 @@ const FALLBACK_FULL_RULES = {
     firstPairRatio: '1:1',
     subsequentPairRatio: '1:2_or_2:1',
   },
-  selfPurchaseBonus: {
-    isEnabled: true,
-    ratePercent: 0.08,
-    calculationBase: 'BV',
-  },
   sponsorBinaryBonus: {
     isEnabled: true,
     sponsorBinaryRate: 0.20,
@@ -94,23 +82,6 @@ const FALLBACK_FULL_RULES = {
   rewards: {
     isEnabled: true,
     tiers: DEFAULT_REWARD_TIERS,
-  },
-  franchisePolicy: {
-    isEnabled: true,
-    incentiveType: 'MARGIN',
-    tiers: DEFAULT_FRANCHISE_TIERS,
-    uplineBonusRate: 0.02,
-  },
-  uplineBonus: {
-    isEnabled: true,
-    uplineBonusRate: 0.02,
-    maxUplineLevels: 1,
-    calculationBase: 'BV',
-  },
-  retailProfit: {
-    isEnabled: true,
-    maxPercentage: 50,
-    calculationBase: 'MRP',
   },
   payoutDeductions: {
     isEnabled: false,
@@ -151,7 +122,6 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
     binaryRate: 0.20,
     dailyCap: 4000,
     alreadyEarnedToday: 3500,
-    purchaseAmount: 10000,
   });
   const [simResult, setSimResult] = useState<any>(null);
   const [simulating, setSimulating] = useState(false);
@@ -178,17 +148,6 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
             isEnabled: true,
             calculationBase: 'CTO_POOL',
             tiers: DEFAULT_PERFORMANCE_SLABS,
-          };
-        }
-
-        // Ensure Franchise tiers
-        if (!loadedRules.franchisePolicy?.tiers || loadedRules.franchisePolicy.tiers.length === 0) {
-          loadedRules.franchisePolicy = {
-            ...(loadedRules.franchisePolicy || {}),
-            isEnabled: true,
-            incentiveType: 'MARGIN',
-            uplineBonusRate: loadedRules.franchisePolicy?.uplineBonusRate || 0.02,
-            tiers: DEFAULT_FRANCHISE_TIERS,
           };
         }
 
@@ -264,11 +223,11 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
   const applyPreset = (presetName: string) => {
     let p = { ...simParams };
     if (presetName === 'cap_overflow') {
-      p = { leftBV: 25000, rightBV: 20000, binaryRate: 0.20, dailyCap: 4000, alreadyEarnedToday: 3500, purchaseAmount: 12000 };
+      p = { leftBV: 25000, rightBV: 20000, binaryRate: 0.20, dailyCap: 4000, alreadyEarnedToday: 3500 };
     } else if (presetName === 'equal_match') {
-      p = { leftBV: 5000, rightBV: 5000, binaryRate: 0.20, dailyCap: 4000, alreadyEarnedToday: 0, purchaseAmount: 6500 };
+      p = { leftBV: 5000, rightBV: 5000, binaryRate: 0.20, dailyCap: 4000, alreadyEarnedToday: 0 };
     } else {
-      p = { leftBV: 10000, rightBV: 7000, binaryRate: 0.20, dailyCap: 4000, alreadyEarnedToday: 3500, purchaseAmount: 10000 };
+      p = { leftBV: 10000, rightBV: 7000, binaryRate: 0.20, dailyCap: 4000, alreadyEarnedToday: 3500 };
     }
     setSimParams(p);
     handleRunSimulation(p);
@@ -917,7 +876,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                   </div>
                 </div>
 
-                {/* Card 2B: Sponsor Binary & Retail Profit (Decoupled & Standalone) */}
+                {/* Card 2B: Sponsor Income */}
                 <div className="dashboard-card">
                   <div className="card-header-row">
                     <div className="card-title-group">
@@ -925,8 +884,8 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                         <Users size={18} />
                       </div>
                       <div>
-                        <h2 className="card-title">Sponsor Binary & Retail Profit</h2>
-                        <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>Direct sponsor binary match & retail profit margins</span>
+                        <h2 className="card-title">Sponsor Income</h2>
+                        <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>Direct sponsor's share of each direct's daily binary income</span>
                       </div>
                     </div>
                   </div>
@@ -957,27 +916,6 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
 
                       <div>
                         <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
-                          Self Purchase Bonus (0.08 = 8%)
-                        </label>
-                        {isAdmin ? (
-                          <input
-                            type="number"
-                            step="0.01"
-                            value={rules.selfPurchaseBonus?.ratePercent ?? 0.08}
-                            onChange={(e) => setRules({ ...rules, selfPurchaseBonus: { ...rules.selfPurchaseBonus, ratePercent: parseFloat(e.target.value) || 0 } })}
-                            style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-base)' }}
-                          />
-                        ) : (
-                          <div style={{ padding: '9px 12px', background: 'var(--surface-subtle)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-main)' }}>
-                            {((rules.selfPurchaseBonus?.ratePercent || 0.08) * 100).toFixed(0)}% Cashback
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '14px' }}>
-                      <div>
-                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
                           Sponsor Income
                         </label>
                         {isAdmin ? (
@@ -998,24 +936,6 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                           The direct sponsor gets this share on top; the member's own binary income is not reduced
                         </span>
                       </div>
-
-                      <div>
-                        <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
-                          Retail Profit Margin Max (%)
-                        </label>
-                        {isAdmin ? (
-                          <input
-                            type="number"
-                            value={rules.retailProfit?.maxPercentage ?? 50}
-                            onChange={(e) => setRules({ ...rules, retailProfit: { ...rules.retailProfit, maxPercentage: parseFloat(e.target.value) || 0 } })}
-                            style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-base)' }}
-                          />
-                        ) : (
-                          <div style={{ padding: '9px 12px', background: 'var(--surface-subtle)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-main)' }}>
-                            Up to {rules.retailProfit?.maxPercentage || 50}% Retail Margin
-                          </div>
-                        )}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -1035,128 +955,6 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                   </div>
                 </div>
 
-              </div>
-
-              {/* Card 6: Franchise / Stock Point Plan */}
-              <div className="dashboard-card">
-                <div className="card-header-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div className="card-title-group">
-                    <div style={{ width: '36px', height: '36px', borderRadius: 'var(--radius-md)', background: 'var(--surface-muted)', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Building2 size={18} />
-                    </div>
-                    <div>
-                      <h2 className="card-title">Franchise & Stock Point Model</h2>
-                      <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>Stock Point Investment • Franchise Turnover Margin (FTO) • Sponsoring Upline Bonus (2%)</span>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    {isAdmin && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: 'var(--fs-sm)', background: 'var(--primary-light)', padding: '4px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--primary-border)' }}>
-                        <span style={{ fontWeight: 700, color: 'var(--primary-strong)' }}>Upline Bonus:</span>
-                        <input
-                          type="number"
-                          step="0.5"
-                          value={((rules.franchisePolicy?.uplineBonusRate ?? 0.02) * 100).toFixed(0)}
-                          onChange={(e) => setRules({ ...rules, franchisePolicy: { ...rules.franchisePolicy, uplineBonusRate: (parseFloat(e.target.value) || 0) / 100 } })}
-                          style={{ width: '45px', padding: '3px 6px', border: '1px solid var(--primary-border)', borderRadius: 'var(--radius-xs)', fontSize: 'var(--fs-sm)' }}
-                        />
-                        <span style={{ fontWeight: 700, color: 'var(--primary-strong)' }}>%</span>
-                      </div>
-                    )}
-
-                    {isAdmin && (
-                      <button
-                        onClick={() => {
-                          const newTiers = [...(rules.franchisePolicy?.tiers || [])];
-                          newTiers.push({
-                            threshold: 2000000,
-                            rate: 0.15
-                          });
-                          setRules({ ...rules, franchisePolicy: { ...rules.franchisePolicy, tiers: newTiers } });
-                        }}
-                        style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: 'var(--fs-sm)', padding: '6px 12px', borderRadius: 'var(--radius-md)', background: 'var(--surface-muted)', color: 'var(--text-body)', fontWeight: 700, border: '1px solid var(--border-strong)', cursor: 'pointer' }}
-                      >
-                        <Plus size={14} /> Add Franchise Tier
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <div className="table-responsive">
-                  <table className="data-table" style={{ marginTop: '12px' }}>
-                  <thead>
-                    <tr>
-                      <th>Stock Point Investment (₹)</th>
-                      <th>Franchise Margin (FTO)</th>
-                      <th>Sponsoring Upline Bonus</th>
-                      {isAdmin && <th>Action</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rules.franchisePolicy?.tiers?.map((f: any, idx: number) => (
-                      <tr key={idx}>
-                        <td style={{ fontWeight: 800, color: 'var(--text-main)' }}>
-                          {isAdmin ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <span>₹</span>
-                              <input
-                                type="number"
-                                value={f.threshold}
-                                onChange={(e) => {
-                                  const newTiers = [...rules.franchisePolicy.tiers];
-                                  newTiers[idx].threshold = parseInt(e.target.value) || 0;
-                                  setRules({ ...rules, franchisePolicy: { ...rules.franchisePolicy, tiers: newTiers } });
-                                }}
-                                style={{ width: '110px', padding: '6px 8px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--fs-sm)' }}
-                              />
-                            </div>
-                          ) : (
-                            <span style={{ fontSize: 'var(--fs-md)', fontWeight: 800 }}>₹ {f.threshold?.toLocaleString()}</span>
-                          )}
-                        </td>
-                        <td>
-                          {isAdmin ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <input
-                                type="number"
-                                step="0.5"
-                                value={((f.rate || 0) * 100).toFixed(0)}
-                                onChange={(e) => {
-                                  const newTiers = [...rules.franchisePolicy.tiers];
-                                  newTiers[idx].rate = (parseFloat(e.target.value) || 0) / 100;
-                                  setRules({ ...rules, franchisePolicy: { ...rules.franchisePolicy, tiers: newTiers } });
-                                }}
-                                style={{ width: '60px', padding: '6px 8px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', fontSize: 'var(--fs-sm)' }}
-                              />
-                              <span style={{ fontSize: 'var(--fs-sm)', fontWeight: 700, color: 'var(--success)' }}>% Margin</span>
-                            </div>
-                          ) : (
-                            <strong style={{ color: 'var(--success)', fontSize: 'var(--fs-md)' }}>{((f.rate || 0) * 100).toFixed(0)}% Margin</strong>
-                          )}
-                        </td>
-                        <td>
-                          <span style={{ color: 'var(--primary-strong)', fontWeight: 700 }}>2% Direct Upline</span>
-                        </td>
-                        {isAdmin && (
-                          <td>
-                            <button
-                              onClick={() => {
-                                const newTiers = rules.franchisePolicy.tiers.filter((_: any, i: number) => i !== idx);
-                                setRules({ ...rules, franchisePolicy: { ...rules.franchisePolicy, tiers: newTiers } });
-                              }}
-                              style={{ border: 'none', background: 'transparent', color: 'var(--danger)', cursor: 'pointer', padding: '4px' }}
-                              title="Delete Tier"
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                </div>
               </div>
             </div>
           )}
@@ -1246,15 +1044,6 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                         style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-base)' }}
                       />
                     </div>
-                    <div>
-                      <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>Member Self Repurchase (₹)</label>
-                      <input
-                        type="number"
-                        value={simParams.purchaseAmount}
-                        onChange={(e) => setSimParams({ ...simParams, purchaseAmount: parseFloat(e.target.value) || 0 })}
-                        style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-base)' }}
-                      />
-                    </div>
                   </div>
 
                   <button 
@@ -1307,11 +1096,6 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                     <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid var(--border-light)' }}>
                       <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-base)' }}>Payable Binary Commission</span>
                       <strong style={{ color: 'var(--success)', fontSize: 'var(--fs-lg)' }}>₹ {(simResult.binaryMatching?.payableCommission ?? simResult.binary?.payableBinaryCommission)?.toLocaleString()}</strong>
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '10px', borderBottom: '1px solid var(--border-light)' }}>
-                      <span style={{ color: 'var(--text-muted)', fontSize: 'var(--fs-base)' }}>Self Purchase Bonus (8%)</span>
-                      <strong style={{ color: 'var(--text-main)' }}>₹ {(simResult.selfPurchaseBonus?.calculatedBonus || 0)?.toLocaleString()}</strong>
                     </div>
                   </div>
 

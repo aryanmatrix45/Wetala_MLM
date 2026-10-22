@@ -17,34 +17,6 @@ export interface SponsorNodeDTO {
 
 export class SponsorTreeService {
   /**
-   * Get direct sponsors chain (walking UP from child to sponsor, sponsor's sponsor, etc.)
-   * Used for sponsor binary bonus & upline bonus.
-   */
-  static async getSponsorUplineChain(startMemberId: string, maxLevels: number = 10): Promise<IMember[]> {
-    const chain: IMember[] = [];
-    let currentId = startMemberId;
-    const visited = new Set<string>();
-
-    while (currentId && chain.length < maxLevels) {
-      if (visited.has(currentId)) break;
-      visited.add(currentId);
-
-      const member = await Member.findOne({ memberId: currentId }).select('sponsorId memberId name rank isActive');
-      if (!member || !member.sponsorId || member.sponsorId === currentId) {
-        break;
-      }
-
-      const sponsor = await Member.findOne({ memberId: member.sponsorId });
-      if (!sponsor) break;
-
-      chain.push(sponsor);
-      currentId = sponsor.memberId;
-    }
-
-    return chain;
-  }
-
-  /**
    * Get direct downline referrals sponsored by this member (Level 1)
    */
   static async getDirectReferrals(sponsorMemberId: string): Promise<IMember[]> {

@@ -47,8 +47,7 @@ export enum IncomeType {
   BINARY_INCOME = 'BINARY_INCOME',           // 1:2 / 2:1 then 1:1, 20%
   SPONSOR_BINARY = 'SPONSOR_BINARY',         // 20% on Direct's binary
   TEAM_PERFORMANCE = 'TEAM_PERFORMANCE',     // Milestone volume (10:10, 100:100, etc.)
-  RANK_REWARD = 'RANK_REWARD',               // Pair rewards (5:5, 10:10, up to 40k:40k)
-  FRANCHISE_BONUS = 'FRANCHISE_BONUS'        // Stock point 5% to 12% + 2% upline
+  RANK_REWARD = 'RANK_REWARD'                // Pair rewards (5:5, 10:10, up to 40k:40k)
 }
 
 // Binary Matching Rules (Notebook Page 1)
@@ -81,20 +80,6 @@ export const REPURCHASE_SLABS: RepurchaseSlab[] = [
   { leftBv: 70000, rightBv: 70000, percentage: 4 },
   { leftBv: 150000, rightBv: 150000, percentage: 3 },
   { leftBv: 300000, rightBv: 300000, percentage: 2 }
-];
-
-// Franchise / Stock Point Slabs (Notebook Page 2)
-export interface FranchiseSlab {
-  investment: number;
-  marginPercent: number;
-  uplineBonusPercent: number;
-}
-
-export const FRANCHISE_SLABS: FranchiseSlab[] = [
-  { investment: 50000, marginPercent: 5, uplineBonusPercent: 2 },
-  { investment: 100000, marginPercent: 8, uplineBonusPercent: 2 },
-  { investment: 500000, marginPercent: 10, uplineBonusPercent: 2 },
-  { investment: 1000000, marginPercent: 12, uplineBonusPercent: 2 }
 ];
 
 // Reward Milestones (Notebook Page 3)

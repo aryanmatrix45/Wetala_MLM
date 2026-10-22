@@ -7,11 +7,8 @@ import { BVService } from '../BVService';
 import { WalletService } from '../WalletService';
 import { WelcomeBonusService } from './WelcomeBonusService';
 import { BVWalletService } from '../BVWalletService';
-import { SelfPurchaseBonusService } from './SelfPurchaseBonusService';
 import { TeamPerformanceBonusService } from './TeamPerformanceBonusService';
 import { RewardService } from './RewardService';
-import { FranchiseService } from './FranchiseService';
-import { UplineBonusService } from './UplineBonusService';
 import { BinaryTreeService } from '../tree/BinaryTreeService';
 import { DecimalUtil } from '../../utils/decimal';
 import {
@@ -65,11 +62,6 @@ export class CompensationEngine {
           firstPayoutOppositeBv: 1250,
           secondPayoutNewBv: 1250,
         },
-        selfPurchaseBonus: {
-          isEnabled: true,
-          ratePercent: 0.08, // 8%
-          calculationBase: 'BV',
-        },
         sponsorBinaryBonus: {
           isEnabled: true,
           sponsorBinaryRate: 0.20, // 20%
@@ -108,28 +100,6 @@ export class CompensationEngine {
             { tierId: 'RW-14', rankName: 'DOUBLE KOHINOOR', teamTarget: 5000, leftRequirement: 50000, rightRequirement: 50000, rewardAmount: 10000000, rewardTitle: 'Double Kohinoor' },
             { tierId: 'RW-15', rankName: 'TRIPLE KOHINOOR', teamTarget: 100000, leftRequirement: 100000, rightRequirement: 100000, rewardAmount: 20000000, rewardTitle: 'Triple Kohinoor' },
           ],
-        },
-        franchisePolicy: {
-          isEnabled: true,
-          incentiveType: 'MARGIN',
-          tiers: [
-            { threshold: 50000, rate: 0.05 },
-            { threshold: 100000, rate: 0.08 },
-            { threshold: 500000, rate: 0.10 },
-            { threshold: 1000000, rate: 0.12 },
-          ],
-          uplineBonusRate: 0.02, // 2%
-        },
-        uplineBonus: {
-          isEnabled: true,
-          uplineBonusRate: 0.02, // 2%
-          maxUplineLevels: 1,
-          calculationBase: 'BV',
-        },
-        retailProfit: {
-          isEnabled: true,
-          maxPercentage: 50,
-          calculationBase: 'MRP',
         },
         payoutDeductions: {
           isEnabled: false,
@@ -203,7 +173,6 @@ export class CompensationEngine {
     try {
       const rules = await this.getActiveRules();
       const bvAmount = purchase.totalBV;
-      const purchaseAmount = purchase.totalAmount;
 
       // 3. Generate Personal BV
       const bvSource = purchase.type === PURCHASE_TYPE.JOINING ? BV_SOURCE_TYPE.JOINING_PACKAGE : BV_SOURCE_TYPE.REPURCHASE;
@@ -231,59 +200,21 @@ export class CompensationEngine {
 
       // A. Welcome bonus needs nothing here: lifetime BV is read from the ledgers (LifetimeBvService)
 
-      // B. Self Purchase Bonus (Repurchase Only - 8%)
-      if (purchase.type === PURCHASE_TYPE.REPURCHASE || purchase.type === PURCHASE_TYPE.RETAIL) {
-        const selfComm = await SelfPurchaseBonusService.processSelfPurchaseBonus(
-          member.memberId,
-          purchaseAmount,
-          bvAmount,
-          purchase.type,
-          rules,
-          eventId,
-          purchase.purchaseId
-        );
-        if (selfComm) commissionsGenerated.push(selfComm);
-      }
-
-      // C. Binary matching income is not paid here: the order's BV now waits on each ancestor's
+      // B. Binary matching income is not paid here: the order's BV now waits on each ancestor's
       //    leg and is matched and paid by the daily binary settlement once the IST day ends, which
       //    also pays the direct sponsor's 20% sponsor income.
       for (const { ancestorMemberId } of binaryAncestors) {
-        // E. Team Performance Bonus: updates the ancestor's RP and records new slab qualifications.
+        // C. Team Performance Bonus: updates the ancestor's RP and records new slab qualifications.
         //    Payouts are made by the period settlement, not per purchase.
         await TeamPerformanceBonusService.evaluateMember(ancestorMemberId);
 
-        // F. Lifetime Milestone Rewards
+        // D. Lifetime Milestone Rewards
         const rewardComms = await RewardService.evaluateRewards(
           ancestorMemberId,
           rules,
           eventId
         );
         commissionsGenerated.push(...rewardComms);
-      }
-
-      // H. Upline Bonus (2% from purchaser to sponsors)
-      const uplineComms = await UplineBonusService.processUplineBonus(
-        member.memberId,
-        purchaseAmount,
-        bvAmount,
-        rules,
-        eventId,
-        purchase.purchaseId
-      );
-      commissionsGenerated.push(...uplineComms);
-
-      // I. Franchise Policy (if large volume purchase)
-      if (purchaseAmount >= 50000) {
-        const franchiseResult = await FranchiseService.processFranchiseIncentive(
-          member.memberId,
-          purchaseAmount,
-          rules,
-          eventId,
-          purchase.purchaseId
-        );
-        if (franchiseResult.franchiseCommission) commissionsGenerated.push(franchiseResult.franchiseCommission);
-        if (franchiseResult.uplineCommission) commissionsGenerated.push(franchiseResult.uplineCommission);
       }
 
       // 6. Update Purchase Status & Mark Event Processed

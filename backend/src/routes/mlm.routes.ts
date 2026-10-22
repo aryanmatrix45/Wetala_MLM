@@ -170,8 +170,6 @@ router.get('/dashboard/stats', authenticate, async (_req, res) => {
         totalBusinessVolume,
         repurchaseBv,
         repurchasePercent: totalBusinessVolume > 0 ? Math.round((repurchaseBv / totalBusinessVolume) * 100) : 0,
-        activeFranchises: 0,
-        franchisePercent: 0,
         pendingPayouts: pendingPayoutAmount,
         repurchaseTurnover,
         rankAchievers,
@@ -481,7 +479,6 @@ router.get('/packages', async (_req, res) => {
     res.json({
       joiningPackages: formattedJoining,
       repurchaseSlabs: [],
-      franchiseSlabs: [],
       rewardMilestones: []
     });
   } catch (err: any) {

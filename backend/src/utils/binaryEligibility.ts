@@ -24,8 +24,7 @@ export const isBinaryActive = (member: BinaryEligibilityFields): boolean =>
 export const isInBinaryTree = (member: BinaryEligibilityFields): boolean => Boolean(member.parentId) || !member.sponsorId;
 
 /**
- * Other income (team performance, rank rewards, team, upline, self purchase, sponsor, franchise,
- * welcome bonus) is paid only to members who are active, not blocked, binary active and in the tree.
+ * Other income (team performance, rank rewards, sponsor, welcome bonus) is paid only to members who are active, not blocked, binary active and in the tree.
  * Binary income has the same requirement enforced in its own services.
  */
 export const canEarnBonus = <T extends BinaryEligibilityFields>(member: T | null | undefined): member is T =>
