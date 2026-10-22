@@ -61,7 +61,7 @@ const FALLBACK_FULL_RULES = {
     specialBinaryRate: 0.25,
     isSpecialRateEnabled: false,
     calculationBase: 'BV',
-    volumeCarryForwardMode: 'CARRY_FORWARD',
+    volumeCarryForwardMode: 'FLUSH',
     dailyBinaryPayoutCap: 4000,
     excessCapPolicy: 'FLUSH',
     firstPairRatio: '1:1',
@@ -756,6 +756,29 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                           1:2 or 2:1
                         </div>
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>
+                        Leftover BV at Midnight
+                      </label>
+                      {isAdmin ? (
+                        <select
+                          value={rules.binaryBonus?.volumeCarryForwardMode === 'FLUSH' ? 'FLUSH' : 'CARRY_FORWARD'}
+                          onChange={(e) => setRules({ ...rules, binaryBonus: { ...rules.binaryBonus, volumeCarryForwardMode: e.target.value } })}
+                          style={{ width: '100%', padding: '9px 12px', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-base)' }}
+                        >
+                          <option value="FLUSH">Clear: BV not paired by midnight is cleared</option>
+                          <option value="CARRY_FORWARD">Carry forward: BV waits until it pairs</option>
+                        </select>
+                      ) : (
+                        <div style={{ padding: '9px 12px', background: 'var(--surface-subtle)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--text-main)' }}>
+                          {rules.binaryBonus?.volumeCarryForwardMode === 'FLUSH' ? 'Cleared at midnight (IST)' : 'Carried forward'}
+                        </div>
+                      )}
+                      <span style={{ fontSize: 'var(--fs-xs)', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                        Checked when each IST day is settled. The 2,500 BV kept for the 2nd payout is never cleared.
+                      </span>
                     </div>
                   </div>
                 </div>

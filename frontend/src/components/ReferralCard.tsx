@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Share2, Copy, Check, MessageCircle, Send, ExternalLink, Sparkles, ArrowLeft, ArrowRight, ShieldCheck,
 } from 'lucide-react';
+import { api } from '../services/api';
+import { Alert } from './ui';
 
 type ReferralLeg = 'AUTO' | 'LEFT' | 'RIGHT';
 
@@ -19,6 +21,24 @@ interface ReferralCardProps {
 
 export const ReferralCard: React.FC<ReferralCardProps> = ({ memberId, isSuperAdmin }) => {
   const [copiedLeg, setCopiedLeg] = useState<ReferralLeg | null>(null);
+  // Members can refer once binary active; the server decides (the saved user may be out of date)
+  const [blockedReason, setBlockedReason] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isSuperAdmin || !memberId) return;
+    let cancelled = false;
+    api
+      .lookupSponsor(memberId)
+      .then((res) => {
+        if (!cancelled) setBlockedReason(res?.status && res.data?.canRefer === false ? res.data.referralBlockedReason || 'You cannot refer new members yet.' : null);
+      })
+      .catch(() => {
+        // Registration still checks the sponsor, so a failed lookup just shows the links
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [memberId, isSuperAdmin]);
 
   const referralLinks: Array<{ leg: ReferralLeg; title: string; description: string; url: string }> = [
     { leg: 'AUTO', title: 'Default Link', description: 'New member chooses their own leg', url: getReferralUrl(memberId, 'AUTO') },
@@ -86,6 +106,11 @@ export const ReferralCard: React.FC<ReferralCardProps> = ({ memberId, isSuperAdm
       </div>
 
       <h3 className="profile-links-heading">Your Referral Links</h3>
+      {blockedReason ? (
+        <Alert tone="warning" title="Referral links are locked">
+          Your links unlock once your account is active and binary active (100 BV), which places you in the binary tree.
+        </Alert>
+      ) : (
       <div className="profile-links-list">
         {referralLinks.map((link) => {
           const isCopied = copiedLeg === link.leg;
@@ -165,6 +190,7 @@ export const ReferralCard: React.FC<ReferralCardProps> = ({ memberId, isSuperAdm
           );
         })}
       </div>
+      )}
     </section>
   );
 };

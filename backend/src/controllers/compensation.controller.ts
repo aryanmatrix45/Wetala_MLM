@@ -38,6 +38,13 @@ export const CompensationController = {
    */
   async updateRules(req: AuthenticatedRequest, res: Response): Promise<void> {
     try {
+      // Checked before the current version is retired, so a bad value leaves the active rules in place
+      const leftoverMode = req.body?.binaryBonus?.volumeCarryForwardMode;
+      if (leftoverMode !== undefined && leftoverMode !== 'CARRY_FORWARD' && leftoverMode !== 'FLUSH') {
+        res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, message: 'Leftover BV must be either CARRY_FORWARD or FLUSH.' });
+        return;
+      }
+
       const existingRules = await CompensationRule.findOne({ isActive: true }).sort({ version: -1 });
       const currentVersion = existingRules ? existingRules.version : 0;
 

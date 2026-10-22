@@ -16,6 +16,8 @@ export interface IBinarySettlementTotals {
   creditedAmount: number;
   flushedAmount: number;
   sponsorBonusAmount: number;
+  clearedLeftBV: number; // unmatched BV cleared at the close
+  clearedRightBV: number;
 }
 
 export interface IBinarySettlementRun extends Document {
@@ -54,6 +56,8 @@ const binarySettlementRunSchema = new Schema<IBinarySettlementRun>(
       creditedAmount: { type: Number, default: 0 },
       flushedAmount: { type: Number, default: 0 },
       sponsorBonusAmount: { type: Number, default: 0 },
+      clearedLeftBV: { type: Number, default: 0 },
+      clearedRightBV: { type: Number, default: 0 },
     },
     failures: { type: [{ memberId: String, message: String, _id: false }], default: [] },
     error: { type: String },

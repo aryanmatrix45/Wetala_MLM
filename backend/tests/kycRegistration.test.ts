@@ -142,6 +142,36 @@ async function runTests() {
     r = await call('POST', '/api/auth/register', registration({ email: `minimal${TEST_EMAIL_DOMAIN}`, mobile: '9888800002' }));
     assert(r.status === 201, 'Registration succeeds without optional nominee fields', r.data);
 
+    console.log('\n--- Only binary-active members can refer ---');
+    const referral = (sponsorId: string, n: number) =>
+      registration({ sponsorId, email: `referral${n}${TEST_EMAIL_DOMAIN}`, mobile: `98888001${String(n).padStart(2, '0')}` });
+    // memberA has 0 BV, so it is not binary active and not in the tree
+    r = await call('POST', '/api/auth/register', referral(memberA!.memberId, 1));
+    assert(r.status === 400 && r.data.code === 'SPONSOR_NOT_ACTIVE' && /100 BV/.test(r.data.message), 'A sponsor who is not binary active cannot refer', r.data);
+    assert(!(await Member.findOne({ email: `referral1${TEST_EMAIL_DOMAIN}` })), 'No member is created for a refused referral');
+    r = await call('GET', `/api/auth/sponsor-lookup/${memberA!.memberId}`);
+    assert(r.status === 200 && r.data.data.canRefer === false && /100 BV/.test(r.data.data.referralBlockedReason), 'Sponsor lookup says the sponsor cannot refer yet', r.data.data);
+
+    // Binary active and placed in the tree: no extra BV is needed beyond the activation
+    await Member.updateOne({ memberId: memberA!.memberId }, { $set: { isBinaryActive: true, personalBv: 100, parentId: 'MEM0001', position: 'RIGHT' } });
+    r = await call('GET', `/api/auth/sponsor-lookup/${memberA!.memberId}`);
+    assert(r.data.data.canRefer === true && !r.data.data.referralBlockedReason, 'Once binary active, the sponsor lookup allows referring', r.data.data);
+    r = await call('POST', '/api/auth/register', referral(memberA!.memberId, 2));
+    assert(r.status === 201, 'A binary-active member can refer', r.data);
+
+    await Member.updateOne({ memberId: memberA!.memberId }, { $set: { status: 'blocked' } });
+    r = await call('POST', '/api/auth/register', referral(memberA!.memberId, 3));
+    assert(r.status === 400 && r.data.code === 'SPONSOR_NOT_ACTIVE' && /not active/.test(r.data.message), 'A blocked member cannot refer', r.data);
+    await Member.updateOne({ memberId: memberA!.memberId }, { $set: { status: 'active' } });
+
+    // The root needs no BV: the Super Admin's link (ADMIN) enrolls under it
+    await Member.updateOne({ memberId: 'MEM0001' }, { $set: { isBinaryActive: false, personalBv: 0 } });
+    r = await call('POST', '/api/auth/register', referral('ADMIN', 4));
+    assert(r.status === 201, "The Super Admin's referral link always works, with no BV on the root", r.data);
+    r = await call('GET', '/api/auth/sponsor-lookup/ADMIN');
+    assert(r.data.data.canRefer === true && r.data.data.isRoot === true, 'Sponsor lookup: the root can always refer', r.data.data);
+    await Member.updateOne({ memberId: 'MEM0001' }, { $set: { isBinaryActive: true, personalBv: 1250 } });
+
     console.log('\n--- Login & profile without KYC ---');
     r = await call('POST', '/api/auth/login', { email: `tester${TEST_EMAIL_DOMAIN}`, password: 'Secret@123' });
     assert(r.status === 200 && Boolean(r.data.token), 'Member can log in before submitting KYC', r.data);

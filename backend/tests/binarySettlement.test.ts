@@ -1,5 +1,5 @@
 /**
- * Daily binary settlement end to end: team BV waiting per IST day, sponsor qualification at any
+ * Daily binary settlement end to end (leftover rule CARRY_FORWARD): team BV waiting per IST day, sponsor qualification at any
  * depth, sequential payouts across days, carry forward, the daily cap with flush, no deductions,
  * one wallet credit per day, idempotent re-runs, and access control on the binary income API.
  *
@@ -84,6 +84,8 @@ async function runTests() {
 
   try {
     await wipe();
+    // These scenarios check carry forward; clearing at midnight is covered by binaryLeftoverFlush.test.ts
+    await CompensationRule.create({ ruleSetId: 'TEST_RULES', version: 1, isActive: true, binaryBonus: { isEnabled: true, volumeCarryForwardMode: 'CARRY_FORWARD' } });
 
     const makeMember = async (memberId: string, extra: Record<string, unknown> = {}) => {
       const m = await Member.create({

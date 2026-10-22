@@ -9,6 +9,7 @@
     "test": "tsx tests/binaryMatching.test.ts",
     "test:binary": "tsx tests/binaryMatching.test.ts",
     "test:binary-settlement": "tsx tests/binarySettlement.test.ts",
+    "test:binary-flush": "tsx tests/binaryLeftoverFlush.test.ts",
     "test:instant": "tsx tests/instantLoginDeferredPlacement.test.ts",
     "test:bv-wallet": "tsx tests/bvWallet.test.ts",
     "test:bv-purchase": "tsx tests/bvPurchase.test.ts",

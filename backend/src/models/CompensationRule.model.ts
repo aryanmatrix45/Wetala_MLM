@@ -30,7 +30,7 @@ export interface ICompensationRule extends Document {
     specialBinaryRate?: number;
     isSpecialRateEnabled?: boolean;
     calculationBase?: 'BV' | 'PURCHASE_VALUE';
-    volumeCarryForwardMode?: 'CARRY_FORWARD' | 'FLUSH';
+    volumeCarryForwardMode?: 'CARRY_FORWARD' | 'FLUSH'; // FLUSH: BV that has not paired by IST midnight is cleared
     dailyBinaryPayoutCap?: number;
     excessCapPolicy?: 'FLUSH' | 'HOLD' | 'CARRY_FORWARD';
     firstPairRatio?: string; // '2:1_or_1:2' (2500:1250 or 1250:2500)
@@ -135,7 +135,7 @@ const compensationRuleSchema = new Schema<ICompensationRule>(
       specialBinaryRate: { type: Number, default: 0.25 },   // 25% (optional override)
       isSpecialRateEnabled: { type: Boolean, default: false },
       calculationBase: { type: String, default: 'BV' },
-      volumeCarryForwardMode: { type: String, default: 'CARRY_FORWARD' },
+      volumeCarryForwardMode: { type: String, enum: ['CARRY_FORWARD', 'FLUSH'], default: 'FLUSH' },
       excessCapPolicy: { type: String, default: 'FLUSH' },
       firstPairRatio: { type: String, default: '2:1_or_1:2' },
       subsequentPairRatio: { type: String, default: '1:1' },

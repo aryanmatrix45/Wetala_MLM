@@ -10,8 +10,11 @@ import { BINARY_POSITION, BV_SETTLEMENT_STATUS } from '../../config/constants';
 import {
   BinaryMatchState,
   BinaryMatchCycle,
+  LeftoverBVMode,
   applyDailyCap,
+  clearLeftoverBV,
   computeMatches,
+  leftoverModeFrom,
   matchRulesFrom,
 } from './BinaryMatchingEngine';
 
@@ -37,6 +40,9 @@ export interface BinaryDayPreview {
   dailyCap: number; // 0 = uncapped
   creditedAmount: number;
   flushedAmount: number;
+  leftoverMode: LeftoverBVMode;
+  clearedLeftBV: number; // unmatched BV that will be cleared at midnight if nothing else arrives
+  clearedRightBV: number;
   closing: BinaryMatchState; // what will carry into the next day
 }
 
@@ -135,6 +141,8 @@ export class BinaryBonusService {
       dailyCap > 0 && remainingCap === 0
         ? { creditedAmount: 0, flushedAmount: generatedAmount }
         : applyDailyCap(generatedAmount, remainingCap);
+    const leftoverMode = leftoverModeFrom(rules);
+    const leftover = clearLeftoverBV(result?.state || start, leftoverMode);
 
     return {
       businessDate,
@@ -149,7 +157,10 @@ export class BinaryBonusService {
       dailyCap,
       creditedAmount,
       flushedAmount,
-      closing: result?.state || start,
+      leftoverMode,
+      clearedLeftBV: leftover.clearedLeftBV,
+      clearedRightBV: leftover.clearedRightBV,
+      closing: leftover.state,
     };
   }
 }

@@ -11,13 +11,14 @@ Binary income is matched **once per day** (India Standard Time). Team BV builds 
 | 1st payout | 2,500 : 1,250 (either side) pays ₹250. The 1,250 is used; the 2,500 is kept |
 | 2nd payout | The kept 2,500 plus 1,250 new BV on the other side pays ₹250 |
 | 3rd payout onwards | Every 1,250 : 1,250 pays ₹250, with no limit |
-| Carry forward | Unused BV carries to the next day and never expires |
+| Leftover BV | BV that has not made a pair by midnight IST is **cleared** (Super Admin setting "Leftover BV at Midnight", default Clear). Only the 2,500 kept for the 2nd payout survives. Set to Carry forward, unused BV waits with no expiry |
+| Referring | Only binary-active members (100 BV activation, placed in the tree) can refer. The root, used by the Super Admin's link, always can |
 | Daily cap | The member's package cap (highest package bought), or ₹4,000 without a package |
 | Who earns | Only members. The Super Admin account has no member ID and earns no income |
 | Above the cap | Flushed: the ₹ is lost, and the BV that produced it is still used up |
 | Deductions | None. No TDS and no admin fee on any income |
 | Payout | One wallet credit per member per day, after the IST day ends |
-| Sponsor binary bonus | Switched off for now |
+| Sponsor income | 20% of each direct's credited binary income, paid on top |
 
 ## 2. Activation and the 100 BV lock
 
@@ -52,7 +53,10 @@ matches   = computeMatches(available)        only if activated and sponsor-quali
 earned    = matches × ₹250
 credited  = min(earned, daily cap)
 flushed   = earned − credited
+leftover  = BV that did not pair: cleared (FLUSH) or carried forward (CARRY_FORWARD)
 ```
+
+With FLUSH, the closing records `clearedLeftBV` / `clearedRightBV`, the BV records show it in `flushedBV` (a `MATCHED` row on a paying day, a `FLUSHED` row otherwise), and `BinaryVolume.clearedTotalBV` counts it over the member's lifetime. BV carried forward from before the switch is cleared at the first midnight unless it pairs.
 
 It writes one `BinaryDailyClosing` per member per day, holding:
 
@@ -65,11 +69,22 @@ The closing, the carry forward, the settled ledger rows and the commission are w
 
 - **Safe to re-run.** The unique `(memberId, businessDate)` index means a day is never paid twice. Re-running a day only settles members that are missing and retries failed wallet credits.
 - **Safe across PM2 cluster workers.** `BinarySettlementRun` holds one lock per date.
-- **Not qualified:** the BV stays as carry forward. Nothing is paid and nothing is flushed.
+- **Not qualified:** nothing is paid. With FLUSH the unpaired BV is cleared like anyone else's; with CARRY_FORWARD it stays as carry forward.
 
 The pure matching rules are in `BinaryMatchingEngine.ts`.
 
-## 5. Worked example
+## 5. Worked examples
+
+**Leftover rule FLUSH (default):**
+
+| Day | New BV | Result | Credited | Cleared at midnight |
+|---|---|---|---|---|
+| 1 | L 2,700 · R 1,500 | 1st payout (2,500 L kept, 1,250 R used) | ₹250 | L 200 · R 250 (2,500 L stays kept) |
+| 2 | R 1,000 | No 2nd payout: needs 1,250 new BV on the right | ₹0 | R 1,000 |
+| 3 | R 1,250 | 2nd payout (kept 2,500 L + 1,250 R) | ₹250 | nothing |
+| 4 | L 1,400 · R 1,500 | 1 : 1 (1,250 : 1,250) | ₹250 | L 150 · R 250 |
+
+**Leftover rule CARRY_FORWARD:**
 
 | Day | New BV | Result | Credited | Carry forward after |
 |---|---|---|---|---|
@@ -93,4 +108,5 @@ The pure matching rules are in `BinaryMatchingEngine.ts`.
 ## 7. Tests
 
 - `npm run test:binary`: matching rules, cap and IST dates (no database)
-- `npm run test:binary-settlement`: end-to-end settlement against a local replica set (`MONGODB_URI=mongodb://127.0.0.1:27027/wetala_binary_test?replicaSet=rs0`)
+- `npm run test:binary-settlement`: end-to-end settlement with carry forward against a local replica set (`MONGODB_URI=mongodb://127.0.0.1:27027/wetala_binary_test?replicaSet=rs0`)
+- `npm run test:binary-flush`: end-to-end settlement with leftover BV cleared at midnight (same `MONGODB_URI` setup)

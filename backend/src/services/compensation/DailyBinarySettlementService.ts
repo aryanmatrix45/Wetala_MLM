@@ -13,7 +13,7 @@ import { CompensationEngine } from './CompensationEngine';
 import { BinaryBonusService } from './BinaryBonusService';
 import { SponsorBonusService } from './SponsorBonusService';
 import { CapService } from './CapService';
-import { applyDailyCap, computeMatches, matchRulesFrom, BinaryMatchState } from './BinaryMatchingEngine';
+import { applyDailyCap, clearLeftoverBV, computeMatches, leftoverModeFrom, matchRulesFrom, BinaryMatchState } from './BinaryMatchingEngine';
 import { WalletService } from '../WalletService';
 import { AuditService } from '../AuditService';
 import { DecimalUtil } from '../../utils/decimal';
@@ -45,11 +45,13 @@ const randomCode = () => crypto.randomBytes(3).toString('hex').toUpperCase();
  *   available = carry forward + that day's new team BV (net of reversals)
  *   matches   = computeMatches(available)            (only when binary active and sponsor qualified)
  *   credited  = min(matches x ₹250, daily cap)       (the rest is flushed, its BV is still used)
+ *   leftover  = BV that did not pair: cleared when the leftover rule is FLUSH (members who do not
+ *               qualify included), carried forward when it is CARRY_FORWARD. The BV kept from the
+ *               1st payout for the 2nd payout always survives.
  * The closing, the BinaryVolume carry forward, the settled ledger rows and the commission are
  * written in one transaction; the wallet credit follows and is retried until it succeeds.
  * The member's direct sponsor gets 20% of the credited amount as sponsor income, recorded in the same
  * transaction and paid on top (the member's own credit is not reduced).
- * A member who does not qualify keeps all BV as carry forward; nothing is flushed.
  */
 export class DailyBinarySettlementService {
   private static timerHandle: NodeJS.Timeout | null = null;
@@ -91,10 +93,15 @@ export class DailyBinarySettlementService {
       if (isSelfActive && isSponsorQualified) result = possible;
     }
 
-    // Nothing arrived and nothing can be paid: no closing for this day
-    if (pending.rowIds.length === 0 && !result) return null;
+    const {
+      state: closingState,
+      clearedLeftBV,
+      clearedRightBV,
+    } = clearLeftoverBV(result ? result.state : available, leftoverModeFrom(rules));
 
-    const closingState = result ? result.state : available;
+    // Nothing arrived, nothing can be paid and nothing is cleared: no closing for this day
+    if (pending.rowIds.length === 0 && !result && clearedLeftBV + clearedRightBV === 0) return null;
+
     const generatedAmount = result?.generatedAmount || 0;
     const dailyCap = generatedAmount > 0 ? await CapService.getDailyCap(memberId) : 0;
     const { creditedAmount, flushedAmount } = applyDailyCap(generatedAmount, dailyCap);
@@ -120,6 +127,8 @@ export class DailyBinarySettlementService {
               newLeftBV: pending.left,
               newRightBV: pending.right,
               closing: closingState,
+              clearedLeftBV,
+              clearedRightBV,
               isSelfActive,
               isSponsorQualified,
               matches: result?.matches || 0,
@@ -166,6 +175,7 @@ export class DailyBinarySettlementService {
           $inc: {
             matchedTotalBV: (result?.leftBVUsed || 0) + (result?.rightBVUsed || 0),
             consumedTotalBV: (result?.leftBVUsed || 0) + (result?.rightBVUsed || 0),
+            clearedTotalBV: clearedLeftBV + clearedRightBV,
           },
         };
         const updatedVol = await BinaryVolume.findOneAndUpdate(volFilter, volUpdate, { session, upsert: !vol, returnDocument: 'after' });
@@ -179,20 +189,27 @@ export class DailyBinarySettlementService {
           );
         }
 
-        if (result) {
-          // One MATCHED row per leg for the day: BV used, kept for the 2nd payout, and what carries forward
-          const flushNote = flushedAmount > 0 ? `; ₹${flushedAmount} flushed above the ₹${dailyCap} daily cap` : '';
-          const legRows = (['LEFT', 'RIGHT'] as const).map((leg) => {
-            const isLeft = leg === 'LEFT';
-            const used = isLeft ? result!.leftBVUsed : result!.rightBVUsed;
-            const before = isLeft ? available.left : available.right;
-            const after = isLeft ? closingState.left : closingState.right;
-            const keptHere = closingState.reservedSide === leg ? closingState.reservedBV : 0;
-            return {
-              ledgerId: `BV-MATCH-${businessDate.replace(/-/g, '')}-${memberId}-${leg[0]}-${randomCode()}`,
+        // One row per leg for the day: a MATCHED row (BV used, kept for the 2nd payout, cleared and
+        // carried forward) on a paying day, otherwise a FLUSHED row for a leg whose leftover was cleared
+        const flushNote = flushedAmount > 0 ? `; ₹${flushedAmount} flushed above the ₹${dailyCap} daily cap` : '';
+        const legRows = (['LEFT', 'RIGHT'] as const).flatMap((leg) => {
+          const isLeft = leg === 'LEFT';
+          const cleared = isLeft ? clearedLeftBV : clearedRightBV;
+          if (!result && cleared <= 0) return [];
+          const used = result ? (isLeft ? result.leftBVUsed : result.rightBVUsed) : 0;
+          const before = isLeft ? available.left : available.right;
+          const after = isLeft ? closingState.left : closingState.right;
+          const keptHere = closingState.reservedSide === leg ? closingState.reservedBV : 0;
+          const clearedNote = cleared > 0 ? `${cleared} BV not paired by midnight cleared on ${leg} leg` : '';
+          const description = result
+            ? `Binary closing ${businessDate}: ${result.matches} match(es), ${used} BV used on ${leg} leg${keptHere ? `, ${keptHere} BV kept for the 2nd payout` : ''}${clearedNote ? `, ${clearedNote}` : ''}${flushNote}`
+            : `Binary closing ${businessDate}: no match, ${clearedNote}`;
+          return [
+            {
+              ledgerId: `BV-${result ? 'MATCH' : 'FLUSH'}-${businessDate.replace(/-/g, '')}-${memberId}-${leg[0]}-${randomCode()}`,
               userId,
               memberId,
-              sourceType: BV_SOURCE_TYPE.MATCHED,
+              sourceType: result ? BV_SOURCE_TYPE.MATCHED : BV_SOURCE_TYPE.FLUSHED,
               referenceId: closingId,
               position: isLeft ? BINARY_POSITION.LEFT : BINARY_POSITION.RIGHT,
               openingBV: before,
@@ -200,16 +217,18 @@ export class DailyBinarySettlementService {
               consumedBV: used,
               reservedBV: keptHere,
               carriedForwardBV: after,
-              flushedBV: 0,
+              flushedBV: cleared,
               closingBV: after,
               payoutSequence: closingState.payoutCount,
               businessDate,
-              description: `Binary closing ${businessDate}: ${result!.matches} match(es), ${used} BV used on ${leg} leg${keptHere ? `, ${keptHere} BV kept for the 2nd payout` : ''}${flushNote}`,
+              description,
               isImmutable: true,
-            };
-          });
-          await BVLedger.create(legRows, { session, ordered: true });
+            },
+          ];
+        });
+        if (legRows.length > 0) await BVLedger.create(legRows, { session, ordered: true });
 
+        if (result) {
           await Member.updateOne({ memberId }, { $set: { matchedPairs: closingState.payoutCount } }, { session });
         }
 
@@ -360,6 +379,8 @@ export class DailyBinarySettlementService {
           creditedAmount: { $sum: '$creditedAmount' },
           flushedAmount: { $sum: '$flushedAmount' },
           sponsorBonusAmount: { $sum: { $ifNull: ['$sponsorBonusAmount', 0] } },
+          clearedLeftBV: { $sum: { $ifNull: ['$clearedLeftBV', 0] } },
+          clearedRightBV: { $sum: { $ifNull: ['$clearedRightBV', 0] } },
         },
       },
     ]);
@@ -375,6 +396,8 @@ export class DailyBinarySettlementService {
       creditedAmount: row?.creditedAmount || 0,
       flushedAmount: row?.flushedAmount || 0,
       sponsorBonusAmount: row?.sponsorBonusAmount || 0,
+      clearedLeftBV: row?.clearedLeftBV || 0,
+      clearedRightBV: row?.clearedRightBV || 0,
     };
   }
 

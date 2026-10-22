@@ -5,8 +5,11 @@
 import {
   BinaryMatchState,
   DEFAULT_MATCH_RULES,
+  LeftoverBVMode,
   applyDailyCap,
+  clearLeftoverBV,
   computeMatches,
+  leftoverModeFrom,
   matchRulesFrom,
 } from '../src/services/compensation/BinaryMatchingEngine';
 import { BusinessDate } from '../src/utils/businessDate';
@@ -22,13 +25,14 @@ function assertEqual(actual: unknown, expected: unknown, message: string) {
 
 const fresh = (left: number, right: number): BinaryMatchState => ({ left, right, reservedBV: 0, reservedSide: null, payoutCount: 0 });
 
-/** Simulates consecutive days: each day adds new BV to the carry forward and matches */
-function runDays(days: Array<[number, number]>, cap = 4000) {
+/** Simulates consecutive days: each day adds new BV to the carry forward, matches, then applies the leftover rule */
+function runDays(days: Array<[number, number]>, cap = 4000, mode: LeftoverBVMode = 'CARRY_FORWARD') {
   let state = fresh(0, 0);
   return days.map(([newLeft, newRight]) => {
     const result = computeMatches({ ...state, left: state.left + newLeft, right: state.right + newRight });
-    state = result.state;
-    return { ...result, ...applyDailyCap(result.generatedAmount, cap) };
+    const leftover = clearLeftoverBV(result.state, mode);
+    state = leftover.state;
+    return { ...result, ...applyDailyCap(result.generatedAmount, cap), ...leftover };
   });
 }
 
@@ -108,6 +112,47 @@ test('Daily cap ₹4000: 17 matches pay ₹4000 and flush ₹250; flushed BV is 
 test('Cap of 0 means uncapped; earnings under the cap are paid in full', () => {
   assertEqual(applyDailyCap(10000, 0), { creditedAmount: 10000, flushedAmount: 0 }, 'uncapped');
   assertEqual(applyDailyCap(3750, 4000), { creditedAmount: 3750, flushedAmount: 0 }, 'under cap');
+});
+
+test('FLUSH clears both legs but keeps the BV held for the 2nd payout', () => {
+  const r = clearLeftoverBV({ left: 200, right: 250, reservedBV: 2500, reservedSide: 'LEFT', payoutCount: 1 }, 'FLUSH');
+  assertEqual([r.clearedLeftBV, r.clearedRightBV], [200, 250], 'cleared');
+  assertEqual(r.state, { left: 0, right: 0, reservedBV: 2500, reservedSide: 'LEFT', payoutCount: 1 }, '2500 kept');
+});
+
+test('CARRY_FORWARD keeps all leftover BV', () => {
+  const state = { left: 150, right: 250, reservedBV: 0, reservedSide: null, payoutCount: 3 };
+  assertEqual(clearLeftoverBV(state, 'CARRY_FORWARD'), { state, clearedLeftBV: 0, clearedRightBV: 0 }, 'unchanged');
+});
+
+test('FLUSH worked example: 2700 : 1500, then 1000 right, then 1250 right, then 1400 : 1500', () => {
+  const days = runDays(
+    [
+      [2700, 1500], // 1st payout: 2500 left kept, 1250 right used; 200 / 250 cleared at midnight
+      [0, 1000], // the 250 is gone, so 1000 is short of the 1250 needed: no payout, 1000 cleared
+      [0, 1250], // 2nd payout: kept 2500 + 1250 new right
+      [1400, 1500], // 3rd payout 1250 : 1250; 150 / 250 cleared at midnight
+    ],
+    4000,
+    'FLUSH'
+  );
+  assertEqual(days.map((d) => d.creditedAmount), [250, 0, 250, 250], 'payouts');
+  assertEqual(days.map((d) => [d.clearedLeftBV, d.clearedRightBV]), [[200, 250], [0, 1000], [0, 0], [150, 250]], 'cleared per day');
+  assertEqual([days[1].state.reservedBV, days[1].state.reservedSide], [2500, 'LEFT'], 'kept 2500 survives a midnight with no payout');
+  assertEqual([days[3].state.left, days[3].state.right, days[3].state.payoutCount], [0, 0, 3], 'nothing carries into day 5');
+});
+
+test('FLUSH on a capped day: BV of the flushed income is used, the remainder is cleared', () => {
+  const days = runDays([[17 * 1250 + 600, 17 * 1250 + 100]], 4000, 'FLUSH');
+  // Before the first payout, so the 17 matches use 2500 + 15 x 1250 on the left
+  assertEqual([days[0].creditedAmount, days[0].flushedAmount], [4000, 250], 'cap');
+  assertEqual([days[0].clearedLeftBV, days[0].clearedRightBV], [600, 100], 'leftover cleared');
+});
+
+test('Leftover rule comes from the settings; anything but FLUSH carries forward', () => {
+  assertEqual(leftoverModeFrom({ binaryBonus: { isEnabled: true, volumeCarryForwardMode: 'FLUSH' } } as any), 'FLUSH', 'flush');
+  assertEqual(leftoverModeFrom({ binaryBonus: { isEnabled: true, volumeCarryForwardMode: 'CARRY_FORWARD' } } as any), 'CARRY_FORWARD', 'carry');
+  assertEqual(leftoverModeFrom(null), 'CARRY_FORWARD', 'no rules');
 });
 
 test('Rules come from the compensation settings with safe defaults', () => {

@@ -10,6 +10,7 @@ import { BinaryTreeService } from '../services/tree/BinaryTreeService';
 import { WalletService } from '../services/WalletService';
 import { BVService } from '../services/BVService';
 import { BinaryVolume } from '../models/BinaryVolume.model';
+import { referralBlockReason } from '../utils/binaryEligibility';
 
 const generateToken = (payload: { id: string; email: string; role: string; memberId?: string }): string => {
   const secret = process.env.JWT_SECRET || 'wetala_default_jwt_secret';
@@ -247,6 +248,13 @@ export const AuthController = {
             status: false,
             message: `Sponsor ID "${rawSponsor}" does not exist in our system. Please enter a valid Member ID.`,
           });
+          return;
+        }
+
+        // Only binary-active members can refer; the root (Super Admin's link) always can
+        const blockReason = referralBlockReason(sponsorExists);
+        if (blockReason) {
+          res.status(HTTP_STATUS.BAD_REQUEST).json({ status: false, code: 'SPONSOR_NOT_ACTIVE', message: blockReason });
           return;
         }
 
@@ -978,7 +986,9 @@ export const AuthController = {
         targetId = rootMember ? rootMember.memberId : 'MEM0001';
       }
 
-      const member = await Member.findOne({ memberId: targetId }).select('memberId name rank status packageName isActive');
+      const member = await Member.findOne({ memberId: targetId }).select(
+        'memberId name rank status packageName isActive isBinaryActive personalBv parentId sponsorId'
+      );
       if (!member) {
         res.status(HTTP_STATUS.NOT_FOUND).json({
           status: false,
@@ -987,6 +997,7 @@ export const AuthController = {
         return;
       }
 
+      const referralBlockedReason = referralBlockReason(member);
       res.status(HTTP_STATUS.OK).json({
         status: true,
         data: {
@@ -996,7 +1007,9 @@ export const AuthController = {
           status: member.status,
           packageName: member.packageName || 'Basic',
           isActive: member.isActive,
-          isRoot: targetId === 'MEM0001',
+          isRoot: !member.sponsorId,
+          canRefer: !referralBlockedReason,
+          ...(referralBlockedReason ? { referralBlockedReason } : {}),
         },
       });
     } catch (error: any) {

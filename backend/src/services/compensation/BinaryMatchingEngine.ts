@@ -8,7 +8,8 @@ import { ICompensationRule } from '../../models/CompensationRule.model';
  *              (reserved) for the 2nd payout.
  *  2nd payout: the kept 2500 plus 1250 new BV on the other leg. Both are used.
  *  3rd payout onwards: 1250 BV on each leg, any number of times.
- *  Each payout earns the same amount (₹250). Unused BV carries forward with no expiry.
+ *  Each payout earns the same amount (₹250). Unused BV either carries forward with no expiry or is
+ *  cleared when the day closes (clearLeftoverBV), as the rule set's volumeCarryForwardMode says.
  */
 
 export type BinaryLeg = 'LEFT' | 'RIGHT';
@@ -145,6 +146,32 @@ export function computeMatches(start: BinaryMatchState, rules: BinaryMatchRules 
     leftBVUsed: cycles.reduce((sum, c) => sum + c.leftBVUsed, 0),
     rightBVUsed: cycles.reduce((sum, c) => sum + c.rightBVUsed, 0),
     state,
+  };
+}
+
+/** What happens to BV that did not make a pair when the IST day closes */
+export type LeftoverBVMode = 'CARRY_FORWARD' | 'FLUSH';
+
+export function leftoverModeFrom(rules?: Partial<ICompensationRule> | null): LeftoverBVMode {
+  return rules?.binaryBonus?.volumeCarryForwardMode === 'FLUSH' ? 'FLUSH' : 'CARRY_FORWARD';
+}
+
+export interface LeftoverResult {
+  state: BinaryMatchState;
+  clearedLeftBV: number;
+  clearedRightBV: number;
+}
+
+/**
+ * Applied after the day's matching. FLUSH clears the unmatched BV on both legs; the BV kept from the
+ * 1st payout for the 2nd payout is not leftover and always survives. CARRY_FORWARD keeps everything.
+ */
+export function clearLeftoverBV(state: BinaryMatchState, mode: LeftoverBVMode): LeftoverResult {
+  if (mode !== 'FLUSH') return { state, clearedLeftBV: 0, clearedRightBV: 0 };
+  return {
+    state: { ...state, left: 0, right: 0 },
+    clearedLeftBV: Math.max(0, state.left),
+    clearedRightBV: Math.max(0, state.right),
   };
 }
 

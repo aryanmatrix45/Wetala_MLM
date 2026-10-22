@@ -9,7 +9,8 @@ export interface IBinaryVolume extends Document {
   rightTotalBV: number;
   matchedTotalBV: number;
   
-  // Carry forward after the last daily closing: unmatched BV available for the next day's matching.
+  // Carry forward after the last daily closing: unmatched BV available for the next day's matching
+  // (always 0 when the leftover rule is FLUSH; only reservedBV then survives the close).
   // New team BV waits as PENDING BVLedger rows until the daily settlement takes it in.
   leftAvailableBV: number;
   rightAvailableBV: number;
@@ -25,6 +26,7 @@ export interface IBinaryVolume extends Document {
   firstPayoutAt?: Date;
   secondPayoutAt?: Date;
   consumedTotalBV: number;
+  clearedTotalBV: number; // unmatched BV cleared at day closes over the member's lifetime
 
   lastMatchedAt?: Date;
   lastSettledDate?: string; // IST business date of the last daily closing
@@ -101,6 +103,11 @@ const binaryVolumeSchema = new Schema<IBinaryVolume>(
       type: Date,
     },
     consumedTotalBV: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    clearedTotalBV: {
       type: Number,
       default: 0,
       min: 0,

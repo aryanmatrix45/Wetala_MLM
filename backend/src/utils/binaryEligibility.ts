@@ -33,3 +33,20 @@ export const canEarnBonus = <T extends BinaryEligibilityFields>(member: T | null
   member!.status !== 'blocked' &&
   isBinaryActive(member!) &&
   isInBinaryTree(member!);
+
+/**
+ * Why a member cannot refer new members, or null when it can. Referring needs an active account that
+ * is binary active and in the tree (no BV beyond the 100 BV activation). The root (no sponsor) always
+ * can: the Super Admin's referral link enrolls under it.
+ */
+export const referralBlockReason = (member: BinaryEligibilityFields | null | undefined): string | null => {
+  if (!member) return 'Sponsor not found.';
+  if (!member.sponsorId) return null;
+  if (member.isActive !== true || ['blocked', 'rejected', 'inactive'].includes(member.status || '')) {
+    return "This sponsor's account is not active, so they cannot refer new members.";
+  }
+  if (!isBinaryActive(member) || !isInBinaryTree(member)) {
+    return "This sponsor isn't binary active yet. They must activate their account (100 BV) before referring new members.";
+  }
+  return null;
+};

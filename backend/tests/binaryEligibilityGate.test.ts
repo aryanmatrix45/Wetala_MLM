@@ -14,7 +14,7 @@ import { MemberRewardPoints } from '../src/models/MemberRewardPoints.model';
 import { TeamPerformanceBonusConfig } from '../src/models/TeamPerformanceBonusConfig.model';
 import { TeamPerformanceBonusService } from '../src/services/compensation/TeamPerformanceBonusService';
 import { BinaryTreeService } from '../src/services/tree/BinaryTreeService';
-import { canEarnBonus, isBinaryActive, isInBinaryTree } from '../src/utils/binaryEligibility';
+import { canEarnBonus, isBinaryActive, isInBinaryTree, referralBlockReason } from '../src/utils/binaryEligibility';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 const DOMAIN = '@test-gate.com';
@@ -46,6 +46,16 @@ function runPureTests() {
   assert(!canEarnBonus(null) && !canEarnBonus(undefined), 'missing member cannot earn');
   assert(isBinaryActive({ isBinaryActive: false, personalBv: 150 }) && isInBinaryTree({ parentId: '', sponsorId: '' }), 'helpers agree with the rule');
   assert(!isInBinaryTree({ parentId: '', sponsorId: 'ROOT' }), 'a sponsored member with no binary parent is outside the tree');
+
+  console.log('\nReferral rule (pure)');
+  assert(referralBlockReason(placedActive) === null, 'a binary-active member in the tree can refer');
+  assert(referralBlockReason({ ...placedActive, isBinaryActive: false, personalBv: 99 }) !== null, 'not binary active cannot refer');
+  assert(referralBlockReason({ ...placedActive, parentId: '' }) !== null, 'binary active but not yet placed cannot refer');
+  assert(referralBlockReason({ ...placedActive, status: 'blocked' }) !== null && referralBlockReason({ ...placedActive, isActive: false }) !== null,
+    'blocked or inactive accounts cannot refer');
+  assert(referralBlockReason({ isActive: false, isBinaryActive: false, personalBv: 0, parentId: '', sponsorId: '' }) === null,
+    'the root can always refer, with no BV');
+  assert(referralBlockReason(null) !== null, 'missing sponsor cannot refer');
 }
 
 let mobileSeq = 0;

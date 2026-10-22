@@ -54,7 +54,7 @@ export class CompensationEngine {
           isEnabled: true,
           rateInRupees: 250,        // ₹250 per pair
           pairBvUnit: 1250,         // 1250 BV per pair
-          volumeCarryForwardMode: 'CARRY_FORWARD',
+          volumeCarryForwardMode: 'FLUSH', // BV that has not paired by IST midnight is cleared
           excessCapPolicy: 'FLUSH',
           firstPairRatio: '2:1_or_1:2',
           subsequentPairRatio: '1:1',

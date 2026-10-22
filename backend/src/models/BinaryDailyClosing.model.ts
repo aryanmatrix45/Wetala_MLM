@@ -24,6 +24,8 @@ export interface IBinaryDailyClosing extends Document {
   newLeftBV: number; // team BV that arrived on the left leg (net of reversals)
   newRightBV: number;
   closing: IBinaryLegSnapshot; // carry forward into the next day
+  clearedLeftBV: number; // unmatched BV cleared at the day's close (leftover rule FLUSH)
+  clearedRightBV: number;
 
   isSelfActive: boolean;
   isSponsorQualified: boolean;
@@ -75,6 +77,8 @@ const binaryDailyClosingSchema = new Schema<IBinaryDailyClosing>(
     newLeftBV: { type: Number, default: 0 },
     newRightBV: { type: Number, default: 0 },
     closing: { type: legSnapshotSchema, required: true },
+    clearedLeftBV: { type: Number, default: 0 },
+    clearedRightBV: { type: Number, default: 0 },
     isSelfActive: { type: Boolean, default: false },
     isSponsorQualified: { type: Boolean, default: false },
     matches: { type: Number, default: 0 },

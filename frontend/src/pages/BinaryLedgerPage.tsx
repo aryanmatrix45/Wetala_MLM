@@ -226,6 +226,9 @@ const TodayTab: React.FC<{ data: any; loading: boolean }> = ({ data, loading }) 
   const capLabel = data.dailyCap > 0 ? inr(data.dailyCap) : 'No cap';
   const capPct = data.dailyCap > 0 ? Math.min(100, Math.round((data.generatedAmount / data.dailyCap) * 100)) : 0;
   const stage = o.payoutCount === 0 ? 'Waiting for 1st payout (2,500 : 1,250)' : o.payoutCount === 1 ? `Waiting for 2nd payout (1,250 new BV opposite the kept 2,500 ${o.reservedSide || ''})` : `1 : 1 matching (${o.payoutCount} payouts so far)`;
+  const isFlush = data.leftoverMode === 'FLUSH';
+  const toClearLeft = data.clearedLeftBV || 0;
+  const toClearRight = data.clearedRightBV || 0;
 
   return (
     <>
@@ -243,6 +246,12 @@ const TodayTab: React.FC<{ data: any; loading: boolean }> = ({ data, loading }) 
         <StatCard label="Estimated income" value={inr(data.creditedAmount)} icon={<IndianRupee size={16} />} tone={TONES.green} footer={<>Earned {inr(data.generatedAmount)} · Daily cap {capLabel}</>} />
         <StatCard label="Flushed (above cap)" value={inr(data.flushedAmount)} icon={<Flame size={16} />} tone={data.flushedAmount > 0 ? TONES.red : TONES.amber} footer="Not carried forward" />
       </div>
+
+      {isFlush && toClearLeft + toClearRight > 0 && (
+        <Alert tone="warning" title="Unpaired BV is cleared at midnight">
+          {bv(toClearLeft)} left and {bv(toClearRight)} right will be cleared at midnight (IST) unless they make a pair before then.
+        </Alert>
+      )}
 
       {data.dailyCap > 0 && (
         <div style={{ ...card, marginBottom: '18px' }}>
@@ -293,6 +302,7 @@ const TodayTab: React.FC<{ data: any; loading: boolean }> = ({ data, loading }) 
         <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)', margin: '10px 0 0' }}>
           After today: carry forward Left <strong>{bv(c.left)}</strong> · Right <strong>{bv(c.right)}</strong>
           {c.reservedBV > 0 ? <> · Kept for 2nd payout <strong>{bv(c.reservedBV)} ({c.reservedSide})</strong></> : null}
+          {isFlush ? <> · Cleared at midnight Left <strong>{bv(toClearLeft)}</strong> · Right <strong>{bv(toClearRight)}</strong></> : null}
         </p>
       </div>
 
@@ -304,7 +314,11 @@ const TodayTab: React.FC<{ data: any; loading: boolean }> = ({ data, loading }) 
           <li><strong>1st payout:</strong> 2,500 BV on one side and 1,250 BV on the other pays ₹250. The 2,500 is kept.</li>
           <li><strong>2nd payout:</strong> the kept 2,500 plus 1,250 new BV on the other side pays ₹250.</li>
           <li><strong>3rd payout onwards:</strong> every 1,250 : 1,250 pays ₹250, with no limit.</li>
-          <li>Used BV cannot be used again. Unused BV carries forward to the next day.</li>
+          {isFlush ? (
+            <li>Used BV cannot be used again. BV that has not made a pair by midnight (IST) is cleared; only the 2,500 kept for the 2nd payout is held over.</li>
+          ) : (
+            <li>Used BV cannot be used again. Unused BV carries forward to the next day.</li>
+          )}
           <li>Daily cap: your package cap, or ₹4,000 without a package. Income above the cap is flushed and not carried forward.</li>
           <li>No TDS or admin fee is deducted. The full amount is credited to your wallet.</li>
         </ul>
@@ -355,6 +369,7 @@ const HistoryTab: React.FC<{ memberId: string; token: string }> = ({ memberId, t
           <StatCard label="Matches" value={totals.matches} icon={<Layers size={16} />} tone={TONES.purple} footer={`Earned ${inr(totals.generatedAmount)}`} />
           <StatCard label="Flushed" value={inr(totals.flushedAmount)} icon={<Flame size={16} />} tone={TONES.red} footer="Above the daily cap" />
           <StatCard label="New team BV" value={bv(totals.newLeftBV + totals.newRightBV)} icon={<CalendarDays size={16} />} tone={TONES.blue} footer={`L ${bv(totals.newLeftBV)} · R ${bv(totals.newRightBV)}`} />
+          <StatCard label="BV cleared" value={bv((totals.clearedLeftBV || 0) + (totals.clearedRightBV || 0))} icon={<Clock size={16} />} tone={TONES.amber} footer={`Not paired by midnight · L ${bv(totals.clearedLeftBV)} · R ${bv(totals.clearedRightBV)}`} />
         </div>
       )}
 
@@ -384,6 +399,7 @@ const HistoryTab: React.FC<{ memberId: string; token: string }> = ({ memberId, t
                   <th style={{ ...th, textAlign: 'right' }}>Cap</th>
                   <th style={{ ...th, textAlign: 'right' }}>Credited</th>
                   <th style={{ ...th, textAlign: 'right' }}>Flushed</th>
+                  <th style={{ ...th, textAlign: 'right' }}>BV cleared</th>
                   <th style={{ ...th, textAlign: 'right' }}>Left carry</th>
                   <th style={{ ...th, textAlign: 'right' }}>Right carry</th>
                   <th style={th}>Status</th>
@@ -400,6 +416,11 @@ const HistoryTab: React.FC<{ memberId: string; token: string }> = ({ memberId, t
                     <td style={{ ...tdNum, color: 'var(--text-muted)' }}>{r.dailyCap > 0 ? inr(r.dailyCap) : '-'}</td>
                     <td style={{ ...tdNum, fontWeight: 800, color: 'var(--success-hover)' }}>{inr(r.creditedAmount)}</td>
                     <td style={{ ...tdNum, color: r.flushedAmount > 0 ? 'var(--danger)' : 'var(--text-light)' }}>{inr(r.flushedAmount)}</td>
+                    <td style={{ ...tdNum, color: (r.clearedLeftBV || 0) + (r.clearedRightBV || 0) > 0 ? 'var(--warning-hover)' : 'var(--text-light)' }}>
+                      {(r.clearedLeftBV || 0) + (r.clearedRightBV || 0) > 0
+                        ? `L ${(r.clearedLeftBV || 0).toLocaleString('en-IN')} · R ${(r.clearedRightBV || 0).toLocaleString('en-IN')}`
+                        : '-'}
+                    </td>
                     <td style={tdNum}>{(r.closing?.left || 0).toLocaleString('en-IN')}</td>
                     <td style={tdNum}>{(r.closing?.right || 0).toLocaleString('en-IN')}</td>
                     <td style={td}><StatusPill status={r.status} /></td>
@@ -450,6 +471,7 @@ const MovementsTab: React.FC<{ memberId: string; token: string }> = ({ memberId,
 
   const typeLabel = (entry: any) => {
     if (entry.sourceType === 'MATCHED') return 'Daily matching';
+    if (entry.sourceType === 'FLUSHED') return 'Cleared at midnight';
     if (entry.sourceType === 'ACTIVATION') return 'Activation BV';
     if (entry.sourceType === 'REVERSAL') return 'Reversal';
     return entry.position ? 'Team BV' : 'Personal BV';
@@ -497,6 +519,7 @@ const MovementsTab: React.FC<{ memberId: string; token: string }> = ({ memberId,
                   <th style={{ ...th, textAlign: 'right' }}>Added</th>
                   <th style={{ ...th, textAlign: 'right' }}>Used / removed</th>
                   <th style={{ ...th, textAlign: 'right' }}>Kept</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Cleared</th>
                   <th style={th}>Day</th>
                   <th style={th}>Details</th>
                 </tr>
@@ -514,6 +537,7 @@ const MovementsTab: React.FC<{ memberId: string; token: string }> = ({ memberId,
                       <td style={{ ...tdNum, color: e.earnedBV > 0 ? 'var(--success-hover)' : 'var(--text-light)', fontWeight: e.earnedBV > 0 ? 700 : 400 }}>{e.earnedBV > 0 ? `+${e.earnedBV.toLocaleString('en-IN')}` : '0'}</td>
                       <td style={{ ...tdNum, color: e.consumedBV > 0 ? 'var(--danger)' : 'var(--text-light)', fontWeight: e.consumedBV > 0 ? 700 : 400 }}>{e.consumedBV > 0 ? `-${e.consumedBV.toLocaleString('en-IN')}` : '0'}</td>
                       <td style={{ ...tdNum, color: e.reservedBV > 0 ? 'var(--warning)' : 'var(--text-light)' }}>{e.reservedBV > 0 ? e.reservedBV.toLocaleString('en-IN') : '-'}</td>
+                      <td style={{ ...tdNum, color: e.flushedBV > 0 ? 'var(--warning-hover)' : 'var(--text-light)', fontWeight: e.flushedBV > 0 ? 700 : 400 }}>{e.flushedBV > 0 ? `-${e.flushedBV.toLocaleString('en-IN')}` : '-'}</td>
                       <td style={td}>
                         {e.businessDate ? formatDate(e.businessDate) : '-'}
                         {e.settlementStatus === 'PENDING' && <span style={{ marginLeft: '6px', fontSize: 'var(--fs-xs)', fontWeight: 800, color: 'var(--primary-hover)' }}>WAITING</span>}
@@ -679,6 +703,7 @@ const SettlementsTab: React.FC<{ token: string; onViewMember: (memberId: string)
             {t && (
               <p style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-secondary)', margin: '0 0 12px' }}>
                 {t.closings} member(s) closed · {t.qualifiedMembers} qualified · {t.earners} earner(s) · {t.matches} matches · Earned {inr(t.generatedAmount)} · Credited <strong style={{ color: 'var(--success-hover)' }}>{inr(t.creditedAmount)}</strong> · Flushed <strong style={{ color: 'var(--danger)' }}>{inr(t.flushedAmount)}</strong>
+                {(t.clearedLeftBV || 0) + (t.clearedRightBV || 0) > 0 && <> · BV cleared L {bv(t.clearedLeftBV)} · R {bv(t.clearedRightBV)}</>}
               </p>
             )}
             {detail?.run?.failures?.length > 0 && (

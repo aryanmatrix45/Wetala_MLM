@@ -45,7 +45,13 @@ export const PreRegistrationPage: React.FC<PreRegistrationPageProps> = ({ onProc
     setError(null);
     try {
       const res = await api.lookupSponsor(targetLookupId);
-      if (res.status && res.data) {
+      if (res.status && res.data && res.data.canRefer === false) {
+        // Only binary-active members can refer new members
+        setSponsorId(res.data.memberId);
+        setError(res.data.referralBlockedReason || 'This sponsor cannot refer new members yet.');
+        setIsVerified(false);
+        setSponsorName(null);
+      } else if (res.status && res.data) {
         setSponsorId(res.data.memberId);
         setSponsorName(res.data.name);
         setIsVerified(true);
