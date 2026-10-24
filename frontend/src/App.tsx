@@ -31,6 +31,8 @@ import { AdminSocialMediaPage } from './pages/AdminSocialMediaPage';
 import { AdminAboutPage } from './pages/AdminAboutPage';
 import { AdminVideosPage } from './pages/AdminVideosPage';
 import { AdminFooterPage } from './pages/AdminFooterPage';
+import { FranchiseePage } from './pages/FranchiseePage';
+import { AdminFranchiseePage } from './pages/AdminFranchiseePage';
 import { MobileBottomNav } from './components/MobileBottomNav';
 import { PublicTopNavbar } from './components/PublicTopNavbar';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -441,6 +443,10 @@ export function App() {
         {activeTab === 'manage-about' && (
           <AdminAboutPage user={user} token={token} />
         )}
+
+        {activeTab === 'franchisee' && <FranchiseePage user={user} token={token} />}
+
+        {activeTab === 'manage-franchisee' && <AdminFranchiseePage user={user} token={token} />}
 
         {activeTab === 'manage-footer' && (
           <AdminFooterPage user={user} token={token} onNavigate={handleTabChange} />

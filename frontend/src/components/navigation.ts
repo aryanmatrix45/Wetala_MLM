@@ -29,6 +29,7 @@ import {
   LayoutGrid,
   IndianRupee,
   UserRound,
+  Store,
 } from 'lucide-react';
 
 export interface NavItem {
@@ -121,6 +122,11 @@ export function getNavSections(user: any, counts: NavCounts = {}): NavSection[] 
           { id: 'manage-footer', label: 'Footer & Company Info', icon: LayoutTemplate },
         ],
       },
+      {
+        id: 'franchisee',
+        title: 'Franchisee',
+        items: [{ id: 'manage-franchisee', label: 'Franchisee Stores', icon: Store}],
+      },
       { id: 'account', title: 'Account', items: [{ id: 'profile', label: 'Profile & Referrals', icon: UserRound }] },
     ];
   }
@@ -168,6 +174,7 @@ export function getNavSections(user: any, counts: NavCounts = {}): NavSection[] 
         { id: 'packages', label: hasPackage ? 'Packages & Upgrade' : 'Buy Joining Package', icon: Package },
         { id: 'purchase-requests', label: 'My Orders', icon: ShoppingCart, count: counts.purchases },
         { id: 'company-account', label: 'Company Bank & QR', icon: Landmark },
+        { id: 'franchisee', label: 'Franchisee Store', icon: Store },
       ],
     },
     {

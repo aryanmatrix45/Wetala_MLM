@@ -3,6 +3,38 @@
  * Reads base URL from import.meta.env.VITE_API_BASE_URL (configured via frontend/.env)
  */
 
+export interface FranchiseeStoreItem {
+  _id: string;
+  storeId: string;
+  storeName: string;
+  ownerName: string;
+  city: string;
+  fullAddress: string;
+  pinCode: string;
+  isActive: boolean;
+  status: 'available' | 'sold';
+  buyerMemberId?: string;
+  buyerName?: string;
+  soldAt?: string;
+}
+
+export interface FranchiseeRequestItem {
+  _id: string;
+  store: string;
+  storeId: string;
+  memberId: string;
+  memberName: string;
+  status: 'pending' | 'approved' | 'rejected';
+  adminNote?: string;
+  createdAt: string;
+}
+
+export interface FranchiseeOverview {
+  ownedStores: FranchiseeStoreItem[];
+  availableStores: FranchiseeStoreItem[];
+  requests: FranchiseeRequestItem[];
+}
+
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
 
 /**
@@ -1943,6 +1975,51 @@ export const api = {
   // ==========================================
   // SOCIAL MEDIA APIS (MEMBER & ADMIN)
   // ==========================================
+  // ==========================================
+  // Franchisee Stores
+  // ==========================================
+  async getFranchiseeOverview(token?: string): Promise<{ status: boolean; data: FranchiseeOverview }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/franchisee`, {
+      headers: { Authorization: `Bearer ${savedToken}` },
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(resJson.message || 'Failed to fetch franchisee stores');
+    return resJson;
+  },
+
+  async requestFranchiseeStore(storeId: string, token?: string): Promise<{ status: boolean; message: string }> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/franchisee/requests`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${savedToken}` },
+      body: JSON.stringify({ storeId }),
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(resJson.message || 'Failed to submit request');
+    return resJson;
+  },
+
+  async adminFranchiseeRequest(
+    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+    path: string,
+    body?: unknown,
+    token?: string
+  ): Promise<any> {
+    const savedToken = token || localStorage.getItem('wetala_token') || '';
+    const res = await fetch(`${API_BASE_URL}/admin/franchisee${path}`, {
+      method,
+      headers: {
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        Authorization: `Bearer ${savedToken}`,
+      },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    const resJson = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(resJson.message || 'Franchisee store request failed');
+    return resJson;
+  },
+
   async getSocialLinks(): Promise<{ status: boolean; data: SocialLinkItem[] }> {
     const res = await fetch(`${API_BASE_URL}/social-links`);
     const resJson = await res.json().catch(() => ({}));

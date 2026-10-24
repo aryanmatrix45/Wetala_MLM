@@ -34,6 +34,8 @@ import kycRoutes from './kyc.routes';
 import bvWalletRoutes from './bvWallet.routes';
 import bvSummaryRoutes from './bvSummary.routes';
 import companyEarningsRoutes from './companyEarnings.routes';
+import franchiseeRoutes from './franchisee.routes';
+import adminFranchiseeRoutes from './adminFranchisee.routes';
 
 const router = Router();
 
@@ -128,6 +130,12 @@ router.use('/bv-summary', bvSummaryRoutes);
 
 // Super Admin earnings (BV sales at the BV rate, bank / UPI orders) and the BV rate
 router.use('/company-earnings', companyEarningsRoutes);
+
+// Franchisee Stores (Members)
+router.use('/franchisee', franchiseeRoutes);
+
+// Franchisee Stores Management (SuperAdmin)
+router.use('/admin/franchisee', adminFranchiseeRoutes);
 
 // Member & Admin Withdrawal Requests & Notifications
 router.use('/withdrawals', withdrawalRoutes);
