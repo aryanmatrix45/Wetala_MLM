@@ -129,7 +129,7 @@ export const MembersPage: React.FC<MembersPageProps> = ({ user, token, onNavigat
       {/* KPI Cards Grid */}
       <div className="kpi-grid">
         <div className="kpi-card">
-          <div className="kpi-icon-box kpi-icon-blue">
+          <div className="kpi-icon-box kpi-icon-brand">
             <Users size={20} />
           </div>
           <div className="kpi-content">

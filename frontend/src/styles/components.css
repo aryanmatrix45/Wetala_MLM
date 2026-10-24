@@ -258,6 +258,7 @@
 }
 
 .kpi-icon-blue   { background: var(--primary-light); color: var(--primary); }
+.kpi-icon-brand  { background: var(--bg-sidebar); color: var(--sidebar-text); }
 .kpi-icon-green  { background: var(--success-light); color: var(--success); }
 .kpi-icon-gold   { background: var(--warning-light); color: var(--warning); }
 .kpi-icon-purple { background: var(--accent-light); color: var(--accent); }

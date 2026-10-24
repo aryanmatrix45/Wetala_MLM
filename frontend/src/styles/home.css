@@ -1014,8 +1014,8 @@
 
 /* ---------- HomeFooter (moved from an inline <style> block) ---------- */
 .treandora-footer-wrapper {
-  background: var(--brand-green-soft);
-  color: var(--brand-green-text);
+  background: var(--bg-sidebar);
+  color: var(--sidebar-text);
   font-family: inherit;
   padding: 60px 48px 32px;
   border-top: none;
@@ -1226,6 +1226,34 @@
 
 .footer-bottom-bar a:hover {
   color: var(--brand-green-deep);
+}
+
+/* Footer on the sidebar's forest green: light text on the dark background */
+.treandora-footer-wrapper .footer-brand-title,
+.treandora-footer-wrapper .footer-col-title,
+.treandora-footer-wrapper .footer-contact-label {
+  color: var(--sidebar-accent);
+}
+
+.treandora-footer-wrapper .footer-about-text,
+.treandora-footer-wrapper .footer-brand-tagline,
+.treandora-footer-wrapper .footer-contact-text,
+.treandora-footer-wrapper .footer-contact-links,
+.treandora-footer-wrapper .footer-nav-link,
+.treandora-footer-wrapper .footer-bottom-bar,
+.treandora-footer-wrapper .footer-bottom-bar a {
+  color: var(--sidebar-text);
+}
+
+.treandora-footer-wrapper .footer-contact-links:hover,
+.treandora-footer-wrapper .footer-nav-link:hover,
+.treandora-footer-wrapper .footer-bottom-bar a:hover {
+  color: #ffffff;
+}
+
+.treandora-footer-wrapper .footer-social-btn {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--sidebar-text);
 }
 
 /* ---------- AboutUsSection (moved from an inline <style> block) ---------- */

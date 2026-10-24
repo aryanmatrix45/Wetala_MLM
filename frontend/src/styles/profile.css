@@ -2,6 +2,17 @@
 /* ==========================================================================
    Member Profile & Referral Center
    ========================================================================== */
+/* Brand accent: the profile page uses the sidebar's forest green instead of the blue primary */
+.page-body.profile-page {
+  --primary: var(--brand-forest-icon);
+  --primary-hover: #25573a;
+  --primary-strong: var(--brand-forest-icon);
+  --primary-muted: var(--sidebar-label);
+  --primary-light: var(--brand-green-soft);
+  --primary-soft: #e3ecdf;
+  --primary-border: #cddcc6;
+}
+
 .page-body.profile-page {
   width: 100%;
   max-width: 1200px;
