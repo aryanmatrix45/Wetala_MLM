@@ -248,6 +248,46 @@ button.sidebar-section-label:hover {
   background: var(--success);
 }
 
+/* Brand header and footer use the light team tone, matching the mobile bottom nav */
+.sidebar-logo,
+.sidebar-footer {
+  background: var(--brand-green-soft);
+}
+
+.sidebar-logo {
+  border-bottom-color: var(--brand-gold-border);
+}
+
+.sidebar-footer {
+  border-top-color: var(--brand-gold-border);
+}
+
+.sidebar-logo .logo-text {
+  color: var(--brand-green-deep);
+}
+
+.sidebar-logo .logo-badge {
+  color: var(--brand-green-text);
+}
+
+.sidebar-logo .sidebar-close-btn {
+  color: var(--brand-green-deep);
+}
+
+.sidebar-logo .sidebar-close-btn:hover {
+  background: rgba(47, 59, 40, 0.08);
+  color: var(--brand-green-deep);
+}
+
+.sidebar-footer .sidebar-footer-card {
+  background: rgba(47, 59, 40, 0.06);
+  color: var(--brand-green-text);
+}
+
+.sidebar-footer .sidebar-footer-card strong {
+  color: var(--brand-green-deep);
+}
+
 .sidebar-close-btn {
   display: none;
   align-items: center;
