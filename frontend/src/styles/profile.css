@@ -2,8 +2,9 @@
 /* ==========================================================================
    Member Profile & Referral Center
    ========================================================================== */
-/* Brand accent: the profile page uses the sidebar's forest green instead of the blue primary */
-.page-body.profile-page {
+/* Brand accent: the profile page and its referral card (also shown in the Refer & Earn sheet) use the forest green instead of the blue primary */
+.page-body.profile-page,
+.profile-referral-card {
   --primary: var(--brand-forest-icon);
   --primary-hover: #25573a;
   --primary-strong: var(--brand-forest-icon);
