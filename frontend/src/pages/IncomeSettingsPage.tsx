@@ -64,8 +64,8 @@ const FALLBACK_FULL_RULES = {
     volumeCarryForwardMode: 'FLUSH',
     dailyBinaryPayoutCap: 4000,
     excessCapPolicy: 'FLUSH',
-    firstPairRatio: '1:1',
-    subsequentPairRatio: '1:2_or_2:1',
+    firstPairRatio: '2:1_or_1:2',
+    subsequentPairRatio: '1:1',
   },
   sponsorBinaryBonus: {
     isEnabled: true,
@@ -684,7 +684,7 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                       <div>
                         <h2 className="card-title">1. Binary Income & Capping</h2>
                         <span style={{ fontSize: 'var(--fs-sm)', color: 'var(--text-muted)' }}>
-                          First pair 1:1, subsequent 1:2 or 2:1 • ₹{rules.binaryBonus?.rateInRupees ?? (rules.binaryBonus?.standardBinaryRate ? Math.round(rules.binaryBonus.standardBinaryRate * 1250) : 250)} per pair (1,250 BV)
+                          1st pair 2:1 or 1:2 (2,500 : 1,250), then 1:1 • ₹{rules.binaryBonus?.rateInRupees ?? (rules.binaryBonus?.standardBinaryRate ? Math.round(rules.binaryBonus.standardBinaryRate * 1250) : 250)} per pair (1,250 BV)
                         </span>
                       </div>
                     </div>
@@ -746,14 +746,14 @@ export const IncomeSettingsPage: React.FC<IncomeSettingsPageProps> = ({
                       <div>
                         <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>First Pair Ratio</label>
                         <div style={{ padding: '9px 12px', background: 'var(--surface-subtle)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--primary)' }}>
-                          1:1
+                          2:1 or 1:2 <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>(2,500 : 1,250; the 2,500 is kept and pays the 2nd pair with 1,250 new)</span>
                         </div>
                       </div>
 
                       <div>
                         <label className="form-label" style={{ display: 'block', marginBottom: 6 }}>Subsequent Pair Ratio</label>
                         <div style={{ padding: '9px 12px', background: 'var(--surface-subtle)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', fontSize: 'var(--fs-base)', fontWeight: 700, color: 'var(--success)' }}>
-                          1:2 or 2:1
+                          1:1 <span style={{ fontWeight: 500, color: 'var(--text-muted)', fontSize: 'var(--fs-sm)' }}>(1,250 : 1,250, from the 3rd pair)</span>
                         </div>
                       </div>
                     </div>
