@@ -142,9 +142,13 @@
   --page-max-width: 1440px;
 
   --bg-main: #f6f7f9;
-  --bg-sidebar: #0f172a;
-  --bg-sidebar-hover: rgba(255, 255, 255, 0.06);
-  --bg-sidebar-active: rgba(255, 255, 255, 0.1);
+  /* Sidebar follows the brand: deep forest green with gold accents */
+  --bg-sidebar: var(--brand-forest);
+  --bg-sidebar-hover: rgba(255, 255, 255, 0.07);
+  --bg-sidebar-active: rgba(255, 255, 255, 0.12);
+  --sidebar-text: #dde7d8;
+  --sidebar-label: #a9bfa0;
+  --sidebar-accent: var(--brand-gold-light);
 
   --transition-fast: 0.15s ease;
 

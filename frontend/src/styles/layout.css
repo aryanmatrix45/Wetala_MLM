@@ -112,13 +112,13 @@
   font-weight: var(--fw-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: var(--sidebar-label);
   border-radius: var(--radius-sm);
   text-align: left;
 }
 
 button.sidebar-section-label:hover {
-  color: var(--text-light);
+  color: var(--sidebar-text);
 }
 
 .sidebar-section-label svg {
@@ -137,7 +137,7 @@ button.sidebar-section-label:hover {
   min-height: 36px;
   padding: 0 var(--space-3);
   border-radius: var(--radius-md);
-  color: var(--text-light);
+  color: var(--sidebar-text);
   font-size: var(--fs-base);
   font-weight: var(--fw-medium);
   text-align: left;
@@ -170,7 +170,7 @@ button.sidebar-section-label:hover {
 
 .menu-item.active svg {
   opacity: 1;
-  color: var(--primary-muted);
+  color: var(--sidebar-accent);
 }
 
 .menu-item.active::before {
@@ -181,7 +181,7 @@ button.sidebar-section-label:hover {
   bottom: 8px;
   width: 3px;
   border-radius: 0 3px 3px 0;
-  background: var(--primary-muted);
+  background: var(--sidebar-accent);
 }
 
 .menu-item-badge {
@@ -224,7 +224,7 @@ button.sidebar-section-label:hover {
   flex-direction: column;
   gap: 2px;
   font-size: var(--fs-xs);
-  color: var(--text-light);
+  color: var(--sidebar-text);
 }
 
 .sidebar-footer-card strong {
@@ -255,7 +255,7 @@ button.sidebar-section-label:hover {
   width: 32px;
   height: 32px;
   border-radius: var(--radius-md);
-  color: var(--text-light);
+  color: var(--sidebar-text);
   flex-shrink: 0;
 }
 
